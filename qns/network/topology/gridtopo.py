@@ -17,7 +17,7 @@
 
 from qns.entity.node.app import Application
 from qns.entity.qchannel.qchannel import QuantumChannel
-from qns.entity.node.node import QNode
+from qns.entity.node.qnode import QNode
 from typing import Dict, List, Optional, Tuple
 from qns.network.topology import Topology
 import math

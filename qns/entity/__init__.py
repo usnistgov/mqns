@@ -16,7 +16,10 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from qns.entity.entity import Entity
-from qns.entity.node.node import QNode, Application
+from qns.entity.node.node import Node
+from qns.entity.node.qnode import QNode
+from qns.entity.node.controller import Controller
+from qns.entity.node.app import Application
 from qns.entity.timer.timer import Timer
 from qns.entity.memory.memory import QuantumMemory
 from qns.entity.memory.event import MemoryReadRequestEvent, MemoryReadResponseEvent, \
@@ -26,7 +29,7 @@ from qns.entity.qchannel.qchannel import QuantumChannel, RecvQubitPacket
 from qns.entity.operator import QuantumOperator, OperateRequestEvent, OperateResponseEvent
 from qns.entity.monitor.monitor import Monitor, MonitorEvent
 
-__all__ = ["Entity", "QNode", "Application", "Timer", "QuantumMemory", "ClassicChannel", "QuantumMemory",
+__all__ = ["Entity", "Node", "QNode", "Controller", "Application", "Timer", "QuantumMemory", "ClassicChannel", "QuantumMemory",
            "ClassicPacket", "RecvClassicPacket", "QuantumChannel", "RecvQubitPacket",
            "QuantumOperator", "OperateRequestEvent", "OperateResponseEvent",
            "MemoryReadRequestEvent", "MemoryReadResponseEvent",

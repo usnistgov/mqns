@@ -20,7 +20,7 @@ from typing import Dict
 
 class Request():
     """
-    A request is a source-destination pair represents a quantum transmitting request.
+    Requests entanglement pairs between a source and a destination.
     """
 
     def __init__(self, src, dest, attr: Dict = {}) -> None:

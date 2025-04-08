@@ -16,7 +16,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from typing import List, Optional, Union
-from qns.entity.node.node import QNode
+from qns.entity.node.qnode import QNode
 from qns.entity.qchannel.qchannel import QuantumChannel
 from qns.models.delay.constdelay import ConstantDelayModel
 from qns.models.delay.delay import DelayModel

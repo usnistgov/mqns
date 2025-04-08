@@ -17,7 +17,7 @@
 
 from typing import Optional, Tuple, Union
 from qns.entity.node.app import Application
-from qns.entity.node.node import QNode
+from qns.entity.node.node import Node
 from qns.simulator.simulator import Simulator
 from qns.simulator.event import Event
 from qns.simulator.ts import Time
@@ -41,7 +41,7 @@ class NodeProcessDelayApp(Application):
         self.delay_event_list = delay_event_list
         self.wait_rehandle_event_list = []
 
-    def install(self, node: QNode, simulator: Simulator):
+    def install(self, node: Node, simulator: Simulator):
         super().install(node, simulator)
 
     def check_in_delay_event_list(self, event) -> bool:
@@ -49,7 +49,7 @@ class NodeProcessDelayApp(Application):
             return True
         return isinstance(event, self.delay_event_list)
 
-    def handle(self, node: QNode, event: Event) -> bool:
+    def handle(self, node: Node, event: Event) -> bool:
         if not self.check_in_delay_event_list(event):
             return False
 

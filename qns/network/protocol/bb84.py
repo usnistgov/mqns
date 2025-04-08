@@ -18,7 +18,7 @@
 from qns.entity.cchannel.cchannel import ClassicChannel, RecvClassicPacket, ClassicPacket
 from qns.entity.node.app import Application
 from qns.entity.qchannel.qchannel import QuantumChannel, RecvQubitPacket
-from qns.entity.node.node import QNode
+from qns.entity.node.qnode import QNode
 from qns.models.qubit.const import BASIS_X, BASIS_Z, \
     QUBIT_STATE_0, QUBIT_STATE_1, QUBIT_STATE_P, QUBIT_STATE_N
 from qns.simulator.event import Event, func_to_event

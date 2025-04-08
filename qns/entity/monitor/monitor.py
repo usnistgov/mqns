@@ -93,7 +93,7 @@ class Monitor(Entity):
         record_pd = pd.DataFrame(record)
         self.data = pd.concat([self.data, record_pd], ignore_index=True)
 
-    def get_date(self):
+    def get_data(self):
         """
         Get the collected data.
 

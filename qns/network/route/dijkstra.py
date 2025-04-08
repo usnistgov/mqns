@@ -18,7 +18,7 @@
 from typing import Callable, Dict, List, Tuple, Union
 import math
 
-from qns.entity.node.node import QNode
+from qns.entity.node.qnode import QNode
 from qns.entity.qchannel.qchannel import QuantumChannel
 from qns.entity.cchannel.cchannel import ClassicChannel
 from qns.network.route.route import RouteImpl, NetworkRouteError

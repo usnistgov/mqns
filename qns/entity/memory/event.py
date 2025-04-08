@@ -17,7 +17,7 @@
 
 
 from typing import Any, Optional, Union
-from qns.entity.node.node import QNode
+from qns.entity.node.qnode import QNode
 from qns.models.core.backend import QuantumModel
 from qns.simulator.event import Event
 from qns.simulator.ts import Time

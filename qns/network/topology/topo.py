@@ -15,7 +15,8 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from qns.entity.node.node import QNode
+from qns.entity.node.qnode import QNode
+from qns.entity.node.controller import Controller
 from qns.entity.cchannel.cchannel import ClassicChannel
 from qns.entity.memory.memory import QuantumMemory
 from qns.entity.node.app import Application
@@ -54,6 +55,7 @@ class Topology(object):
         self.qchannel_args = qchannel_args
         self.memory_args = memory_args
         self.cchannel_args = cchannel_args
+        self.controller = None
 
     def build(self) -> Tuple[List[QNode], List[QuantumChannel]]:
         """
@@ -124,4 +126,5 @@ class Topology(object):
                 for n in node_list:
                     n.add_cchannel(cchannel=cchannel)
                 cchannel_list.append(cchannel)
+
         return cchannel_list

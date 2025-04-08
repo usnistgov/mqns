@@ -53,6 +53,8 @@ class Simulator(object):
         self.total_events = 0
 
         self.watch_event = {}
+        
+        self._running = False
 
     @property
     def current_time(self) -> Time:
@@ -119,3 +121,42 @@ class Simulator(object):
         else:
             log.debug(f"runtime {tre - trs}, {self.total_events} events,\
                 sim_time {self.te.sec - self.ts.sec}, x{(self.te.sec - self.ts.sec)/(tre-trs)}")
+
+
+    def stop(self) -> None:
+        '''
+        Stop the continuous simulation loop
+        '''
+        self._running = False
+
+    def run_continuous(self) -> None:
+        '''
+        Run the simulation continuously until stopped.
+        '''
+        log.debug("continuous simulation started.")
+
+        self._running = True
+        trs = time.time()
+
+        while self._running:
+            event = self.event_pool.next_event()
+
+            if event is not None:
+                if not event.is_canceled:
+                    event.invoke()
+                    monitor_list = self.watch_event.get(event.__class__, [])
+                    for m in monitor_list:
+                        m.handle(event)
+            else:
+                # No event available; idle briefly to wait for external events
+                time.sleep(0.01)
+
+        tre = time.time()
+        self.time_spend = tre - trs
+        log.debug("continuous simulation stopped.")
+
+        if tre - trs == 0:
+            log.debug(f"runtime {tre - trs}, {self.total_events} events, xINF")
+        else:
+            log.debug(f"runtime {tre - trs}, {self.total_events} events, "
+                      f"x{self.current_time.sec / (tre - trs)}")

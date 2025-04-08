@@ -32,10 +32,10 @@ class Application(object):
 
     def install(self, node, simulator: Simulator):
         """
-        install initial events for this QNode
+        install initial events for this Node. Called from Node.install()
 
         Args:
-            node (QNode): the node that will handle this event
+            node (Node): the node that will handle this event
             simulator (Simulator): the simulator
         """
         self._simulator = simulator
@@ -46,7 +46,7 @@ class Application(object):
         process the event on the node.
 
         Args:
-            node (QNode): the node that will handle this event
+            node (Node): the node that will handle this event
             event (Event): the event
 
         Return:
@@ -109,3 +109,6 @@ class Application(object):
             the simulator
         """
         return self._simulator
+    
+    def handle_sync_signal(self, signal_type):
+        pass

@@ -41,6 +41,13 @@ class WernerStateEntanglement(BaseEntanglement, QuantumModel):
         self.name = name
         self.is_decoherenced = False
 
+    def __deepcopy__(self, memo):
+        new_obj = WernerStateEntanglement(self.fidelity, self.name)
+        new_obj.is_decoherenced = self.is_decoherenced
+        new_obj.src = self.src
+        new_obj.dst = self.dst
+        return new_obj
+
     @property
     def fidelity(self) -> float:
         return (self.w * 3 + 1) / 4
@@ -65,6 +72,7 @@ class WernerStateEntanglement(BaseEntanglement, QuantumModel):
             ne.fidelity = 0
         epr.is_decoherenced = True
         self.is_decoherenced = True
+        
         ne.w = self.w * epr.w
         return ne
 
@@ -96,7 +104,7 @@ class WernerStateEntanglement(BaseEntanglement, QuantumModel):
                       (fmin ** 2 + 5 / 9 * (1 - fmin) ** 2 + 2 / 3 * fmin * (1 - fmin))
         return ne
 
-    def store_error_model(self, t: float, decoherence_rate: Optional[float] = 0, **kwargs):
+    def store_error_model(self, t: float, decoherence_rate: Optional[float], **kwargs):
         """
         The default error model for storing this entangled pair in a quantum memory.
         The default behavior is: w = w*e^{-decoherence_rate*t}, default a = 0

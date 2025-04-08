@@ -1,6 +1,6 @@
 #    SimQN: a discrete-event simulator for the quantum networks
-#    Copyright (C) 2021-2022 Lutong Chen, Jian Li, Kaiping Xue
-#    University of Science and Technology of China, USTC.
+#    Copyright (C) 2021-2022 Amar Abane
+#    National Institute of Standards and Technology, NIST.
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -16,13 +16,42 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from typing import Dict, List, Optional, Tuple
-from qns.entity import QNode, QuantumChannel, QuantumMemory, ClassicChannel
+from enum import Enum, auto
+from qns.entity import QNode, QuantumChannel, QuantumMemory, ClassicChannel, Controller
 from qns.network.topology import Topology
 from qns.network.route import RouteImpl, DijkstraRouteAlgorithm
 from qns.network.requests import Request
 from qns.network.topology.topo import ClassicTopology
 from qns.simulator.simulator import Simulator
 from qns.utils.rnd import get_randint
+from qns.simulator.ts import Time
+import qns.utils.log as log
+
+from qns.simulator.event import Event, func_to_event
+
+class TimingModeEnum(Enum):
+    ASYNC = auto()
+    LSYNC = auto()
+    SLOT = auto()
+
+class SignalTypeEnum(Enum):
+    INTERNAL_START = auto()
+    INTERNAL_END = auto()
+    EXTERNAL_START = auto()
+    EXTERNAL_END = auto()
+
+""" class SyncSignal(Event):
+    # ``SyncSignal`` is the event that signals a synchronization phase (internal, external, route, app)
+    def __init__(self, nodes: List[Node], phase: PhaseEnum,
+                 t: Optional[Time] = None, name: Optional[str] = None,
+                 by: Optional[Any] = None):
+        super().__init__(t=t, name=name, by=by)
+        self.nodes = nodes
+        self.phase = phase
+
+    def invoke(self) -> None:
+        for node in self.nodes:
+            node.handle_event(self) """
 
 
 class QuantumNetwork(object):
@@ -31,32 +60,49 @@ class QuantumNetwork(object):
     """
 
     def __init__(self, topo: Optional[Topology] = None, route: Optional[RouteImpl] = None,
-                 classic_topo: Optional[ClassicTopology] = ClassicTopology.Empty,
-                 name: Optional[str] = None):
+                 classic_topo: Optional[ClassicTopology] = None,
+                 name: Optional[str] = None, timing_mode: TimingModeEnum = TimingModeEnum.ASYNC, t_slot:float = 0):
         """
         Args:
             topo: a `Topology` class. If topo is not None, a special quantum topology is built.
-            route: the route implement. If route is None, the dijkstra algorithm will be used
+            route: the route implement. If route is None, the dijkstra algorithm will be used.
             classic_topo (ClassicTopo): a `ClassicTopo` enum class.
+            name: name of the network.
         """
+
+        self.timing_mode = timing_mode
+        self.t_slot = t_slot
+
         self.name = name
-        self.cchannels: List[ClassicChannel] = []
+        self.controller = None
+
         if topo is None:
             self.nodes: List[QNode] = []
             self.qchannels: List[QuantumChannel] = []
+            self.cchannels: List[ClassicChannel] = []
         else:
             self.nodes, self.qchannels = topo.build()
             if classic_topo is not None:
-                self.cchannels = topo.add_cchannels(classic_topo=classic_topo,
-                                                    nl=self.nodes, ll=self.qchannels)
+                self.cchannels = topo.add_cchannels(classic_topo=classic_topo, nl=self.nodes, ll=self.qchannels)
+            else:
+                self.cchannels = topo.add_cchannels()
+
             for n in self.nodes:
                 n.add_network(self)
 
+            # set network controller if centralized routing
+            if topo.controller:
+                self.controller = topo.controller
+                self.controller.add_network(self)
+
+        # set quantum routing algorithm
         if route is None:
             self.route: RouteImpl = DijkstraRouteAlgorithm()
         else:
             self.route: RouteImpl = route
+
         self.requests: List[Request] = []
+
 
     def install(self, s: Simulator):
         '''
@@ -65,8 +111,36 @@ class QuantumNetwork(object):
         Args:
             simulator (qns.simulator.simulator.Simulator): the simulator
         '''
+        self._simulator = s
+
         for n in self.nodes:
             n.install(s)
+        if self.controller:
+            self.controller.install(s)
+            
+        if self.timing_mode == TimingModeEnum.LSYNC and self.t_slot > 0:
+            event = func_to_event(self._simulator.ts, self.send_sync_signal, by=self)
+            self._simulator.add_event(event)
+
+    def send_sync_signal(self):
+        # insert the next send_sync_signal
+        t_next = self._simulator.tc + Time(sec=self.t_slot)
+        nexy_event = func_to_event(t_next, self.send_sync_signal, by=self)
+        self._simulator.add_event(nexy_event)
+
+        log.debug("TIME_SYNC: signal EXTERNAL_START")
+        # TODO: add controller
+        for node in self.nodes:
+            node.handle_sync_signal(SignalTypeEnum.EXTERNAL_START)
+ 
+    def get_nodes(self):
+        return self.nodes
+
+    def get_cchannels(self):
+        return self.cchannels
+
+    def get_qchannels(self):
+        return self.qchannels
 
     def add_node(self, node: QNode):
         """
@@ -91,6 +165,27 @@ class QuantumNetwork(object):
             if n.name == name:
                 return n
         return None
+    
+    def set_controller(self, controller: Controller):
+        """
+        set the controller of this network.
+
+        Args:
+            node (qns.entity.node.node.Controller): the controller node
+        """
+        self.controller = controller
+        controller.add_network(self)
+
+    def get_controller(self):
+        """
+        get the Controller of this network
+
+        Args:
+            name (str): its name
+        Returns:
+            the Controller
+        """
+        return self.controller
 
     def add_qchannel(self, qchannel: QuantumChannel):
         """

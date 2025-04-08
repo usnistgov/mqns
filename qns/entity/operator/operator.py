@@ -17,7 +17,7 @@
 
 from typing import Callable, List, Optional, Union
 from qns.entity.entity import Entity
-from qns.entity.node.node import QNode
+from qns.entity.node.qnode import QNode
 from qns.models.delay.constdelay import ConstantDelayModel
 from qns.models.delay.delay import DelayModel
 from qns.simulator.event import Event

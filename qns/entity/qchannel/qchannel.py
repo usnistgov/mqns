@@ -18,7 +18,7 @@
 from typing import Any, List, Optional, Union
 
 from qns.entity.entity import Entity
-from qns.entity.node.node import QNode
+from qns.entity.node.qnode import QNode
 from qns.models.delay.constdelay import ConstantDelayModel
 from qns.models.delay.delay import DelayModel
 from qns.simulator.simulator import Simulator
@@ -27,6 +27,7 @@ from qns.simulator.event import Event
 from qns.models.core.backend import QuantumModel
 import qns.utils.log as log
 from qns.utils.rnd import get_rand
+from qns.models.epr import BaseEntanglement
 
 
 class QuantumChannel(Entity):
@@ -105,9 +106,12 @@ class QuantumChannel(Entity):
             send_time = self._simulator.current_time
 
         # random drop
-        if get_rand() < self.drop_rate:
+        #if get_rand() < self.drop_rate:
+        if get_rand() < (1 - self.drop_rate):
             log.debug(f"qchannel {self}: drop qubit {qubit} due to drop rate")
-            return
+            if not isinstance(qubit, BaseEntanglement):
+                return
+            qubit.set_decoherenced(True)     # photon is lost -> flag this pair as decoherenced to inform receiver node
 
         #  add delay
         recv_time = send_time + self._simulator.time(sec=self.delay_model.calculate())

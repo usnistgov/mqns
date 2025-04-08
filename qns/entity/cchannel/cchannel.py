@@ -1,6 +1,6 @@
 #    SimQN: a discrete-event simulator for the quantum networks
-#    Copyright (C) 2021-2022 Lutong Chen, Jian Li, Kaiping Xue
-#    University of Science and Technology of China, USTC.
+#    Copyright (C) 2021-2022 Amar Abane
+#    National Institute of Standards and Technology, NIST.
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@ from qns.simulator.ts import Time
 from qns.simulator.event import Event
 import qns.utils.log as log
 from qns.entity.entity import Entity
-from qns.entity.node.node import QNode
+from qns.entity.node.node import Node
 from qns.utils.rnd import get_rand
 
 
@@ -34,20 +34,20 @@ class ClassicPacket(object):
     ClassicPacket is the message that transfer on a ClassicChannel
     """
 
-    def __init__(self, msg: Union[str, bytes, Any], src: QNode = None, dest: QNode = None):
+    def __init__(self, msg: Union[str, bytes, Any], src: Node = None, dest: Node = None):
         """
         Args:
             msg (Union[str, bytes, Any]): the message content.
                 It can be a `str` or `bytes` type or can be dumpped to json.
-            src (QNode): the source of this message
-            dest (QNode): the destination of this message
+            src (Node): the source of this message
+            dest (Node): the destination of this message
         """
         self.is_json = False
-        if not isinstance(msg, (str, bytes)):
-            self.msg = json.dumps(msg)
-            self.is_json = True
-        else:
-            self.msg = msg
+        #if not isinstance(msg, (str, bytes)):
+        #    self.msg = json.dumps(msg)
+        #    self.is_json = True
+        #else:
+        self.msg = msg
         self.src = src
         self.dest = dest
 
@@ -81,13 +81,13 @@ class ClassicChannel(Entity):
     """
     ClassicChannel is the channel for classic message
     """
-    def __init__(self, name: str = None, node_list: List[QNode] = [],
+    def __init__(self, name: str = None, node_list: List[Node] = [],
                  bandwidth: int = 0, delay: Union[float, DelayModel] = 0, length: Optional[float] = 0, drop_rate: float = 0,
                  max_buffer_size: int = 0):
         """
         Args:
             name (str): the name of this channel
-            node_list (List[QNode]): a list of QNodes that it connects to
+            node_list (List[Node]): a list of QNodes that it connects to
             bandwidth (int): the byte per second on this channel. 0 represents unlimited
             delay (Union[float, DelayModel]): the time delay for transmitting a packet. It is a float number or a ``DelayModel``
             length (float): the length of this channel
@@ -115,13 +115,13 @@ class ClassicChannel(Entity):
             self._next_send_time = self._simulator.ts
             self._is_installed = True
 
-    def send(self, packet: ClassicPacket, next_hop: QNode):
+    def send(self, packet: ClassicPacket, next_hop: Node, delay: float = 0):
         """
         Send a classic packet to the next_hop
 
         Args:
             packet (ClassicPacket): the packet
-            next_hop (QNode): the next hop QNode
+            next_hop (Node): the next hop Node
         Raises:
             qns.entity.cchannel.cchannel.NextHopNotConnectionException:
                 the next_hop is not connected to this channel
@@ -150,7 +150,7 @@ class ClassicChannel(Entity):
             log.debug(f"cchannel {self}: drop packet {packet} due to drop rate")
             return
         #  add delay
-        recv_time = send_time + self._simulator.time(sec=self.delay_model.calculate())
+        recv_time = send_time + self._simulator.time(sec=self.delay_model.calculate() + delay)
 
         send_event = RecvClassicPacket(recv_time, name=None, by=self,
                                        cchannel=self, packet=packet, dest=next_hop)
@@ -168,10 +168,10 @@ class NextHopNotConnectionException(Exception):
 
 class RecvClassicPacket(Event):
     """
-    The event for a QNode to receive a classic packet
+    The event for a Node to receive a classic packet
     """
     def __init__(self, t: Optional[Time] = None, name: Optional[str] = None,
-                 cchannel: ClassicChannel = None, packet: ClassicPacket = None, dest: QNode = None,
+                 cchannel: ClassicChannel = None, packet: ClassicPacket = None, dest: Node = None,
                  by: Optional[Any] = None):
         super().__init__(t=t, name=name, by=by)
         self.cchannel = cchannel

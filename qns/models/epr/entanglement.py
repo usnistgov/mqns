@@ -18,6 +18,7 @@
 from typing import List, Optional
 import numpy as np
 
+from qns.entity.node.qnode import QNode
 from qns.models.qubit.qubit import Qubit, QState
 from qns.models.qubit.gate import H, X, Y, Z, CNOT, U
 from qns.models.qubit.const import OPERATOR_PAULI_I, QUBIT_STATE_0, QUBIT_STATE_P
@@ -38,6 +39,13 @@ class BaseEntanglement(object):
         self.fidelity = fidelity
         self.name = name
         self.is_decoherenced = False
+        self.src = None
+        self.dst = None
+
+    def set_decoherenced(self, value: bool):
+        self.is_decoherenced = value
+        
+
 
     def swapping(self, epr: "BaseEntanglement") -> "BaseEntanglement":
         """

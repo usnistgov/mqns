@@ -35,7 +35,8 @@ class Entity(object):
 
     def install(self, simulator: Simulator) -> None:
         '''
-        ``install`` is called before ``simulator`` runs to initialize or set initial events
+        ``install`` is called before ``simulator`` runs to initialize or set initial events. 
+        For Node objects, it's called from Network.install()
 
         Args:
             simulator (qns.simulator.simulator.Simulator): the simulator

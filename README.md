@@ -1,5 +1,15 @@
 # SimQN
 
+
+- In dev: 
+ - `source simqn/bin/activate`
+ - `python3 setup.py bdist_wheel`
+ - `pip install --force-reinstall dist/qns-0.1.5-py3-none-any.whl`
+ - `pip install -e .`
+
+
+
+
 ![Pytest](https://github.com/QNLab-USTC/SimQN/actions/workflows/pytest.yml/badge.svg) 
 ![Flake8](https://github.com/QNLab-USTC/SimQN/actions/workflows/flake8.yml/badge.svg) 
 

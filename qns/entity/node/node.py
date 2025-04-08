@@ -1,6 +1,6 @@
 #    SimQN: a discrete-event simulator for the quantum networks
-#    Copyright (C) 2021-2022 Lutong Chen, Jian Li, Kaiping Xue
-#    University of Science and Technology of China, USTC.
+#    Copyright (C) 2021-2022 Amar Abane
+#    National Institute of Standards and Technology, NIST.
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -22,9 +22,9 @@ from qns.entity import Entity
 from qns.entity.node.app import Application
 
 
-class QNode(Entity):
+class Node(Entity):
     """
-    QNode is a quantum node in the quantum network
+    Node is a generic node in the quantum network
     """
     def __init__(self, name: str = None, apps: List[Application] = None):
         """
@@ -35,37 +35,26 @@ class QNode(Entity):
         super().__init__(name=name)
         self.network = None
         self.cchannels = []
-        self.qchannels = []
-        self.memories = []
-        self.operators = []
-
         self.croute_table = []
-        self.qroute_table = []
-        self.requests = []
         if apps is None:
             self.apps: List[Application] = []
         else:
             self.apps: List[Application] = apps
+        
+        # set default timing to ASYNC
+        from qns.network.network import TimingModeEnum
+        self.timing_mode = TimingModeEnum.ASYNC
 
-    def install(self, simulator: Simulator) -> None:
+    def install(self, simulator: Simulator) -> None: 
+        """
+        Called from Network.install()
+        """
         super().install(simulator)
         # initiate sub-entities
         for cchannel in self.cchannels:
             from qns.entity import ClassicChannel
             assert (isinstance(cchannel, ClassicChannel))
             cchannel.install(simulator)
-        for qchannel in self.qchannels:
-            from qns.entity import QuantumChannel
-            assert (isinstance(qchannel, QuantumChannel))
-            qchannel.install(simulator)
-        for memory in self.memories:
-            from qns.entity import QuantumMemory
-            assert (isinstance(memory, QuantumMemory))
-            memory.install(simulator)
-        for operator in self.operators:
-            from qns.entity import QuantumOperator
-            assert (isinstance(operator, QuantumOperator))
-            operator.install(simulator)
 
         # initiate applications
         for app in self.apps:
@@ -86,7 +75,8 @@ class QNode(Entity):
 
     def add_apps(self, app: Application):
         """
-        Insert an Application into the app list.
+        Insert an Application into the app list. 
+        Called from Topology.build() -> Topology._add_apps()
 
         Args:
             app (Application): the inserting application.
@@ -102,42 +92,9 @@ class QNode(Entity):
         """
         return [app for app in self.apps if isinstance(app, app_type)]
 
-    def add_memory(self, memory):
-        """
-        Add a quantum memory in this QNode
-
-        Args:
-            memory (Memory): the quantum memory
-        """
-        memory.node = self
-        self.memories.append(memory)
-
-    def get_memory(self, memory: Union[str, int]):
-        """
-        Get the memory by index (in memories) or its name
-
-        Args:
-            memory (Union[str, int]): the index or name of the memory
-        """
-        if isinstance(memory, str):
-            for m in self.memories:
-                if m.name == memory:
-                    return m
-        return self.memories[memory]
-
-    def add_operator(self, operator):
-        """
-        Add a quantum operator in this node
-
-        Args:
-            operator (QuantumOperator): the quantum operator
-        """
-        operator.set_own(self)
-        self.operators.append(operator)
-
     def add_cchannel(self, cchannel):
         """
-        Add a classic channel in this QNode
+        Add a classic channel in this Node
 
         Args:
             cchannel (ClassicChannel): the classic channel
@@ -145,63 +102,32 @@ class QNode(Entity):
         cchannel.node_list.append(self)
         self.cchannels.append(cchannel)
 
-    def get_cchannel(self, dst: "QNode"):
+    def get_cchannel(self, dst: "Node"):
         """
         Get the classic channel that connects to the `dst`
 
         Args:
-            dst (QNode): the destination
+            dst (Node): the destination
         """
         for cchannel in self.cchannels:
             if dst in cchannel.node_list and self in cchannel.node_list:
                 return cchannel
         return None
 
-    def add_qchannel(self, qchannel):
-        """
-        Add a quantum channel in this QNode
-
-        Args:
-            qchannel (QuantumChannel): the quantum channel
-        """
-        qchannel.node_list.append(self)
-        self.qchannels.append(qchannel)
-
-    def get_qchannel(self, dst: "QNode"):
-        """
-        Get the quantum channel that connects to the `dst`
-
-        Args:
-            dst (QNode): the destination
-        """
-        for qchannel in self.qchannels:
-            if dst in qchannel.node_list and self in qchannel.node_list:
-                return qchannel
-        return None
-
-    def add_request(self, request):
-        """
-        add a request to this node
-
-        Args:
-            request (Request): the inserting request
-        """
-        self.requests.append(request)
-
-    def clear_request(self):
-        """
-        clear all requests
-        """
-        self.requests.clear()
-
     def add_network(self, network):
         """
-        add a network object to this node
+        add a network object to this node. 
+        Called from Network.__init__()
 
         Args:
             network (qns.network.network.Network): the network object
         """
         self.network = network
+        self.timing_mode = network.timing_mode
+        
+    def handle_sync_signal(self, signal_type) -> None:
+        for app in self.apps:
+            app.handle_sync_signal(signal_type)
 
     def __repr__(self) -> str:
         if self.name is not None:
