@@ -97,16 +97,6 @@ def run_simulation(num_qubits, seed):
     )
     net.install(s)
 
-    e2e_count = { "X": 0.0 }
-    def watch_e2e_count(simulator, network, event):
-        if event.e2e:
-            e2e_count["X"] += 1
-
-    m_e2e_count = Monitor(name="e2e_count", network=None)
-    m_e2e_count.add_attribution(name="e2e_count", calculate_func=watch_e2e_count)
-    m_e2e_count.at_event(QubitReleasedEvent)
-    m_e2e_count.install(s)
-
     # attempts rate per second per qchannel
     attempts_rate = {}    
     # etg rate per second per qchannel
@@ -128,10 +118,10 @@ def run_simulation(num_qubits, seed):
 
     attempts_rate.update({k: v / sim_duration for k, v in attempts_rate.items()})
     ent_rate.update({k: v / sim_duration for k, v in ent_rate.items()})
-    
+
     # fraction of successful attempts per channel
     success_frac = {k: ent_rate[k] / attempts_rate[k] if attempts_rate[k] != 0 else 0 for k in ent_rate}
-    return e2e_count["X"] / sim_duration, attempts_rate, ent_rate, success_frac
+    return attempts_rate, ent_rate, success_frac
 
 
 channel_map = {
@@ -151,7 +141,7 @@ all_data = {
 }
 
 # Simulation loop
-N_RUNS = 500
+N_RUNS = 10
 for M in range(1,6):
     stats = {
         32: {"attempts": [], "ent": [], "succ": []},
@@ -161,7 +151,7 @@ for M in range(1,6):
     for i in range(N_RUNS):
         print(f"Sim: M={M}, run #{i+1}")
         seed = SEED_BASE + i
-        e2e_rate, attempts_rate, ent_rate, success_frac = run_simulation(M, seed)
+        attempts_rate, ent_rate, success_frac = run_simulation(M, seed)
         print(attempts_rate)
         for ch_name, L in channel_map.items():
             if ch_name in attempts_rate:
