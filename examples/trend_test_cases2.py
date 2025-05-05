@@ -216,7 +216,7 @@ for num_routers, dist_prop, swap_conf in itertools.product(NUM_ROUTERS_OPTIONS, 
     })
 
 df = pd.DataFrame(results)
-df.to_csv("trend_results_3.csv", index=False)
+# df.to_csv("trend_results_3.csv", index=False)
 
 # === Combined Plot ===
 fig, axes = plt.subplots(2, 3, figsize=(18, 10), sharey='row')

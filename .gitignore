@@ -14,5 +14,5 @@ qns/**/*.pyd
 !docs
 .idea
 .eggs
-.log
-.csv
+**/*.log
+**/*.csv
