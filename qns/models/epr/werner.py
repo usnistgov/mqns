@@ -100,9 +100,7 @@ class WernerStateEntanglement(BaseEntanglement, QuantumModel):
         ne.name = hash('-'.join(eprs_name_list))
         
         # set decoherence time to the shorter among the two pairs
-        ne.decoherence_time = self.decoherence_time
-        if epr.decoherence_time < self.decoherence_time:
-            ne.decoherence_time = epr.decoherence_time
+        ne.decoherence_time = min(self.decoherence_time, epr.decoherence_time)
         return ne
 
     def distillation(self, epr: "WernerStateEntanglement", name: Optional[str] = None):

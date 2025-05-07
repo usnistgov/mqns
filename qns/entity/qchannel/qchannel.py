@@ -35,7 +35,7 @@ class QuantumChannel(Entity):
     QuantumChannel is the channel for transmitting qubit
     """
     def __init__(self, name: str = None, node_list: List[QNode] = [],
-                 bandwidth: int = 0, delay: Union[float, DelayModel] = 0, drop_rate: float = 0,
+                 bandwidth: int = 0, delay: Union[float, DelayModel] = 0,
                  max_buffer_size: int = 0, length: float = 0, decoherence_rate: Optional[float] = 0,
                  transfer_error_model_args: dict = {}):
         """
@@ -44,7 +44,6 @@ class QuantumChannel(Entity):
             node_list (List[QNode]): a list of QNodes that it connects to
             bandwidth (int): the qubit per second on this channel. 0 represents unlimited
             delay (float): the time delay for transmitting a packet, or a ``DelayModel``
-            drop_rate (float): the drop rate
             max_buffer_size (int): the max buffer size.
                 If it is full, the next coming packet will be dropped. 0 represents unlimited.
 
@@ -56,7 +55,6 @@ class QuantumChannel(Entity):
         self.node_list = node_list.copy()
         self.bandwidth = bandwidth
         self.delay_model = delay if isinstance(delay, DelayModel) else ConstantDelayModel(delay=delay)
-        self.drop_rate = drop_rate
         self.max_buffer_size = max_buffer_size
         self.length = length
         self.decoherence_rate = decoherence_rate
@@ -105,12 +103,12 @@ class QuantumChannel(Entity):
         else:
             send_time = self._simulator.current_time
 
-        # random drop
+        """ # random drop
         if get_rand() < (1 - self.drop_rate):
             # log.debug(f"qchannel {self}: drop qubit {qubit} due to drop rate")
             if not isinstance(qubit, BaseEntanglement):
                 return
-            qubit.set_decoherenced(True)     # photon is lost -> flag this pair as decoherenced to inform receiver node
+            qubit.set_decoherenced(True)     # photon is lost -> flag this pair as decoherenced to inform receiver node """
 
         #  add delay
         recv_time = send_time + self._simulator.time(sec=self.delay_model.calculate())

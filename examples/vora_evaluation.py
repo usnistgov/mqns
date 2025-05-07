@@ -3,7 +3,6 @@ import numpy as np
 import itertools
 import pandas as pd
 
-
 import logging
 from qns.network.route.dijkstra import DijkstraRouteAlgorithm
 from qns.simulator.simulator import Simulator
@@ -22,13 +21,17 @@ SEED_BASE = 100
 
 light_speed = 2 * 10**5 # km/s
 
-def drop_rate(length):
-    return 1
 
 # parameters
 sim_duration = 5      # 9
+
+fiber_alpha = 0.2
+eta_d = 0.95
+eta_s = 0.95
+frequency = 1e3                  # memory frequency
 entg_attempt_rate = 50e6         # From fiber max frequency (50 MHz) AND detectors count rate (60 MHz)
-channel_capacity = 25
+
+channel_qubits = 25
 init_fidelity = 0.99
 t_coherence = 0.01    # sec
 p_swap = 0.5
@@ -78,16 +81,26 @@ def compute_distances_distribution(end_to_end_distance, number_of_routers, dista
 
 def generate_topology(number_of_routers, distance_proportion, swapping_config, total_distance):
     # Generate nodes
-    nodes = [{"name": "S", "memory": {"decoherence_rate": 1 / t_coherence},
-              "apps": [LinkLayer(attempt_rate=entg_attempt_rate, init_fidelity=init_fidelity), ProactiveRouting()]}]
+    nodes = [{"name": "S", "memory": {"decoherence_rate": 1 / t_coherence, "capacity": channel_qubits},
+              "apps": [LinkLayer(attempt_rate=entg_attempt_rate, init_fidelity=init_fidelity, 
+                                 alpha_db_per_km=fiber_alpha,
+                                 eta_d=eta_d, eta_s=eta_s,
+                                 frequency=frequency),
+                       ProactiveRouting()]}]
     for i in range(1, number_of_routers + 1):
         nodes.append({
             "name": f"R{i}",
-            "memory": {"decoherence_rate": 1 / t_coherence},
-            "apps": [LinkLayer(attempt_rate=entg_attempt_rate, init_fidelity=init_fidelity), ProactiveRouting(ps=p_swap)]
+            "memory": {"decoherence_rate": 1 / t_coherence, "capacity": channel_qubits * 2},
+            "apps": [LinkLayer(attempt_rate=entg_attempt_rate, init_fidelity=init_fidelity, 
+                               alpha_db_per_km=fiber_alpha,
+                               eta_d=eta_d, eta_s=eta_s,
+                               frequency=frequency), ProactiveRouting(ps=p_swap)]
         })
-    nodes.append({"name": "D", "memory": {"decoherence_rate": 1 / t_coherence},
-                  "apps": [LinkLayer(attempt_rate=entg_attempt_rate, init_fidelity=init_fidelity), ProactiveRouting()]})
+    nodes.append({"name": "D", "memory": {"decoherence_rate": 1 / t_coherence, "capacity": channel_qubits},
+                  "apps": [LinkLayer(attempt_rate=entg_attempt_rate, init_fidelity=init_fidelity,
+                                     alpha_db_per_km=fiber_alpha,
+                                     eta_d=eta_d, eta_s=eta_s,
+                                     frequency=frequency), ProactiveRouting()]})
 
     # Compute distances
     distances = compute_distances_distribution(total_distance, number_of_routers, distance_proportion)
@@ -101,11 +114,10 @@ def generate_topology(number_of_routers, distance_proportion, swapping_config, t
         qchannels.append({
             "node1": names[i],
             "node2": names[i+1],
-            "capacity": channel_capacity,
+            "capacity": channel_qubits,
             "parameters": {
                 "length": ch_len,
-                "delay": ch_len / light_speed,
-                "drop_rate": drop_rate(ch_len)
+                "delay": ch_len / light_speed
             }
         })
         cchannels.append({
@@ -161,21 +173,21 @@ def run_simulation(number_of_routers, distance_proportion, swapping_config, tota
     s.run()
 
     #### get stats
-    total_etg = 0
+    # total_etg = 0
     total_decohered = 0
     for node in net.get_nodes():
         ll_app = node.get_apps(LinkLayer)[0]
-        total_etg+=ll_app.etg_count
+        # total_etg+=ll_app.etg_count
         total_decohered+=ll_app.decoh_count
-    e2e_rate = net.get_node("S").get_apps(ProactiveRouting)[0].e2e_count / sim_run
+    e2e_count = net.get_node("S").get_apps(ProactiveRouting)[0].e2e_count 
 
-    return e2e_rate, total_decohered / total_etg if total_etg > 0 else 0
+    return e2e_count / sim_run, total_decohered / e2e_count if e2e_count > 0 else 0
 
 
 # Configuration parameters
 TOTAL_DISTANCE = 150  # km
 
-N_RUNS = 5     # 30
+N_RUNS = 10     # 30
 NUM_ROUTERS_OPTIONS = [3, 4, 5]
 DIST_PROPORTIONS = ['decreasing', 'increasing', 'mid_bottleneck', 'uniform']
 SWAP_CONFIGS = ['asap', 'baln', 'vora', 'l2r']
@@ -270,33 +282,3 @@ axes[1, 0].legend(loc="upper left")
 
 plt.tight_layout()
 plt.show()
-
-
-# Plotting
-""" fig, axes = plt.subplots(1, 3, figsize=(18, 5), sharey=True)
-for i, num_routers in enumerate(NUM_ROUTERS_OPTIONS):
-    ax = axes[i]
-    df_subset = df[df["Routers"] == num_routers]
-    x_labels = DIST_PROPORTIONS
-    x = np.arange(len(x_labels))
-    width = 0.2
-
-    for j, swap_conf in enumerate(SWAP_CONFIGS):
-        means = []
-        stds = []
-        for dist_prop in x_labels:
-            row = df_subset[(df_subset["Distance Distribution"] == dist_prop) & 
-                            (df_subset["Swapping Config"] == swap_conf)]
-            means.append(row["Entanglements Per Second"].values[0])
-            stds.append(row["Entanglements Std"].values[0])
-        ax.bar(x + j * width, means, width, yerr=stds, label=swap_conf)
-
-    ax.set_title(f"Entanglements Per Second for {num_routers} Routers")
-    ax.set_xticks(x + 1.5 * width)
-    ax.set_xticklabels(x_labels)
-    ax.set_ylabel("Entanglements Per Second")
-    ax.legend()
-
-plt.tight_layout()
-plt.show()
- """

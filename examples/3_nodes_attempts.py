@@ -27,10 +27,17 @@ light_speed = 2 * 10**5 # km/s
 
 # parameters
 sim_duration = 1
+
+fiber_alpha = 0.2
+eta_d = 0.95
+eta_s = 0.95
+frequency = 1e6                  # memory frequency
 entg_attempt_rate = 50e6         # From fiber max frequency (50 MHz) AND detectors count rate (60 MHz)
+
 init_fidelity = 0.99
-t_coherence = 0.01    # sec
+t_coherence = 0.1    # sec
 p_swap = 0.5
+
 
 
 # 3-nodes topology
@@ -38,36 +45,48 @@ swapping_config = "isolation_1"
 ch_1 = 32
 ch_2 = 18
 
-def generate_topology(channel_capacity = 1):
+def generate_topology(channel_qubits):
     return {
     "qnodes": [
         {
             "name": "S",
             "memory": {
                 "decoherence_rate": 1 / t_coherence,
+                "capacity": channel_qubits
                 # cutoff_ratio (float): the ratio between cutoff time and memory coherence time (default 1, should be between 0 and 1).
                 # e.g., a qubit is considered effectively decohered when coherence drops below 1% or 0.1%, which happens at t ≈ 4.6T to 6.9T.
             },
-            "apps": [LinkLayer(attempt_rate=entg_attempt_rate, init_fidelity=init_fidelity), ProactiveRouting()]
+            "apps": [LinkLayer(attempt_rate=entg_attempt_rate, init_fidelity=init_fidelity, 
+                                 alpha_db_per_km=fiber_alpha,
+                                 eta_d=eta_d, eta_s=eta_s,
+                                 frequency=frequency), ProactiveRouting()]
         },
         {
             "name": "R",
             "memory": {
                 "decoherence_rate": 1 / t_coherence,
+                "capacity": channel_qubits*2
             },
-            "apps": [LinkLayer(attempt_rate=entg_attempt_rate, init_fidelity=init_fidelity), ProactiveRouting(ps=p_swap)]
+            "apps": [LinkLayer(attempt_rate=entg_attempt_rate, init_fidelity=init_fidelity, 
+                                 alpha_db_per_km=fiber_alpha,
+                                 eta_d=eta_d, eta_s=eta_s,
+                                 frequency=frequency), ProactiveRouting(ps=p_swap)]
         },
         {
             "name": "D",
             "memory": {
                 "decoherence_rate": 1 / t_coherence,
+                "capacity": channel_qubits
             },
-            "apps": [LinkLayer(attempt_rate=entg_attempt_rate, init_fidelity=init_fidelity), ProactiveRouting()]
+            "apps": [LinkLayer(attempt_rate=entg_attempt_rate, init_fidelity=init_fidelity, 
+                                 alpha_db_per_km=fiber_alpha,
+                                 eta_d=eta_d, eta_s=eta_s,
+                                 frequency=frequency), ProactiveRouting()]
         }
     ],
     "qchannels": [
-        { "node1": "S", "node2":"R", "capacity": channel_capacity, "parameters": {"length": ch_1, "delay": ch_1 / light_speed, "drop_rate": 1} },
-        { "node1": "R", "node2":"D", "capacity": channel_capacity, "parameters": {"length": ch_2, "delay": ch_2 / light_speed, "drop_rate": 1} }
+        { "node1": "S", "node2":"R", "capacity": channel_qubits, "parameters": {"length": ch_1, "delay": ch_1 / light_speed} },
+        { "node1": "R", "node2":"D", "capacity": channel_qubits, "parameters": {"length": ch_2, "delay": ch_2 / light_speed} }
     ],
     "cchannels": [
         { "node1": "S", "node2":"R", "parameters": {"length": ch_1, "delay": ch_1 / light_speed} },
@@ -83,7 +102,7 @@ def generate_topology(channel_capacity = 1):
     }
 
 def run_simulation(num_qubits, seed):
-    json_topology = generate_topology(channel_capacity = num_qubits)
+    json_topology = generate_topology(channel_qubits = num_qubits)
     
     set_seed(seed)
     s = Simulator(0, sim_duration + 5e-06, accuracy=1000000)
@@ -141,7 +160,7 @@ all_data = {
 }
 
 # Simulation loop
-N_RUNS = 10
+N_RUNS = 100
 for M in range(1,6):
     stats = {
         32: {"attempts": [], "ent": [], "succ": []},

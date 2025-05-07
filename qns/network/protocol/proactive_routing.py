@@ -355,12 +355,12 @@ class ProactiveRouting(Application):
         self.eligible(qubit, fib_entry)
 
         # consume right away:
-        """ _, qm = qmem.read(address=qubit.addr)
+        """ _, qm = self.memory.read(address=qubit.addr)
         qubit.fsm.to_release()
         log.debug(f"{self.own}: consume entanglement: <{qubit.addr}> {qm.src.name} - {qm.dst.name}")
         from qns.network.protocol.event import QubitReleasedEvent
         event = QubitReleasedEvent(link_layer=self.link_layer, qubit=qubit, e2e=self.own.name=='S',
-                                   t=self._simulator.tc, by=qmem)
+                                   t=self._simulator.tc, by=self)
         self._simulator.add_event(event) """
 
         # TODO:

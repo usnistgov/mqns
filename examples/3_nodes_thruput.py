@@ -19,7 +19,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 
-log.logger.setLevel(logging.DEBUG)
+log.logger.setLevel(logging.CRITICAL)
 
 SEED_BASE = 100
 
@@ -27,10 +27,16 @@ light_speed = 2 * 10**5 # km/s
 
 # parameters
 sim_duration = 3
+
+fiber_alpha = 0.2
+eta_d = 0.95
+eta_s = 0.95
+frequency = 1e6                  # memory frequency
 entg_attempt_rate = 50e6         # From fiber max frequency (50 MHz) AND detectors count rate (60 MHz)
+
+channel_qubits = 1
 init_fidelity = 0.99
 p_swap = 0.5
-channel_capacity = 1
 
 
 # 3-nodes topology
@@ -45,30 +51,39 @@ def generate_topology(t_coherence):
             "name": "S",
             "memory": {
                 "decoherence_rate": 1 / t_coherence,
-                "capacity": 1,
+                "capacity": channel_qubits,
             },
-            "apps": [LinkLayer(attempt_rate=entg_attempt_rate, init_fidelity=init_fidelity), ProactiveRouting()]
+            "apps": [LinkLayer(attempt_rate=entg_attempt_rate, init_fidelity=init_fidelity, 
+                                 alpha_db_per_km=fiber_alpha,
+                                 eta_d=eta_d, eta_s=eta_s,
+                                 frequency=frequency), ProactiveRouting()]
         },
         {
             "name": "R",
             "memory": {
                 "decoherence_rate": 1 / t_coherence,
-                "capacity": 2,
+                "capacity": channel_qubits*2,
             },
-            "apps": [LinkLayer(attempt_rate=entg_attempt_rate, init_fidelity=init_fidelity), ProactiveRouting(ps=p_swap)]
+            "apps": [LinkLayer(attempt_rate=entg_attempt_rate, init_fidelity=init_fidelity, 
+                                 alpha_db_per_km=fiber_alpha,
+                                 eta_d=eta_d, eta_s=eta_s,
+                                 frequency=frequency), ProactiveRouting(ps=p_swap)]
         },
         {
             "name": "D",
             "memory": {
                 "decoherence_rate": 1 / t_coherence,
-                "capacity": 1,
+                "capacity": channel_qubits,
             },
-            "apps": [LinkLayer(attempt_rate=entg_attempt_rate, init_fidelity=init_fidelity), ProactiveRouting()]
+            "apps": [LinkLayer(attempt_rate=entg_attempt_rate, init_fidelity=init_fidelity, 
+                                 alpha_db_per_km=fiber_alpha,
+                                 eta_d=eta_d, eta_s=eta_s,
+                                 frequency=frequency), ProactiveRouting()]
         }
     ],
     "qchannels": [
-        { "node1": "S", "node2":"R", "capacity": channel_capacity, "parameters": {"length": ch_1, "delay": ch_1 / light_speed, "drop_rate": 1} },
-        { "node1": "R", "node2":"D", "capacity": channel_capacity, "parameters": {"length": ch_2, "delay": ch_2 / light_speed, "drop_rate": 1} }
+        { "node1": "S", "node2":"R", "capacity": channel_qubits, "parameters": {"length": ch_1, "delay": ch_1 / light_speed} },
+        { "node1": "R", "node2":"D", "capacity": channel_qubits, "parameters": {"length": ch_2, "delay": ch_2 / light_speed} }
     ],
     "cchannels": [
         { "node1": "S", "node2":"R", "parameters": {"length": ch_1, "delay": ch_1 / light_speed} },
@@ -119,8 +134,9 @@ results = {
     "Std Rate": []
 }
 
-t_cohere_values = [2e-3, 5e-3, 1e-2, 2e-2, 3e-2, 4e-2, 8e-2, 1e-1]
-N_RUNS = 5
+# t_cohere_values = [2e-3, 5e-3, 1e-2, 2e-2, 3e-2, 4e-2, 8e-2, 1e-1]
+t_cohere_values = np.geomspace(2e-3, 1e-1, 8)
+N_RUNS = 50
 for t_cohere in t_cohere_values:
     rates = []
     for i in range(N_RUNS):
