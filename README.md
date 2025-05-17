@@ -1,48 +1,82 @@
-# SimQN++
+# Dynamic-QNetSim
 
 ![Lint](https://github.com/amar-ox/dynamic-qnetsim/actions/workflows/lint.yml/badge.svg)
 
-SimQN++ is based on [SimQN](https://qnlab-ustc.github.io/SimQN/). It is a discrete-event network simulation platform for quantum networks.
-SimQN enables large-scale investigations, including QKD protocols, entanglement distributions protocols, and routing algorithms, resource allocation schemas in quantum networks. For example, users can use SimQN to design routing algorithms for better QKD performance. For more information, please refer to [SimQN's documentation](https://qnlab-ustc.github.io/).
+## Overview
 
-SimQN is a Python3 library for quantum networking simulation. It is designed to be general purpose. It means that SimQN can be used for both QKD network, entanglement distribution networks, and other kinds of quantum networks' evaluation. The core idea is that SimQN makes no architecture assumption. Since there is currently no recognized network architecture in quantum network investigations, SimQN stays flexible in this aspect.
+**Dynamic-QNetSim** is a quantum network simulator designed to streamline the comparative evaluation of entanglement routing under dynamic and heterogeneous network conditions. It addresses the need for a unified, flexible framework for rapidly prototyping and benchmarking a wide range of entanglement distribution strategies and quantum network architectures. The simulator supports systematic exploration of routing algorithms, swapping strategies, purification schedules, and resource management techniques across diverse network scenarios.
 
-SimQN provides high performance for large-scale network simulation. SimQN uses [Cython](https://cython.org/) to compile critical codes in C/C++ libraries to boost the evaluation. Also, along with the commonly used quantum state-based physical models, SimQN provides a higher-layer fidelity-based entanglement physical model to reduce the computation overhead and brings convenience for users in evaluation. Last but not least, SimQN provides several network auxiliary models for easily building network topologies, producing routing tables and managing multiple session requests.
+This project is part of an ongoing research effort to evaluate the quantum networking approaches presented in our recent survey:
+🔗 [Entanglement Routing in Quantum Networks: A Comprehensive Survey](https://ieeexplore.ieee.org/document/10882978)
 
-## Get Help
+> ⚠️ This is an active research and development project. Functionality and APIs are evolving.
 
-- This [documentation](https://qnlab-ustc.github.io/SimQN/) may answer most questions.
-    - The [tutorial](https://qnlab-ustc.github.io/SimQN/tutorials.html) here presents how to use SimQN.
-    - The [API manual](https://qnlab-ustc.github.io/SimQN/modules.html) shows more detailed information.
+---
 
-- Welcome to report bugs at [Github](https://github.com/amar-ox/dynamic-qnetsim).
+## Based on SimQN
 
+Dynamic-QNetSim reuses components from [SimQN v0.1.5](https://github.com/qnslab/SimQN), which is licensed under the GNU General Public License v3.0.
+
+This is *not* a fork of the official SimQN repository, but rather a standalone project that incorporates a snapshot of SimQN's implementation—specifically the discrete-event simulation engine, noise modeling framework, and code structure. Substantial modifications have been made to support dynamic routing protocols and enhanced entanglement management capabilities.
+
+This project is therefore licensed under the GPLv3. See the LICENSE file for details.
+
+While we are developing dedicated documentation tailored to this simulator, **users can refer to [SimQN’s documentation](https://qnlab-ustc.github.io/SimQN/)** in the meantime to understand the foundational models and architecture.
+
+---
 
 ## Installation
 
-This is a development version to be installed from source. 
+This is a development version to be installed from source.
 
-First, checkout the source code from Github.
+First, clone the repository:
 
-   `git checkout https://github.com/amar-ox/dynamic-qnetsim.git`
-   `cd dynamic-qnetsim`
+```bash
+git checkout https://github.com/amar-ox/dynamic-qnetsim.git
+cd dynamic-qnetsim
+```
 
-- Otional but recommended: create env
- - `cd`
- - `python3 -m venv simqn`
- - `source simqn/bin/activate`
+(Optional but recommended) Create a virtual environment:
 
-- Alternative 1: install locally
-Install setuptools as the package tool:
-   `pip3 install setuptools wheel`
+```bash
+python3 -m venv simqn
+source simqn/bin/activate
+```
 
-Build the package:
-   `python3 setup.py bdist_wheel`
+**Option 1: Install from wheel (local build)**
 
-This command build the package and it should be located in the `dist` directory named `qns-0.1.5-py3-none-any.whl`. 
+```bash
+pip3 install setuptools wheel
+python3 setup.py bdist_wheel
+pip3 install --force-reinstall dist/qns-0.1.5-py3-none-any.whl
+```
 
-Finally, install the package to the system python library:
-   `pip install --force-reinstall dist/qns-0.1.5-py3-none-any.whl`
+**Option 2: Install in editable mode**
 
-- Alternative 2: install in edit mode
-  `pip install -e .`
+```bash
+pip3 install -e .
+```
+
+---
+
+## Example: Three-Node Simulation
+
+The repository includes a simple example (`examples/3_nodes_thruput.py`) simulating end-to-end entanglement throughput between three nodes connected in a linear topology.
+
+This demonstrates:
+
+* Entanglement generation over lossy fiber
+* Swapping operations at the intermediate node
+* Performance monitoring of entanglement attempts and success rates
+
+You can run the example with:
+
+```bash
+python examples/3_nodes_thruput.py > output.log
+```
+
+More examples and configuration options will be added as the simulator evolves.
+
+---
+
+Feel free to open issues for bug reports or feature suggestions.

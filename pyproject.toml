@@ -17,6 +17,3 @@ select = [
  # "PL", # pylint (useful for layout, blank lines, etc.)
 ]
 ignore = ["E741"]
-
-# Optional: specify the source code directory
-# src = ["qns", "examples]

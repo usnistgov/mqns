@@ -1,3 +1,13 @@
+#    Modified by Amar Abane
+#    Date: 05/17/2025
+#    Summary of changes: Adapted logic to support dynamic approaches.
+#
+#    This file is based on a snapshot of SimQN (https://github.com/qnslab/SimQN),
+#    which is licensed under the GNU General Public License v3.0.
+#
+#    The original SimQN header is included below.
+
+
 #    SimQN: a discrete-event simulator for the quantum networks
 #    Copyright (C) 2021-2022 Lutong Chen, Jian Li, Kaiping Xue
 #    University of Science and Technology of China, USTC.
@@ -22,6 +32,7 @@ from qns.network.topology.randomtopo import RandomTopology
 from qns.network.topology.topo import Topology
 from qns.network.topology.treetopo import TreeTopology
 from qns.network.topology.waxmantopo import WaxmanTopology
+from qns.network.topology.customtopo import CustomTopology
 
-__all__ = ["Topology", "BasicTopology", "LineTopology",
+__all__ = ["Topology", "BasicTopology", "LineTopology", "CustomTopology"
            "TreeTopology", "GridTopology", "RandomTopology", "WaxmanTopology"]

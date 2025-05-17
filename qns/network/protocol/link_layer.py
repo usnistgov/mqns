@@ -1,6 +1,5 @@
-#    SimQN: a discrete-event simulator for the quantum networks
-#    Copyright (C) 2024-2025 Amar Abane
-#    National Institute of Standards and Technology.
+#    Dynamic-QNetSim: a simulator for comparative evaluation of quantum routing strategies
+#    Copyright (C) [2025] Amar Abane
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by

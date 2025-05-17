@@ -1,6 +1,16 @@
+#    Modified by Amar Abane
+#    Date: 05/17/2025
+#    Summary of changes: Adapted logic to support dynamic approaches.
+#
+#    This file is based on a snapshot of SimQN (https://github.com/qnslab/SimQN),
+#    which is licensed under the GNU General Public License v3.0.
+#
+#    The original SimQN header is included below.
+
+
 #    SimQN: a discrete-event simulator for the quantum networks
-#    Copyright (C) 2024-2025 Amar Abane
-#    National Institute of Standards and Technology.
+#    Copyright (C) 2021-2022 Lutong Chen, Jian Li, Kaiping Xue
+#    University of Science and Technology of China, USTC.
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
