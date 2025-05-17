@@ -168,7 +168,7 @@ results = {
 #t_cohere_values = [2e-3, 5e-3, 1e-2, 2e-2, 3e-2, 4e-2, 8e-2, 1e-1]
 t_cohere_values = np.geomspace(2e-3, 1e-1, 8)
 
-N_RUNS = 1
+N_RUNS = 100
 for t_cohere in t_cohere_values:
     rates = []
     for i in range(N_RUNS):
