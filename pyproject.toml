@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [tool.ruff]
 line-length = 128
 # select = ["E", "F"]
-select = [
+lint.select = [
   "E",  # pycodestyle (includes missing newline at EOF, etc.)
   "F",  # pyflakes
   "W",  # pycodestyle warnings
@@ -16,4 +16,4 @@ select = [
   "Q",  # quote-conventions
  # "PL", # pylint (useful for layout, blank lines, etc.)
 ]
-ignore = ["E741"]
+lint.ignore = ["E741"]
