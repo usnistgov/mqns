@@ -16,8 +16,6 @@
 #    along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 
-from typing import Optional
-
 import numpy as np
 
 from qns.models.qubit.const import QUBIT_STATE_0
@@ -26,7 +24,7 @@ from qns.models.qubit.qubit import QState
 from qns.utils.rnd import get_rand
 
 
-def PrefectError(self, p: Optional[float] = 0, **kwargs):
+def PrefectError(self, p: float = 0, **kwargs):
     """The default error model for this qubit.
 
     Args:
@@ -36,7 +34,7 @@ def PrefectError(self, p: Optional[float] = 0, **kwargs):
     pass
 
 
-def DephaseError(self, p: Optional[float] = 0, **kwargs):
+def DephaseError(self, p: float = 0, **kwargs):
     """The dephase error model.
     A random Z gate will be operate on the qubit with possibility p.
 
@@ -49,7 +47,7 @@ def DephaseError(self, p: Optional[float] = 0, **kwargs):
     self.stochastic_operate([I, Z], [1-p, p])
 
 
-def DepolarError(self, p: Optional[float] = 0, **kwargs):
+def DepolarError(self, p: float = 0, **kwargs):
     """The depolarizing error model.
 
     One of the random Pauli gate will be operate on the qubit with possibility p :
@@ -67,7 +65,7 @@ def DepolarError(self, p: Optional[float] = 0, **kwargs):
         self.stochastic_operate([X, Y, Z], [1/3, 1/3, 1/3])
 
 
-def BitFlipError(self, p: Optional[float] = 0, **kwargs):
+def BitFlipError(self, p: float = 0, **kwargs):
     """The bit flip error model.
 
     Args:
@@ -80,7 +78,7 @@ def BitFlipError(self, p: Optional[float] = 0, **kwargs):
     self.stochastic_operate([I, X], [1-p, p])
 
 
-def DissipationError(self, p: Optional[float] = 0, **kwargs):
+def DissipationError(self, p: float = 0, **kwargs):
     """The dissipation error model.
 
     Args:
@@ -98,7 +96,7 @@ def DissipationError(self, p: Optional[float] = 0, **kwargs):
 
 def ErrorWithTime(ErrorModel):
     """Generate the error. The error possibility is 1-e^{-decoherence_rate * t}"""
-    def GeneratedErrorWithTime(self, t: Optional[float] = 0, decoherence_rate: Optional[float] = 0, **kwargs):
+    def GeneratedErrorWithTime(self, t: float = 0, decoherence_rate: float = 0, **kwargs):
         """The error model with time for this qubit. The error possibility is 1-e^{-decoherence_rate * t}.
 
         Args:
@@ -113,7 +111,7 @@ def ErrorWithTime(ErrorModel):
 
 def ErrorWithLength(ErrorModel):
     """Generate the error. The error possibility is 1-e^{-decoherence_rate * length}"""
-    def GeneratedErrorWithLength(self, length: Optional[float] = 0, decoherence_rate: Optional[float] = 0, **kwargs):
+    def GeneratedErrorWithLength(self, length: float = 0, decoherence_rate: float = 0, **kwargs):
         """The error model with length for this qubit. The error possibility is 1-e^{-decoherence_rate * length}.
 
         Args:

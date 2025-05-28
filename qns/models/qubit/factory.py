@@ -17,7 +17,6 @@
 
 
 from types import MethodType
-from typing import Optional
 
 import numpy as np
 
@@ -54,9 +53,9 @@ class QubitFactory:
         self.operate_error_model = operate_error_model
         self.measure_error_model = measure_error_model
 
-    def __call__(self, state=QUBIT_STATE_0, rho: np.ndarray = None,
-                 operate_decoherence_rate: Optional[float] = None, measure_decoherence_rate: Optional[float] = None,
-                 name: Optional[str] = None) -> Qubit:
+    def __call__(self, state: np.ndarray = QUBIT_STATE_0, rho: np.ndarray|None = None,
+                 operate_decoherence_rate: float|None = None, measure_decoherence_rate: float|None = None,
+                 name: str|None = None) -> Qubit:
         """Args:
         state (list): the initial state of a qubit, default is |0> = [1, 0]^T
         operate_decoherence_rate (float): the operate decoherence rate

@@ -31,12 +31,13 @@ class QState:
     """QState is the state of one (or multiple) qubits
     """
 
-    def __init__(self, qubits: list["Qubit"] = [], state: np.ndarray|None = QUBIT_STATE_0,
+    def __init__(self, qubits: list["Qubit"] = [], state: np.ndarray = QUBIT_STATE_0,
                  rho: np.ndarray|None = None, name: str|None = None):
         """Args:
         qubits (List[Qubit]): a list of qubits in this quantum state
         state: the state vector of this state, either ``state`` or ``rho`` can be used to present a state
-        rho: the density matrix of this state, either ``state`` or ``rho`` can be used to present a state
+        rho: the density matrix of this state, either ``state`` or ``rho`` can be used to present a state;
+             if both ``state`` and ``rho`` are specified, ``rho`` takes priority
         name (str): the name of this state
 
         """
@@ -224,7 +225,7 @@ class Qubit(QuantumModel):
     """Represent a qubit
     """
 
-    def __init__(self, state=QUBIT_STATE_0, rho: np.ndarray|None = None,
+    def __init__(self, state: np.ndarray = QUBIT_STATE_0, rho: np.ndarray|None = None,
                  operate_decoherence_rate: float = 0, measure_decoherence_rate: float = 0,
                  name: str|None = None):
         """Args:
