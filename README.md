@@ -45,7 +45,6 @@ source mqns/bin/activate
 
 Install dependencies:
 ```bash
-pip install --upgrade pip setuptools wheel build packaging
 pip install -r requirements.txt
 ```
 
