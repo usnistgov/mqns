@@ -1,33 +1,49 @@
-from pytest import approx
+from pytest import approx, raises
 
 from qns.simulator.ts import Time, set_default_accuracy
 
 
-def test_time():
-    t1 = Time(1)
-    t2 = Time(sec=1.1)
-    t3 = Time()
-    t4 = Time(1100000)
+class ChangeDefaultAccuracy:
+    def __init__(self, accuracy: int):
+        self.new_accuracy = accuracy
+        self.old_accuracy: int
 
-    print(t1.sec)
-    print(t4)
+    def __enter__(self):
+        self.old_accuracy = Time().accuracy
+        set_default_accuracy(self.new_accuracy)
 
-    assert (t1 == t1)
-    assert (t2 >= t1)
-    assert (t1 <= t2)
-    assert (t1 < t2)
-    assert (t3 < t1)
+    def __exit__(self, exc_type, exc_value, traceback):
+        set_default_accuracy(self.old_accuracy)
+
+
+def test_time_compare():
+    with ChangeDefaultAccuracy(1000000):
+        t1 = Time(1)
+        t2 = Time(sec=1.1)
+        t3 = Time()
+        t4 = Time(1100000)
+
+    assert t1 == t1
+    assert t2 >= t1
+    assert t1 <= t2
+    assert t1 < t2
+    assert t3 < t1
+    assert t1 != t4
+    assert t2 == t4
+
+    t0 = Time(sec=1.1, accuracy=2000)
+    assert t2 != t0
+    with raises(AssertionError):
+        _ = t3 < t0
+
+    assert t2 != 1
+    assert t2 != "A"
+
 
 def test_time_accuracy():
     t0 = Time(sec=1.0)
 
-    class ChangeDefaultAccuracy:
-        def __enter__(self):
-            set_default_accuracy(2000)
-        def __exit__(self, exc_type, exc_value, traceback):
-            set_default_accuracy(t0.accuracy)
-
-    with ChangeDefaultAccuracy():
+    with ChangeDefaultAccuracy(2000):
         t1 = Time(sec=1.0)
         t2 = Time(sec=1.0, accuracy=3000)
 
@@ -44,6 +60,31 @@ def test_time_accuracy():
     assert t1.accuracy == 2000
     assert t2.accuracy == 3000
     assert t4.accuracy == 4000
+
+
+def test_time_add_sub():
+    t5 = Time(sec=5, accuracy=1000)
+
+    t6a = t5 + 1
+    t6b = t5 + 1.0
+    t6c = t5 + Time(sec=1.0, accuracy=1000)
+    assert t6a.sec == approx(6.0)
+    assert t6b.sec == approx(6.0)
+    assert t6c.sec == approx(6.0)
+
+    with raises(AssertionError):
+        _ = t5 + Time(sec=1.0, accuracy=2000)
+
+    t3a = t5 - 2
+    t3b = t5 - 2.0
+    t3c = t5 - Time(sec=2.0, accuracy=1000)
+    assert t3a.sec == approx(3.0)
+    assert t3b.sec == approx(3.0)
+    assert t3c.sec == approx(3.0)
+
+    with raises(AssertionError):
+        _ = t5 - Time(sec=2.0, accuracy=2000)
+
 
 def print_msg(msg):
     print(msg)
