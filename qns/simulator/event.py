@@ -15,7 +15,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from typing import Any, Optional
+from typing import Any, Callable
 
 from qns.simulator.ts import Time
 
@@ -24,15 +24,15 @@ class Event:
     """Basic event class in simulator
     """
 
-    def __init__(self, t: Optional[Time] = None, name: Optional[str] = None, by: Optional[Any] = None):
+    def __init__(self, t: Time|None = None, name: str|None = None, by: Any = None):
         """Args:
         t (Time): the time slot of this event
         by: the entity or application that causes this event
         name (str): the name of this event
 
         """
-        self.t: Optional[Time] = t
-        self.name: Optional[str] = name
+        self.t = t
+        self.name = name
         self.by = by
         self._is_canceled: bool = False
 
@@ -55,22 +55,24 @@ class Event:
         return self._is_canceled
 
     def __eq__(self, other: object) -> bool:
-        return self.t == other.t
+        return isinstance(other, Event) and self.t == other.t
 
-    def __lt__(self, other: object) -> bool:
+    def __ne__(self, other: object) -> bool:
+        return not self == other
+
+    def __lt__(self, other: "Event") -> bool:
+        if self.t is None or other.t is None:
+            return other.t is not None
         return self.t < other.t
 
-    def __le__(self, other: Time) -> bool:
+    def __le__(self, other: "Event") -> bool:
         return self < other or self == other
 
-    def __gt__(self, other: Time) -> bool:
-        return not (self < other or self == other)
+    def __gt__(self, other: "Event") -> bool:
+        return not self <= other
 
-    def __ge__(self, other: Time) -> bool:
-        return not (self < other)
-
-    def __ne__(self, other: Time) -> bool:
-        return not self == other
+    def __ge__(self, other: "Event") -> bool:
+        return not self < other
 
     def __repr__(self) -> str:
         if self.name is not None:
@@ -78,7 +80,7 @@ class Event:
         return "Event()"
 
 
-def func_to_event(t: Time, fn, name: Optional[str] = None, by: Optional[Any] = None, *args, **kwargs):
+def func_to_event(t: Time, fn: Callable, name: str|None = None, by: Any = None, *args, **kwargs):
     """Convert a function to an event, the function `fn` will be called at `t`.
     It is a simple method to wrap a function to an event.
 
@@ -92,7 +94,7 @@ def func_to_event(t: Time, fn, name: Optional[str] = None, by: Optional[Any] = N
     """
 
     class WrapperEvent(Event):
-        def __init__(self, t: Optional[Time] = t, name_event=name):
+        def __init__(self, t: Time|None = t, name_event=name):
             super().__init__(t=t, name=name_event, by=by)
 
         def invoke(self) -> None:
