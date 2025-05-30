@@ -15,22 +15,21 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from qns.simulator.event import Event
-from qns.simulator.simulator import Simulator
+from qns.simulator import Event, Simulator
 
 
 class Entity:
     """This is the basic entity class, including memories, channels and nodes.
     """
 
-    def __init__(self, name: str = None):
+    def __init__(self, name: str|None = None):
         """Args:
         name (str): the name of this entity
 
         """
         self.name = name
-        self._is_installed = False
-        self._simulator = None
+        self._is_installed: bool = False
+        self._simulator: Simulator|None = None
 
     def install(self, simulator: Simulator) -> None:
         """``install`` is called before ``simulator`` runs to initialize or set initial events.

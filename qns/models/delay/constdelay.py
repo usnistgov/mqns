@@ -15,13 +15,11 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from typing import Optional
-
 from qns.models.delay.delay import DelayModel
 
 
 class ConstantDelayModel(DelayModel):
-    def __init__(self, delay: float = 0, name: Optional[str] = None) -> None:
+    def __init__(self, delay: float = 0, name: str|None = None) -> None:
         """A constant delay model
 
         Args:

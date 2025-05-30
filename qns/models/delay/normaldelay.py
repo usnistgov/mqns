@@ -15,14 +15,13 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from typing import Optional
 
 from qns.models.delay.delay import DelayModel
 from qns.utils.rnd import get_normal
 
 
 class NormalDelayModel(DelayModel):
-    def __init__(self, mean_delay: float = 0, std: float = 0, name: Optional[str] = None) -> None:
+    def __init__(self, mean_delay: float = 0, std: float = 0, name: str|None = None) -> None:
         """A random delay from normal distribution X~N(mean_delay, std^2)
 
         Args:

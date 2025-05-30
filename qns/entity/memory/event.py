@@ -16,19 +16,21 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from qns.entity.node.qnode import QNode
+from qns.entity.node import QNode
 from qns.models.core.backend import QuantumModel
-from qns.simulator.event import Event
-from qns.simulator.ts import Time
+from qns.simulator import Event, Time
+
+if TYPE_CHECKING:
+    from qns.entity.memory.memory import QuantumMemory
 
 
 class MemoryReadRequestEvent(Event):
     """``MemoryReadRequestEvent`` is the event that request a memory read
     """
 
-    def __init__(self, memory, key: QuantumModel | str,
+    def __init__(self, memory: "QuantumMemory", key: QuantumModel | str,
                  t: Time | None = None, name: str | None = None, by: Any | None = None):
         super().__init__(t=t, name=name, by=by)
         self.memory = memory
@@ -58,7 +60,7 @@ class MemoryWriteRequestEvent(Event):
     """``MemoryWriteRequestEvent`` is the event that request a memory write
     """
 
-    def __init__(self, memory, qubit: QuantumModel,
+    def __init__(self, memory: "QuantumMemory", qubit: QuantumModel,
                  t: Time | None = None, name: str | None = None, by: Any | None = None):
         super().__init__(t=t, name=name, by=by)
         self.memory = memory

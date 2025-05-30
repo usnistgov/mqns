@@ -15,14 +15,12 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from typing import Optional
-
 from qns.models.delay.delay import DelayModel
 from qns.utils.rnd import get_rand
 
 
 class UniformDelayModel(DelayModel):
-    def __init__(self, min_delay: float = 0, max_delay: float = 0, name: Optional[str] = None) -> None:
+    def __init__(self, min_delay: float = 0, max_delay: float = 0, name: str|None = None) -> None:
         """A random delay from distribution X~U(min, max)
 
         Args:
@@ -32,7 +30,7 @@ class UniformDelayModel(DelayModel):
 
         """
         super().__init__(name)
-        assert (max_delay >= min_delay)
+        assert max_delay >= min_delay
         self._min_delay = min_delay
         self._max_delay = max_delay
 

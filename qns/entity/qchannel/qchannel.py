@@ -25,16 +25,13 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from typing import Any, List, Optional, Union
+from typing import Any
 
 from qns.entity.entity import Entity
-from qns.entity.node.qnode import QNode
-from qns.models.core.backend import QuantumModel
-from qns.models.delay.constdelay import ConstantDelayModel
-from qns.models.delay.delay import DelayModel
-from qns.simulator.event import Event
-from qns.simulator.simulator import Simulator
-from qns.simulator.ts import Time
+from qns.entity.node import QNode
+from qns.models.core import QuantumModel
+from qns.models.delay import DelayInput, parseDelay
+from qns.simulator import Event, Simulator, Time
 from qns.utils import log
 
 
@@ -42,9 +39,9 @@ class QuantumChannel(Entity):
     """QuantumChannel is the channel for transmitting qubit
     """
 
-    def __init__(self, name: str = None, node_list: List[QNode] = [],
-                 bandwidth: int = 0, delay: Union[float, DelayModel] = 0,
-                 max_buffer_size: int = 0, length: float = 0, decoherence_rate: Optional[float] = 0,
+    def __init__(self, name: str|None = None, node_list: list[QNode] = [],
+                 bandwidth: int = 0, delay: DelayInput = 0,
+                 max_buffer_size: int = 0, length: float = 0, decoherence_rate: float = 0,
                  transfer_error_model_args: dict = {}):
         """Args:
         name (str): the name of this channel
@@ -62,7 +59,7 @@ class QuantumChannel(Entity):
         super().__init__(name=name)
         self.node_list = node_list.copy()
         self.bandwidth = bandwidth
-        self.delay_model = delay if isinstance(delay, DelayModel) else ConstantDelayModel(delay=delay)
+        self.delay_model = parseDelay(delay)
         self.max_buffer_size = max_buffer_size
         self.length = length
         self.decoherence_rate = decoherence_rate
@@ -90,6 +87,7 @@ class QuantumChannel(Entity):
             NextHopNotConnectionException: the next_hop is not connected to this channel
 
         """
+        assert self._simulator is not None
         if next_hop not in self.node_list:
             raise NextHopNotConnectionException
 
@@ -140,12 +138,13 @@ class RecvQubitPacket(Event):
     """The event for a QNode to receive a classic packet
     """
 
-    def __init__(self, t: Optional[Time] = None, qchannel: QuantumChannel = None,
-                 qubit: QuantumModel = None, dest: QNode = None, name: Optional[str] = None, by: Optional[Any] = None):
+    def __init__(self, t: Time|None = None, qchannel: QuantumChannel|None = None,
+                 qubit: QuantumModel|None = None, dest: QNode|None = None, name: str|None = None, by: Any = None):
         super().__init__(t=t, name=name, by=by)
         self.qchannel = qchannel
         self.qubit = qubit
         self.dest = dest
 
     def invoke(self) -> None:
+        assert self.dest is not None
         self.dest.handle(self)

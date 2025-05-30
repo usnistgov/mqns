@@ -26,24 +26,20 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import json
-from typing import Any, List, Optional, Union
+from typing import Any
 
 from qns.entity.entity import Entity
-from qns.entity.node.node import Node
-from qns.models.delay.constdelay import ConstantDelayModel
-from qns.models.delay.delay import DelayModel
-from qns.simulator.event import Event
-from qns.simulator.simulator import Simulator
-from qns.simulator.ts import Time
-from qns.utils import log
-from qns.utils.rnd import get_rand
+from qns.entity.node import Node
+from qns.models.delay import DelayInput, parseDelay
+from qns.simulator import Event, Simulator, Time
+from qns.utils import get_rand, log
 
 
 class ClassicPacket:
     """ClassicPacket is the message that transfer on a ClassicChannel
     """
 
-    def __init__(self, msg: Union[str, bytes, Any], src: Node = None, dest: Node = None):
+    def __init__(self, msg: Any, src: Node|None = None, dest: Node|None = None):
         """Args:
         msg (Union[str, bytes, Any]): the message content.
             It can be a `str` or `bytes` type or can be dumpped to json.
@@ -51,7 +47,7 @@ class ClassicPacket:
         dest (Node): the destination of this message
 
         """
-        self.is_json = False
+        self.is_json: bool = False
         #if not isinstance(msg, (str, bytes)):
         #    self.msg = json.dumps(msg)
         #    self.is_json = True
@@ -69,6 +65,7 @@ class ClassicPacket:
         """
         if isinstance(self.msg, str):
             return self.msg.encode(encoding="utf-8")
+        assert isinstance(self.msg, bytes)
         return self.msg
 
     def get(self):
@@ -90,8 +87,8 @@ class ClassicChannel(Entity):
     """ClassicChannel is the channel for classic message
     """
 
-    def __init__(self, name: str = None, node_list: List[Node] = [],
-                 bandwidth: int = 0, delay: Union[float, DelayModel] = 0, length: Optional[float] = 0, drop_rate: float = 0,
+    def __init__(self, name: str|None = None, node_list: list[Node] = [],
+                 bandwidth: int = 0, delay: DelayInput = 0, length: float = 0, drop_rate: float = 0,
                  max_buffer_size: int = 0):
         """Args:
         name (str): the name of this channel
@@ -107,7 +104,7 @@ class ClassicChannel(Entity):
         super().__init__(name=name)
         self.node_list = node_list.copy()
         self.bandwidth = bandwidth
-        self.delay_model = delay if isinstance(delay, DelayModel) else ConstantDelayModel(delay=delay)
+        self.delay_model = parseDelay(delay)
         self.drop_rate = drop_rate
         self.length = length
         self.max_buffer_size = max_buffer_size
@@ -135,8 +132,10 @@ class ClassicChannel(Entity):
                 the next_hop is not connected to this channel
 
         """
+        assert self._simulator is not None
         if next_hop not in self.node_list:
             raise NextHopNotConnectionException
+
         if self.bandwidth != 0:
             if self._next_send_time <= self._simulator.current_time:
                 send_time = self._simulator.current_time
@@ -179,13 +178,14 @@ class RecvClassicPacket(Event):
     """The event for a Node to receive a classic packet
     """
 
-    def __init__(self, t: Optional[Time] = None, name: Optional[str] = None,
-                 cchannel: ClassicChannel = None, packet: ClassicPacket = None, dest: Node = None,
-                 by: Optional[Any] = None):
+    def __init__(self, t: Time|None = None, name: str|None = None,
+                 cchannel: ClassicChannel|None = None, packet: ClassicPacket|None = None, dest: Node|None = None,
+                 by: Any = None):
         super().__init__(t=t, name=name, by=by)
         self.cchannel = cchannel
         self.packet = packet
         self.dest = dest
 
     def invoke(self) -> None:
+        assert self.dest is not None
         self.dest.handle(self)

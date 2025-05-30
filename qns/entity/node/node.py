@@ -25,33 +25,37 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from typing import TYPE_CHECKING, TypeVar
+
 from qns.entity.entity import Entity
 from qns.entity.node.app import Application
 from qns.simulator import Event, Simulator
 
+if TYPE_CHECKING:
+    from qns.entity import ClassicChannel
+    from qns.network import QuantumNetwork, SignalTypeEnum
+
+ApplicationT = TypeVar("ApplicationT", bound=Application)
 
 class Node(Entity):
     """Node is a generic node in the quantum network
     """
 
-    def __init__(self, name: str = None, apps: list[Application] = None):
+    def __init__(self, name: str, *, apps: list[Application]|None = None):
         """Args:
         name (str): the node's name
         apps (List[Application]): the installing applications.
 
         """
         super().__init__(name=name)
-        self.network = None
-        self.cchannels = []
-        self.croute_table = []
-        if apps is None:
-            self.apps: list[Application] = []
-        else:
-            self.apps: list[Application] = apps
+        self.network: "QuantumNetwork|None" = None
+        self.cchannels: list["ClassicChannel"] = []
+        self.croute_table = [] # XXX unused
+        self.apps: list[Application] = [] if apps is None else apps
 
         # set default timing to ASYNC
         from qns.network.network import TimingModeEnum
-        self.timing_mode = TimingModeEnum.ASYNC
+        self.timing_mode: TimingModeEnum = TimingModeEnum.ASYNC
 
     def install(self, simulator: Simulator) -> None:
         """Called from Network.install()
@@ -60,7 +64,7 @@ class Node(Entity):
         # initiate sub-entities
         for cchannel in self.cchannels:
             from qns.entity import ClassicChannel
-            assert (isinstance(cchannel, ClassicChannel))
+            assert isinstance(cchannel, ClassicChannel)
             cchannel.install(simulator)
 
         # initiate applications
@@ -90,7 +94,7 @@ class Node(Entity):
         """
         self.apps.append(app)
 
-    def get_apps(self, app_type):
+    def get_apps(self, app_type: type[ApplicationT]) -> list[ApplicationT]:
         """Get an Application that is `app_type`
 
         Args:
@@ -99,7 +103,7 @@ class Node(Entity):
         """
         return [app for app in self.apps if isinstance(app, app_type)]
 
-    def add_cchannel(self, cchannel):
+    def add_cchannel(self, cchannel: "ClassicChannel"):
         """Add a classic channel in this Node
 
         Args:
@@ -109,7 +113,7 @@ class Node(Entity):
         cchannel.node_list.append(self)
         self.cchannels.append(cchannel)
 
-    def get_cchannel(self, dst: "Node"):
+    def get_cchannel(self, dst: "Node") -> "ClassicChannel|None":
         """Get the classic channel that connects to the `dst`
 
         Args:
@@ -121,7 +125,7 @@ class Node(Entity):
                 return cchannel
         return None
 
-    def add_network(self, network):
+    def add_network(self, network: "QuantumNetwork"):
         """Add a network object to this node.
         Called from Network.__init__()
 
@@ -132,7 +136,7 @@ class Node(Entity):
         self.network = network
         self.timing_mode = network.timing_mode
 
-    def handle_sync_signal(self, signal_type) -> None:
+    def handle_sync_signal(self, signal_type: "SignalTypeEnum") -> None:
         for app in self.apps:
             app.handle_sync_signal(signal_type)
 

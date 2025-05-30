@@ -17,7 +17,8 @@
 
 from qns.models.delay.constdelay import ConstantDelayModel
 from qns.models.delay.delay import DelayModel
+from qns.models.delay.input import DelayInput, parseDelay
 from qns.models.delay.normaldelay import NormalDelayModel
 from qns.models.delay.uniformdelay import UniformDelayModel
 
-__all__ = ["DelayModel", "ConstantDelayModel", "UniformDelayModel", "NormalDelayModel"]
+__all__ = ["DelayModel", "ConstantDelayModel", "UniformDelayModel", "NormalDelayModel", "DelayInput", "parseDelay"]

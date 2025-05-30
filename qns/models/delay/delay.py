@@ -15,21 +15,21 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from abc import ABC, abstractmethod
 
-from typing import Optional
 
-
-class DelayModel:
+class DelayModel(ABC):
     """The model for delay in storing, operating and transmitting qubits or eprs.
     """
 
-    def __init__(self, name: Optional[str] = None) -> None:
+    def __init__(self, name: str|None = None) -> None:
         """Args:
         name (str): the name of this delay model
 
         """
         self.name = name
 
+    @abstractmethod
     def calculate(self) -> float:
         """Return:
         the time delay in second, default is 0

@@ -15,12 +15,9 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from typing import List, Optional, Union
-
 from qns.entity.node.qnode import QNode
 from qns.entity.qchannel.qchannel import QuantumChannel
-from qns.models.delay.constdelay import ConstantDelayModel
-from qns.models.delay.delay import DelayModel
+from qns.models.delay import DelayInput
 
 
 class QubitLossChannel(QuantumChannel):
@@ -29,9 +26,9 @@ class QubitLossChannel(QuantumChannel):
     The loss rate is: 1-(1-p_init)*10^{- attenuation_rate * length / 10}
     """
 
-    def __init__(self, name: str = None, node_list: List[QNode] = [],
-                 bandwidth: int = 0, delay: Union[float, DelayModel] = 0, p_init: float = 0, attenuation_rate: float = 0,
-                 max_buffer_size: int = 0, length: float = 0, decoherence_rate: Optional[float] = 0,
+    def __init__(self, name: str|None = None, node_list: list[QNode] = [],
+                 bandwidth: int = 0, delay: DelayInput = 0, p_init: float = 0, attenuation_rate: float = 0,
+                 max_buffer_size: int = 0, length: float = 0, decoherence_rate: float = 0,
                  transfer_error_model_args: dict = {}):
         """Args:
         name (str): the name of this channel
@@ -48,14 +45,16 @@ class QubitLossChannel(QuantumChannel):
         transfer_error_model_args (dict): the parameters that pass to the transfer_error_model
 
         """
-        super().__init__(name=name)
-        self.node_list = node_list.copy()
-        self.bandwidth = bandwidth
-        self.delay_model = delay if isinstance(delay, DelayModel) else ConstantDelayModel(delay=delay)
+        super().__init__(
+            name=name,
+            node_list=node_list,
+            bandwidth=bandwidth,
+            delay=delay,
+            max_buffer_size=max_buffer_size,
+            length=length,
+            decoherence_rate=decoherence_rate,
+            transfer_error_model_args=transfer_error_model_args,
+        )
         self.p_init = p_init
         self.attenuation_rate = attenuation_rate
-        self.length = length
         self.drop_rate = 1 - (1-self.p_init)*10**(- self.attenuation_rate * self.length / 10)
-        self.max_buffer_size = max_buffer_size
-        self.decoherence_rate = decoherence_rate
-        self.transfer_error_model_args = transfer_error_model_args

@@ -17,9 +17,12 @@
 
 
 from enum import Enum, auto
+from typing import TYPE_CHECKING
 
 from qns.utils import log
 
+if TYPE_CHECKING:
+    from qns.entity.qchannel import QuantumChannel
 
 class QubitState(Enum):
     ENTANGLED = auto()
@@ -77,11 +80,16 @@ class MemoryQubit:
 
         """
         self.addr = addr
-        self.fsm = QubitFSM()           # state of the qubit according to the FSM
-        self.qchannel = None            # qchannel to which qubit is assigned to (currnetly only at topology creation time)
-        self.path_id = None             # Optional path ID to which qubit is allocated
-        self.active: str = None         # Reservation key if qubit is reserved for entanglement, None otherwise
-        self.purif_rounds = 0           # Number of purification rounds currently completed by the EPR stored on this qubit
+        self.fsm = QubitFSM()
+        """state of the qubit according to the FSM"""
+        self.qchannel: "QuantumChannel|None" = None
+        """qchannel to which qubit is assigned to (currently only at topology creation time)"""
+        self.path_id: int|None = None
+        """Optional path ID to which qubit is allocated"""
+        self.active: str|None = None
+        """Reservation key if qubit is reserved for entanglement, None otherwise"""
+        self.purif_rounds = 0
+        """Number of purification rounds currently completed by the EPR stored on this qubit"""
 
     def allocate(self, path_id: int) -> None:
         self.path_id = path_id
@@ -89,7 +97,7 @@ class MemoryQubit:
     def deallocate(self) -> None:
         self.path_id = None
 
-    def assign(self, ch) -> None:
+    def assign(self, ch: "QuantumChannel") -> None:
         self.qchannel = ch
 
     def unassign(self) -> None:

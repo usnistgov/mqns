@@ -15,22 +15,28 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from typing import Callable, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Callable, TypeVar, cast
 
-from qns.simulator import Event
-from qns.simulator.simulator import Simulator
+from qns.simulator import Event, Simulator
 
+if TYPE_CHECKING:
+    from qns.entity.node.node import Node
+    from qns.entity.node.qnode import QNode
+    from qns.network import SignalTypeEnum
+
+EventT = TypeVar("EventT")
+Handler = Callable[["Node", EventT], Any] | Callable[["QNode", EventT], bool|None]
 
 class Application:
     """Application can be deployed on the quantum nodes.
     """
 
     def __init__(self):
-        self._simulator = None
-        self._node = None
-        self._dispatch_dict: List[Tuple[List, List, Callable]] = []
+        self._simulator: Simulator|None = None
+        self._node: "Node|None" = None
+        self._dispatch_dict: list[tuple[list[type[Event]],list[Any],Handler]] = []
 
-    def install(self, node, simulator: Simulator):
+    def install(self, node: "Node", simulator: Simulator):
         """Install initial events for this Node. Called from Node.install()
 
         Args:
@@ -41,7 +47,7 @@ class Application:
         self._simulator = simulator
         self._node = node
 
-    def handle(self, node, event: Event) -> Optional[bool]:
+    def handle(self, node: "Node", event: Event) -> bool|None:
         """Process the event on the node.
 
         Args:
@@ -54,12 +60,8 @@ class Application:
         """
         return self._dispatch(node, event)
 
-    def _dispatch(self, node, event: Event) -> Optional[bool]:
-        for elem in self._dispatch_dict:
-            eventTypeList = elem[0]
-            byList = elem[1]
-            handler = elem[2]
-
+    def _dispatch(self, node: "Node", event: Event) -> bool|None:
+        for eventTypeList, byList, handler in self._dispatch_dict:
             flag_et = False
             flag_by = False
             if len(eventTypeList) > 0:
@@ -73,12 +75,12 @@ class Application:
                 flag_by = True
 
             if flag_et and flag_by:
-                skip = handler(node, event)
+                skip = handler(cast(Any, node), event)
                 if skip is True:
                     return skip
         return False
 
-    def add_handler(self, handler, EventTypeList: List = [], ByList: List = []):
+    def add_handler(self, handler: Handler, EventTypeList: list[type[Event]] = [], ByList: list[Any] = []):
         """Add a handler function to the dispather.
 
         Args:
@@ -89,10 +91,9 @@ class Application:
                 An empty list meaning to match all entities.
 
         """
-        elem = (EventTypeList, ByList, handler)
-        self._dispatch_dict.append(elem)
+        self._dispatch_dict.append((EventTypeList, ByList, handler))
 
-    def get_node(self):
+    def get_node(self) -> "Node|None":
         """Get the node that runs this application
 
         Returns:
@@ -101,7 +102,7 @@ class Application:
         """
         return self._node
 
-    def get_simulator(self):
+    def get_simulator(self) -> Simulator|None:
         """Get the simulator
 
         Returns:
@@ -110,5 +111,5 @@ class Application:
         """
         return self._simulator
 
-    def handle_sync_signal(self, signal_type):
+    def handle_sync_signal(self, signal_type: "SignalTypeEnum"):
         pass

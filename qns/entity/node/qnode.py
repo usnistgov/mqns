@@ -15,45 +15,47 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from typing import TYPE_CHECKING
+
 from qns.entity.node.app import Application
 from qns.entity.node.node import Node
 from qns.simulator import Simulator
 
+if TYPE_CHECKING:
+    from qns.entity import QuantumChannel, QuantumMemory, QuantumOperator
 
 class QNode(Node):
     """QNode is a quantum node in the quantum network. Inherits Node and add quantum elements.
     """
 
-    def __init__(self, name: str = None, apps: list[Application] = None):
+    def __init__(self, name: str, *, apps: list[Application]|None = None):
         """Args:
         name (str): the node's name
         apps (List[Application]): the installing applications.
 
         """
         super().__init__(name=name, apps=apps)
-        self.qchannels = []
-        self.memory = None
-        self.operators = []
-        self.qroute_table = []
+        self.qchannels: list["QuantumChannel"] = []
+        self.memory: "QuantumMemory|None" = None
+        self.operators: list["QuantumOperator"] = []
+        self.qroute_table = [] # XXX unused
 
     def install(self, simulator: Simulator) -> None:
         super().install(simulator)
         # initiate sub-entities
 
-        from qns.entity import QuantumMemory
-        assert (isinstance(self.memory, QuantumMemory))
+        from qns.entity import QuantumChannel, QuantumMemory, QuantumOperator
+        assert isinstance(self.memory, QuantumMemory)
         self.memory.install(simulator)
 
         for qchannel in self.qchannels:
-            from qns.entity import QuantumChannel
-            assert (isinstance(qchannel, QuantumChannel))
+            assert isinstance(qchannel, QuantumChannel)
             qchannel.install(simulator)
         for operator in self.operators:
-            from qns.entity import QuantumOperator
-            assert (isinstance(operator, QuantumOperator))
+            assert isinstance(operator, QuantumOperator)
             operator.install(simulator)
 
-    def set_memory(self, memory):
+    def set_memory(self, memory: "QuantumMemory"):
         """Add a quantum memory in this QNode
 
         Args:
@@ -63,12 +65,12 @@ class QNode(Node):
         memory.node = self
         self.memory = memory
 
-    def get_memory(self):
+    def get_memory(self) -> "QuantumMemory|None":
         """Get the memory
         """
         return self.memory
 
-    def add_operator(self, operator):
+    def add_operator(self, operator: "QuantumOperator"):
         """Add a quantum operator in this node
 
         Args:
@@ -78,7 +80,7 @@ class QNode(Node):
         operator.set_own(self)
         self.operators.append(operator)
 
-    def add_qchannel(self, qchannel):
+    def add_qchannel(self, qchannel: "QuantumChannel"):
         """Add a quantum channel in this QNode
 
         Args:
@@ -88,7 +90,7 @@ class QNode(Node):
         qchannel.node_list.append(self)
         self.qchannels.append(qchannel)
 
-    def get_qchannel(self, dst: "QNode"):
+    def get_qchannel(self, dst: "QNode") -> "QuantumChannel|None":
         """Get the quantum channel that connects to the `dst`
 
         Args:
