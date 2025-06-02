@@ -30,9 +30,9 @@ from qns.network.topology.customtopo import CustomTopology
 from qns.network.topology.gridtopo import GridTopology
 from qns.network.topology.linetopo import LineTopology
 from qns.network.topology.randomtopo import RandomTopology
-from qns.network.topology.topo import Topology
+from qns.network.topology.topo import ClassicTopology, Topology
 from qns.network.topology.treetopo import TreeTopology
 from qns.network.topology.waxmantopo import WaxmanTopology
 
-__all__ = ["Topology", "BasicTopology", "LineTopology", "CustomTopology",
+__all__ = ["Topology", "ClassicTopology", "BasicTopology", "LineTopology", "CustomTopology",
            "TreeTopology", "GridTopology", "RandomTopology", "WaxmanTopology"]

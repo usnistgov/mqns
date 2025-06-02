@@ -15,25 +15,28 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from typing import List, Tuple, Union
+from typing import Generic, TypeVar
 
-from qns.entity import QNode
-from qns.entity.cchannel.cchannel import ClassicChannel
-from qns.entity.qchannel.qchannel import QuantumChannel
+from qns.entity.cchannel import ClassicChannel
+from qns.entity.node import Node, QNode
+from qns.entity.qchannel import QuantumChannel
+
+NodeT = TypeVar("NodeT", bound=Node|QNode)
+ChannelT = TypeVar("ChannelT", bound=ClassicChannel|QuantumChannel)
 
 
 class NetworkRouteError(Exception):
     pass
 
 
-class RouteImpl:
+class RouteImpl(Generic[NodeT, ChannelT]):
     """This is the route protocol interface
     """
 
     def __init__(self, name: str = "route") -> None:
         self.name = name
 
-    def build(self, nodes: List[QNode], channels: List[Union[QuantumChannel, ClassicChannel]]):
+    def build(self, nodes: list[NodeT], channels: list[ChannelT]) -> None:
         """Build static route tables for each nodes
 
         Args:
@@ -42,7 +45,7 @@ class RouteImpl:
         """
         raise NotImplementedError
 
-    def query(self, src: QNode, dest: QNode) -> List[Tuple[float, QNode, List[QNode]]]:
+    def query(self, src: NodeT, dest: NodeT) -> list[tuple[float, NodeT, list[NodeT]]]:
         """Query the metric, nexthop and the path
 
         Args:
@@ -50,7 +53,7 @@ class RouteImpl:
             dest: the destination node
 
         Returns:
-            A list of route paths. The result should be sortted by the priority.
+            A list of route paths. The result should be sorted by the priority.
             The element is a tuple containing: metric, the next-hop and the whole path.
 
         """

@@ -16,22 +16,20 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import math
-from typing import Callable, Dict, List, Tuple, Union
+from typing import Any, Callable, cast
 
-from qns.entity.cchannel.cchannel import ClassicChannel
-from qns.entity.node.qnode import QNode
-from qns.entity.qchannel.qchannel import QuantumChannel
-from qns.network.route.route import NetworkRouteError, RouteImpl
+from qns.network.route.route import ChannelT, NetworkRouteError, NodeT, RouteImpl
 
+MetricFunc = Callable[[ChannelT], float]
 
-class DijkstraRouteAlgorithm(RouteImpl):
+class DijkstraRouteAlgorithm(RouteImpl[NodeT, ChannelT]):
     """This is the dijkstra route algorithm implement
     """
 
     INF = math.inf
 
     def __init__(self, name: str = "dijkstra",
-                 metric_func: Callable[[Union[QuantumChannel, ClassicChannel]], float] = None) -> None:
+                 metric_func: MetricFunc = lambda _: 1) -> None:
         """Args:
         name: the routing algorithm's name
         metric_func: the function that returns the metric for each channel.
@@ -39,19 +37,16 @@ class DijkstraRouteAlgorithm(RouteImpl):
 
         """
         self.name = name
-        self.route_table = {}
-        if metric_func is None:
-            self.metric_func = lambda _: 1
-        else:
-            self.metric_func = metric_func
+        self.route_table: dict[NodeT, dict[NodeT, tuple[float, list[NodeT]]]] = {}
+        self.metric_func = metric_func
 
-    def build(self, nodes: List[QNode], channels: List[Union[QuantumChannel, ClassicChannel]]):
+    def build(self, nodes: list[NodeT], channels: list[ChannelT]):
 
         for n in nodes:
             selected = []
             unselected = [u for u in nodes]
 
-            d = {}
+            d: dict[NodeT, Any] = {}  # value is a list of metric (float) + path (list[NodeT])
             for nn in nodes:
                 if nn == n:
                     d[n] = [0, []]
@@ -76,9 +71,9 @@ class DijkstraRouteAlgorithm(RouteImpl):
                         continue
                     if len(link.node_list) < 2:
                         raise NetworkRouteError("broken link")
-                    idx = link.node_list.index(ms)
+                    idx = cast(list[NodeT], link.node_list).index(ms)
                     idx_s = 1 - idx
-                    s = link.node_list[idx_s]
+                    s = cast(list[NodeT], link.node_list)[idx_s]
                     if s in unselected and d[s][0] > d[ms][0] + self.metric_func(link):
                         d[s] = [d[ms][0] + self.metric_func(link), [ms] + d[ms][1]]
 
@@ -86,7 +81,7 @@ class DijkstraRouteAlgorithm(RouteImpl):
                 d[nn][1] = [nn] + d[nn][1]
             self.route_table[n] = d
 
-    def query(self, src: QNode, dest: QNode) -> List[Tuple[float, QNode, List[QNode]]]:
+    def query(self, src: NodeT, dest: NodeT) -> list[tuple[float, NodeT, list[NodeT]]]:
         """Query the metric, nexthop and the path
 
         Args:
@@ -98,15 +93,14 @@ class DijkstraRouteAlgorithm(RouteImpl):
             The element is a tuple containing: metric, the next-hop and the whole path.
 
         """
-        ls: Dict[QNode, List[float, List[QNode]]] = self.route_table.get(src, None)
+        ls = self.route_table.get(src, None)
         if ls is None:
             return []
         le = ls.get(dest, None)
         if le is None:
             return []
         try:
-            metric = le[0]
-            path: List[QNode] = le[1]
+            metric, path = le
             path = path.copy()
             path.reverse()
             if len(path) <= 1 or metric == self.INF:
