@@ -124,7 +124,7 @@ class ProactiveRoutingControllerApp(Application):
             - Verifies that the number of nodes in the computed path matches the expected number
             of swapping steps based on the configured swapping strategy.
             - Constructs per-channel memory allocation vectors (m_v) assuming buffer-space multiplexing
-            defined by the memory capacity of node S.
+            following qubits-qchannels allocation defined at topology creation.
             - Sends installation instructions to each node along the path using classical channels.
 
         Raises:

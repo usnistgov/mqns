@@ -98,6 +98,8 @@ class CustomTopology(Topology):
             qnl.append(qn)
 
         # Create quantum channels and assign memories with proper capacity
+        qnode_lookup = {qn.name: qn for qn in qnl}
+
         for ch in self.topo["qchannels"]:
             node1, node2 = ch["node1"], ch["node2"]
             link = QuantumChannel(name=f"q_{node1},{node2}", **ch["parameters"])
