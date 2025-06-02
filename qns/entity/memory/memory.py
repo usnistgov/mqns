@@ -57,14 +57,15 @@ class QuantumMemory(Entity):
     """
 
     def __init__(self, name: str|None = None, node: QNode|None = None, *,
-                 capacity: int, decoherence_rate: float,
-                 store_error_model_args: dict = {}, delay: DelayInput = 0):
+                 capacity: int = 1, delay: DelayInput = 0,
+                 decoherence_rate: float = 0, store_error_model_args: dict = {}):
         """Args:
         name (str): memory name
         node (QNode): the quantum node that equips this memory
         capacity (int): the capacity of this quantum memory. 0 represents unlimited.
         delay (Union[float,DelayModel]): the read and write delay in second, or a ``DelayModel``
-        decoherence_rate (float): the decoherence rate of this memory that will pass to the store_error_model
+        decoherence_rate (float): the decoherence rate of this memory that will pass to the store_error_model.
+                                  0 means the memory will never lose coherence.
         store_error_model_args (dict): the parameters that will pass to the store_error_model
 
         """

@@ -88,7 +88,7 @@ def test_channel_qubit_assignment_and_search():
 
 
 def test_decoherence_event_removes_qubit():
-    mem = QuantumMemory("mem", capacity=1, decoherence_rate=1)
+    mem = QuantumMemory("mem", decoherence_rate=1)
 
     ch = QuantumChannel(
         "qch",
@@ -172,7 +172,7 @@ def test_qubit_reservation_behavior():
 
 
 def test_memory_sync_qubit():
-    m = QuantumMemory("m1", capacity=1, decoherence_rate=0.2)
+    m = QuantumMemory("m1")
     n1 = QNode("n1")
     n1.set_memory(m)
     q1 = Qubit(name="test_qubit")
@@ -185,7 +185,7 @@ def test_memory_sync_qubit():
 
 
 def test_memory_sync_qubit_limited():
-    m = QuantumMemory("m1", capacity=5, decoherence_rate=0.2)
+    m = QuantumMemory("m1", capacity=5)
     n1 = QNode(name="n1")
     n1.set_memory(m)
 
@@ -250,7 +250,7 @@ def test_memory_async_qubit():
     app = MemoryReadResponseApp()
     n1.add_apps(app)
 
-    m = QuantumMemory("m1", capacity=1, decoherence_rate=0.2, delay=0.5)
+    m = QuantumMemory("m1", delay=0.5)
     n1.set_memory(m)
 
     s = Simulator(0, 10, 1000)
