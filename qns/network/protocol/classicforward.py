@@ -49,8 +49,9 @@ class ClassicPacketForwardApp(Application):
             # no routing result or error format, drop this packet
             return True
         next_hop = route_result[0][1]
-        cchannel = self_node.get_cchannel(next_hop)
-        if cchannel is None:
+        try:
+            cchannel = self_node.get_cchannel(next_hop)
+        except IndexError:
             # not found the classic channel, drop the packet
             return True
         cchannel.send(packet=packet, next_hop=next_hop)

@@ -45,7 +45,7 @@ class NodeProcessDelayApp(Application):
         return isinstance(event, self.delay_event_list)
 
     def handle(self, node: Node, event: Event) -> bool:
-        simulator = self.get_simulator()
+        simulator = self.simulator
 
         if not self.check_in_delay_event_list(event):
             return False

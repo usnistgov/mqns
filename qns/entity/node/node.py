@@ -48,7 +48,7 @@ class Node(Entity):
 
         """
         super().__init__(name=name)
-        self.network: "QuantumNetwork|None" = None
+        self._network: "QuantumNetwork|None" = None
         self.cchannels: list["ClassicChannel"] = []
         self.croute_table = [] # XXX unused
         self.apps: list[Application] = [] if apps is None else apps
@@ -115,17 +115,19 @@ class Node(Entity):
         cchannel.node_list.append(self)
         self.cchannels.append(cchannel)
 
-    def get_cchannel(self, dst: "Node") -> "ClassicChannel|None":
+    def get_cchannel(self, dst: "Node") -> "ClassicChannel":
         """Get the classic channel that connects to the `dst`
 
         Args:
             dst (Node): the destination
 
+        Raises:
+            IndexError - channel does not exist
         """
         for cchannel in self.cchannels:
             if dst in cchannel.node_list and self in cchannel.node_list:
                 return cchannel
-        return None
+        raise IndexError(f"cchannel from {repr(self)} to {repr(dst)} does not exist")
 
     def add_network(self, network: "QuantumNetwork"):
         """Add a network object to this node.
@@ -135,8 +137,20 @@ class Node(Entity):
             network (qns.network.network.Network): the network object
 
         """
-        self.network = network
+        self._network = network
         self.timing_mode = network.timing_mode
+
+    @property
+    def network(self) -> "QuantumNetwork":
+        """
+        Return the QuantumNetwork that this node belongs to.
+
+        Raises:
+            IndexError - network does not exist
+        """
+        if self._network is None:
+            raise IndexError(f"node {repr(self)} is not in a network")
+        return self._network
 
     def handle_sync_signal(self, signal_type: "SignalTypeEnum") -> None:
         for app in self.apps:

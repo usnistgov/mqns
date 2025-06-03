@@ -66,9 +66,14 @@ class QNode(Node):
         memory.node = self
         self.memory = memory
 
-    def get_memory(self) -> "QuantumMemory|None":
+    def get_memory(self) -> "QuantumMemory":
         """Get the memory
+
+        Raises:
+            IndexError - memory does not exist
         """
+        if self.memory is None:
+            raise IndexError(f"node {repr(self)} does not have memory")
         return self.memory
 
     def add_operator(self, operator: "QuantumOperator"):
@@ -95,17 +100,19 @@ class QNode(Node):
         qchannel.node_list.append(self)
         self.qchannels.append(qchannel)
 
-    def get_qchannel(self, dst: "QNode") -> "QuantumChannel|None":
+    def get_qchannel(self, dst: "QNode") -> "QuantumChannel":
         """Get the quantum channel that connects to the `dst`
 
         Args:
             dst (QNode): the destination
 
+        Raises:
+            IndexError - channel does not exist
         """
         for qchannel in self.qchannels:
             if dst in qchannel.node_list and self in qchannel.node_list:
                 return qchannel
-        return None
+        raise IndexError(f"qchannel from {repr(self)} to {repr(dst)} does not exist")
 
     def __repr__(self) -> str:
         if self.name is not None:

@@ -15,18 +15,17 @@ class SendApp(Application):
 
     def install(self, node, simulator: Simulator):
         super().install(node=node, simulator=simulator)
-        assert self._simulator is not None
-        event = func_to_event(self._simulator.ts, self.send, by=self)
-        self._simulator.add_event(event)
+        event = func_to_event(simulator.ts, self.send, by=self)
+        simulator.add_event(event)
 
     def send(self):
-        assert self._simulator is not None
+        simulator = self.simulator
         qubit = Qubit()
         self.qchannel.send(qubit=qubit, next_hop=self.dest)
         self.count += 1
-        t = self._simulator.current_time + self._simulator.time(sec=1 / self.send_rate)
+        t = simulator.current_time + 1 / self.send_rate
         event = func_to_event(t, self.send, by=self)
-        self._simulator.add_event(event)
+        simulator.add_event(event)
 
 
 class RecvApp(Application):

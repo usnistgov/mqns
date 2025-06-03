@@ -17,14 +17,13 @@
 
 import copy
 
-from qns.entity.cchannel.cchannel import ClassicChannel, ClassicPacket, RecvClassicPacket
+from qns.entity.cchannel.cchannel import ClassicPacket, RecvClassicPacket
 from qns.entity.memory.memory import QuantumMemory
 from qns.entity.memory.memory_qubit import MemoryQubit, QubitState
 from qns.entity.node.app import Application
 from qns.entity.node.controller import Controller
 from qns.entity.node.node import Node
 from qns.entity.node.qnode import QNode
-from qns.entity.qchannel.qchannel import QuantumChannel
 from qns.network import QuantumNetwork, SignalTypeEnum, TimingModeEnum
 from qns.network.protocol.fib import ForwardingInformationBase
 from qns.simulator.event import Event
@@ -54,9 +53,9 @@ class ProactiveForwarder(Application):
 
         self.ps = ps
 
-        self.net: QuantumNetwork = None         # Quantum Network instance
-        self.own: QNode = None                  # Quantum node this Forwarder equips
-        self.memory: QuantumMemory = None       # Quantum memory of the node
+        self.net: QuantumNetwork   # Quantum Network instance
+        self.own: QNode            # Quantum node this Forwarder equips
+        self.memory: QuantumMemory # Quantum memory of the node
 
         self.fib: ForwardingInformationBase = ForwardingInformationBase()           # FIB structure
         self.link_layer = None       # Reference to the network function responsible for generating elementary EPRs
@@ -78,8 +77,8 @@ class ProactiveForwarder(Application):
     def install(self, node: QNode, simulator: Simulator):
         from qns.network.protocol.link_layer import LinkLayer
         super().install(node, simulator)
-        self.own: QNode = self._node
-        self.memory: QuantumMemory = self.own.memory
+        self.own = self.get_node(node_type=QNode)
+        self.memory = self.own.get_memory()
         self.net = self.own.network
         ll_apps = self.own.get_apps(LinkLayer)
         if ll_apps:
@@ -130,19 +129,13 @@ class ProactiveForwarder(Application):
             raise Exception(f"Node {self.own.name} not found in route vector {instructions['route']}")
 
         # use left and right nodes to get qchannels
-        left_qchannel = None
         if ln:
             left_neighbor = self.net.get_node(ln)
-            left_qchannel: QuantumChannel = self.own.get_qchannel(left_neighbor)
-            if not left_qchannel:
-                raise Exception(f"Qchannel not found for left neighbor {left_neighbor}")
+            self.own.get_qchannel(left_neighbor) # ensure qchannel exists
 
-        right_qchannel = None
         if rn:
             right_neighbor = self.own.network.get_node(rn)
-            right_qchannel: QuantumChannel = self.own.get_qchannel(right_neighbor)
-            if not right_qchannel:
-                raise Exception(f"Qchannel not found for right neighbor {right_neighbor}")
+            self.own.get_qchannel(right_neighbor) # ensure qchannel exists
 
         # use mux info to allocate qubits in each memory, keep qubit addresses
         left_qubits = []
@@ -708,10 +701,7 @@ class ProactiveForwarder(Application):
 
         log.debug(f"{self.own.name}: send msg to {dest.name} via {next_hop.name} | msg: {msg}")
 
-        cchannel: ClassicChannel = self.own.get_cchannel(next_hop)
-        if cchannel is None:
-            raise Exception(f"{self.own}: No classic channel for dest {dest}")
-
+        cchannel = self.own.get_cchannel(next_hop)
         classic_packet = ClassicPacket(msg=msg, src=self.own, dest=dest)
         if delay:
             cchannel.send(classic_packet, next_hop=next_hop, delay=cchannel.delay_model.calculate())
@@ -773,12 +763,9 @@ class ProactiveForwarder(Application):
             fib_entry = self.fib.get_entry(event.qubit.path_id)
             if fib_entry:
                 if self.eval_qubit_eligibility(fib_entry, event.neighbor.name):
-                    qchannel: QuantumChannel = self.own.get_qchannel(event.neighbor)
-                    if qchannel:
-                        event.qubit.fsm.to_purif()
-                        self.purif(event.qubit, fib_entry, event.neighbor)
-                    else:
-                        raise Exception(f"No qchannel found for neighbor {event.neighbor.name}")
+                    self.own.get_qchannel(event.neighbor) # ensure qchannel exists
+                    event.qubit.fsm.to_purif()
+                    self.purif(event.qubit, fib_entry, event.neighbor)
             else:
                 raise Exception(f"No FIB entry found for path_id {event.qubit.path_id}")
         else:                                   # for statistical mux

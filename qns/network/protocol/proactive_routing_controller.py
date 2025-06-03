@@ -83,8 +83,8 @@ class ProactiveRoutingControllerApp(Application):
 
         """
         super().__init__()
-        self.net: QuantumNetwork = None           # contains QN physical topology and classical topology
-        self.own: Controller = None               # controller node running this app
+        self.net: QuantumNetwork # contains QN physical topology and classical topology
+        self.own: Controller     # controller node running this app
 
         if swapping not in swapping_settings:
             raise Exception(f"{self.own}: Swapping {swapping} not configured")
@@ -104,7 +104,7 @@ class ProactiveRoutingControllerApp(Application):
 
     def install(self, node: Controller, simulator: Simulator):
         super().install(node, simulator)
-        self.own: Controller = self._node
+        self.own = self.get_node(node_type=Controller)
         self.net = self.own.network
 
         #print("Starting server on port 8080...")

@@ -18,7 +18,7 @@
 import uuid
 from typing import Dict, Optional
 
-from qns.entity.cchannel.cchannel import ClassicChannel, ClassicPacket, RecvClassicPacket
+from qns.entity.cchannel.cchannel import ClassicPacket, RecvClassicPacket
 from qns.entity.memory.memory import QuantumMemory
 from qns.entity.node.app import Application
 from qns.entity.node.qnode import QNode
@@ -51,9 +51,9 @@ class EntanglementDistributionApp(Application):
     def __init__(self, send_rate: Optional[int] = None, init_fidelity: int = 0.99):
         super().__init__()
         self.init_fidelity = init_fidelity
-        self.net: QuantumNetwork = None
-        self.own: QNode = None
-        self.memory: QuantumMemory = None
+        self.net: QuantumNetwork
+        self.own: QNode
+        self.memory: QuantumMemory
         self.src: Optional[QNode] = None
         self.dst: Optional[QNode] = None
         self.send_rate: int = send_rate
@@ -69,8 +69,8 @@ class EntanglementDistributionApp(Application):
 
     def install(self, node: QNode, simulator: Simulator):
         super().install(node, simulator)
-        self.own: QNode = self._node
-        self.memory: QuantumMemory = self.own.memories[0]
+        self.own = self.get_node(node_type=QNode)
+        self.memory = self.own.get_memory()
         self.net = self.own.network
         try:
             request: Request = self.own.requests[0]
@@ -135,10 +135,7 @@ class EntanglementDistributionApp(Application):
         except IndexError:
             raise Exception("Route error")
 
-        qchannel: QuantumChannel = self.own.get_qchannel(next_hop)
-        if qchannel is None:
-            raise Exception("No such quantum channel")
-
+        qchannel = self.own.get_qchannel(next_hop)
         # send the entanglement (~ attemps pair generation with next-hop)
         log.debug(f"{self.own}: send epr {epr.name} to {next_hop}")
         qchannel.send(epr, next_hop)
@@ -148,9 +145,7 @@ class EntanglementDistributionApp(Application):
         from_node: QNode = qchannel.node_list[0] \
             if qchannel.node_list[1] == self.own else qchannel.node_list[1]
 
-        cchannel: ClassicChannel = self.own.get_cchannel(from_node)
-        if cchannel is None:
-            raise Exception("No such classic channel")
+        cchannel = self.own.get_cchannel(from_node)
 
         # receive the first epr (prev_node - curr_node)
         epr: WernerStateEntanglement = packet.qubit
@@ -242,7 +237,10 @@ class EntanglementDistributionApp(Application):
                 classic_packet = ClassicPacket(
                     msg={"cmd": "succ", "transmit_id": transmit_id},
                     src=self.own, dest=transmit.src)
-                cchannel = self.own.get_cchannel(transmit.src)
+                try:
+                    cchannel = self.own.get_cchannel(transmit.src)
+                except IndexError:
+                    cchannel = None
                 if cchannel is not None:
                     log.debug(
                         f"{self.own}: send {classic_packet} to {from_node}")
@@ -268,7 +266,10 @@ class EntanglementDistributionApp(Application):
                 classic_packet = ClassicPacket(
                     msg={"cmd": "revoke", "transmit_id": transmit_id},
                     src=self.own, dest=transmit.src)
-                cchannel = self.own.get_cchannel(transmit.src)
+                try:
+                    cchannel = self.own.get_cchannel(transmit.src)
+                except IndexError:
+                    cchannel = None
                 if cchannel is not None:
                     log.debug(
                         f"{self.own}: send {classic_packet} to {from_node}")

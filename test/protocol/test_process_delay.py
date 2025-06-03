@@ -27,7 +27,7 @@ class ProcessApp(Application):
         for i in range(0, 10):
             t = simulator.time(sec=i)
             event = ProcessEvent(t=t, dest=self.get_node(), by=self)
-            self.get_simulator().add_event(event)
+            self.simulator.add_event(event)
 
     def EventHandler(self, node, event: Event) -> bool|None:
         expected_recv_time = [i+0.5 for i in range(0, 10)]

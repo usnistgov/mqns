@@ -43,11 +43,7 @@ class Timer(Entity):
         self.trigger_func = trigger_func
 
     def install(self, simulator: Simulator) -> None:
-        if self._is_installed:
-            return
-
-        self._is_installed = True
-        self._simulator = simulator
+        super().install(simulator)
 
         time_list: list[float] = []
         if self.end_time == 0:
@@ -59,9 +55,9 @@ class Timer(Entity):
                 t += self.step_time
 
         for t in time_list:
-            time = self._simulator.time(sec=t)
+            time = self.simulator.time(sec=t)
             event = TimerEvent(timer=self, t=time, by=self)
-            self._simulator.add_event(event)
+            self.simulator.add_event(event)
 
     def trigger(self):
         if self.trigger_func is not None:

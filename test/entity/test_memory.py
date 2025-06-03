@@ -11,8 +11,6 @@ from qns.entity.node import Application, QNode
 from qns.entity.qchannel import QuantumChannel
 from qns.models.epr import BaseEntanglement, WernerStateEntanglement
 from qns.models.qubit import Qubit
-from qns.network.protocol.link_layer import LinkLayer
-from qns.network.protocol.proactive_forwarder import ProactiveForwarder
 from qns.simulator import Simulator
 
 light_speed = 2 * 10**5 # km/s
@@ -21,8 +19,6 @@ def test_write_and_read_with_path_and_key():
     mem = QuantumMemory("mem", capacity=2, decoherence_rate=1)
     node = QNode("n1")
     node.set_memory(mem)
-    node.add_apps(LinkLayer())
-    node.add_apps(ProactiveForwarder())
 
     sim = Simulator(0, 10)
     node.install(sim)
@@ -66,8 +62,6 @@ def test_channel_qubit_assignment_and_search():
     mem = QuantumMemory("mem", capacity=3, decoherence_rate=1)
     node = QNode("n2")
     node.set_memory(mem)
-    node.add_apps(LinkLayer())
-    node.add_apps(ProactiveForwarder())
 
     sim = Simulator(0, 10)
     node.install(sim)
@@ -98,8 +92,6 @@ def test_decoherence_event_removes_qubit():
 
     node = QNode("n3")
     node.set_memory(mem)
-    node.add_apps(LinkLayer())
-    node.add_apps(ProactiveForwarder())
 
     sim = Simulator(0, 5)
     node.install(sim)
@@ -121,8 +113,6 @@ def test_memory_clear_and_deallocate():
     mem = QuantumMemory("mem", capacity=2, decoherence_rate=1)
     node = QNode("n4")
     node.set_memory(mem)
-    node.add_apps(LinkLayer())
-    node.add_apps(ProactiveForwarder())
 
     sim = Simulator(0, 5)
     node.install(sim)
@@ -149,8 +139,6 @@ def test_qubit_reservation_behavior():
     mem = QuantumMemory("mem", capacity=2, decoherence_rate=1)
     node = QNode("n5")
     node.set_memory(mem)
-    node.add_apps(LinkLayer())
-    node.add_apps(ProactiveForwarder())
 
     sim = Simulator(0, 5)
     node.install(sim)
@@ -222,12 +210,11 @@ def test_memory_async_qubit():
 
         def handleMemoryRead(self, node: QNode, event: MemoryReadResponseEvent) -> bool|None:
             self.nReads += 1
-            assert self._simulator is not None
             result = event.result
 
-            print("self._simulator.tc.sec: {}".format(self._simulator.tc))
+            print("self.simulator.tc.sec: {}".format(self.simulator.tc))
             print("result: {}".format(result))
-            assert self._simulator.tc.sec == pytest.approx(1.5)
+            assert self.simulator.tc.sec == pytest.approx(1.5)
             assert result is not None
 
             qubit, data = result
@@ -236,12 +223,11 @@ def test_memory_async_qubit():
 
         def handleMemoryWrite(self, node: QNode, event: MemoryWriteResponseEvent) -> bool|None:
             self.nWrites += 1
-            assert self._simulator is not None
             result = event.result
 
-            print("self._simulator.tc.sec: {}".format(self._simulator.tc))
+            print("self.simulator.tc.sec: {}".format(self.simulator.tc))
             print("result: {}".format(result))
-            assert self._simulator.tc.sec == pytest.approx(0.5)
+            assert self.simulator.tc.sec == pytest.approx(0.5)
             assert result is not None
 
             assert result.addr == 0

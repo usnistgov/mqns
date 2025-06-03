@@ -20,7 +20,7 @@ from typing import Optional
 
 import numpy as np
 
-from qns.entity.cchannel.cchannel import ClassicChannel, ClassicPacket, RecvClassicPacket
+from qns.entity.cchannel.cchannel import ClassicPacket, RecvClassicPacket
 from qns.entity.memory.memory import QuantumMemory
 from qns.entity.memory.memory_qubit import MemoryQubit
 from qns.entity.node.app import Application
@@ -74,9 +74,9 @@ class LinkLayer(Application):
         self.attempt_rate = attempt_rate
         self.light_speed_kms = light_speed_kms
 
-        self.own: QNode = None                          # Quantum node this LinkLayer equips
-        self.memory: QuantumMemory = None               # Quantum memory of the node
-        self.forwarder: ProactiveForwarder = None       # Forwarder function of the node
+        self.own: QNode                    # Quantum node this LinkLayer equips
+        self.memory: QuantumMemory         # Quantum memory of the node
+        self.forwarder: ProactiveForwarder # Forwarder function of the node
 
         # stores the qchannels activated by the forwarding function at path installation
         self.active_channels = {}
@@ -104,8 +104,8 @@ class LinkLayer(Application):
         from qns.network.protocol.proactive_forwarder import ProactiveForwarder
 
         super().install(node, simulator)
-        self.own: QNode = self._node
-        self.memory: QuantumMemory = self.own.memory
+        self.own = self.get_node(node_type=QNode)
+        self.memory = self.own.get_memory()
         fwd_fns = self.own.get_apps(ProactiveForwarder)
         if fwd_fns:
             self.forwarder = fwd_fns[0]
@@ -137,15 +137,16 @@ class LinkLayer(Application):
             - Qubit reservations are spaced out in time using a fixed `attempt_rate`.
 
         """
+        simulator = self.simulator
         qubits = self.memory.get_channel_qubits(ch_name=qchannel.name)
         log.debug(f"{self.own}: {qchannel.name} has assigned qubits: {qubits}")
         for i, (qb, data) in enumerate(qubits):
             if data is None:
-                t = self._simulator.tc + Time(sec = i * 1 / self.attempt_rate)
+                t = simulator.tc + i * 1 / self.attempt_rate
                 event = func_to_event(t, self.start_reservation, by=self,
                                       next_hop=next_hop, qchannel=qchannel,
                                       qubit=qb, path_id=qb.path_id)
-                self._simulator.add_event(event)
+                simulator.add_event(event)
             else:
                 raise Exception(f"{self.own}: --> PROBLEM {data}")
 
@@ -189,9 +190,7 @@ class LinkLayer(Application):
         log.debug(f"{self.own}: start reservation with key={key}")
         qubit.active = key
         self.pending_init_reservation[key] = (qchannel, next_hop, qubit.addr)
-        cchannel: ClassicChannel = self.own.get_cchannel(next_hop)
-        if cchannel is None:
-            raise Exception(f"{self.own}: No classic channel for dest {next_hop}")
+        cchannel = self.own.get_cchannel(next_hop)
         classic_packet = ClassicPacket(msg={"cmd": "RESERVE_QUBIT", "path_id": path_id, "key": key},
                                        src=self.own, dest=next_hop)
         cchannel.send(classic_packet, next_hop=next_hop)
@@ -220,6 +219,7 @@ class LinkLayer(Application):
                 - If the channel is too long for successful entanglement before decoherence.
 
         """
+        simulator = self.simulator
         if qchannel.name not in self.active_channels:
             raise Exception(f"{self.own}: Qchannel not active")
             return
@@ -229,10 +229,10 @@ class LinkLayer(Application):
             raise Exception("Qchannel too long for entanglement attempt.")
 
         succ_attempt_time, attempts = self._skip_ahead_entanglement(qchannel.length)
-        t_event = self._simulator.tc + Time(sec = succ_attempt_time)
+        t_event = simulator.tc + succ_attempt_time
         event = func_to_event(t_event, self.do_successful_attempt, by=self, qchannel=qchannel,
                               next_hop=next_hop, address=address, attempts=attempts, key=key)
-        self._simulator.add_event(event)
+        simulator.add_event(event)
 
 
     def do_successful_attempt(self, qchannel: QuantumChannel, next_hop: Node,
@@ -256,7 +256,7 @@ class LinkLayer(Application):
         """
         epr = WernerStateEntanglement(fidelity=self.init_fidelity, name=uuid.uuid4().hex)
         # qubit init at 2tau and we are at 6tau
-        epr.creation_time = self._simulator.tc - Time(sec=4*qchannel.delay_model.calculate())
+        epr.creation_time = self.simulator.tc - Time(sec=4*qchannel.delay_model.calculate())
         epr.src = self.own
         epr.dst = next_hop
         epr.attempts = attempts
@@ -300,7 +300,7 @@ class LinkLayer(Application):
 
         log.debug(f"{self.own}: recv half-EPR {epr.name} from {from_node} | reservation key {epr.key}")
 
-        if epr.decoherence_time <= self._simulator.tc:
+        if epr.decoherence_time <= self.simulator.tc:
             raise Exception(f"{self.own}: Decoherence time already passed | {epr}")
 
         # qubit init at 2tau and we are at 7*tau
@@ -314,11 +314,12 @@ class LinkLayer(Application):
     def notify_entangled_qubit(self, neighbor: QNode, qubit: MemoryQubit, delay: float = 0):
         """Schedule an event to notify the forwarder about a new entangled qubit
         """
+        simulator = self.simulator
         from qns.network.protocol.event import QubitEntangledEvent
         qubit.fsm.to_entangled()
-        t = self._simulator.tc + self._simulator.time(sec=delay)
+        t = simulator.tc + delay
         event = QubitEntangledEvent(forwarder=self.forwarder, neighbor=neighbor, qubit=qubit, t=t, by=self)
-        self._simulator.add_event(event)
+        simulator.add_event(event)
 
 
     def handle_event(self, event: Event) -> None:
@@ -330,9 +331,7 @@ class LinkLayer(Application):
         from qns.network.protocol.event import ManageActiveChannels, QubitDecoheredEvent, QubitReleasedEvent, TypeEnum
         if isinstance(event, ManageActiveChannels):
             log.debug(f"{self.own}: start qchannel with {event.neighbor}")
-            qchannel: QuantumChannel = self.own.get_qchannel(event.neighbor)
-            if qchannel is None:
-                raise Exception("No such quantum channel")
+            qchannel = self.own.get_qchannel(event.neighbor)
             if event.type == TypeEnum.ADD:
                 if qchannel.name not in self.active_channels:
                     self.active_channels[qchannel.name] = (qchannel, event.neighbor)
@@ -405,9 +404,7 @@ class LinkLayer(Application):
         msg = packet.packet.get()
         cchannel = packet.cchannel
         from_node: QNode = cchannel.node_list[0] if cchannel.node_list[1] == self.own else cchannel.node_list[1]
-        qchannel: QuantumChannel = self.own.get_qchannel(from_node)
-        if qchannel is None:
-            raise Exception("No such quantum channel")
+        qchannel = self.own.get_qchannel(from_node)
 
         cmd = msg["cmd"]
         path_id = msg["path_id"]
