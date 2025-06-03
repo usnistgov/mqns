@@ -7,6 +7,7 @@ from qns.entity.memory import (
     MemoryWriteResponseEvent,
     QuantumMemory,
 )
+from qns.entity.memory.memory_qubit import PathDirection
 from qns.entity.node import Application, QNode
 from qns.entity.qchannel import QuantumChannel
 from qns.models.epr import BaseEntanglement, WernerStateEntanglement
@@ -36,7 +37,7 @@ def test_write_and_read_with_path_and_key():
     key = "n1_peer_0_0"
 
     # First allocate memory with path ID
-    addr = mem.allocate(ch_name=ch.name, path_id=0)
+    addr = mem.allocate(ch_name=ch.name, path_id=0, path_direction=PathDirection.LEFT)
     assert addr != -1
     mem._storage[addr][0].active = key
 
@@ -135,7 +136,7 @@ def test_memory_clear_and_deallocate():
     assert not mem.is_full()
 
     # Test deallocate
-    idx = mem.allocate(ch_name=ch.name, path_id=7)
+    idx = mem.allocate(ch_name=ch.name, path_id=7, path_direction=PathDirection.LEFT)
     assert idx != -1
     assert mem.deallocate(idx)
     assert not mem.deallocate(999)  # invalid
@@ -156,7 +157,7 @@ def test_qubit_reservation_behavior():
     sim = Simulator(0, 5)
     node.install(sim)
 
-    idx1 = mem.allocate(ch_name=ch.name, path_id=42)
+    idx1 = mem.allocate(ch_name=ch.name, path_id=42, path_direction=PathDirection.LEFT)
     assert idx1 != -1
     q1 = mem._storage[idx1][0]
     q1.active = "n5_n6_42_" + str(idx1)

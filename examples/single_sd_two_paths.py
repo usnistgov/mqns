@@ -35,6 +35,8 @@ node_capacity = 4
 # 4-nodes topology
 swapping_config = "l2r"
 
+isolate_paths = False
+
 ch_S_R1 = 10
 ch_R1_R2 = 10
 ch_R2_R3 = 10
@@ -69,7 +71,7 @@ def generate_topology() -> dict:
                     eta_s=eta_s,
                     frequency=frequency,
                 ),
-                ProactiveForwarder(ps=p_swap, isolate_paths=False)
+                ProactiveForwarder(ps=p_swap, isolate_paths=isolate_paths)
             ]
         })
 

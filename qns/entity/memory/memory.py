@@ -35,7 +35,7 @@ from qns.entity.memory.event import (
     MemoryWriteRequestEvent,
     MemoryWriteResponseEvent,
 )
-from qns.entity.memory.memory_qubit import MemoryQubit, QubitState, PathDirection
+from qns.entity.memory.memory_qubit import MemoryQubit, PathDirection, QubitState
 from qns.entity.node import QNode
 from qns.models.core import QuantumModel
 from qns.models.delay import DelayInput, parseDelay
@@ -383,6 +383,8 @@ class QuantumMemory(Entity):
                        to which the memory qubit is assigned.
             path_id (int): The identifier of the entanglement path
                        to which the memory qubit will be allocated.
+            path_direction (PathDirection): The end of the path to which the qubit allocated qubit points.
+                        This is typically either the source or the destination of the path (LEFT/RIGHT).
 
         Returns:
             int: The address of the allocated memory qubit, or -1 if no unallocated qubit is available.
@@ -443,7 +445,7 @@ class QuantumMemory(Entity):
         return qubits
 
     def search_eligible_qubits(
-        self, 
+        self,
         exc_qchannel: str | None = None,
         exc_direction: PathDirection | None = None,
         path_id: list[int] | None = None
@@ -456,8 +458,10 @@ class QuantumMemory(Entity):
             - (Optionally) are not associated with the specified quantum channel (`qchannel`).
 
         Args:
-            exc_qchannel (Optional[str]): The name of the quantum channel to exclude. If None, no exclusion is applied.
-            exc_direction (Optional[PathDirection]): Qubit direction to exclude. If None, no exclusion is applied.
+            exc_qchannel (Optional[str]): The name of the quantum channel to exclude.
+            If None, no exclusion is applied.
+            exc_direction (Optional[PathDirection]): Qubit path direction to exclude.
+            If None, no exclusion is applied.
             path_id (Optional[list[int]]): The list of path IDs the qubit must be allocated to.
             If None, any path ID is accepted.
 

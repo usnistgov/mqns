@@ -25,6 +25,7 @@ except ImportError:
 
 class FIBEntry(TypedDict):
     path_id: int
+    request_id: int
     path_vector: list[str]
     swap_sequence: list[int]
     purification_scheme: dict[str, int]
@@ -87,13 +88,6 @@ class ForwardingInformationBase:
     def get_entry(self, path_id: int) -> FIBEntry | None:
         """Retrieve an entry from the table."""
         return self.table.get(path_id, None)
-    
-    def find_entries_by_request_id(self, request_id: int) -> list[dict]:
-        matches = []
-        for entry in self.table.values():
-            if entry["request_id"] == request_id:
-                matches.append(entry)
-        return matches
 
     def update_entry(self, path_id: int, **kwargs):
         """Update an existing entry with new data."""

@@ -584,7 +584,10 @@ class ProactiveForwarder(Application):
         if res:  # do swapping
             #if res.path_id != qubit.path_id:
             #    log.info(f"{self.own}: case with non-isolated paths")
-            self.do_swapping(qubit, res, fib_entry)
+            other_fib_entry = self.fib.get_entry(res.path_id)
+                if other_fib_entry is None:
+                    raise Exception(f"No FIB entry found for qubit {res}")
+            self.do_swapping(qubit, res, fib_entry, other_fib_entry)
 
     def consume_and_release(self, qubit: MemoryQubit, *, e2e=True):
         """
@@ -639,7 +642,7 @@ class ProactiveForwarder(Application):
             # (for statistical multiplexing, multipath, quasi-local swapping, etc.)
         return None
 
-    def do_swapping(self, mq0: MemoryQubit, mq1: MemoryQubit, fib_entry: FIBEntry):
+    def do_swapping(self, mq0: MemoryQubit, mq1: MemoryQubit, fib_entry: FIBEntry, other_fib_entry: FIBEntry):
         """
         Perform swapping between two qubits at an intermediate node.
         These qubits must be in ELIGIBLE state and come from different qchannels.
@@ -662,13 +665,19 @@ class ProactiveForwarder(Application):
         next_partner: QNode | None = None
         next_qubit: MemoryQubit | None = None
         next_epr: WernerStateEntanglement | None = None
+        
+        prev_fib_entry: FIBEntry | None = None
+        next_fib_entry: FIBEntry | None = None
+
         for addr in (mq0.addr, mq1.addr):
             qubit, epr = self.memory.read(address=addr, must=True)
             assert isinstance(epr, WernerStateEntanglement)
             if epr.dst == self.own:
                 prev_partner, prev_qubit, prev_epr = epr.src, qubit, epr
+                prev_fib_entry = fib_entry if qubit.path_id == fib_entry['path_id'] else other_fib_entry
             elif epr.src == self.own:
                 next_partner, next_qubit, next_epr = epr.dst, qubit, epr
+                next_fib_entry = fib_entry if qubit.path_id == fib_entry['path_id'] else other_fib_entry
             else:
                 raise Exception(f"Unexpected: swapping EPRs {mq0} x {mq1}")
 
@@ -708,15 +717,15 @@ class ProactiveForwarder(Application):
                 self.parallel_swappings[next_epr.name] = (next_epr, prev_epr, new_epr)
 
         # Send SWAP_UPDATE to partners.
-        for partner, old_epr, new_partner, qubit in (
-            (prev_partner, prev_epr, next_partner, prev_qubit),
-            (next_partner, next_epr, prev_partner, next_qubit),
+        for partner, old_epr, new_partner, qubit, fib_entry in (
+            (prev_partner, prev_epr, next_partner, prev_qubit, prev_fib_entry),
+            (next_partner, next_epr, prev_partner, next_qubit, next_fib_entry),
         ):
             su_msg: SwapUpdateMsg = {
                 "cmd": "SWAP_UPDATE",
-                "path_id": fib_entry["path_id"],
+                #"path_id": fib_entry["path_id"],
                 # For multipath non-isolated: use qubit path ID to make sure the receiving node knows the path
-                # "path_id": qubit.path_id,
+                "path_id": qubit.path_id,   # should be equivalent to using fib_entry.path_id
                 "swapping_node": self.own.name,
                 "partner": new_partner.name,
                 "epr": cast(str, old_epr.name),

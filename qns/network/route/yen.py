@@ -1,6 +1,6 @@
-#    SimQN: a discrete-event simulator for the quantum networks
-#    Copyright (C) 2021-2022 Lutong Chen, Jian Li, Kaiping Xue
-#    University of Science and Technology of China, USTC.
+#    Multiverse Quantum Network Simulator: a simulator for comparative
+#    evaluation of quantum routing strategies
+#    Copyright (C) [2025] Amar Abane
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
