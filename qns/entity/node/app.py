@@ -93,22 +93,26 @@ class Application:
         """
         self._dispatch_dict.append((EventTypeList, ByList, handler))
 
-    def get_node(self) -> "Node|None":
+    def get_node(self) -> "Node":
         """Get the node that runs this application
 
         Returns:
             the quantum node
 
         """
+        if self._node is None:
+            raise IndexError("application is not in a node")
         return self._node
 
-    def get_simulator(self) -> Simulator|None:
+    def get_simulator(self) -> Simulator:
         """Get the simulator
 
         Returns:
             the simulator
 
         """
+        if self._simulator is None:
+            raise IndexError("application is not in a simulator")
         return self._simulator
 
     def handle_sync_signal(self, signal_type: "SignalTypeEnum"):

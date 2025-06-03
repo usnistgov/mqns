@@ -15,17 +15,14 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from qns.entity.cchannel.cchannel import ClassicChannel, RecvClassicPacket
-from qns.entity.node.app import Application
-from qns.entity.node.qnode import QNode
-from qns.network.route.route import RouteImpl
-from qns.simulator.event import Event
-from qns.simulator.simulator import Simulator
+from qns.entity.cchannel import RecvClassicPacket
+from qns.entity.node import Application, Node
+from qns.network.route import RouteImpl
 
 
 class ClassicPacketForwardApp(Application):
     """This application will generate routing table for classic networks
-    and allow nodes to forward classic packats to the destination.
+    and allow nodes to forward classic packets to the destination.
     """
 
     def __init__(self, route: RouteImpl):
@@ -37,12 +34,9 @@ class ClassicPacketForwardApp(Application):
         self.route = route
         self.add_handler(self.handleClassicPacket, [RecvClassicPacket], [])
 
-    def install(self, node: QNode, simulator: Simulator):
-        super().install(node, simulator)
-
-    def handleClassicPacket(self, node: QNode, event: Event):
+    def handleClassicPacket(self, node: Node, event: RecvClassicPacket):
         packet = event.packet
-        self_node: QNode = self.get_node()
+        self_node = self.get_node()
 
         dst = packet.dest
         if dst == self_node:
@@ -55,7 +49,7 @@ class ClassicPacketForwardApp(Application):
             # no routing result or error format, drop this packet
             return True
         next_hop = route_result[0][1]
-        cchannel: ClassicChannel = self_node.get_cchannel(next_hop)
+        cchannel = self_node.get_cchannel(next_hop)
         if cchannel is None:
             # not found the classic channel, drop the packet
             return True

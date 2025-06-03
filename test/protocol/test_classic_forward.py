@@ -1,50 +1,47 @@
-from qns.entity.cchannel.cchannel import ClassicChannel, ClassicPacket, RecvClassicPacket
-from qns.entity.node.app import Application
-from qns.entity.node.node import QNode
-from qns.network.network import QuantumNetwork
+from qns.entity.cchannel import ClassicPacket, RecvClassicPacket
+from qns.entity.node import Application, Node
+from qns.network import QuantumNetwork
 from qns.network.protocol.classicforward import ClassicPacketForwardApp
-from qns.network.route.dijkstra import DijkstraRouteAlgorithm
-from qns.network.route.route import RouteImpl
-from qns.network.topology.linetopo import LineTopology
-from qns.network.topology.topo import ClassicTopology
-from qns.simulator.event import Event, func_to_event
-from qns.simulator.simulator import Simulator
+from qns.network.route import DijkstraRouteAlgorithm, RouteImpl
+from qns.network.topology import ClassicTopology, LinearTopology
+from qns.simulator import Simulator, func_to_event
 
 
 class SendApp(Application):
-    def __init__(self, dest: QNode, route: RouteImpl, send_rate=1):
+    def __init__(self, dest: Node, route: RouteImpl, send_rate=1):
         super().__init__()
         self.dest = dest
         self.route = route
         self.send_rate = send_rate
 
-    def install(self, node: QNode, simulator: Simulator):
+    def install(self, node: Node, simulator: Simulator):
         super().install(node, simulator)
         t = simulator.ts
         event = func_to_event(t, self.send_packet, by=self)
-        self._simulator.add_event(event)
+        simulator.add_event(event)
 
     def send_packet(self):
+        simulator = self.get_simulator()
+
         packet = ClassicPacket(msg=f"Hello,world from {self.get_node()}", src=self.get_node(), dest=self.dest)
 
         route_result = self.route.query(self.get_node(), self.dest)
         if len(route_result) <= 0 or len(route_result[0]) <= 1:
-            raise ("not found next hop")
+            raise RuntimeError("not found next hop")
         next_hop = route_result[0][1]
-        cchannel: ClassicChannel = self.get_node().get_cchannel(next_hop)
+        cchannel = self.get_node().get_cchannel(next_hop)
         if cchannel is None:
-            raise ("not found next channel")
+            raise RuntimeError("not found next channel")
 
         # send the classic packet
         cchannel.send(packet=packet, next_hop=next_hop)
 
         # calculate the next sending time
-        t = self._simulator.current_time + \
-            self._simulator.time(sec=1 / self.send_rate)
+        t = simulator.current_time + 1 / self.send_rate
 
         # insert the next send event to the simulator
         event = func_to_event(t, self.send_packet, by=self)
-        self._simulator.add_event(event)
+        simulator.add_event(event)
 
 
 # the receiving application
@@ -53,20 +50,20 @@ class RecvApp(Application):
         super().__init__()
         self.add_handler(self.RecvClassicPacketHandler, [RecvClassicPacket], [])
 
-    def RecvClassicPacketHandler(self, node: QNode, event: Event):
+    def RecvClassicPacketHandler(self, node: Node, event: RecvClassicPacket):
         packet = event.packet
         msg = packet.get()
         output = f"{node} recv packet: {msg} from {packet.src}->{packet.dest}"
         print(output)
-        assert (output == "<node n10> recv packet: Hello,world from <node n1> from <node n1>-><node n10>")
+        assert output == "<qnode n10> recv packet: Hello,world from <qnode n1> from <qnode n1>-><qnode n10>"
 
 
 def test_classic_forward():
     s = Simulator(0, 10, accuracy=10000000)
 
-    topo = LineTopology(nodes_number=10,
-                        qchannel_args={"delay": 0.1},
-                        cchannel_args={"delay": 0.1})
+    topo = LinearTopology(nodes_number=10,
+                          qchannel_args={"delay": 0.1},
+                          cchannel_args={"delay": 0.1})
 
     net = QuantumNetwork(topo=topo, classic_topo=ClassicTopology.Follow)
 
