@@ -17,5 +17,6 @@
 
 from qns.network.route.dijkstra import DijkstraRouteAlgorithm
 from qns.network.route.route import NetworkRouteError, RouteImpl
+from qns.network.route.yen import YenRouteAlgorithm
 
-__all__ = ["RouteImpl", "NetworkRouteError", "DijkstraRouteAlgorithm"]
+__all__ = ["RouteImpl", "NetworkRouteError", "DijkstraRouteAlgorithm", "YenRouteAlgorithm"]

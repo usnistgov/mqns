@@ -371,7 +371,7 @@ class QuantumMemory(Entity):
             event.cancel()
         self.pending_decohere_events = {}
 
-    def allocate(self, path_id: int) -> int:
+    def allocate(self, ch_name: str, path_id: int) -> int:
         """
         Allocate an unused memory qubit to a given path ID.
 
@@ -379,15 +379,17 @@ class QuantumMemory(Entity):
         (i.e., `path_id` is None), assigns it the provided `path_id`, and returns its address.
 
         Args:
+            ch_name (str): The name of the quantum channel
+                       to which the memory qubit is assigned.
             path_id (int): The identifier of the entanglement path
-                       to which the memory qubit will be assigned.
+                       to which the memory qubit will be allocated.
 
         Returns:
             int: The address of the allocated memory qubit, or -1 if no unallocated qubit is available.
 
         """
         for qubit, _ in self._storage:
-            if qubit.path_id is None:
+            if qubit.qchannel.name == ch_name and qubit.path_id is None:
                 qubit.allocate(path_id)
                 return qubit.addr
         return -1
@@ -441,7 +443,7 @@ class QuantumMemory(Entity):
         return qubits
 
     def search_eligible_qubits(
-        self, exc_qchannel: str | None = None, path_id: int | None = None
+        self, exc_qchannel: str | None = None, path_id: list[int] | None = None
     ) -> list[tuple[MemoryQubit, QuantumModel]]:
         """Search for memory qubits that are eligible for use.
 
@@ -452,7 +454,8 @@ class QuantumMemory(Entity):
 
         Args:
             exc_qchannel (Optional[str]): The name of the quantum channel to exclude. If None, no exclusion is applied.
-            path_id (Optional[int]): The path ID the qubit must be assigned to. If None, any path ID is accepted.
+            path_id (Optional[list[int]]): The list of path IDs the qubit must be allocated to.
+            If None, any path ID is accepted.
 
         Returns:
             List[Tuple[MemoryQubit, QuantumModel]]:
@@ -466,7 +469,7 @@ class QuantumMemory(Entity):
                 continue
             if qubit.fsm.state != QubitState.ELIGIBLE:
                 continue
-            if path_id is not None and qubit.path_id != path_id:
+            if path_id is not None and qubit.path_id not in path_id:
                 continue
             if exc_qchannel is not None and (qubit.qchannel is None or qubit.qchannel.name == exc_qchannel):
                 continue

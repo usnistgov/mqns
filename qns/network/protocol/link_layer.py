@@ -121,7 +121,7 @@ class LinkLayer(Application):
             return True
         return False
 
-    def handle_active_channel(self, qchannel: QuantumChannel, next_hop: QNode):
+    def handle_active_channel(self, qchannel: QuantumChannel, next_hop: QNode, path_id: int | None = None):
         """This method starts EPR generation over the given quantum channel and the specified next-hop.
         It performs qubit reservation, and for each available qubit, an EPR creation event is scheduled
         with a staggered delay based on EPR generation sampling.
@@ -129,6 +129,8 @@ class LinkLayer(Application):
         Args:
             qchannel (QuantumChannel): The quantum channel over which entanglement is to be attempted.
             next_hop (QNode): The neighboring node with which to initiate the negotiation.
+            path_id (int): The path ID to only use the allocated qubits.
+            If `path_id` is `None`, only qubits not allocated to any path (i.e., `path_id` is `None`) will be used.
 
         Raises:
             Exception: If a qubit assigned to the channel is unexpectedly already associated
@@ -142,21 +144,23 @@ class LinkLayer(Application):
         simulator = self.simulator
         qubits = self.memory.get_channel_qubits(ch_name=qchannel.name)
         log.debug(f"{self.own}: {qchannel.name} has assigned qubits: {qubits}")
+        log.debug(f"{self.own}: handling active qchannel for path: {path_id}")
         for i, (qb, data) in enumerate(qubits):
-            if data is None:
-                simulator.add_event(
-                    func_to_event(
-                        simulator.tc + i * 1 / self.attempt_rate,
-                        self.start_reservation,
-                        by=self,
-                        next_hop=next_hop,
-                        qchannel=qchannel,
-                        qubit=qb,
-                        path_id=qb.path_id,
+            if qb.path_id == path_id:
+                if data is None:
+                    simulator.add_event(
+                        func_to_event(
+                            simulator.tc + i * 1 / self.attempt_rate,
+                            self.start_reservation,
+                            by=self,
+                            next_hop=next_hop,
+                            qchannel=qchannel,
+                            qubit=qb,
+                            path_id=qb.path_id,
+                        )
                     )
-                )
-            else:
-                raise Exception(f"{self.own}: --> PROBLEM {data}")
+                else:
+                    raise Exception(f"{self.own}: --> PROBLEM {data}")
 
     def start_reservation(self, next_hop: QNode, qchannel: QuantumChannel, qubit: MemoryQubit, path_id: int | None = None):
         """This method starts the exchange with neighbor node for reserving a qubit for entanglement

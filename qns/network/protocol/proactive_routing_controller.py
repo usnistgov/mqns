@@ -110,6 +110,7 @@ class ProactiveRoutingControllerApp(Application):
         if len(self.swapping_order) > 0:
             # install the test path on QNodes
             self.install_static_path()
+            # self.install_multiple_static_paths()
 
     def install_static_path(self):
         """Install a static path between nodes "S" (source) and "D" (destination) of the network topology.
@@ -137,7 +138,6 @@ class ProactiveRoutingControllerApp(Application):
             - Path instructions are transmitted over classical channels using the `"install_path"` command.
             - This method is primarily intended for test or static configuration scenarios, not dynamic routing.
             - Purification scheme has to be specified (hardcoded) in the function.
-
         """
         self.net.build_route()
 
@@ -190,6 +190,7 @@ class ProactiveRoutingControllerApp(Application):
         for node_name in route:
             qnode = self.net.get_node(node_name)
             instructions: "InstallPathInstructions" = {
+                "req_id": 0,
                 "route": route,
                 "swap": swap,
                 "mux": "B",
@@ -202,6 +203,121 @@ class ProactiveRoutingControllerApp(Application):
             cchannel.send(ClassicPacket(msg, src=self.own, dest=qnode), next_hop=qnode)
             log.debug(f"{self.own}: send {msg} to {qnode}")
 
+    def install_multiple_static_paths(self):
+        """Install multiple static paths between nodes "S" (source) and "D" (destination) of the network topology.
+        It computes available paths between S and D and installs instructions with a predefined swapping order.
+        Paths are not necessarily disjoint; they may share same qchannels.
+
+        This method performs the following:
+            - Builds the network route table.
+            - Locates the source ("S") and destination ("D") nodes in the network.
+            - Computes M shortest paths between source and destination.
+            DijkstraRouteAlgorithm is the default algorithm and uses hop counts at metric.
+            - Computes a swapping sequence for each path based on swapping config (e.g., `l2r` for sequential swapping).
+            - Constructs per-channel memory allocation vectors (m_v) assuming buffer-space multiplexing
+            following qubits-qchannels allocation defined at topology creation.
+            If a qchannel is shared by multiple paths, its qubits are equally divided over the paths.
+            - Sends installation instructions to each node along the path using classical channels.
+
+        Raises:
+            Exception: If the computed route does not match the length expected by the current swapping configuration.
+
+        Notes:
+            - Multiplexing strategy is hardcoded as "B" (buffer-space).
+            - Path instructions are transmitted over classical channels using the `"install_path"` command.
+            - This method is primarily intended for test or static configuration scenarios, not dynamic routing.
+            - Purification scheme has to be specified (hardcoded) in the function.
+        """
+        self.net.build_route()
+        network_nodes = self.net.get_nodes()
+
+        # Locate source and destination
+        src = dst = None
+        for qn in network_nodes:
+            if qn.name == "S":
+                src = qn
+            elif qn.name == "D":
+                dst = qn
+
+        if src is None or dst is None:
+            raise Exception("Source or destination node not found.")
+
+        # Get all quantum channels and initialize usage count
+        network_channels = self.net.get_qchannels()
+        qchannel_use_count = {ch.name: 0 for ch in network_channels}
+
+        # Get all shortest paths (M ≥ 1)
+        route_result = self.net.query_route(src, dst)
+        print(route_result)
+        paths = [r[2] for r in route_result]  # list of path_nodes (node objects)
+
+        # Count usage of each quantum channel across all paths
+        for path_nodes in paths:
+            for i in range(len(path_nodes) - 1):
+                n1, n2 = path_nodes[i].name, path_nodes[i + 1].name
+                ch_name = f"q_{n1},{n2}" if f"q_{n1},{n2}" in qchannel_use_count else f"q_{n2},{n1}"
+                qchannel_use_count[ch_name] += 1
+
+        qchannel_names = list(qchannel_use_count.keys())
+
+        # Process each path
+        for path_id, path_nodes in enumerate(paths):
+            route = [n.name for n in path_nodes]
+            log.debug(f"{self.own}: Computed path #{path_id}: {route}")
+
+            # Define swap config
+            swap_config = f"swap_{len(path_nodes)-2}_{self.swapping}"
+            if swap_config not in swapping_settings:
+                raise Exception(f"Swap config {swap_config} is needed but not found in swapping settings.")
+
+            # Memory allocation vector m_v = [(left_qubits, right_qubits), ...]
+            m_v = []
+            for i, node in enumerate(path_nodes):
+                node_obj = self.net.get_node(node.name)
+                left_ch_qubits = 0
+                right_ch_qubits = 0
+
+                # Left channel
+                if i > 0:
+                    prev_node = path_nodes[i - 1].name
+                    left_ch_name = f"q_{prev_node},{node.name}"
+                    if left_ch_name not in qchannel_names:
+                        raise Exception(f"Qchannel not found: {left_ch_name}")
+                    full_qubits = node_obj.memory.get_channel_qubits(left_ch_name)
+                    share = qchannel_use_count[left_ch_name]
+                    left_ch_qubits = len(full_qubits) // share if share > 0 else len(full_qubits)
+
+                # Right channel
+                if i < len(path_nodes) - 1:
+                    next_node = path_nodes[i + 1].name
+                    right_ch_name = f"q_{node.name},{next_node}"
+                    if right_ch_name not in qchannel_names:
+                        raise Exception(f"Qchannel not found: {right_ch_name}")
+                    full_qubits = node_obj.memory.get_channel_qubits(right_ch_name)
+                    share = qchannel_use_count[right_ch_name]
+                    right_ch_qubits = len(full_qubits) // share if share > 0 else len(full_qubits)
+
+                m_v.append((left_ch_qubits, right_ch_qubits))
+
+            # Send install instruction to each node on this path
+            for qnode in path_nodes:
+                instructions = {
+                    "req_id": 0,
+                    "route": route,
+                    "swap": swapping_settings[swap_config],
+                    "mux": "B",
+                    "m_v": m_v,
+                    "purif": {}  # Purification can be filled in if needed
+                }
+
+                cchannel = self.own.get_cchannel(qnode)
+                classic_packet = ClassicPacket(
+                    msg={"cmd": "install_path", "path_id": path_id, "instructions": instructions},
+                    src=self.own,
+                    dest=qnode
+                )
+                cchannel.send(classic_packet, next_hop=qnode)
+                log.debug(f"{self.own}: sent {classic_packet.msg} to {qnode}")
 
 def check_purif_segment(route: list[str], segment_name: str) -> bool:
     try:

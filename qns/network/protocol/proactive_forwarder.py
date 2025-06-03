@@ -82,7 +82,7 @@ class ProactiveForwarder(Application):
     routing is done at the controller. Purification will be moved to a separate network function.
     """
 
-    def __init__(self, ps: float = 1.0):
+    def __init__(self, ps: float = 1.0, isolate_paths: bool = True):
         """This constructor sets up a node's entanglement forwarding logic in a quantum network.
         It configures the swapping success probability and preparing internal
         state for managing memory, routing instructions (via FIB), synchronization,
@@ -97,7 +97,8 @@ class ProactiveForwarder(Application):
 
         self.ps = ps
         """Probability of successful entanglement swapping"""
-
+        self.isolate_paths = isolate_paths
+        """Whether to isolate or not paths serving the same request"""
         self.net: QuantumNetwork
         """quantum network instance"""
         self.own: QNode
@@ -110,6 +111,11 @@ class ProactiveForwarder(Application):
 
         self.waiting_qubits: list[QubitEntangledEvent] = []
         """stores the qubits waiting for the INTERNAL phase (SYNC mode)"""
+
+        self.request_paths_map = dict[int, list[int]] = {}
+        """stores paths associated with the same S-D request"""
+
+        self.sync_current_phase = SignalTypeEnum.INTERNAL
 
         # event handlers
         self.add_handler(self.RecvClassicPacketHandler, RecvClassicPacket)
@@ -182,6 +188,14 @@ class ProactiveForwarder(Application):
         simulator = self.simulator
         path_id = msg["path_id"]
         instructions = msg["instructions"]
+        request_id = instructions["req_id"]
+        
+        # maintain map of path ID associated with each request ID
+        if request_id not in self.request_paths_map:
+            self.request_paths_map[request_id] = [path_id]
+        else:
+            self.request_paths_map[request_id].append(path_id)
+
         route = instructions["route"]
         log.debug(f"{self.own.name}: routing instructions of path {path_id}: {instructions}")
 
@@ -199,6 +213,7 @@ class ProactiveForwarder(Application):
         self.fib.add_entry(
             replace=True,
             path_id=path_id,
+            request_id=request_id
             path_vector=route,
             swap_sequence=instructions["swap"],
             purification_scheme=instructions["purif"],
@@ -553,8 +568,15 @@ class ProactiveForwarder(Application):
 
         # this is an intermediate node
         # look for another eligible qubit
-        res = self._select_eligible_qubit(exc_qchannel=qubit.qchannel.name, path_id=fib_entry["path_id"])
+        # if not isolated paths -> include other paths serving the same request
+        possible_path_ids = [fib_entry["path_id"]]
+        if not self.isolate_paths:
+            possible_path_ids = self.request_paths_map[fib_entry["request_id"]]
+
+        res = self._select_eligible_qubit(exc_qchannel=qubit.qchannel.name, path_id=possible_path_ids)
         if res:  # do swapping
+            #if res.path_id != qubit.path_id:
+            #    log.info(f"{self.own}: case with non-isolated paths")
             self.do_swapping(qubit, res, fib_entry)
 
     def consume_and_release(self, qubit: MemoryQubit, *, e2e=True):
@@ -579,7 +601,7 @@ class ProactiveForwarder(Application):
             self.fidelity += qm.fidelity
         simulator.add_event(QubitReleasedEvent(self.own, qubit, t=simulator.tc, by=self))
 
-    def _select_eligible_qubit(self, exc_qchannel: str, path_id: int | None = None) -> MemoryQubit | None:
+    def _select_eligible_qubit(self, exc_qchannel: str, path_id: list[int] | None = None) -> MemoryQubit | None:
         """Searches for an eligible qubit in memory that matches the specified path ID and
         is located on a different qchannel than the excluded one. This is used to
         find a swap candidate during entanglement forwarding. Currently returns the first
@@ -588,7 +610,7 @@ class ProactiveForwarder(Application):
         Parameters
         ----------
             exc_qchannel (str): Name of the quantum channel to exclude from the search.
-            path_id (int, optional): Identifier for the entanglement path to match.
+            path_id (list[int], optional): Identifiers for the entanglement paths to match.
 
         Returns
         -------
@@ -671,13 +693,15 @@ class ProactiveForwarder(Application):
                 self.parallel_swappings[next_epr.name] = (next_epr, prev_epr, new_epr)
 
         # Send SWAP_UPDATE to partners.
-        for partner, old_epr, new_partner in (
-            (prev_partner, prev_epr, next_partner),
-            (next_partner, next_epr, prev_partner),
+        for partner, old_epr, new_partner, qubit in (
+            (prev_partner, prev_epr, next_partner, prev_qubit),
+            (next_partner, next_epr, prev_partner, next_qubit),
         ):
             su_msg: SwapUpdateMsg = {
                 "cmd": "SWAP_UPDATE",
                 "path_id": fib_entry["path_id"],
+                # For multipath non-isolated: use qubit path ID to make sure the receiving node knows the path
+                # "path_id": qubit.path_id,
                 "swapping_node": self.own.name,
                 "partner": new_partner.name,
                 "epr": cast(str, old_epr.name),

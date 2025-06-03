@@ -47,6 +47,7 @@ class ManageActiveChannels(Event):
         super().__init__(t=t, name=name, by=by)
         self.node = node
         self.neighbor = neighbor
+        self.path_id = path_id
         self.type = type
 
     def invoke(self) -> None:
