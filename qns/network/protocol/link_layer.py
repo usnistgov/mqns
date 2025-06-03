@@ -74,9 +74,9 @@ class LinkLayer(Application):
         self.attempt_rate = attempt_rate
         self.light_speed_kms = light_speed_kms
 
-        self.own: QNode = None                          # Quantum node this LinkLayer equips
-        self.memory: QuantumMemory = None               # Quantum memory of the node
-        self.forwarder: ProactiveForwarder = None       # Forwarder function of the node
+        self.own: QNode                    # Quantum node this LinkLayer equips
+        self.memory: QuantumMemory         # Quantum memory of the node
+        self.forwarder: ProactiveForwarder # Forwarder function of the node
 
         # stores the qchannels activated by the forwarding function at path installation
         self.active_channels = {}
@@ -104,8 +104,8 @@ class LinkLayer(Application):
         from qns.network.protocol.proactive_forwarder import ProactiveForwarder
 
         super().install(node, simulator)
-        self.own: QNode = self._node
-        self.memory: QuantumMemory = self.own.memory
+        self.own = self.get_node(node_type=QNode)
+        self.memory = self.own.get_memory()
         fwd_fns = self.own.get_apps(ProactiveForwarder)
         if fwd_fns:
             self.forwarder = fwd_fns[0]

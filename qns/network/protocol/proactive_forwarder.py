@@ -53,9 +53,9 @@ class ProactiveForwarder(Application):
 
         self.ps = ps
 
-        self.net: QuantumNetwork = None         # Quantum Network instance
-        self.own: QNode = None                  # Quantum node this Forwarder equips
-        self.memory: QuantumMemory = None       # Quantum memory of the node
+        self.net: QuantumNetwork   # Quantum Network instance
+        self.own: QNode            # Quantum node this Forwarder equips
+        self.memory: QuantumMemory # Quantum memory of the node
 
         self.fib: ForwardingInformationBase = ForwardingInformationBase()           # FIB structure
         self.link_layer = None       # Reference to the network function responsible for generating elementary EPRs
@@ -77,8 +77,8 @@ class ProactiveForwarder(Application):
     def install(self, node: QNode, simulator: Simulator):
         from qns.network.protocol.link_layer import LinkLayer
         super().install(node, simulator)
-        self.own: QNode = self._node
-        self.memory: QuantumMemory = self.own.memory
+        self.own = self.get_node(node_type=QNode)
+        self.memory = self.own.get_memory()
         self.net = self.own.network
         ll_apps = self.own.get_apps(LinkLayer)
         if ll_apps:

@@ -51,9 +51,9 @@ class EntanglementDistributionApp(Application):
     def __init__(self, send_rate: Optional[int] = None, init_fidelity: int = 0.99):
         super().__init__()
         self.init_fidelity = init_fidelity
-        self.net: QuantumNetwork = None
-        self.own: QNode = None
-        self.memory: QuantumMemory = None
+        self.net: QuantumNetwork
+        self.own: QNode
+        self.memory: QuantumMemory
         self.src: Optional[QNode] = None
         self.dst: Optional[QNode] = None
         self.send_rate: int = send_rate
@@ -69,8 +69,8 @@ class EntanglementDistributionApp(Application):
 
     def install(self, node: QNode, simulator: Simulator):
         super().install(node, simulator)
-        self.own: QNode = self._node
-        self.memory: QuantumMemory = self.own.memories[0]
+        self.own = self.get_node(node_type=QNode)
+        self.memory = self.own.get_memory()
         self.net = self.own.network
         try:
             request: Request = self.own.requests[0]

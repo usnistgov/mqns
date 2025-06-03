@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from qns.entity.node.qnode import QNode
     from qns.network import SignalTypeEnum
 
+NodeT = TypeVar("NodeT", bound="Node")
 EventT = TypeVar("EventT")
 Handler = Callable[["Node", EventT], Any] | Callable[["QNode", EventT], bool|None]
 
@@ -93,7 +94,7 @@ class Application:
         """
         self._dispatch_dict.append((EventTypeList, ByList, handler))
 
-    def get_node(self) -> "Node":
+    def get_node(self, *, node_type: type["NodeT"]|None = None) -> "NodeT":
         """Get the node that runs this application
 
         Returns:
@@ -102,7 +103,9 @@ class Application:
         """
         if self._node is None:
             raise IndexError("application is not in a node")
-        return self._node
+        if node_type is not None and not isinstance(self._node, node_type):
+            raise TypeError(f"application owner node is not of type {node_type}")
+        return cast(NodeT, self._node)
 
     @property
     def simulator(self) -> Simulator:
