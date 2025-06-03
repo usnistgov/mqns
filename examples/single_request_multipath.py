@@ -35,8 +35,11 @@ node_capacity = 4
 # 4-nodes topology
 swapping_config = "l2r"
 
-isolate_paths = False
+# Multipath settings
+routing_type = "SRMP_STATIC"  # Controller installs multiple paths for a single S-D request, with qubit-path allocation
+isolate_paths = True       # Routers can/cannot swap qubits allocated to different paths (but serving same S-D request)
 
+# Quantum channel lengths
 ch_S_R1 = 10
 ch_R1_R2 = 10
 ch_R2_R3 = 10
@@ -44,6 +47,7 @@ ch_R3_R4 = 10
 ch_R4_D = 10
 ch_S_R5 = 15
 ch_R5_R3 = 15
+
 
 def generate_topology() -> dict:
     """
@@ -113,7 +117,7 @@ def generate_topology() -> dict:
     ],
     "controller": {
         "name": "ctrl",
-        "apps": [ProactiveRoutingControllerApp(swapping=swapping_config)]
+        "apps": [ProactiveRoutingControllerApp(swapping=swapping_config, routing_type=routing_type)]
     }
     }
 

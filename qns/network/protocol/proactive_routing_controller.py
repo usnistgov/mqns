@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 
 swapping_settings = {
     # disable swapping (for studying isolated links)
-    "isolation_1": [0, 0, 0],
+    "no_swap": [0,0,0],
     # for 1-repeater
     "swap_1": [1, 0, 1],
     # for 2-repeater
@@ -77,7 +77,7 @@ class ProactiveRoutingControllerApp(Application):
     Works with Proactive Forwarder on quantum nodes.
     """
 
-    def __init__(self, *, swapping: str | list[int], purif: dict[str, int] = {}):
+    def __init__(self, *, swapping: str | list[int], purif: dict[str, int] = {}, routing_type: str = "SRSP"):
         """
         Args:
             swapping: swapping order to use for the S-D path.
@@ -86,6 +86,10 @@ class ProactiveRoutingControllerApp(Application):
             purif: purification settings.
                    Each key identifies a qchannel along the S-D path, written like "S-R1".
                    Each value indicates the number of purification rounds at this hop.
+            routing_type (str): Type pf routing to run on the topology. Supported values:
+                - SRSP (Single Request Single Path).
+                - SRMP_STATIC (Single Request Multiple Paths with qubit-path pre-allocation).
+                - SRMP_DYNAMIC (Single Request Multiple Paths without qubit-path pre-allocation).
 
         To disable automatic installation of a static route from S to D, pass swapping=[].
         """
@@ -102,15 +106,24 @@ class ProactiveRoutingControllerApp(Application):
 
         self.purif = purif
 
+        if routing_type in ["SRSP", "SRMP_STATIC", "SRMP_DYNAMIC"]:
+            self.routing_type = routing_type
+        else:
+            raise Exception(f"{self.own}: Routing type {self.routing_type} not supported."
+                            f"Supported types: ['SRSP', 'SRMP_STATIC', 'SRMP_DYNAMIC']")
+
     def install(self, node: Node, simulator: Simulator):
         super().install(node, simulator)
         self.own = self.get_node(node_type=Controller)
         self.net = self.own.network
-
-        if len(self.swapping_order) > 0:
-            # install the test path on QNodes
+    
+        # install the test path on QNodes
+        if self.routing_type == "SRSP":
             self.install_static_path()
-            # self.install_multiple_static_paths()
+        elif self.routing_type == "SRMP_STATIC":
+            self.install_multiple_static_paths()
+        elif self.routing_type == "SRMP_DYNAMIC":
+            self.install_multiple_static_paths()
 
     def install_static_path(self):
         """Install a static path between nodes "S" (source) and "D" (destination) of the network topology.
