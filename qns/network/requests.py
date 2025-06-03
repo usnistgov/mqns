@@ -15,24 +15,23 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from typing import Dict
+from qns.entity import QNode
 
 
 class Request:
     """Requests entanglement pairs between a source and a destination.
     """
 
-    def __init__(self, src, dest, attr: Dict = {}) -> None:
+    def __init__(self, src: QNode, dest: QNode, attr: dict = {}) -> None:
         """Args:
         src: the source node
         dest: the destination node
         attr: other attributions
 
         """
-        from qns.entity import QNode
-        self.src: QNode = src
-        self.dest: QNode = dest
-        self.attr: Dict = attr
+        self.src = src
+        self.dest = dest
+        self.attr = attr
 
     def __repr__(self) -> str:
         return f"<Request {self.src}->{self.dest}>"

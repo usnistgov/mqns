@@ -106,7 +106,7 @@ class Topology:
             n.set_memory(m)
 
     def add_cchannels(self, classic_topo: ClassicTopology = ClassicTopology.Empty,
-                      nl: list[QNode] = [], ll: list[QuantumChannel]|None = None) -> list[ClassicChannel]:
+                      nl: list[QNode] = [], ll: list[QuantumChannel] = []) -> list[ClassicChannel]:
         """Build classic network topology
 
         Args:
@@ -127,8 +127,6 @@ class Topology:
                 dst.add_cchannel(cchannel=cchannel)
                 cchannel_list.append(cchannel)
         elif classic_topo == ClassicTopology.Follow:
-            if ll is None:
-                return cchannel_list
             for idx, qchannel in enumerate(ll):
                 node_list = qchannel.node_list
                 cchannel = ClassicChannel(name=f"c-{qchannel.name}", **self.cchannel_args)
