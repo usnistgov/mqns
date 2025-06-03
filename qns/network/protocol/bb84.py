@@ -20,19 +20,17 @@ import random
 
 import numpy as np
 
-from qns.entity.cchannel.cchannel import ClassicChannel, ClassicPacket, RecvClassicPacket
-from qns.entity.node.app import Application
-from qns.entity.node.qnode import QNode
-from qns.entity.qchannel.qchannel import QuantumChannel, RecvQubitPacket
+from qns.entity.cchannel import ClassicChannel, ClassicPacket, RecvClassicPacket
+from qns.entity.node import Application, Node, QNode
+from qns.entity.qchannel import QuantumChannel, RecvQubitPacket
 from qns.models.qubit import Qubit
 from qns.models.qubit.const import BASIS_X, BASIS_Z, QUBIT_STATE_0, QUBIT_STATE_1, QUBIT_STATE_N, QUBIT_STATE_P
-from qns.simulator.event import Event, func_to_event
-from qns.simulator.simulator import Simulator
+from qns.simulator import Simulator, func_to_event
 from qns.utils.rnd import get_choice, get_rand
 
 
 class QubitWithError(Qubit):
-    def transfer_error_model(self, length: float, decoherence_rate: float = 0, **kwargs):
+    def transfer_error_model(self, length: float = 0, decoherence_rate: float = 0, **kwargs):
         lkm = length / 1000
         standand_lkm = 50.0
         theta = get_rand() * lkm / standand_lkm * np.pi / 4
@@ -101,7 +99,8 @@ class BB84SendApp(Application):
 
         self.add_handler(self.handleClassicPacket, [RecvClassicPacket], [self.cchannel])
 
-    def install(self, node: QNode, simulator: Simulator):
+    def install(self, node: Node, simulator: Simulator):
+        assert isinstance(node, QNode)
         super().install(node, simulator)
 
         time_list = []
@@ -109,7 +108,7 @@ class BB84SendApp(Application):
 
         t = simulator.ts
         event = func_to_event(t, self.send_qubit, by=self)
-        self._simulator.add_event(event)
+        simulator.add_event(event)
         # while t <= simulator.te:
         #     time_list.append(t)
         #     t = t + simulator.time(sec = 1 / self.send_rate)
@@ -117,7 +116,7 @@ class BB84SendApp(Application):
         #     event = func_to_event(t, self.send_qubit)
         #     self._simulator.add_event(event)
 
-    def handleClassicPacket(self, node: QNode, event: Event):
+    def handleClassicPacket(self, node: QNode, event: RecvClassicPacket):
         return self.check_basis(event) or self.recv_error_estimate_packet(event) or self.recv_cascade_ask_packet(event) or \
             self.recv_check_error_ask_packet(event) or self.recv_privacy_amplification_ask_packet(event)
 
@@ -146,6 +145,7 @@ class BB84SendApp(Application):
         return True
 
     def send_qubit(self):
+        simulator = self.get_simulator()
 
         # randomly generate a qubit
         state = get_choice([QUBIT_STATE_0, QUBIT_STATE_1,
@@ -168,10 +168,9 @@ class BB84SendApp(Application):
         #  basis: {basis_msg} , ret: {ret}")
         self.qchannel.send(qubit=qubit, next_hop=self.dest)
 
-        t = self._simulator.current_time + \
-            self._simulator.time(sec=1 / self.send_rate)
+        t = simulator.current_time + 1 / self.send_rate
         event = func_to_event(t, self.send_qubit, by=self)
-        self._simulator.add_event(event)
+        simulator.add_event(event)
 
     def recv_error_estimate_packet(self, event: RecvClassicPacket):
         """BB84SendApp recv error estimate packet,and send error_estimate_reply packet.
@@ -396,10 +395,10 @@ class BB84RecvApp(Application):
         self.add_handler(self.handleQuantumPacket, [RecvQubitPacket], [self.qchannel])
         self.add_handler(self.handleClassicPacket, [RecvClassicPacket], [self.cchannel])
 
-    def handleQuantumPacket(self, node: QNode, event: Event):
+    def handleQuantumPacket(self, node: QNode, event: RecvQubitPacket):
         return self.recv(event)
 
-    def handleClassicPacket(self, node: QNode, event: Event):
+    def handleClassicPacket(self, node: QNode, event: RecvClassicPacket):
         return self.check_basis(event) or self.recv_error_estimate_reply_packet(event) or \
             self.recv_cascade_reply_packet(event) or self.recv_check_error_reply_packet(event)
 
