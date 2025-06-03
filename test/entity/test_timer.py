@@ -1,4 +1,4 @@
-from pytest import approx
+import pytest
 
 from qns.entity.timer import Timer
 from qns.simulator import Simulator, Time
@@ -16,4 +16,4 @@ def test_timer():
     s.run()
 
     assert len(trigger_times) == 21
-    assert trigger_times[10].sec == approx(5.0)
+    assert trigger_times[10].sec == pytest.approx(5.0)

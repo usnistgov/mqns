@@ -481,7 +481,7 @@ class QuantumMemory(Entity):
                 continue
             if not isinstance(data, BaseEntanglement):
                 continue
-            if data.src is None or data.dst is None or (data.src.name != partner and data.dst.name != partner):
+            if data.src is None or data.dst is None or partner not in (data.src.name, data.dst.name):
                 continue
             if qubit.purif_rounds != purif_rounds:
                 continue

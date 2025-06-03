@@ -174,9 +174,9 @@ class WernerStateEntanglement(BaseEntanglement["WernerStateEntanglement"], Quant
 
         # Merge by name
         merged = epr_dict(self)
-        for name, epr in epr_dict(epr).items():
+        for name, epr1 in epr_dict(epr).items():
             if name not in merged:
-                merged[name] = epr
+                merged[name] = epr1
 
         # Add elementary eprs
         if self.ch_index > -1 and self.name not in merged:

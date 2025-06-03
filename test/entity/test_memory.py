@@ -1,4 +1,4 @@
-from pytest import approx
+import pytest
 
 from qns.entity.memory import (
     MemoryReadRequestEvent,
@@ -227,7 +227,7 @@ def test_memory_async_qubit():
 
             print("self._simulator.tc.sec: {}".format(self._simulator.tc))
             print("result: {}".format(result))
-            assert self._simulator.tc.sec == approx(1.5)
+            assert self._simulator.tc.sec == pytest.approx(1.5)
             assert result is not None
 
             qubit, data = result
@@ -241,7 +241,7 @@ def test_memory_async_qubit():
 
             print("self._simulator.tc.sec: {}".format(self._simulator.tc))
             print("result: {}".format(result))
-            assert self._simulator.tc.sec == approx(0.5)
+            assert self._simulator.tc.sec == pytest.approx(0.5)
             assert result is not None
 
             assert result.addr == 0

@@ -287,7 +287,7 @@ class ThreeQubitsGate(Gate):
         if operator.shape != (2, 2):
             raise QGateOperatorNotMatchError
 
-        if qubit1 == qubit2 or qubit1 == qubit3 or qubit2 == qubit3:
+        if qubit1 == qubit2 or qubit1 == qubit3 or qubit2 == qubit3: # noqa: PLR1714
             return
         joint(qubit1, qubit2)
         joint(qubit2, qubit3)

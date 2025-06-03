@@ -1,8 +1,8 @@
 import logging
 
-import qns.utils.log as log
 from qns.simulator.event import Event
 from qns.simulator.simulator import Simulator
+from qns.utils import log
 
 log.logger.setLevel(logging.DEBUG)
 

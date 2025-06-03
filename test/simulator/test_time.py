@@ -1,4 +1,4 @@
-from pytest import approx, raises
+import pytest
 
 from qns.simulator.ts import Time, set_default_accuracy
 
@@ -23,7 +23,7 @@ def test_time_compare():
         t3 = Time()
         t4 = Time(1100000)
 
-    assert t1 == t1
+    assert t1 == t1 # noqa: PLR0124
     assert t2 >= t1
     assert t1 <= t2
     assert t1 < t2
@@ -33,7 +33,7 @@ def test_time_compare():
 
     t0 = Time(sec=1.1, accuracy=2000)
     assert t2 != t0
-    with raises(AssertionError):
+    with pytest.raises(AssertionError):
         _ = t3 < t0
 
     assert t2 != 1
@@ -50,11 +50,11 @@ def test_time_accuracy():
     t3 = Time(sec=1.0)
     t4 = Time(sec=1.0, accuracy=4000)
 
-    assert t0.sec == approx(1.0)
-    assert t1.sec == approx(1.0)
-    assert t2.sec == approx(1.0)
-    assert t3.sec == approx(1.0)
-    assert t4.sec == approx(1.0)
+    assert t0.sec == pytest.approx(1.0)
+    assert t1.sec == pytest.approx(1.0)
+    assert t2.sec == pytest.approx(1.0)
+    assert t3.sec == pytest.approx(1.0)
+    assert t4.sec == pytest.approx(1.0)
 
     assert t0.accuracy == t3.accuracy
     assert t1.accuracy == 2000
@@ -68,21 +68,21 @@ def test_time_add_sub():
     t6a = t5 + 1
     t6b = t5 + 1.0
     t6c = t5 + Time(sec=1.0, accuracy=1000)
-    assert t6a.sec == approx(6.0)
-    assert t6b.sec == approx(6.0)
-    assert t6c.sec == approx(6.0)
+    assert t6a.sec == pytest.approx(6.0)
+    assert t6b.sec == pytest.approx(6.0)
+    assert t6c.sec == pytest.approx(6.0)
 
-    with raises(AssertionError):
+    with pytest.raises(AssertionError):
         _ = t5 + Time(sec=1.0, accuracy=2000)
 
     t3a = t5 - 2
     t3b = t5 - 2.0
     t3c = t5 - Time(sec=2.0, accuracy=1000)
-    assert t3a.sec == approx(3.0)
-    assert t3b.sec == approx(3.0)
-    assert t3c.sec == approx(3.0)
+    assert t3a.sec == pytest.approx(3.0)
+    assert t3b.sec == pytest.approx(3.0)
+    assert t3c.sec == pytest.approx(3.0)
 
-    with raises(AssertionError):
+    with pytest.raises(AssertionError):
         _ = t5 - Time(sec=2.0, accuracy=2000)
 
 

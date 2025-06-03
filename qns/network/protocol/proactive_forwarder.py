@@ -731,7 +731,7 @@ class ProactiveForwarder(Application):
         """
         from qns.network.protocol.event import QubitEntangledEvent
         if isinstance(event, QubitEntangledEvent):
-            if self.own.timing_mode == TimingModeEnum.ASYNC or self.own.timing_mode == TimingModeEnum.LSYNC:
+            if self.own.timing_mode in (TimingModeEnum.ASYNC, TimingModeEnum.LSYNC):
                 self.handle_entangled_qubit(event)
             elif self.sync_current_phase == SignalTypeEnum.EXTERNAL:
                 # Accept new etg while we are in EXT phase

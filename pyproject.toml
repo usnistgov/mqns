@@ -12,8 +12,19 @@ lint.select = [
   "I",  # isort (import sorting)
  # "D",  # pydocstyle
  # "UP", # pyupgrade
- # "PT", # pytest-style
+  "PT", # pytest-style
   "Q",  # quote-conventions
- # "PL", # pylint (useful for layout, blank lines, etc.)
+  "PL", # pylint (useful for layout, blank lines, etc.)
 ]
-lint.ignore = ["E741"]
+lint.ignore = [
+  "E741",
+  "PLR0911",
+  "PLR0912",
+  "PLR0913",
+  "PLR0914",
+  "PLR0915",
+  "PLR0916",
+  "PLR0917",
+  "PLR2004",
+  "PLW0603",
+]
