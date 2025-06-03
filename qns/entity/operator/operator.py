@@ -50,17 +50,18 @@ class QuantumOperator(Entity):
         return super().install(simulator)
 
     def handle(self, event: Event) -> None:
+        simulator = self.simulator
+
         if isinstance(event, OperateRequestEvent):
-            assert self._simulator is not None
             assert self.node is not None
 
             qubits = event.qubits
             # operate qubits and get measure results
             result = self.operate(*qubits)
 
-            t = self._simulator.tc + self._simulator.time(sec=self.delay_model.calculate())
+            t = simulator.tc + self.delay_model.calculate()
             response = OperateResponseEvent(node=self.node, result=result, request=event, t=t, by=self)
-            self._simulator.add_event(response)
+            simulator.add_event(response)
 
     def set_own(self, node: QNode):
         """Set the owner of this quantum operator

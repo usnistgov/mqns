@@ -28,8 +28,19 @@ class Entity:
 
         """
         self.name = name
-        self._is_installed: bool = False
         self._simulator: Simulator|None = None
+
+    @property
+    def simulator(self) -> Simulator:
+        """
+        Return the Simulator that this entity belongs to.
+
+        Raises:
+            IndexError - simulator does not exist
+        """
+        if self._simulator is None:
+            raise IndexError(f"entity {repr(self)} is not in a simulator")
+        return self._simulator
 
     def install(self, simulator: Simulator) -> None:
         """``install`` is called before ``simulator`` runs to initialize or set initial events.
@@ -39,9 +50,8 @@ class Entity:
             simulator (qns.simulator.simulator.Simulator): the simulator
 
         """
-        if not self._is_installed:
-            self._simulator = simulator
-            self._is_installed = True
+        assert self._simulator is None or self._simulator == simulator
+        self._simulator = simulator
 
     def handle(self, event: Event) -> None:
         """``handle`` is called to process an receiving ``Event``.

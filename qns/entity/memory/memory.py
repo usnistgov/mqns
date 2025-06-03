@@ -180,8 +180,6 @@ class QuantumMemory(Entity):
                 - The associated `QuantumModel`.
                 - None if qubit not found or no quantum information is stored.
         """
-        assert self._simulator is not None
-
         idx = self._search(key=key, address=address)
         if idx == -1:
             return None
@@ -200,12 +198,11 @@ class QuantumMemory(Entity):
         return (qubit, data)
 
     def _read_epr(self, data: QuantumModel, destructive: bool):
-        assert self._simulator is not None
         assert isinstance(data, BaseEntanglement)
         assert data.creation_time is not None
         assert data.name is not None
 
-        t_now = self._simulator.current_time
+        t_now = self.simulator.current_time
         sec_diff = t_now.sec - data.creation_time.sec
 
         # set fidelity at read time
@@ -263,7 +260,6 @@ class QuantumMemory(Entity):
 
         if not isinstance(qm, BaseEntanglement):
             return qubit
-        assert self._simulator is not None
         assert qm.creation_time is not None
         assert qm.name is not None
 
@@ -272,7 +268,7 @@ class QuantumMemory(Entity):
             decoherence_t = qm.creation_time + Time(sec = 1 / self.decoherence_rate)
             event = func_to_event(decoherence_t, self.decohere_qubit, by=self, qubit=qubit, qm=qm)
             self.pending_decohere_events[qm.name] = event
-            self._simulator.add_event(event)
+            self.simulator.add_event(event)
             qm.decoherence_time = decoherence_t
 
         return qubit
@@ -318,14 +314,13 @@ class QuantumMemory(Entity):
 
         if not isinstance(new_qm, BaseEntanglement):
             return True
-        assert self._simulator is not None
         assert new_qm.decoherence_time is not None
         assert new_qm.name is not None
 
         # schedule an event at old T_coh to decohere the qubit
-        new_event = func_to_event(new_qm.decoherence_time, self.decohere_qubit, by=self, qubit=self._storage[idx][0], qm=new_qm)
+        new_event = func_to_event(new_qm.decoherence_time, self.decohere_qubit, by=self, qubit=qubit, qm=new_qm)
         self.pending_decohere_events[new_qm.name] = new_event
-        self._simulator.add_event(new_event)
+        self.simulator.add_event(new_event)
         return True
 
     def clear(self) -> None:
@@ -539,13 +534,13 @@ class QuantumMemory(Entity):
                 self._emit_decohered_event(qubit)
 
     def _emit_decohered_event(self, qubit: MemoryQubit):
-        assert self._simulator is not None
         assert self.link_layer is not None
         from qns.network.protocol.event import QubitDecoheredEvent
+        simulator = self.simulator
 
-        t = self._simulator.tc # + self._simulator.time(sec=0)
+        t = simulator.tc
         event = QubitDecoheredEvent(link_layer=self.link_layer, qubit=qubit, t=t, by=self)
-        self._simulator.add_event(event)
+        simulator.add_event(event)
 
     def count_unallocated_qubits(self) -> int:
         """Return the number of qubits not allocated to any path ID
@@ -591,20 +586,20 @@ class QuantumMemory(Entity):
         return super().__repr__()
 
     def handle(self, event: Event) -> None:
-        assert self._simulator is not None
         assert isinstance(self.node, QNode)
+        simulator = self.simulator
 
         if isinstance(event, MemoryReadRequestEvent):
             key = event.key
             # operate qubits and get measure results
             result = self.read(key)
 
-            t = self._simulator.tc + self._simulator.time(sec=self.delay_model.calculate())
+            t = simulator.tc + self.delay_model.calculate()
             response = MemoryReadResponseEvent(node=self.node, result=result, request=event, t=t, by=self)
-            self._simulator.add_event(response)
+            simulator.add_event(response)
         elif isinstance(event, MemoryWriteRequestEvent):
             qubit = event.qubit
             result = self.write(qubit)
-            t = self._simulator.tc + self._simulator.time(sec=self.delay_model.calculate())
+            t = simulator.tc + self.delay_model.calculate()
             response = MemoryWriteResponseEvent(node=self.node, result=result, request=event, t=t, by=self)
-            self._simulator.add_event(response)
+            simulator.add_event(response)

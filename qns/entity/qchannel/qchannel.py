@@ -68,6 +68,7 @@ class QuantumChannel(Entity):
         self.length = length
         self.decoherence_rate = decoherence_rate
         self.transfer_error_model_args = transfer_error_model_args
+        self._next_send_time: Time
 
     def install(self, simulator: Simulator) -> None:
         """``install`` is called before ``simulator`` runs to initialize or set initial events
@@ -76,10 +77,8 @@ class QuantumChannel(Entity):
             simulator (Simulator): the simulator
 
         """
-        if not self._is_installed:
-            self._simulator = simulator
-            self._next_send_time = self._simulator.ts
-            self._is_installed = True
+        super().install(simulator)
+        self._next_send_time = self.simulator.ts
 
     def send(self, qubit: QuantumModel, next_hop: QNode):
         """Send a qubit to the next_hop
@@ -91,26 +90,27 @@ class QuantumChannel(Entity):
             NextHopNotConnectionException: the next_hop is not connected to this channel
 
         """
-        assert self._simulator is not None
+        simulator = self.simulator
+
         if next_hop not in self.node_list:
             raise NextHopNotConnectionException
 
         if self.bandwidth != 0:
 
-            if self._next_send_time <= self._simulator.current_time:
-                send_time = self._simulator.current_time
+            if self._next_send_time <= simulator.current_time:
+                send_time = simulator.current_time
             else:
                 send_time = self._next_send_time
 
-            if self.max_buffer_size != 0 and send_time > self._simulator.current_time\
-               + self._simulator.time(sec=self.max_buffer_size / self.bandwidth):
+            if self.max_buffer_size != 0 and \
+               send_time > simulator.current_time + self.max_buffer_size / self.bandwidth:
                 # buffer is overflow
                 log.debug(f"qchannel {self}: drop qubit {qubit} due to overflow")
                 return
 
-            self._next_send_time = send_time + self._simulator.time(sec=1 / self.bandwidth)
+            self._next_send_time = send_time + 1 / self.bandwidth
         else:
-            send_time = self._simulator.current_time
+            send_time = simulator.current_time
 
         # random drop
         if self.drop_rate > 0 and get_rand() < self.drop_rate:
@@ -120,13 +120,13 @@ class QuantumChannel(Entity):
             return
 
         # add delay
-        recv_time = send_time + self._simulator.time(sec=self.delay_model.calculate())
+        recv_time = send_time + self.delay_model.calculate()
 
         # operation on the qubit
         qubit.transfer_error_model(self.length, self.decoherence_rate, **self.transfer_error_model_args)
         send_event = RecvQubitPacket(recv_time, name=None, by=self, qchannel=self,
                                      qubit=qubit, dest=next_hop)
-        self._simulator.add_event(send_event)
+        simulator.add_event(send_event)
 
     def __repr__(self) -> str:
         if self.name is not None:

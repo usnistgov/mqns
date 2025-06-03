@@ -65,39 +65,38 @@ class Monitor(Entity):
 
     def install(self, simulator: Simulator) -> None:
         super().install(simulator=simulator)
-        assert self._simulator is not None
 
         if self.watch_at_start or self.watch_at_finish or len(self.watch_period) > 0:
             self.watch_at_time = True
 
         if self.watch_at_start:
-            event = MonitorEvent(t=self._simulator.ts, monitor=self, name="start watch event", by=self)
-            self._simulator.add_event(event)
+            event = MonitorEvent(t=simulator.ts, monitor=self, name="start watch event", by=self)
+            simulator.add_event(event)
         if self.watch_at_finish:
-            event = MonitorEvent(t=self._simulator.te, monitor=self, name="finish watch event", by=self)
-            self._simulator.add_event(event)
+            event = MonitorEvent(t=simulator.te, monitor=self, name="finish watch event", by=self)
+            simulator.add_event(event)
         for p in self.watch_period:
-            t = self._simulator.ts
-            while t <= self._simulator.te:
+            t = simulator.ts
+            while t <= simulator.te:
                 t = t + p
                 event = MonitorEvent(t=t, monitor=self, name=f"period watch event({p})", by=self)
-                self._simulator.add_event(event)
+                simulator.add_event(event)
 
         for event_type in self.watch_event:
             try:
-                self._simulator.watch_event[event_type].append(self)
+                simulator.watch_event[event_type].append(self)
             except (IndexError, KeyError, ValueError):
-                self._simulator.watch_event[event_type] = [self]
+                simulator.watch_event[event_type] = [self]
 
     def handle(self, event: Event) -> None:
         self.calculate_date(event)
 
     def calculate_date(self, event: Event):
-        assert self._simulator is not None
-        current_time = self._simulator.tc.sec
+        simulator = self.simulator
+        current_time = simulator.tc.sec
         record: dict[str, Any] = {"time": current_time}
         for (name, calculate_func) in self.attributions:
-            record[name] = [calculate_func(self._simulator, self.network, event)]
+            record[name] = [calculate_func(simulator, self.network, event)]
         record_pd = pd.DataFrame(record)
         self.data = pd.concat([self.data, record_pd], ignore_index=True)
 

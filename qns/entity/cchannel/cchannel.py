@@ -108,6 +108,7 @@ class ClassicChannel(Entity):
         self.drop_rate = drop_rate
         self.length = length
         self.max_buffer_size = max_buffer_size
+        self._next_send_time: Time
 
     def install(self, simulator: Simulator) -> None:
         """``install`` is called before ``simulator`` runs to initialize or set initial events
@@ -116,10 +117,8 @@ class ClassicChannel(Entity):
             simulator (qns.simulator.simulator.Simulator): the simulator
 
         """
-        if not self._is_installed:
-            self._simulator = simulator
-            self._next_send_time = self._simulator.ts
-            self._is_installed = True
+        super().install(simulator)
+        self._next_send_time = self.simulator.ts
 
     def send(self, packet: ClassicPacket, next_hop: Node, delay: float = 0):
         """Send a classic packet to the next_hop
@@ -132,37 +131,37 @@ class ClassicChannel(Entity):
                 the next_hop is not connected to this channel
 
         """
-        assert self._simulator is not None
+        simulator = self.simulator
+
         if next_hop not in self.node_list:
             raise NextHopNotConnectionException
 
         if self.bandwidth != 0:
-            if self._next_send_time <= self._simulator.current_time:
-                send_time = self._simulator.current_time
+            if self._next_send_time <= simulator.current_time:
+                send_time = simulator.current_time
             else:
                 send_time = self._next_send_time
 
-            if self.max_buffer_size != 0 and send_time > self._simulator.current_time\
-               + self._simulator.time(sec=self.max_buffer_size / self.bandwidth):
+            if self.max_buffer_size != 0 and \
+                send_time > simulator.current_time + self.max_buffer_size / self.bandwidth:
                 # buffer is overflow
                 log.debug(f"cchannel {self}: drop packet {packet} due to overflow")
                 return
 
-            self._next_send_time = send_time + \
-                self._simulator.time(sec=len(packet) / self.bandwidth)
+            self._next_send_time = send_time + len(packet) / self.bandwidth
         else:
-            send_time = self._simulator.current_time
+            send_time = simulator.current_time
 
         # random drop
         if get_rand() < self.drop_rate:
             log.debug(f"cchannel {self}: drop packet {packet} due to drop rate")
             return
         #  add delay
-        recv_time = send_time + self._simulator.time(sec=self.delay_model.calculate() + delay)
+        recv_time = send_time + (self.delay_model.calculate() + delay)
 
         send_event = RecvClassicPacket(recv_time, name=None, by=self,
                                        cchannel=self, packet=packet, dest=next_hop)
-        self._simulator.add_event(send_event)
+        simulator.add_event(send_event)
 
     def __repr__(self) -> str:
         if self.name is not None:

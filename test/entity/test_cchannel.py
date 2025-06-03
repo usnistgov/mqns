@@ -19,18 +19,16 @@ class ClassicSendNode(Node):
 
     def install(self, simulator: Simulator) -> None:
         super().install(simulator)
-        assert self._simulator is not None
 
         t = 0
         while t < 10:
-            time = self._simulator.time(sec=t)
+            time = simulator.time(sec=t)
             event = SendEvent(time, node=self, by=self)
-            self._simulator.add_event(event)
+            simulator.add_event(event)
             t += 0.25
 
     def send(self):
-        assert self._simulator is not None
-        print(self._simulator.current_time, "send packet")
+        print(self.simulator.current_time, "send packet")
         link = self.cchannels[0]
         dest = self.dest
         packet = ClassicPacket(msg="ping", src=self, dest=dest)
