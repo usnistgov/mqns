@@ -20,7 +20,7 @@ from typing import Any, Literal, TypedDict, cast
 
 from qns.entity.cchannel import ClassicPacket, RecvClassicPacket
 from qns.entity.memory import QuantumMemory
-from qns.entity.memory.memory_qubit import MemoryQubit, QubitState
+from qns.entity.memory.memory_qubit import MemoryQubit, QubitState, PathDirection
 from qns.entity.node import Application, Node, QNode
 from qns.models.epr import WernerStateEntanglement
 from qns.network import QuantumNetwork, SignalTypeEnum, TimingModeEnum
@@ -205,8 +205,10 @@ class ProactiveForwarder(Application):
         assert len(m_v) + 1 == len(route)
 
         # identify left/right neighbors and allocate memory qubits to the path
-        _, l_qubits = self._find_neighbor_and_allocate_qubits(path_id, route, -1, m_v, -1)
-        r_neighbor, r_qubits = self._find_neighbor_and_allocate_qubits(path_id, route, 1, m_v, 0)
+        _, l_qubits = self._find_neighbor_and_allocate_qubits(
+            path_id, route, -1, m_v, -1, PathDirection.LEFT)
+        r_neighbor, r_qubits = self._find_neighbor_and_allocate_qubits(
+            path_id, route, 1, m_v, 0, path_direction=PathDirection.RIGHT)
         log.debug(f"Allocated qubits: left = {l_qubits} | right = {r_qubits}")
 
         # populate FIB
@@ -228,18 +230,20 @@ class ProactiveForwarder(Application):
         return True
 
     def _find_neighbor_and_allocate_qubits(
-        self, path_id: int, route: list[str], route_offset: int, m_v: list[int], m_v_offset: int
-    ) -> tuple[QNode | None, list[int]]:
+        self, path_id: int, route: list[str], route_offset: int, m_v: list[int], m_v_offset: int,
+        path_direction: PathDirection) -> tuple[QNode | None, list[int]]:
         own_idx = route.index(self.own.name)
         neigh_idx = own_idx + route_offset
         if neigh_idx in (-1, len(route)):  # no left/right neighbor if own node is the left/right end node
             return None, []
 
         neighbor = self.net.get_node(route[neigh_idx])
-        self.own.get_qchannel(neighbor)  # ensure qchannel exists
+        # self.own.get_qchannel(neighbor) ensure qchannel exists
+        qchannel: QuantumChannel = self.own.get_qchannel(neighbor)
 
         n_qubits = m_v[own_idx + m_v_offset]
-        qubits = [self.memory.allocate(path_id=path_id) for _ in range(n_qubits)]
+        qubits = [self.memory.allocate(ch_name=qchannel.name, path_id=path_id, path_direction=path_direction) 
+                  for _ in range(n_qubits)]
         if -1 in qubits:
             raise RuntimeError(f"{self.own}: insufficient memory qubits toward {neighbor} for path {path_id}")
 
@@ -573,7 +577,10 @@ class ProactiveForwarder(Application):
         if not self.isolate_paths:
             possible_path_ids = self.request_paths_map[fib_entry["request_id"]]
 
-        res = self._select_eligible_qubit(exc_qchannel=qubit.qchannel.name, path_id=possible_path_ids)
+        res = self._select_eligible_qubit(
+            exc_qchannel=qubit.qchannel.name,
+            exc_direction=qubit.path_direction,
+            path_id=possible_path_ids)
         if res:  # do swapping
             #if res.path_id != qubit.path_id:
             #    log.info(f"{self.own}: case with non-isolated paths")
@@ -601,7 +608,11 @@ class ProactiveForwarder(Application):
             self.fidelity += qm.fidelity
         simulator.add_event(QubitReleasedEvent(self.own, qubit, t=simulator.tc, by=self))
 
-    def _select_eligible_qubit(self, exc_qchannel: str, path_id: list[int] | None = None) -> MemoryQubit | None:
+    def _select_eligible_qubit(
+        self, 
+        exc_qchannel: str, 
+        exc_direction: PathDirection, 
+        path_id: list[int] | None = None) -> MemoryQubit | None:
         """Searches for an eligible qubit in memory that matches the specified path ID and
         is located on a different qchannel than the excluded one. This is used to
         find a swap candidate during entanglement forwarding. Currently returns the first
@@ -610,6 +621,7 @@ class ProactiveForwarder(Application):
         Parameters
         ----------
             exc_qchannel (str): Name of the quantum channel to exclude from the search.
+            exc_direction (PathDirection): Qubit direction to exclude to avoid loops.
             path_id (list[int], optional): Identifiers for the entanglement paths to match.
 
         Returns
@@ -617,7 +629,10 @@ class ProactiveForwarder(Application):
             Optional[MemoryQubit]: A single eligible memory qubit, if found; otherwise, None.
 
         """
-        qubits = self.memory.search_eligible_qubits(exc_qchannel=exc_qchannel, path_id=path_id)
+        qubits = self.memory.search_eligible_qubits(
+            exc_qchannel=exc_qchannel, 
+            exc_direction=exc_direction,
+            path_id=path_id)
         if qubits:
             return qubits[0][0]  # pick up one qubit
             # TODO: Other qubit selection

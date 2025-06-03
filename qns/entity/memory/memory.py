@@ -35,7 +35,7 @@ from qns.entity.memory.event import (
     MemoryWriteRequestEvent,
     MemoryWriteResponseEvent,
 )
-from qns.entity.memory.memory_qubit import MemoryQubit, QubitState
+from qns.entity.memory.memory_qubit import MemoryQubit, QubitState, PathDirection
 from qns.entity.node import QNode
 from qns.models.core import QuantumModel
 from qns.models.delay import DelayInput, parseDelay
@@ -371,7 +371,7 @@ class QuantumMemory(Entity):
             event.cancel()
         self.pending_decohere_events = {}
 
-    def allocate(self, ch_name: str, path_id: int) -> int:
+    def allocate(self, ch_name: str, path_id: int, path_direction: "PathDirection") -> int:
         """
         Allocate an unused memory qubit to a given path ID.
 
@@ -390,7 +390,7 @@ class QuantumMemory(Entity):
         """
         for qubit, _ in self._storage:
             if qubit.qchannel.name == ch_name and qubit.path_id is None:
-                qubit.allocate(path_id)
+                qubit.allocate(path_id, path_direction)
                 return qubit.addr
         return -1
 
@@ -443,7 +443,10 @@ class QuantumMemory(Entity):
         return qubits
 
     def search_eligible_qubits(
-        self, exc_qchannel: str | None = None, path_id: list[int] | None = None
+        self, 
+        exc_qchannel: str | None = None,
+        exc_direction: PathDirection | None = None,
+        path_id: list[int] | None = None
     ) -> list[tuple[MemoryQubit, QuantumModel]]:
         """Search for memory qubits that are eligible for use.
 
@@ -454,6 +457,7 @@ class QuantumMemory(Entity):
 
         Args:
             exc_qchannel (Optional[str]): The name of the quantum channel to exclude. If None, no exclusion is applied.
+            exc_direction (Optional[PathDirection]): Qubit direction to exclude. If None, no exclusion is applied.
             path_id (Optional[list[int]]): The list of path IDs the qubit must be allocated to.
             If None, any path ID is accepted.
 
@@ -472,6 +476,8 @@ class QuantumMemory(Entity):
             if path_id is not None and qubit.path_id not in path_id:
                 continue
             if exc_qchannel is not None and (qubit.qchannel is None or qubit.qchannel.name == exc_qchannel):
+                continue
+            if exc_direction is not None and (qubit.path_direction == exc_direction):
                 continue
             qubits.append((qubit, data))
         return qubits
