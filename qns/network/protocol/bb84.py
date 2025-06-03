@@ -145,7 +145,7 @@ class BB84SendApp(Application):
         return True
 
     def send_qubit(self):
-        simulator = self.get_simulator()
+        simulator = self.simulator
 
         # randomly generate a qubit
         state = get_choice([QUBIT_STATE_0, QUBIT_STATE_1,

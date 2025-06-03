@@ -21,7 +21,7 @@ class SendApp(Application):
         simulator.add_event(event)
 
     def send_packet(self):
-        simulator = self.get_simulator()
+        simulator = self.simulator
 
         packet = ClassicPacket(msg=f"Hello,world from {self.get_node()}", src=self.get_node(), dest=self.dest)
 

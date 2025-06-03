@@ -104,7 +104,8 @@ class Application:
             raise IndexError("application is not in a node")
         return self._node
 
-    def get_simulator(self) -> Simulator:
+    @property
+    def simulator(self) -> Simulator:
         """Get the simulator
 
         Returns:

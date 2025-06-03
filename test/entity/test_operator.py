@@ -34,8 +34,7 @@ class RecvOperateApp(Application):
 
     def OperateResponseEventhandler(self, node, event: OperateResponseEvent) -> bool|None:
         result = event.result
-        assert self._simulator is not None
-        assert self._simulator.tc.sec == 0.5
+        assert self.simulator.tc.sec == 0.5
         assert result in [0, 1]
         self.count += 1
 

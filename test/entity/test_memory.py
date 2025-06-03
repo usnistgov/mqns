@@ -210,12 +210,11 @@ def test_memory_async_qubit():
 
         def handleMemoryRead(self, node: QNode, event: MemoryReadResponseEvent) -> bool|None:
             self.nReads += 1
-            assert self._simulator is not None
             result = event.result
 
-            print("self._simulator.tc.sec: {}".format(self._simulator.tc))
+            print("self.simulator.tc.sec: {}".format(self.simulator.tc))
             print("result: {}".format(result))
-            assert self._simulator.tc.sec == pytest.approx(1.5)
+            assert self.simulator.tc.sec == pytest.approx(1.5)
             assert result is not None
 
             qubit, data = result
@@ -224,12 +223,11 @@ def test_memory_async_qubit():
 
         def handleMemoryWrite(self, node: QNode, event: MemoryWriteResponseEvent) -> bool|None:
             self.nWrites += 1
-            assert self._simulator is not None
             result = event.result
 
-            print("self._simulator.tc.sec: {}".format(self._simulator.tc))
+            print("self.simulator.tc.sec: {}".format(self.simulator.tc))
             print("result: {}".format(result))
-            assert self._simulator.tc.sec == pytest.approx(0.5)
+            assert self.simulator.tc.sec == pytest.approx(0.5)
             assert result is not None
 
             assert result.addr == 0
