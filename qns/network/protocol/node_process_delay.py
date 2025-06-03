@@ -15,13 +15,8 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from typing import Optional, Tuple, Union
-
-from qns.entity.node.app import Application
-from qns.entity.node.node import Node
-from qns.simulator.event import Event
-from qns.simulator.simulator import Simulator
-from qns.simulator.ts import Time
+from qns.entity.node import Application, Node
+from qns.simulator import Event, Simulator
 
 
 class NodeProcessDelayApp(Application):
@@ -29,7 +24,7 @@ class NodeProcessDelayApp(Application):
     It is used to represent the processing delay on quantum nodes.
     """
 
-    def __init__(self, delay: float = 0, delay_event_list: Optional[Union[type, Tuple[type]]] = None):
+    def __init__(self, delay: float = 0, delay_event_list: type|tuple[type, ...]|None = None):
         """Args:
         delay (float): the processing delay
         delay_event_list: a list of Event classic list that will add a delay.
@@ -50,6 +45,8 @@ class NodeProcessDelayApp(Application):
         return isinstance(event, self.delay_event_list)
 
     def handle(self, node: Node, event: Event) -> bool:
+        simulator = self.get_simulator()
+
         if not self.check_in_delay_event_list(event):
             return False
 
@@ -61,9 +58,9 @@ class NodeProcessDelayApp(Application):
         # add to list
         self.wait_rehandle_event_list.append(event)
         # get the delay time
-        t = self._simulator.current_time+Time(sec=self.delay)
+        t = simulator.current_time + self.delay
         # reset event's occur time
         event.t = t
         event.by = self
-        self._simulator.add_event(event)
+        simulator.add_event(event)
         return True
