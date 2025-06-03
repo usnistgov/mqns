@@ -15,28 +15,27 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from qns.entity.node.app import Application
-from qns.entity.node.qnode import QNode
-from qns.entity.qchannel.qchannel import QuantumChannel
-from qns.network.topology.topo import Topology
+from qns.entity.node import QNode
+from qns.entity.qchannel import QuantumChannel
+from qns.network.topology.topo import Topology, TopologyInitKwargs
 
+try:
+    from typing import Unpack
+except ImportError:
+    from typing_extensions import Unpack
 
 class TreeTopology(Topology):
     """TreeTopology includes `nodes_number` Qnodes.
     The topology is a tree pattern, where each parent has `children_num` children.
     """
 
-    def __init__(self, nodes_number, children_number: int = 2, *,
-                 nodes_apps: list[Application] = [],
-                 qchannel_args: dict = {}, cchannel_args: dict = {},
-                 memory_args: dict = {}):
+    def __init__(self, nodes_number, children_number: int = 2, **kwargs: Unpack[TopologyInitKwargs]):
         """Args:
         nodes_number (int): the total number of QNodes
         children_number (int): the number of children one parent has
 
         """
-        super().__init__(nodes_number, nodes_apps=nodes_apps,
-                         qchannel_args=qchannel_args, cchannel_args=cchannel_args, memory_args=memory_args)
+        super().__init__(nodes_number, **kwargs)
         self.children_number = children_number
 
     def build(self) -> tuple[list[QNode], list[QuantumChannel]]:

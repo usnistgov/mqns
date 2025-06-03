@@ -28,11 +28,23 @@
 import copy
 import itertools
 from enum import Enum
+from typing import TypedDict
 
 from qns.entity.cchannel import ClassicChannel
 from qns.entity.memory import QuantumMemory
 from qns.entity.node import Application, Controller, QNode
 from qns.entity.qchannel import QuantumChannel
+
+try:
+    from typing import Unpack
+except ImportError:
+    from typing_extensions import Unpack
+
+class TopologyInitKwargs(TypedDict, total=False):
+    nodes_apps: list[Application]
+    qchannel_args: dict
+    cchannel_args: dict
+    memory_args: dict
 
 
 class ClassicTopology(Enum):
@@ -45,10 +57,7 @@ class Topology:
     """Topology is a factory for QuantumNetwork
     """
 
-    def __init__(self, nodes_number: int, *,
-                 nodes_apps: list[Application] = [],
-                 qchannel_args: dict = {}, cchannel_args: dict = {},
-                 memory_args: dict = {}):
+    def __init__(self, nodes_number: int, **kwargs: Unpack[TopologyInitKwargs]):
         """Args:
         nodes_number: the number of Qnodes
         nodes_apps: apps will be installed to all nodes
@@ -58,10 +67,10 @@ class Topology:
 
         """
         self.nodes_number = nodes_number
-        self.nodes_apps = nodes_apps
-        self.qchannel_args = qchannel_args
-        self.memory_args = memory_args
-        self.cchannel_args = cchannel_args
+        self.nodes_apps = kwargs.get("node_apps", [])
+        self.qchannel_args = kwargs.get("qchannel_args", {})
+        self.cchannel_args = kwargs.get("cchannel_args", {})
+        self.memory_args = kwargs.get("memory_args", {})
         self.controller: Controller|None = None
 
     def build(self) -> tuple[list[QNode], list[QuantumChannel]]:

@@ -1,10 +1,10 @@
 from qns.network.network import QuantumNetwork
 from qns.network.route import DijkstraRouteAlgorithm
-from qns.network.topology import LineTopology
+from qns.network.topology import LinearTopology
 
 
 def test_dijkstra():
-    net = QuantumNetwork(topo=LineTopology(4), route=DijkstraRouteAlgorithm())
+    net = QuantumNetwork(topo=LinearTopology(4), route=DijkstraRouteAlgorithm())
     net.build_route()
 
     n1 = net.get_node("n1")

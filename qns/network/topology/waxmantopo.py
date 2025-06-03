@@ -19,30 +19,29 @@ import itertools
 
 import numpy as np
 
-from qns.entity.node.app import Application
-from qns.entity.node.qnode import QNode
-from qns.entity.qchannel.qchannel import QuantumChannel
-from qns.network.topology.topo import Topology
+from qns.entity.node import QNode
+from qns.entity.qchannel import QuantumChannel
+from qns.network.topology.topo import Topology, TopologyInitKwargs
 from qns.utils.rnd import get_rand
 
+try:
+    from typing import Unpack
+except ImportError:
+    from typing_extensions import Unpack
 
 class WaxmanTopology(Topology):
     """WaxmanTopology is the random topology generator using Waxman's model.
     """
 
-    def __init__(self, nodes_number: int, size: float, alpha: float, beta: float, *,
-                 nodes_apps: list[Application] = [],
-                 qchannel_args: dict = {}, cchannel_args: dict = {},
-                 memory_args: dict = {}):
+    def __init__(self, nodes_number: int, size: float, alpha: float, beta: float, **kwargs: Unpack[TopologyInitKwargs]):
         """Args:
         nodes_number (int): the number of Qnodes
         size (float): the area size (meter)
         alpha (float): alpha parameter in Waxman's model
-        beta (float): alpha parameter in Waxman's model
+        beta (float): beta parameter in Waxman's model
 
         """
-        super().__init__(nodes_number, nodes_apps=nodes_apps,
-                         qchannel_args=qchannel_args, cchannel_args=cchannel_args, memory_args=memory_args)
+        super().__init__(nodes_number, **kwargs)
         self.size = size
         self.alpha = alpha
         self.beta = beta
