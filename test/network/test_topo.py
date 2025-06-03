@@ -40,7 +40,7 @@ def test_line_topo():
     for i, ch in enumerate(net.qchannels):
         assert set(ch.node_list) == set([net.nodes[i], net.nodes[i+1]])
 
-def test_grid_topo():
+def test_grid_topo_square():
     """
     1---2---3
     |   |   |
@@ -57,6 +57,23 @@ def test_grid_topo():
     assert qchannels == set([
         (0,1),(1,2),(3,4),(4,5),(6,7),(7,8), # horizontal
         (0,3),(1,4),(2,5),(3,6),(4,7),(5,8), # vertical
+    ])
+
+def test_grid_topo_rectangle():
+    """
+    1---2---3---4
+    |   |   |   |
+    5---6---7---8
+    """
+    net = QuantumNetwork(topo=GridTopology((2, 4)))
+
+    assert len(net.nodes) == 8
+    assert len(net.qchannels) == 10
+
+    qchannels = collect_qchannels(net)
+    assert qchannels == set([
+        (0,1),(1,2),(2,3),(4,5),(5,6),(6,7), # horizontal
+        (0,4),(1,5),(2,6),(3,7),             # vertical
     ])
 
 def test_random_topo():
