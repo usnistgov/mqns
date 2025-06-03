@@ -33,13 +33,13 @@ from qns.network.topology import (
            BasicTopology,
            CustomTopology,
            GridTopology,
-           LineTopology,
+           LinearTopology,
            RandomTopology,
            Topology,
            TreeTopology,
            WaxmanTopology,
 )
 
-__all__ = ["QuantumNetwork", "Request", "Topology", "LineTopology", "NetworkRouteError",
+__all__ = ["QuantumNetwork", "Request", "Topology", "LinearTopology", "NetworkRouteError",
            "RandomTopology", "GridTopology", "TreeTopology", "BasicTopology", "WaxmanTopology", "CustomTopology",
            "RouteImpl", "DijkstraRouteAlgorithm", "QNSNetworkError", "TimingModeEnum", "SignalTypeEnum"]

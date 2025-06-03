@@ -1,6 +1,6 @@
 
 from qns.network.network import QuantumNetwork
-from qns.network.topology import BasicTopology, GridTopology, LineTopology, RandomTopology, TreeTopology, WaxmanTopology
+from qns.network.topology import BasicTopology, GridTopology, LinearTopology, RandomTopology, TreeTopology, WaxmanTopology
 
 
 def collect_qchannels(net: QuantumNetwork) -> set[tuple[int, int]]:
@@ -26,11 +26,11 @@ def test_basic_topo():
 
     assert len(net.qchannels) == 0
 
-def test_line_topo():
+def test_linear_topo():
     """
     1---2---3---4
     """
-    net = QuantumNetwork(topo=LineTopology(4))
+    net = QuantumNetwork(topo=LinearTopology(4))
 
     assert len(net.nodes) == 4
     for i, node in enumerate(net.nodes):

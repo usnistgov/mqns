@@ -15,32 +15,20 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from qns.entity.node import QNode
-from qns.entity.qchannel import QuantumChannel
-from qns.network.topology.topo import Topology
+from qns.network.topology.gridtopo import GridTopology
+from qns.network.topology.topo import TopologyInitKwargs
+
+try:
+    from typing import Unpack
+except ImportError:
+    from typing_extensions import Unpack
 
 
-class LineTopology(Topology):
-    """LineTopology includes `nodes_number` Qnodes. The topology is a line pattern.
+class LinearTopology(GridTopology):
+    """
+    LinearTopology creates a linear topology with `nodes_number` nodes.
     """
 
-    def build(self) -> tuple[list[QNode], list[QuantumChannel]]:
-        nl: list[QNode] = []
-        ll: list[QuantumChannel] = []
-        if self.nodes_number >= 1:
-            n = QNode(f"n{1}")
-            nl.append(n)
-        pn = n
-        for i in range(self.nodes_number - 1):
-            n = QNode(f"n{i+2}")
-            nl.append(n)
-            link = QuantumChannel(name=f"l{i+1}", **self.qchannel_args)
-            ll.append(link)
-
-            pn.add_qchannel(link)
-            n.add_qchannel(link)
-            pn = n
-
-        self._add_apps(nl)
-        self._add_memories(nl)
-        return nl, ll
+    def __init__(self, nodes_number: int, **kwargs: Unpack[TopologyInitKwargs]):
+        super().__init__((1, nodes_number), **kwargs)
+        # A linear topology is a special case of a grid topology with one row and nodes_number columns.
