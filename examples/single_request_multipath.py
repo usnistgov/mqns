@@ -130,8 +130,7 @@ log.install(s)
 topo = CustomTopology(json_topology)
 net = QuantumNetwork(
     topo=topo,
-#    route=DijkstraRouteAlgorithm(),
-    route=YenRouteAlgorithm(),
+    route=YenRouteAlgorithm(),              # Yen's algo is set here!
     timing_mode=TimingModeEnum.ASYNC
 )
 net.install(s)

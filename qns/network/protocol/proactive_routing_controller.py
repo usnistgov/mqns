@@ -106,11 +106,11 @@ class ProactiveRoutingControllerApp(Application):
 
         self.purif = purif
 
-        if routing_type in ["SRSP", "SRMP_STATIC", "SRMP_DYNAMIC"]:
+        if routing_type in ["SRSP", "SRMP_STATIC", "MRSP_DYNAMIC"]:
             self.routing_type = routing_type
         else:
             raise Exception(f"{self.own}: Routing type {self.routing_type} not supported."
-                            f"Supported types: ['SRSP', 'SRMP_STATIC', 'SRMP_DYNAMIC']")
+                            f"Supported types: ['SRSP', 'SRMP_STATIC', 'MRSP_DYNAMIC']")
 
     def install(self, node: Node, simulator: Simulator):
         super().install(node, simulator)
@@ -119,47 +119,74 @@ class ProactiveRoutingControllerApp(Application):
     
         # install the test path on QNodes
         if self.routing_type == "SRSP":
-            self.install_static_path()
+            self.install_static_path(0, 0, 'S', 'D')
         elif self.routing_type == "SRMP_STATIC":
             self.install_multiple_static_paths()
-        elif self.routing_type == "SRMP_DYNAMIC":
-            self.install_multiple_static_paths()
+        elif self.routing_type == "MRSP_DYNAMIC":
+            self.install_multi_request_dynamic_paths()
 
-    def install_static_path(self):
-        """Install a static path between nodes "S" (source) and "D" (destination) of the network topology.
-        It currently supports linear chain topology with a single S-D path.
-        It computes a path between S and D and installs instructions with a predefined swapping order.
+    def install_static_path(self, req_id: int, path_id: int, src: str, dst: str, allocate_qubits: bool = True):
+        """Install a static path between src and dst of the network topology.
+        It currently supports linear chain topology with a single src-dst path.
+        It computes a path between src and dst and installs instructions with a predefined swapping order.
 
         This method performs the following:
             - Builds the network route table.
-            - Locates the source ("S") and destination ("D") nodes in the network.
-            - Computes shortest path between source and destination.
+            - Locates the src and dst nodes in the network and computes shortest path.
             DijkstraRouteAlgorithm is the default algorithm and uses hop counts at metric.
             - Verifies that the number of nodes in the computed path matches the expected number
             of swapping steps based on the configured swapping strategy.
-            - Constructs per-channel memory allocation vectors (m_v) assuming buffer-space multiplexing
-            following qubits-qchannels allocation defined at topology creation.
+            - If `allocate_qubits` is True, it constructs per-channel memory allocation vectors (m_v) 
+            assuming buffer-space (B) multiplexing, following qubits-qchannels allocation defined at topology creation.
+            - If `allocate_qubits` is False, it does not construct qubit-path allocation (m_v), 
+            and statistical multiplexing (S) is assumed.
             - Sends installation instructions to each node along the path using classical channels.
 
         Raises:
+<<<<<<< HEAD
             RuntimeError - no route from S to D.
             ValueError - computed route length does not match swapping order vector.
 
         Notes:
             - `self.swapping_order` provides the expected swapping instructions.
             - Multiplexing strategy is hardcoded as "B" (buffer-space).
+=======
+            Exception: If src or dst node not found.
+            Exception: If the swapping configuration is not configured.
+            Exception: If the computed route does not match the length expected by the current swapping configuration.
+
+        Notes:
+            - The `swapping_settings[self.swapping]` provides the expected swapping instructions.
+>>>>>>> c1f0c77 (wip: create topology and install paths for statistical mux)
             - Path instructions are transmitted over classical channels using the `"install_path"` command.
-            - This method is primarily intended for test or static configuration scenarios, not dynamic routing.
             - Purification scheme has to be specified (hardcoded) in the function.
         """
         self.net.build_route()
 
+<<<<<<< HEAD
         src = self.net.get_node("S")
         dst = self.net.get_node("D")
 
         route_result = self.net.query_route(src, dst)
         if len(route_result) == 0:
             raise RuntimeError(f"{self.own}: No route from {src} to {dst}")
+=======
+        qnode_src = None
+        qnode_dst = None
+        for qn in network_nodes:
+            if qn.name == src:
+                qnode_src = qn
+            if qn.name == dst:
+                qnode_dst = qn
+                
+        if qnode_src is None:
+            raise Exception(f"{self.own}: Qnode {src} not found")
+
+        if qnode_dst is None:
+            raise Exception(f"{self.own}: Qnode {dst} not found")
+
+        route_result = self.net.query_route(qnode_src, qnode_dst)
+>>>>>>> c1f0c77 (wip: create topology and install paths for statistical mux)
         path_nodes = route_result[0][2]
         log.debug(f"{self.own}: Computed path: {path_nodes}")
 
@@ -198,6 +225,7 @@ class ProactiveRoutingControllerApp(Application):
             if not check_purif_segment(route, segment_name):
                 raise ValueError(f"purif segment {segment_name} does not exist in route")
 
+<<<<<<< HEAD
         m_v = self.compute_m_v(route)
 
         for node_name in route:
@@ -207,25 +235,72 @@ class ProactiveRoutingControllerApp(Application):
                 "route": route,
                 "swap": swap,
                 "mux": "B",
+=======
+        # Static qubits-path assignment: allocates all the qchannel qubits to this path
+        # TODO:
+        # - Simple policy to allocate qubits to N paths (e.g., equally divide by N)
+        # - No static allocation -> statistical qubit mux
+        m_v = []
+        if allocate_qubits:
+            for i, node in enumerate(path_nodes):
+                node_obj = self.net.get_node(node.name)
+                left_ch_qubits = 0
+                right_ch_qubits = 0
+
+                # Left channel: channel between this node and the previous node (if not the first)
+                if i > 0:
+                    prev_node = path_nodes[i - 1].name
+                    left_ch_name = f"q_{prev_node},{node.name}"
+                    if left_ch_name not in qchannel_names:
+                        raise Exception(f"Qchannel not found: {left_ch_name}")
+                    left_qubits = node_obj.memory.get_channel_qubits(left_ch_name)
+                    left_ch_qubits = len(left_qubits)
+
+                # Right channel: channel between this node and the next node (if not the last)
+                if i < len(path_nodes) - 1:
+                    next_node = path_nodes[i + 1].name
+                    right_ch_name = f"q_{node.name},{next_node}"
+                    if right_ch_name not in qchannel_names:
+                        raise Exception(f"Qchannel not found: {right_ch_name}")
+                    right_qubits = node_obj.memory.get_channel_qubits(right_ch_name)
+                    right_ch_qubits = len(right_qubits)
+
+                m_v.append((left_ch_qubits, right_ch_qubits))
+
+        for qnode in path_nodes:
+            instructions = {
+                "req_id": req_id,
+                "route": route,
+                "swap": swapping_settings[self.swapping],
+                "mux": "B" if allocate_qubits else "S",
+>>>>>>> c1f0c77 (wip: create topology and install paths for statistical mux)
                 "m_v": m_v,
                 "purif": purif,
             }
             msg: "InstallPathMsg" = {"cmd": "install_path", "path_id": path_id, "instructions": instructions}
 
             cchannel = self.own.get_cchannel(qnode)
+<<<<<<< HEAD
             cchannel.send(ClassicPacket(msg, src=self.own, dest=qnode), next_hop=qnode)
             log.debug(f"{self.own}: send {msg} to {qnode}")
+=======
+            classic_packet = ClassicPacket(
+                msg={"cmd": "install_path", "path_id": path_id, "instructions": instructions}, src=self.own, dest=qnode)
+            cchannel.send(classic_packet, next_hop=qnode)
+            log.debug(f"{self.own}: send {classic_packet.msg} to {qnode}")
+
+>>>>>>> c1f0c77 (wip: create topology and install paths for statistical mux)
 
     def install_multiple_static_paths(self):
         """Install multiple static paths between nodes "S" (source) and "D" (destination) of the network topology.
-        It computes available paths between S and D and installs instructions with a predefined swapping order.
+        It computes k-shortest paths between S and D and installs instructions with a predefined swapping order.
         Paths are not necessarily disjoint; they may share same qchannels.
 
         This method performs the following:
             - Builds the network route table.
             - Locates the source ("S") and destination ("D") nodes in the network.
             - Computes M shortest paths between source and destination.
-            DijkstraRouteAlgorithm is the default algorithm and uses hop counts at metric.
+            Yen's algorithm is used with hop counts at metric.
             - Computes a swapping sequence for each path based on swapping config (e.g., `l2r` for sequential swapping).
             - Constructs per-channel memory allocation vectors (m_v) assuming buffer-space multiplexing
             following qubits-qchannels allocation defined at topology creation.
@@ -233,7 +308,8 @@ class ProactiveRoutingControllerApp(Application):
             - Sends installation instructions to each node along the path using classical channels.
 
         Raises:
-            Exception: If the computed route does not match the length expected by the current swapping configuration.
+            Exception: If S or D node not found.
+            Exception: If the selected swapping configuration is not found for the computed route.
 
         Notes:
             - Multiplexing strategy is hardcoded as "B" (buffer-space).
@@ -332,9 +408,53 @@ class ProactiveRoutingControllerApp(Application):
                 cchannel.send(classic_packet, next_hop=qnode)
                 log.debug(f"{self.own}: sent {classic_packet.msg} to {qnode}")
 
+<<<<<<< HEAD
 def check_purif_segment(route: list[str], segment_name: str) -> bool:
     try:
         idx0, idx1 = [route.index(node_name) for node_name in segment_name.split("-")]
         return idx0 < idx1
     except ValueError:
         return False
+=======
+
+    def install_multi_request_dynamic_paths(self):
+        """Install one path between S1 and D1 and one path between S2 and D2 of the network topology.
+
+        This method uses `install_static_path` to install a path between S1 and D1 (S2 and D2),
+        without qubit-path allocation.
+        """
+        self.install_static_path(0, 0, 'S1', 'D1', False)
+        self.install_static_path(1, 1, 'S2', 'D2', False)       # keep path_id globally unique
+
+
+    # def RecvClassicPacketHandler(self, node: Controller, event: Event):
+    #     self.handle_request(event)
+
+    # def handle_request(self, event: RecvClassicPacket):
+    #     msg = event.packet.get()
+    #     cchannel = event.cchannel
+
+    #     from_node: Node = cchannel.node_list[0] \
+    #         if cchannel.node_list[1] == self.own else cchannel.node_list[1]
+
+    #     log.debug(f"{self.own}: recv {msg} from {from_node}")
+
+    #     cmd = msg["cmd"]
+    #     request_id = msg["request_id"]
+
+    #     if cmd == "submit":
+    #         # process new request submitted and send instructions to QNodes
+    #         # can model processing time with events
+    #         nodes_in_path = []
+    #         for qnode in nodes_in_path:
+    #             classic_packet = ClassicPacket(
+    #                 msg={"cmd": "install_path", "request_id": request_id}, src=self.own, dest=qnode)
+    #             cchannel.send(classic_packet, next_hop=qnode)
+    #             log.debug(f"{self.own}: send {classic_packet.msg} to {qnode}")
+    #     elif cmd == "withdraw":
+    #         # remove request and send instructions to QNodes
+    #         pass
+    #     else:
+    #         pass
+
+>>>>>>> c1f0c77 (wip: create topology and install paths for statistical mux)
