@@ -75,6 +75,7 @@ class QubitFSM:
 class PathDirection(Enum):
     LEFT = auto()
     RIGHT = auto()
+    NONE = auto()
 
 class MemoryQubit:
     """An addressable qubit in memory, with a lifecycle."""
@@ -98,7 +99,7 @@ class MemoryQubit:
         self.path_direction: PathDirection|None = None
         """Optional end of the path to which the allocated qubit points to (weak solution to avoid loops)"""
 
-    def allocate(self, path_id: int, path_direction: "PathDirection") -> None:
+    def allocate(self, path_id: int, path_direction: "PathDirection"|None = None) -> None:
         self.path_id = path_id
         self.path_direction = path_direction
 

@@ -371,7 +371,7 @@ class QuantumMemory(Entity):
             event.cancel()
         self.pending_decohere_events = {}
 
-    def allocate(self, ch_name: str, path_id: int, path_direction: "PathDirection") -> int:
+    def allocate(self, ch_name: str, path_id: int, path_direction: "PathDirection"|None = None) -> int:
         """
         Allocate an unused memory qubit to a given path ID.
 

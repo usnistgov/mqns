@@ -17,6 +17,7 @@
 
 from collections.abc import Callable
 from typing import Any, Literal, TypedDict, cast
+import copy, random
 
 from qns.entity.cchannel import ClassicPacket, RecvClassicPacket
 from qns.entity.memory import QuantumMemory
@@ -113,7 +114,10 @@ class ProactiveForwarder(Application):
         """stores the qubits waiting for the INTERNAL phase (SYNC mode)"""
 
         self.request_paths_map = dict[int, list[int]] = {}
-        """stores paths associated with the same S-D request"""
+        """stores paths associated with the same S-D request (for non-isolated paths)"""
+
+        self.qchannel_paths_map = dict[str, list[int]] = {}
+        """stores path-qchannel relationship (for statistical mux)"""
 
         self.sync_current_phase = SignalTypeEnum.INTERNAL
 
@@ -199,17 +203,19 @@ class ProactiveForwarder(Application):
         route = instructions["route"]
         log.debug(f"{self.own.name}: routing instructions of path {path_id}: {instructions}")
 
-        if "m_v" not in instructions:
-            raise NotImplementedError(f"{self.own}: No m_v provided -> Statistical multiplexing not supported yet")
-        m_v = instructions["m_v"]
-        assert len(m_v) + 1 == len(route)
+        m_v = None
+        if "m_v" in instructions:
+            m_v = instructions["m_v"]
+            assert len(m_v) + 1 == len(route)
 
         # identify left/right neighbors and allocate memory qubits to the path
         _, l_qubits = self._find_neighbor_and_allocate_qubits(
             path_id, route, -1, m_v, -1, PathDirection.LEFT)
         r_neighbor, r_qubits = self._find_neighbor_and_allocate_qubits(
             path_id, route, 1, m_v, 0, path_direction=PathDirection.RIGHT)
-        log.debug(f"Allocated qubits: left = {l_qubits} | right = {r_qubits}")
+
+        if m_v is not None:
+            log.debug(f"Allocated qubits: left = {l_qubits} | right = {r_qubits}")
 
         # populate FIB
         self.fib.add_entry(
@@ -230,8 +236,8 @@ class ProactiveForwarder(Application):
         return True
 
     def _find_neighbor_and_allocate_qubits(
-        self, path_id: int, route: list[str], route_offset: int, m_v: list[int], m_v_offset: int,
-        path_direction: PathDirection) -> tuple[QNode | None, list[int]]:
+        self, path_id: int, route: list[str], route_offset: int, m_v: list[int] | None, m_v_offset: int,
+        path_direction: PathDirection) -> tuple[QNode | None, list[int] | None]:
         own_idx = route.index(self.own.name)
         neigh_idx = own_idx + route_offset
         if neigh_idx in (-1, len(route)):  # no left/right neighbor if own node is the left/right end node
@@ -240,6 +246,14 @@ class ProactiveForwarder(Application):
         neighbor = self.net.get_node(route[neigh_idx])
         # self.own.get_qchannel(neighbor) ensure qchannel exists
         qchannel: QuantumChannel = self.own.get_qchannel(neighbor)
+
+        if qchannel.name not in self.qchannel_paths_map:
+            self.qchannel_paths_map[qchannel.name] = [path_id]
+        else:
+            self.qchannel_paths_map[qchannel.name].append(path_id)
+
+        if m_v is None:
+            return neighbor, None
 
         n_qubits = m_v[own_idx + m_v_offset]
         qubits = [self.memory.allocate(ch_name=qchannel.name, path_id=path_id, path_direction=path_direction) 
@@ -286,7 +300,33 @@ class ProactiveForwarder(Application):
                 qubit.fsm.to_purif()
                 self.qubit_is_purif(qubit, fib_entry, event.neighbor)
         else:  # for statistical mux
-            log.debug("Qubit not allocated to a path. Statistical mux not supported yet.")
+            log.debug(f"{self.own}: Qubit not allocated to a path.")
+            if qubit.qchannel is not None:            # Expected in all our cases so far
+                if qubit.qchannel.name in self.qchannel_paths_map:
+                    possible_path_ids = self.qchannel_paths_map[qubit.qchannel.name]
+                    log.debug(f"{self.own}: Use qubit-qchannel assignment to affect EPR to a path from {possible_path_ids}")
+
+                    # This is the wrong approach: random_path_id = random.choice(possible_path_ids)
+
+                    # See if there is an eligible qubit/EPR waiting -> affect this qubit/EPR to the same path
+                    res = self.select_eligible_qubit(
+                        exc_qchannel=qubit.qchannel.name,
+                        path_id=possible_path_ids)
+
+                    if res:
+                        log.debug(f"{self.own}: ????")
+                        fib_entry = self.fib.get_entry(res.path_id)
+                        if fib_entry:
+                            if self._can_enter_purif(fib_entry, event.neighbor.name):
+                                self.own.get_qchannel(event.neighbor) # ensure qchannel exists
+                                event.qubit.fsm.to_purif()
+                                self.purif(qubit, fib_entry, event.neighbor)
+                        else:
+                            raise Exception(f"No FIB entry found for path_id {random_path_id}")
+                    else:
+                        log.debug(f"{self.own}: ????")
+            else:
+                raise Exception(f"{self.own}: No qubit-qchannel assignment. Not supported.")
 
     def _can_enter_purif(self, fib_entry: FIBEntry, partner: str) -> bool:
         """Evaluate if a qubit is eligible for purification.
