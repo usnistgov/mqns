@@ -12,7 +12,7 @@ from qns.simulator import Simulator
 from qns.utils import log
 from qns.utils.rnd import set_seed
 
-log.set_default_level("CRITICAL")
+log.set_default_level("DEBUG")
 
 SEED_BASE = 100
 
@@ -31,7 +31,8 @@ p_swap = 0.5
 
 
 # 3-nodes topology
-swapping_config = "isolation_1"  # NOTE: This requires to disable swapping in the Forwarder module to work
+swapping_config = "no_swap"
+
 ch_1 = 32
 ch_2 = 18
 
@@ -106,7 +107,7 @@ def generate_topology(channel_qubits) -> Topo:
             {"node1": "ctrl", "node2": "R", "parameters": {"length": 1.0}},
             {"node1": "ctrl", "node2": "D", "parameters": {"length": 1.0}},
         ],
-        "controller": {"name": "ctrl", "apps": [ProactiveRoutingControllerApp(swapping=swapping_config)]},
+        "controller": {"name": "ctrl", "apps": [ProactiveRoutingControllerApp(routing_type="SRSP", swapping=swapping_config)]},
     }
 
 

@@ -112,7 +112,7 @@ def generate_topology(t_coherence) -> Topo:
             {"node1": "ctrl", "node2": "R", "parameters": {"length": 1.0}},
             {"node1": "ctrl", "node2": "D", "parameters": {"length": 1.0}},
         ],
-        "controller": {"name": "ctrl", "apps": [ProactiveRoutingControllerApp(swapping=swapping_config)]},
+        "controller": {"name": "ctrl", "apps": [ProactiveRoutingControllerApp(routing_type="SRSP", swapping=swapping_config)]},
     }
 
 
@@ -137,8 +137,11 @@ def run_simulation(t_coherence, seed):
         total_etg += ll_app.etg_count
         total_decohered += ll_app.decoh_count
 
-    cnt = net.get_node("S").get_app(ProactiveForwarder).cnt
-    return cnt.n_consumed / sim_duration, cnt.consumed_avg_fidelity, total_decohered / total_etg if total_etg > 0 else 0
+    e2e_count = net.get_node("S").get_app(ProactiveForwarder).e2e_count
+    e2e_rate = e2e_count / sim_duration
+    mean_fidelity = net.get_node("S").get_app(ProactiveForwarder).fidelity / e2e_count if e2e_count > 0 else 0
+
+    return e2e_rate, mean_fidelity, total_decohered / total_etg if total_etg > 0 else 0
 
 
 results = {"T_cohere": [], "Mean Rate": [], "Std Rate": [], "Mean F": [], "Std F": []}

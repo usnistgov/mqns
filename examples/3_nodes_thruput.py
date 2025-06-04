@@ -123,7 +123,7 @@ def generate_topology(t_coherence: float) -> Topo:
             {"node1": "ctrl", "node2": "R", "parameters": {"length": 1.0}},
             {"node1": "ctrl", "node2": "D", "parameters": {"length": 1.0}},
         ],
-        "controller": {"name": "ctrl", "apps": [ProactiveRoutingControllerApp(swapping=swapping_config)]},
+        "controller": {"name": "ctrl", "apps": [ProactiveRoutingControllerApp(routing_type="SRSP", swapping=swapping_config)]},
     }
 
 
@@ -152,6 +152,7 @@ def run_simulation(t_coherence, seed):
 
     """
     json_topology = generate_topology(t_coherence)
+    print(json_topology)
 
     set_seed(seed)
     s = Simulator(0, sim_duration + 5e-06, accuracy=1000000)
@@ -171,7 +172,7 @@ def run_simulation(t_coherence, seed):
         total_etg += ll_app.etg_count
         total_decohered += ll_app.decoh_count
 
-    e2e_rate = net.get_node("S").get_app(ProactiveForwarder).cnt.n_consumed / sim_duration
+    e2e_rate = net.get_node("S").get_app(ProactiveForwarder).e2e_count / sim_duration
 
     return e2e_rate, total_decohered / total_etg if total_etg > 0 else 0
 
