@@ -388,7 +388,7 @@ class ProactiveForwarder(Application):
         simulator = self.simulator
         # TODO: make this controllable
         # # for isolated links -> consume immediatly
-        # _, qm = self.memory.read(address=qubit.addr)
+        # _, qm = self.memory.read(address=qubit.addr, must=True)
         # qubit.fsm.to_release()
         # log.debug(f"{self.own}: consume entanglement: <{qubit.addr}> {qm.src.name} - {qm.dst.name}")
         # event = QubitReleasedEvent(link_layer=self.link_layer, qubit=qubit, e2e=self.own.name=='S',
@@ -437,11 +437,12 @@ class ProactiveForwarder(Application):
         if res:
             log.debug(f"{self.own}: available qubit for purif {res} -> start purif")
 
-            _, epr = self.memory.read(address=qubit.addr, destructive=False)    # sets the fidelity for the partner at this time
+            # sets the fidelity for the partner at this time
+            _, epr = self.memory.read(address=qubit.addr, destructive=False, must=True)
 
             # consume and release other_qubit
             # this sets the fidelity for the partner at this time
-            other_qubit, other_epr = self.memory.read(address=res.addr)
+            other_qubit, other_epr = self.memory.read(address=res.addr, must=True)
             other_qubit.fsm.to_release()
             ev = QubitReleasedEvent(link_layer=self.link_layer, qubit=other_qubit, t=simulator.tc, by=self)
             simulator.add_event(ev)
@@ -483,20 +484,17 @@ class ProactiveForwarder(Application):
             raise Exception(f"{self.own}: FIB entry not found for path {path_id}")
 
         if dest_node.name == self.own.name:
-            to_keep = self.memory.read(key=msg["epr"], destructive=False)              # gets the same fidelity as primary node
-            to_meas = self.memory.read(key=msg["measure_epr"])                         # gets the same fidelity as primary node
+            qubit, epr = self.memory.read(key=msg["epr"], destructive=False, must=True) # gets the same fidelity as primary node
+            meas_qubit, meas_epr = self.memory.read(key=msg["measure_epr"], must=True)  # gets the same fidelity as primary node
+            # TODO: verify (should be decohered) in case either EPR is not found in memory
+            assert isinstance(epr, WernerStateEntanglement)
+            assert epr.name is not None
+            assert isinstance(meas_epr, WernerStateEntanglement)
 
-            if to_keep is None or to_meas is None:
-                raise Exception(f"{self.own}: one of EPRs not found in memory")
-                # TODO: verify (should be decohered)
-
-            qubit, epr = to_keep
-            meas_qubit, meas_epr = to_meas
             if qubit.fsm.state != QubitState.ENTANGLED or meas_qubit.fsm.state != QubitState.ENTANGLED:
                 log.debug(f"{self.own}: qubit={qubit.fsm.state}, meas_qubit={meas_qubit.fsm.state}")
                 raise Exception(f"{self.own}: qubits not in ELIGIBLE states -> not suppoted yet")
-            assert isinstance(epr, WernerStateEntanglement)
-            assert isinstance(meas_epr, WernerStateEntanglement)
+
             # if qubits in ELIGIBLE -> do purif, release measured qubit, update purified qubit-pair, reply
             dest = self.own.network.get_node(msg["purif_node"])
             resp_msg = {
@@ -553,11 +551,8 @@ class ProactiveForwarder(Application):
             raise Exception(f"{self.own}: FIB entry not found for path {path_id}")
 
         if dest_node.name == self.own.name:
-            to_keep = self.memory.get(key=msg["epr"])
-            if to_keep is None:
-                raise Exception(f"{self.own}: EPR not found in memory")
-                # TODO: verify (should be decohered)
-            qubit, epr = to_keep
+            qubit, epr = self.memory.get(key=msg["epr"], must=True)
+            # TODO: verify (should be decohered) in case EPR is not found in memory
             if msg["result"]:     # purif succeeded
                 self.memory.update(old_qm=epr.name, new_qm=epr)
                 qubit.purif_rounds+=1
@@ -598,8 +593,8 @@ class ProactiveForwarder(Application):
             res = self.select_eligible_qubit(exc_qchannel=qubit.qchannel.name, path_id=fib_entry["path_id"])
             if res:      # do swapping
                 # Read both qubits to set current fidelity
-                other_qubit, other_epr = self.memory.read(address=res.addr)
-                this_qubit, this_epr = self.memory.read(address=qubit.addr)
+                other_qubit, other_epr = self.memory.read(address=res.addr, must=True)
+                this_qubit, this_epr = self.memory.read(address=qubit.addr, must=True)
 
                 # order eprs and prev/next nodes
                 if this_epr.dst == self.own:
@@ -682,7 +677,7 @@ class ProactiveForwarder(Application):
                 simulator.add_event(ev2)
 
         else:           # end-node
-            _, qm = self.memory.read(address=qubit.addr)
+            _, qm = self.memory.read(address=qubit.addr, must=True)
             qubit.fsm.to_release()
             log.debug(f"{self.own}: consume EPR: {qm.name} -> {qm.src.name}-{qm.dst.name} | F={qm.fidelity}")
             self.e2e_count+=1
