@@ -105,7 +105,7 @@ class Topology:
             m = QuantumMemory(name=f"m{idx}", node=n, **self.memory_args)
             n.set_memory(m)
 
-    def add_cchannels(self, classic_topo: ClassicTopology = ClassicTopology.Empty,
+    def add_cchannels(self, *, classic_topo: ClassicTopology = ClassicTopology.Empty,
                       nl: list[QNode] = [], ll: list[QuantumChannel] = []) -> list[ClassicChannel]:
         """Build classic network topology
 
