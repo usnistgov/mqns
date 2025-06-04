@@ -7,12 +7,10 @@ import pandas as pd
 from qns.entity.monitor import Monitor
 from qns.entity.qchannel import RecvQubitPacket
 from qns.network import QuantumNetwork, TimingModeEnum
-from qns.network.protocol.link_layer import LinkLayer
-from qns.network.protocol.proactive_forwarder import ProactiveForwarder
-from qns.network.protocol.proactive_routing_controller import ProactiveRoutingControllerApp
-from qns.network.route.dijkstra import DijkstraRouteAlgorithm
-from qns.network.topology.customtopo import CustomTopology
-from qns.simulator.simulator import Simulator
+from qns.network.protocol import LinkLayer, ProactiveForwarder, ProactiveRoutingControllerApp
+from qns.network.route import DijkstraRouteAlgorithm
+from qns.network.topology.customtopo import CustomTopology, Topo
+from qns.simulator import Simulator
 from qns.utils import log
 from qns.utils.rnd import set_seed
 
@@ -42,7 +40,7 @@ swapping_config = "isolation_1"      # NOTE: This requires to disable swapping i
 ch_1 = 32
 ch_2 = 18
 
-def generate_topology(channel_qubits):
+def generate_topology(channel_qubits) -> Topo:
     return {
     "qnodes": [
         {

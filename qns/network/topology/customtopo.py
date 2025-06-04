@@ -16,18 +16,50 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
+from typing import Any, TypedDict
+
 from qns.entity.cchannel import ClassicChannel
 from qns.entity.memory import QuantumMemory
-from qns.entity.node import Controller, QNode
+from qns.entity.node import Application, Controller, QNode
 from qns.entity.qchannel import QuantumChannel
 from qns.network.topology.topo import Topology
 
+try:
+    from typing import NotRequired
+except ImportError:
+    from typing_extensions import NotRequired
+
+class TopoQNode(TypedDict):
+    name: str
+    memory: Any
+    apps: list[Application]
+
+class TopoQChannel(TypedDict):
+    node1: str
+    node2: str
+    capacity: int
+    parameters: Any
+
+class TopoCChannel(TypedDict):
+    node1: str
+    node2: str
+    parameters: Any
+
+class TopoController(TypedDict):
+    name: str
+    apps: list[Application]
+
+class Topo(TypedDict):
+    qnodes: list[TopoQNode]
+    qchannels: list[TopoQChannel]
+    cchannels: list[TopoCChannel]
+    controller: NotRequired[TopoController]
 
 class CustomTopology(Topology):
     """TopologyCreator processed the topology dict.
     """
 
-    def __init__(self, topo: dict = {}):
+    def __init__(self, topo: Topo):
         super().__init__(0)
         self.topo = topo
 
@@ -73,7 +105,7 @@ class CustomTopology(Topology):
 
     def add_cchannels(self, **kwargs):
         if len(kwargs) != 0:
-            raise TypeError("CustomTopology.add_cchannels() does not accept classical_topo= keyword")
+            raise TypeError("CustomTopology.add_cchannels() does not accept classic_topo= keyword")
 
         ccl: list[ClassicChannel] = []
         for ch in self.topo["cchannels"]:

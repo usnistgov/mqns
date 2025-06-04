@@ -6,12 +6,10 @@ import numpy as np
 import pandas as pd
 
 from qns.network import QuantumNetwork, TimingModeEnum
-from qns.network.protocol.link_layer import LinkLayer
-from qns.network.protocol.proactive_forwarder import ProactiveForwarder
-from qns.network.protocol.proactive_routing_controller import ProactiveRoutingControllerApp
-from qns.network.route.dijkstra import DijkstraRouteAlgorithm
-from qns.network.topology.customtopo import CustomTopology
-from qns.simulator.simulator import Simulator
+from qns.network.protocol import LinkLayer, ProactiveForwarder, ProactiveRoutingControllerApp
+from qns.network.route import DijkstraRouteAlgorithm
+from qns.network.topology.customtopo import CustomTopology, Topo, TopoCChannel, TopoController, TopoQChannel, TopoQNode
+from qns.simulator import Simulator
 from qns.utils import log
 from qns.utils.rnd import set_seed
 
@@ -80,14 +78,14 @@ def compute_distances_distribution(end_to_end_distance, number_of_routers, dista
     else:
         raise ValueError(f"Invalid distance proportion type: {distance_proportion}")
 
-def generate_topology(number_of_routers, distance_proportion, swapping_config, total_distance):
+def generate_topology(number_of_routers, distance_proportion, swapping_config, total_distance) -> Topo:
     # Generate nodes
-    nodes = [{"name": "S", "memory": {"decoherence_rate": 1 / t_coherence, "capacity": channel_qubits},
-              "apps": [LinkLayer(attempt_rate=entg_attempt_rate, init_fidelity=init_fidelity,
-                                 alpha_db_per_km=fiber_alpha,
-                                 eta_d=eta_d, eta_s=eta_s,
-                                 frequency=frequency),
-                       ProactiveForwarder()]}]
+    nodes: list[TopoQNode] = []
+    nodes.append({"name": "S", "memory": {"decoherence_rate": 1 / t_coherence, "capacity": channel_qubits},
+                  "apps": [LinkLayer(attempt_rate=entg_attempt_rate, init_fidelity=init_fidelity,
+                                     alpha_db_per_km=fiber_alpha,
+                                     eta_d=eta_d, eta_s=eta_s,
+                                     frequency=frequency), ProactiveForwarder()]})
     for i in range(1, number_of_routers + 1):
         nodes.append({
             "name": f"R{i}",
@@ -107,8 +105,8 @@ def generate_topology(number_of_routers, distance_proportion, swapping_config, t
     distances = compute_distances_distribution(total_distance, number_of_routers, distance_proportion)
 
     # Generate qchannels and cchannels
-    qchannels = []
-    cchannels = []
+    qchannels: list[TopoQChannel] = []
+    cchannels: list[TopoCChannel] = []
     names = ["S"] + [f"R{i}" for i in range(1, number_of_routers + 1)] + ["D"]
     for i in range(len(names) - 1):
         ch_len = distances[i]
@@ -139,7 +137,7 @@ def generate_topology(number_of_routers, distance_proportion, swapping_config, t
         })
 
     # Define controller
-    controller = {
+    controller: TopoController = {
         "name": "ctrl",
         "apps": [ProactiveRoutingControllerApp(swapping=swapping_config)]
     }

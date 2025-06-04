@@ -5,12 +5,10 @@ import numpy as np
 import pandas as pd
 
 from qns.network import QuantumNetwork, TimingModeEnum
-from qns.network.protocol.link_layer import LinkLayer
-from qns.network.protocol.proactive_forwarder import ProactiveForwarder
-from qns.network.protocol.proactive_routing_controller import ProactiveRoutingControllerApp
-from qns.network.route.dijkstra import DijkstraRouteAlgorithm
-from qns.network.topology.customtopo import CustomTopology
-from qns.simulator.simulator import Simulator
+from qns.network.protocol import LinkLayer, ProactiveForwarder, ProactiveRoutingControllerApp
+from qns.network.route import DijkstraRouteAlgorithm
+from qns.network.topology.customtopo import CustomTopology, Topo
+from qns.simulator import Simulator
 from qns.utils import log
 from qns.utils.rnd import set_seed
 
@@ -40,7 +38,7 @@ ch_1 = 32
 ch_2 = 18
 
 
-def generate_topology(t_coherence: float) -> dict:
+def generate_topology(t_coherence: float) -> Topo:
     """
     Defines the topology with globally declared simulation parameters.
 
