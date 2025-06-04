@@ -386,6 +386,7 @@ class ProactiveForwarder(Application):
 
         """
         simulator = self.simulator
+        assert qubit.qchannel is not None
         # TODO: make this controllable
         # # for isolated links -> consume immediatly
         # _, qm = self.memory.read(address=qubit.addr, must=True)
@@ -439,10 +440,15 @@ class ProactiveForwarder(Application):
 
             # sets the fidelity for the partner at this time
             _, epr = self.memory.read(address=qubit.addr, destructive=False, must=True)
+            assert isinstance(epr, WernerStateEntanglement)
+            assert epr.name is not None
 
             # consume and release other_qubit
             # this sets the fidelity for the partner at this time
             other_qubit, other_epr = self.memory.read(address=res.addr, must=True)
+            assert isinstance(other_epr, WernerStateEntanglement)
+            assert other_epr.name is not None
+
             other_qubit.fsm.to_release()
             ev = QubitReleasedEvent(link_layer=self.link_layer, qubit=other_qubit, t=simulator.tc, by=self)
             simulator.add_event(ev)
@@ -554,6 +560,8 @@ class ProactiveForwarder(Application):
             qubit, epr = self.memory.get(key=msg["epr"], must=True)
             # TODO: verify (should be decohered) in case EPR is not found in memory
             if msg["result"]:     # purif succeeded
+                assert isinstance(epr, WernerStateEntanglement)
+                assert epr.name is not None
                 self.memory.update(old_qm=epr.name, new_qm=epr)
                 qubit.purif_rounds+=1
                 qubit.fsm.to_purif()
@@ -580,6 +588,7 @@ class ProactiveForwarder(Application):
 
         """
         simulator = self.simulator
+        assert qubit.qchannel is not None
         if self.own.timing_mode == TimingModeEnum.SYNC and \
             self.sync_current_phase != SignalTypeEnum.INTERNAL:
             log.debug(f"{self.own}: INT phase is over -> stop swaps")
@@ -595,6 +604,8 @@ class ProactiveForwarder(Application):
                 # Read both qubits to set current fidelity
                 other_qubit, other_epr = self.memory.read(address=res.addr, must=True)
                 this_qubit, this_epr = self.memory.read(address=qubit.addr, must=True)
+                assert isinstance(this_epr, WernerStateEntanglement)
+                assert isinstance(other_epr, WernerStateEntanglement)
 
                 # order eprs and prev/next nodes
                 if this_epr.dst == self.own:
@@ -678,6 +689,7 @@ class ProactiveForwarder(Application):
 
         else:           # end-node
             _, qm = self.memory.read(address=qubit.addr, must=True)
+            assert isinstance(qm, WernerStateEntanglement)
             qubit.fsm.to_release()
             log.debug(f"{self.own}: consume EPR: {qm.name} -> {qm.src.name}-{qm.dst.name} | F={qm.fidelity}")
             self.e2e_count+=1

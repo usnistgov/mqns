@@ -26,13 +26,13 @@ from qns.simulator.simulator import Simulator
 
 
 class QuantumOperator(Entity):
-    """Quantum operator can perfrom quantum operation or measurements on qubits.
+    """Quantum operator can perform quantum operation or measurements on qubits.
     It has two modes:
         Synchronous mode, users can use the `operate` function to operate qubits directly without delay
         Asynchronous mode, users will use events to operate quantum operations asynchronously
     """
 
-    def __init__(self, name: str|None = None, *, node: QNode|None = None,
+    def __init__(self, name: str, *, node: QNode|None = None,
                  gate: Callable[..., None|int|list[int]], delay: DelayInput = 0):
         """Args:
         name (str): its name

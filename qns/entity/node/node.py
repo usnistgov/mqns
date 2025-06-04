@@ -174,6 +174,4 @@ class Node(Entity):
             app.handle_sync_signal(signal_type)
 
     def __repr__(self) -> str:
-        if self.name is not None:
-            return f"<node {self.name}>"
-        return super().__repr__()
+        return f"<node {self.name}>"

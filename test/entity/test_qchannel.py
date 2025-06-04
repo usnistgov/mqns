@@ -57,25 +57,25 @@ def setup_and_run(l1: QuantumChannel) -> tuple[SendApp, RecvApp]:
     return (a1, a2)
 
 def test_qchannel_perfect():
-    l1 = QuantumChannel()
+    l1 = QuantumChannel("q")
     a1, a2 = setup_and_run(l1)
     assert a1.count == 400
     assert a2.count == 400
 
 def test_qchannel_delay():
-    l1 = QuantumChannel(delay=0.100)
+    l1 = QuantumChannel("q", delay=0.100)
     a1, a2 = setup_and_run(l1)
     assert a1.count == 400
     assert a2.count == 390
 
 def test_qchannel_drop():
-    l1 = QuantumChannel(drop_rate=0.1)
+    l1 = QuantumChannel("q", drop_rate=0.1)
     a1, a2 = setup_and_run(l1)
     assert a1.count == 400
     assert 320 < a2.count < 400
 
 def test_qchannel_bandwidth():
-    l1 = QuantumChannel(bandwidth=10, max_buffer_size=5)
+    l1 = QuantumChannel("q", bandwidth=10, max_buffer_size=5)
     a1, a2 = setup_and_run(l1)
     assert a1.count == 400
     assert a2.count == 40

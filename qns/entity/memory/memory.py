@@ -56,7 +56,7 @@ class QuantumMemory(Entity):
         Asynchronous mode, users can use events to operate memories asynchronously
     """
 
-    def __init__(self, name: str|None = None, node: QNode|None = None, *,
+    def __init__(self, name: str, node: QNode|None = None, *,
                  capacity: int = 1, delay: DelayInput = 0,
                  decoherence_rate: float = 0, store_error_model_args: dict = {}):
         """Args:
@@ -616,9 +616,7 @@ class QuantumMemory(Entity):
 
 
     def __repr__(self) -> str:
-        if self.name is not None:
-            return "<memory "+self.name+">"
-        return super().__repr__()
+        return "<memory "+self.name+">"
 
     def handle(self, event: Event) -> None:
         assert isinstance(self.node, QNode)

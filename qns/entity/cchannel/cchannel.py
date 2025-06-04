@@ -87,7 +87,7 @@ class ClassicChannel(Entity):
     """ClassicChannel is the channel for classic message
     """
 
-    def __init__(self, name: str|None = None, node_list: list[Node] = [],
+    def __init__(self, name: str, node_list: list[Node] = [],
                  bandwidth: int = 0, delay: DelayInput = 0, length: float = 0, drop_rate: float = 0,
                  max_buffer_size: int = 0):
         """Args:
@@ -164,9 +164,7 @@ class ClassicChannel(Entity):
         simulator.add_event(send_event)
 
     def __repr__(self) -> str:
-        if self.name is not None:
-            return "<cchannel "+self.name+">"
-        return super().__repr__()
+        return "<cchannel "+self.name+">"
 
 
 class NextHopNotConnectionException(Exception):

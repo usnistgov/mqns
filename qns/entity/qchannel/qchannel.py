@@ -40,7 +40,7 @@ class QuantumChannel(Entity):
     """QuantumChannel is the channel for transmitting qubit
     """
 
-    def __init__(self, name: str|None = None, node_list: list[QNode] = [], *,
+    def __init__(self, name: str, node_list: list[QNode] = [], *,
                  bandwidth: int = 0, delay: DelayInput = 0, drop_rate: float = 0,
                  max_buffer_size: int = 0, length: float = 0, decoherence_rate: float = 0,
                  transfer_error_model_args: dict = {}):
@@ -129,9 +129,7 @@ class QuantumChannel(Entity):
         simulator.add_event(send_event)
 
     def __repr__(self) -> str:
-        if self.name is not None:
-            return "<qchannel "+self.name+">"
-        return super().__repr__()
+        return "<qchannel "+self.name+">"
 
 
 class NextHopNotConnectionException(Exception):

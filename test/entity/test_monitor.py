@@ -52,7 +52,7 @@ def test_monitor_1():
     n1.install(s)
     n2.install(s)
 
-    m = Monitor()
+    m = Monitor("m")
 
     def watch_send_count(simulator, network, event):
         return sp.count
