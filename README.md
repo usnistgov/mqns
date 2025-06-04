@@ -15,7 +15,7 @@ This project is part of an ongoing research effort to evaluate the quantum netwo
 
 ## Based on SimQN
 
-This project reuses components from [SimQN v0.1.5](https://github.com/qnslab/SimQN), which is licensed under the GNU General Public License v3.0.
+This project reuses components from [SimQN v0.1.5](https://github.com/QNLab-USTC/SimQN), which is licensed under the GNU General Public License v3.0.
 
 This is *not* a fork of the official SimQN repository, but rather a standalone project that incorporates a snapshot of SimQN's implementation—specifically the discrete-event simulation engine, noise modeling framework, and code structure. Substantial modifications have been made to support dynamic routing protocols and enhanced entanglement management capabilities.
 
