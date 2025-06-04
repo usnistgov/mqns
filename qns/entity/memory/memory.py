@@ -371,7 +371,7 @@ class QuantumMemory(Entity):
             event.cancel()
         self.pending_decohere_events = {}
 
-    def allocate(self, ch_name: str, path_id: int, path_direction: "PathDirection"|None = None) -> int:
+    def allocate(self, ch_name: str, path_id: int, path_direction: PathDirection|None = None) -> int:
         """
         Allocate an unused memory qubit to a given path ID.
 
@@ -417,7 +417,7 @@ class QuantumMemory(Entity):
                 return True
         return False
 
-    def search_available_qubits(self, path_id: int | None = None) -> list[MemoryQubit]:
+    def search_available_qubits(self, ch_name: str, path_id: int | None = None) -> list[MemoryQubit]:
         """Search for available (unoccupied and inactive) memory qubits, optionally filtered by path ID.
 
         This method returns all memory qubits that:
@@ -426,6 +426,7 @@ class QuantumMemory(Entity):
             - (Optionally) are assigned to the specified path ID.
 
         Args:
+            ch_name (str): Name of the qchannel the qubits should be assigned to.
             path_id (Optional[int]): The path ID to filter qubits by. If None, any path ID is accepted.
 
         Returns:
@@ -436,6 +437,8 @@ class QuantumMemory(Entity):
         qubits = []
         for qubit, data in self._storage:
             if data is not None:
+                continue
+            if qubit.qchannel.name != ch_name:
                 continue
             if qubit.active:
                 continue

@@ -300,31 +300,63 @@ class ProactiveForwarder(Application):
                 qubit.fsm.to_purif()
                 self.qubit_is_purif(qubit, fib_entry, event.neighbor)
         else:  # for statistical mux
-            log.debug(f"{self.own}: Qubit not allocated to a path.")
+            # This part assumes purification is disabled
+            # Enabling par-path purification scheme is not guaranteed to work with this logic
+            log.debug(f"{self.own}: Qubit not allocated to any path. Use statistical mux.")
             if qubit.qchannel is not None:            # Expected in all our cases so far
                 if qubit.qchannel.name in self.qchannel_paths_map:
                     possible_path_ids = self.qchannel_paths_map[qubit.qchannel.name]
-                    log.debug(f"{self.own}: Use qubit-qchannel assignment to affect EPR to a path from {possible_path_ids}")
 
-                    # This is the wrong approach: random_path_id = random.choice(possible_path_ids)
-
-                    # See if there is an eligible qubit/EPR waiting -> affect this qubit/EPR to the same path
-                    res = self.select_eligible_qubit(
-                        exc_qchannel=qubit.qchannel.name,
-                        path_id=possible_path_ids)
-
-                    if res:
-                        log.debug(f"{self.own}: ????")
-                        fib_entry = self.fib.get_entry(res.path_id)
+                    # if only one path is possible for this qubit -> use it
+                    if len(possible_path_ids) == 1:
+                        log.debug(f"{self.own}: Use qubit-qchannel assignment to affect qubit to path {possible_path_ids[0]}")
+                        fib_entry = self.fib.get_entry(possible_path_ids[0])
                         if fib_entry:
-                            if self._can_enter_purif(fib_entry, event.neighbor.name):
-                                self.own.get_qchannel(event.neighbor) # ensure qchannel exists
-                                event.qubit.fsm.to_purif()
-                                self.purif(qubit, fib_entry, event.neighbor)
+                            if self.eval_qubit_eligibility(fib_entry, event.neighbor.name):
+                                qchannel: QuantumChannel = self.own.get_qchannel(event.neighbor)
+                                if qchannel:
+                                    qubit.fsm.to_purif()
+                                    self.purif(qubit, fib_entry, event.neighbor)
+                                else:
+                                    raise Exception(f"No qchannel found for neighbor {event.neighbor.name}")
                         else:
-                            raise Exception(f"No FIB entry found for path_id {random_path_id}")
+                            raise Exception(f"No FIB entry found for path_id {possible_path_ids[0]}")
                     else:
-                        log.debug(f"{self.own}: ????")
+                        log.debug(f"{self.own}: Check if there is are eligible qubit waiting")
+                        # Check if there is are eligible qubit waiting
+                        res = self.select_eligible_qubit(exc_qchannel=qubit.qchannel.name, path_id=possible_path_ids)
+
+                        # if there are eligible qubit -> use one (selected randomly)
+                        if res:
+                            log.debug(f"{self.own}: Use this qubit/EPR for path {res.path_id}")
+                            fib_entry = self.fib.get_entry(res.path_id)
+                            if fib_entry:
+                                if self.eval_qubit_eligibility(fib_entry, event.neighbor.name):
+                                    qchannel: QuantumChannel = self.own.get_qchannel(event.neighbor)
+                                    if qchannel:
+                                        qubit.fsm.to_purif()
+                                        self.purif(qubit, fib_entry, event.neighbor)
+                                    else:
+                                        raise Exception(f"No qchannel found for neighbor {event.neighbor.name}")
+                            else:
+                                raise Exception(f"No FIB entry found for path {res.path_id}")
+                        # If no eligible qubit -> affet this qubit randomly to a path
+                        # TODO: another way -> se this qubit eligible and use it with the first eligible qubit
+                        # that has only one possible path
+                        else:
+                            random_path_id = random.choice(possible_path_ids)
+                            log.debug(f"{self.own}: No eligible qubit found. Affect qubit randomly to path {random_path_id}")
+                            fib_entry = self.fib.get_entry(random_path_id)
+                            if fib_entry:
+                                if self.eval_qubit_eligibility(fib_entry, event.neighbor.name):
+                                    qchannel: QuantumChannel = self.own.get_qchannel(event.neighbor)
+                                    if qchannel:
+                                        qubit.fsm.to_purif()
+                                        self.purif(qubit, fib_entry, event.neighbor)
+                                    else:
+                                        raise Exception(f"No qchannel found for neighbor {event.neighbor.name}")
+                            else:
+                                raise Exception(f"No FIB entry found for path {random_path_id}")
             else:
                 raise Exception(f"{self.own}: No qubit-qchannel assignment. Not supported.")
 
@@ -652,9 +684,9 @@ class ProactiveForwarder(Application):
         simulator.add_event(QubitReleasedEvent(self.own, qubit, t=simulator.tc, by=self))
 
     def _select_eligible_qubit(
-        self, 
-        exc_qchannel: str, 
-        exc_direction: PathDirection, 
+        self,
+        exc_qchannel: str,
+        exc_direction: PathDirection| None = None,
         path_id: list[int] | None = None) -> MemoryQubit | None:
         """Searches for an eligible qubit in memory that matches the specified path ID and
         is located on a different qchannel than the excluded one. This is used to
