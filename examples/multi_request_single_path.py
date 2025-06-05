@@ -27,13 +27,13 @@ entg_attempt_rate = 50e6         # From fiber max frequency (50 MHz) AND detecto
 
 init_fidelity = 0.99
 p_swap = 0.5
-t_coherence = 0.01    # sec
+t_coherence = 0.1    # sec
 
 node_capacity = 4
 
 
 # 4-nodes topology
-swapping_config = "swap_3_l2r"          # FIXME: here we know there are 3 swaps on all paths
+swapping_config = "swap_3_asap"          # FIXME: here we know there are 3 swaps on all paths
 
 # Multipath settings
 routing_type = "MRSP_DYNAMIC"  # Controller installs one path for each S-D request, without qubit-path allocation
