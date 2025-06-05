@@ -67,7 +67,7 @@ class BaseEntanglement(Generic[EntanglementT]):
         """Elementary EPRs from which this EPR is created via swapping"""
         self.read = False
         """to know when both end-nodes are aware of the EPR"""
-        self.key = None
+        self.key: str|None = None
         """to store the EPR in the right negotiated qubit at the dst node"""
 
     def set_decoherenced(self, value: bool):

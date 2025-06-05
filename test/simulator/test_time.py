@@ -33,8 +33,7 @@ def test_time_compare():
 
     t0 = Time(sec=1.1, accuracy=2000)
     assert t2 != t0
-    with pytest.raises(AssertionError):
-        _ = t3 < t0
+    assert pytest.raises(AssertionError, lambda: t3 < t0)
 
     assert t2 != 1
     assert t2 != "A"
@@ -72,8 +71,7 @@ def test_time_add_sub():
     assert t6b.sec == pytest.approx(6.0)
     assert t6c.sec == pytest.approx(6.0)
 
-    with pytest.raises(AssertionError):
-        _ = t5 + Time(sec=1.0, accuracy=2000)
+    assert pytest.raises(AssertionError, lambda: t5 + Time(sec=1.0, accuracy=2000))
 
     t3a = t5 - 2
     t3b = t5 - 2.0
@@ -82,8 +80,7 @@ def test_time_add_sub():
     assert t3b.sec == pytest.approx(3.0)
     assert t3c.sec == pytest.approx(3.0)
 
-    with pytest.raises(AssertionError):
-        _ = t5 - Time(sec=2.0, accuracy=2000)
+    assert pytest.raises(AssertionError, lambda: t5 - Time(sec=2.0, accuracy=2000))
 
 
 def print_msg(msg):

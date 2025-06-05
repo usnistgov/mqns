@@ -43,7 +43,7 @@ class MonitorEvent(Event):
 
 
 class Monitor(Entity):
-    def __init__(self, name: str|None = None, network: "QuantumNetwork|None" = None) -> None:
+    def __init__(self, name: str, network: "QuantumNetwork|None" = None) -> None:
         """Monitor is a virtual entity that helps users to collect network status.
 
         Args:

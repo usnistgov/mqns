@@ -148,11 +148,11 @@ def run_simulation(t_coherence, seed):
     total_etg = 0
     total_decohered = 0
     for node in net.get_nodes():
-        ll_app = node.get_apps(LinkLayer)[0]
+        ll_app = node.get_app(LinkLayer)
         total_etg+=ll_app.etg_count
         total_decohered+=ll_app.decoh_count
 
-    e2e_rate = net.get_node("S").get_apps(ProactiveForwarder)[0].e2e_count / sim_duration
+    e2e_rate = net.get_node("S").get_app(ProactiveForwarder).e2e_count / sim_duration
 
     return e2e_rate, total_decohered / total_etg if total_etg > 0 else 0
 

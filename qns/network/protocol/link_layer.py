@@ -16,24 +16,21 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import uuid
-from typing import Optional
+from typing import TYPE_CHECKING
 
 import numpy as np
 
-from qns.entity.cchannel.cchannel import ClassicPacket, RecvClassicPacket
-from qns.entity.memory.memory import QuantumMemory
-from qns.entity.memory.memory_qubit import MemoryQubit
-from qns.entity.node.app import Application
-from qns.entity.node.node import Node
-from qns.entity.node.qnode import QNode
-from qns.entity.qchannel.qchannel import QuantumChannel, RecvQubitPacket
+from qns.entity.cchannel import ClassicPacket, RecvClassicPacket
+from qns.entity.memory.memory import MemoryQubit, QuantumMemory
+from qns.entity.node import Application, Node, QNode
+from qns.entity.qchannel import QuantumChannel, RecvQubitPacket
 from qns.models.epr import WernerStateEntanglement
 from qns.network import SignalTypeEnum, TimingModeEnum
-from qns.simulator.event import Event, func_to_event
-from qns.simulator.simulator import Simulator
-from qns.simulator.ts import Time
+from qns.simulator import Event, Simulator, Time, func_to_event
 from qns.utils import log
 
+if TYPE_CHECKING:
+    from qns.network.protocol.proactive_forwarder import ProactiveForwarder
 
 class LinkLayer(Application):
     """This is the network function reponsible for creating elementary entanglements over qchannels.
@@ -63,7 +60,7 @@ class LinkLayer(Application):
             light_speed_kms (int): Speed of light in fiber in km/s (default: 2e5).
 
         """
-        from qns.network.protocol.proactive_forwarder import ProactiveForwarder
+
         super().__init__()
 
         self.alpha_db_per_km = alpha_db_per_km
@@ -74,9 +71,9 @@ class LinkLayer(Application):
         self.attempt_rate = attempt_rate
         self.light_speed_kms = light_speed_kms
 
-        self.own: QNode                    # Quantum node this LinkLayer equips
-        self.memory: QuantumMemory         # Quantum memory of the node
-        self.forwarder: ProactiveForwarder # Forwarder function of the node
+        self.own: QNode                      # Quantum node this LinkLayer equips
+        self.memory: QuantumMemory           # Quantum memory of the node
+        self.forwarder: "ProactiveForwarder" # Forwarder function of the node
 
         # stores the qchannels activated by the forwarding function at path installation
         self.active_channels = {}
@@ -100,22 +97,18 @@ class LinkLayer(Application):
 
 
     # called at initialization of the node
-    def install(self, node: QNode, simulator: Simulator):
-        from qns.network.protocol.proactive_forwarder import ProactiveForwarder
-
+    def install(self, node: Node, simulator: Simulator):
         super().install(node, simulator)
         self.own = self.get_node(node_type=QNode)
         self.memory = self.own.get_memory()
-        fwd_fns = self.own.get_apps(ProactiveForwarder)
-        if fwd_fns:
-            self.forwarder = fwd_fns[0]
-        else:
-            raise Exception("No forwarder found")
 
-    def RecvQubitHandler(self, node: QNode, event: Event):
+        from qns.network.protocol.proactive_forwarder import ProactiveForwarder
+        self.forwarder = self.own.get_app(ProactiveForwarder)
+
+    def RecvQubitHandler(self, node: QNode, event: RecvQubitPacket):
         self.receive_quit(event)
 
-    def RecvClassicPacketHandler(self, node: Node, event: Event):
+    def RecvClassicPacketHandler(self, node: Node, event: RecvClassicPacket):
         if event.packet.get()["cmd"] in ["RESERVE_QUBIT", "RESERVE_QUBIT_OK"]:
             self.handle_reservation(event)
 
@@ -152,7 +145,7 @@ class LinkLayer(Application):
 
 
     def start_reservation(self, next_hop: Node, qchannel: QuantumChannel,
-                          qubit: MemoryQubit, path_id: Optional[int] = None):
+                          qubit: MemoryQubit, path_id: int|None = None):
         """This method starts the exchange with neighbor node for reserving a qubit for entanglement
         generation over a specified quantum channel. It performs the following steps:
 
@@ -178,14 +171,10 @@ class LinkLayer(Application):
             - The reservation is communicated via a classical message using the `RESERVE_QUBIT` command.
 
         """
-        key = self.own.name +"_"+ next_hop.name
-        if path_id is not None:
-            key = key+"_"+str(path_id)
-        key = key+"_"+str(qubit.addr)
+        key = f"{self.own.name}_{next_hop.name}_{qubit.addr if path_id is None else path_id}"
 
         if key in self.pending_init_reservation:
             raise Exception(f"{self.own}: reservation already started for {key}")
-            return
 
         log.debug(f"{self.own}: start reservation with key={key}")
         qubit.active = key
@@ -296,7 +285,9 @@ class LinkLayer(Application):
         from_node: Node = qchannel.node_list[0] \
             if qchannel.node_list[1] == self.own else qchannel.node_list[1]
 
-        epr: WernerStateEntanglement = packet.qubit
+        epr = packet.qubit
+        assert isinstance(epr, WernerStateEntanglement)
+        assert epr.decoherence_time is not None
 
         log.debug(f"{self.own}: recv half-EPR {epr.name} from {from_node} | reservation key {epr.key}")
 

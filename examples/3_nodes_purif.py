@@ -114,13 +114,13 @@ def run_simulation(t_coherence, seed):
     total_etg = 0
     total_decohered = 0
     for node in net.get_nodes():
-        ll_app = node.get_apps(LinkLayer)[0]
+        ll_app = node.get_app(LinkLayer)
         total_etg+=ll_app.etg_count
         total_decohered+=ll_app.decoh_count
 
-    e2e_count = net.get_node("S").get_apps(ProactiveForwarder)[0].e2e_count
+    e2e_count = net.get_node("S").get_app(ProactiveForwarder).e2e_count
     e2e_rate =  e2e_count / sim_duration
-    mean_fidelity = net.get_node("S").get_apps(ProactiveForwarder)[0].fidelity / e2e_count if e2e_count > 0 else 0
+    mean_fidelity = net.get_node("S").get_app(ProactiveForwarder).fidelity / e2e_count if e2e_count > 0 else 0
 
     return e2e_rate, mean_fidelity, total_decohered / total_etg if total_etg > 0 else 0
 

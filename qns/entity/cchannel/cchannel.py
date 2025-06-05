@@ -87,7 +87,7 @@ class ClassicChannel(Entity):
     """ClassicChannel is the channel for classic message
     """
 
-    def __init__(self, name: str|None = None, node_list: list[Node] = [],
+    def __init__(self, name: str, node_list: list[Node] = [],
                  bandwidth: int = 0, delay: DelayInput = 0, length: float = 0, drop_rate: float = 0,
                  max_buffer_size: int = 0):
         """Args:
@@ -159,14 +159,12 @@ class ClassicChannel(Entity):
         #  add delay
         recv_time = send_time + (self.delay_model.calculate() + delay)
 
-        send_event = RecvClassicPacket(recv_time, name=None, by=self,
+        send_event = RecvClassicPacket(t=recv_time, name=None, by=self,
                                        cchannel=self, packet=packet, dest=next_hop)
         simulator.add_event(send_event)
 
     def __repr__(self) -> str:
-        if self.name is not None:
-            return "<cchannel "+self.name+">"
-        return super().__repr__()
+        return "<cchannel "+self.name+">"
 
 
 class NextHopNotConnectionException(Exception):
@@ -177,9 +175,8 @@ class RecvClassicPacket(Event):
     """The event for a Node to receive a classic packet
     """
 
-    def __init__(self, t: Time, *, name: str|None = None,
-                 cchannel: ClassicChannel, packet: ClassicPacket, dest: Node,
-                 by: Any = None):
+    def __init__(self, *, t: Time, name: str|None = None, by: Any = None,
+                 cchannel: ClassicChannel, packet: ClassicPacket, dest: Node):
         super().__init__(t=t, name=name, by=by)
         self.cchannel = cchannel
         self.packet = packet

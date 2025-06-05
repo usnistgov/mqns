@@ -177,10 +177,10 @@ def run_simulation(number_of_routers, distance_proportion, swapping_config, tota
     # total_etg = 0
     total_decohered = 0
     for node in net.get_nodes():
-        ll_app = node.get_apps(LinkLayer)[0]
+        ll_app = node.get_app(LinkLayer)
         # total_etg+=ll_app.etg_count
         total_decohered+=ll_app.decoh_count
-    e2e_count = net.get_node("S").get_apps(ProactiveForwarder)[0].e2e_count
+    e2e_count = net.get_node("S").get_app(ProactiveForwarder).e2e_count
 
     return e2e_count / sim_run, total_decohered / e2e_count if e2e_count > 0 else 0
 

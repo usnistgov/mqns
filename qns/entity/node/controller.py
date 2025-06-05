@@ -37,6 +37,4 @@ class Controller(Node):
         # do other things specific to the controller
 
     def __repr__(self) -> str:
-        if self.name is not None:
-            return f"<controller {self.name}>"
-        return super().__repr__()
+        return f"<controller {self.name}>"

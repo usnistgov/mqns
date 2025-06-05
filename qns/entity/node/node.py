@@ -95,13 +95,30 @@ class Node(Entity):
         self.apps.append(app)
 
     def get_apps(self, app_type: type[ApplicationT]) -> list[ApplicationT]:
-        """Get an Application that is `app_type`
+        """
+        Retrieve applications of given type.
 
         Args:
             app_type: the class of app_type
 
         """
         return [app for app in self.apps if isinstance(app, app_type)]
+
+    def get_app(self, app_type: type[ApplicationT]) -> ApplicationT:
+        """
+        Retrieve an application of given type.
+        There must be exactly one instance of this application.
+
+        Args:
+            app_type: the class of app_type
+
+        Raises:
+            IndexError
+        """
+        apps = self.get_apps(app_type)
+        if len(apps) != 1:
+            raise IndexError(f"node {repr(self)} has {len(apps)} instances of {app_type}")
+        return apps[0]
 
     def add_cchannel(self, cchannel: "ClassicChannel"):
         """Add a classic channel in this Node
@@ -157,6 +174,4 @@ class Node(Entity):
             app.handle_sync_signal(signal_type)
 
     def __repr__(self) -> str:
-        if self.name is not None:
-            return f"<node {self.name}>"
-        return super().__repr__()
+        return f"<node {self.name}>"

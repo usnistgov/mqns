@@ -26,7 +26,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, overload
 
 from qns.entity.entity import Entity
 from qns.entity.memory.event import (
@@ -56,7 +56,7 @@ class QuantumMemory(Entity):
         Asynchronous mode, users can use events to operate memories asynchronously
     """
 
-    def __init__(self, name: str|None = None, node: QNode|None = None, *,
+    def __init__(self, name: str, node: QNode|None = None, *,
                  capacity: int = 1, delay: DelayInput = 0,
                  decoherence_rate: float = 0, store_error_model_args: dict = {}):
         """Args:
@@ -95,9 +95,8 @@ class QuantumMemory(Entity):
         assert self.node is not None
 
         from qns.network.protocol.link_layer import LinkLayer
-        ll_apps = self.node.get_apps(LinkLayer)
         try:
-            self.link_layer = ll_apps[0]
+            self.link_layer = self.node.get_app(LinkLayer)
         except IndexError:
             pass
 
@@ -139,7 +138,18 @@ class QuantumMemory(Entity):
         """Return the quantity of stored qubits."""
         return self._usage
 
-    def get(self, key: QuantumModel|str|None = None, address: int|None = None) -> tuple[MemoryQubit, QuantumModel|None]|None:
+    @overload
+    def get(self, key: QuantumModel|str|None = None, address: int|None = None, *,
+            must: None = None) -> tuple[MemoryQubit, QuantumModel|None]|None:
+        pass
+
+    @overload
+    def get(self, key: QuantumModel|str|None = None, address: int|None = None, *,
+            must: Literal[True]) -> tuple[MemoryQubit, QuantumModel|None]:
+        pass
+
+    def get(self, key: QuantumModel|str|None = None, address: int|None = None, *,
+            must: bool|None = None) -> tuple[MemoryQubit, QuantumModel|None]|None:
         """
         Retrieve a qubit from memory without removing it.
 
@@ -148,22 +158,38 @@ class QuantumMemory(Entity):
                 - If a `QuantumModel`, it matches against the stored EPR instances.
                 - If a str, it matches against the stored EPR names.
             address (Optional[int]): The memory address of the qubit to locate.
+            must: If true, raise exception instead of return None.
 
         Returns:
             Tuple[MemoryQubit, Optional[QuantumModel]]:
                 - The `MemoryQubit` metadata object of the specified location.
                 - The associated `QuantumModel`.
-                - None if qubit not found.
+                - None if qubit not found (unless must=True).
+
+        Raises:
+            IndexError - key/address not found (only if must=True)
         """
 
         idx = self._search(key=key, address=address)
         if idx != -1:
             return self._storage[idx]
+        elif must:
+            raise IndexError(f"{repr(self)} cannot find key={key} address={address}")
         else:
             return None
 
-    def read(self, key: QuantumModel|str|None = None, address: int|None = None,
-             destructive = True) -> tuple[MemoryQubit, QuantumModel]|None:
+    @overload
+    def read(self, key: QuantumModel|str|None = None, address: int|None = None, *,
+             destructive=True, must: None = None) -> tuple[MemoryQubit, QuantumModel]|None:
+        pass
+
+    @overload
+    def read(self, key: QuantumModel|str|None = None, address: int|None = None, *,
+             destructive=True, must: Literal[True]) -> tuple[MemoryQubit, QuantumModel]:
+        pass
+
+    def read(self, key: QuantumModel|str|None = None, address: int|None = None, *,
+             destructive=True, must: bool|None = False) -> tuple[MemoryQubit, QuantumModel]|None:
         """
         Reading of a qubit from the memory. This methods sets the fidelity of the EPR at read time.
 
@@ -173,19 +199,28 @@ class QuantumMemory(Entity):
                 - If a str, it matches against the stored EPR names.
             address (Optional[int]): The memory address of the qubit to locate.
             destructive: (bool): Whether to delete the EPR after reading (default True).
+            must: If true, raise exception instead of return None.
 
         Returns:
             Tuple[MemoryQubit, Optional[QuantumModel]]:
                 - The `MemoryQubit` metadata objeect of the specified location.
                 - The associated `QuantumModel`.
-                - None if qubit not found or no quantum information is stored.
+                - None if qubit not found or no quantum information is stored (unless must=True).
+
+        Raises:
+            IndexError - key/address not found (only if must=True)
+            ValueError - no quantum information is stored (only if must=True)
         """
         idx = self._search(key=key, address=address)
         if idx == -1:
+            if must:
+                raise IndexError(f"{repr(self)} cannot find key={key} address={address}")
             return None
 
         (qubit, data) = self._storage[idx]
         if not data:
+            if must:
+                raise ValueError(f"{repr(self)} has no data at index {idx}")
             return None
 
         if destructive:
@@ -581,9 +616,7 @@ class QuantumMemory(Entity):
 
 
     def __repr__(self) -> str:
-        if self.name is not None:
-            return "<memory "+self.name+">"
-        return super().__repr__()
+        return "<memory "+self.name+">"
 
     def handle(self, event: Event) -> None:
         assert isinstance(self.node, QNode)
