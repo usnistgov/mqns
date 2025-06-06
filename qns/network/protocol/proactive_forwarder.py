@@ -292,6 +292,7 @@ class ProactiveForwarder(Application):
         qubit = event.qubit
         assert qubit.fsm.state == QubitState.ENTANGLED
         if qubit.path_id is not None:  # for buffer-space mux
+            log.debug(f"{self.own}: Qubit statically allocated to path {qubit.path_id}")
             fib_entry = self.fib.get_entry(qubit.path_id)
             if not fib_entry:
                 raise Exception(f"No FIB entry found for path_id {qubit.path_id}")
@@ -684,10 +685,10 @@ class ProactiveForwarder(Application):
         # this is an intermediate node
         # look for another eligible qubit
         res = None
-        if use_path_id:     # static qubit-path allocation is provided
+        if qubit.path_id is not None:     # static qubit-path allocation is provided
             possible_path_ids = [fib_entry["path_id"]]
             if not self.isolate_paths:
-                # if not isolated paths -> include other paths serving the same request
+                # include other paths serving the same request
                 possible_path_ids = self.request_paths_map[fib_entry["request_id"]]
 
             res = self._select_eligible_qubit(
@@ -706,10 +707,10 @@ class ProactiveForwarder(Application):
                 inc_qchannels=list(matched_channels))
 
         if res:      # do swapping
-            if qubit.path_id and res.path_id != qubit.path_id:
+            if qubit.path_id is not None and res.path_id != qubit.path_id:
                 log.debug(f"{self.own}: doing buffer-space mux with non-isolated paths")
             
-            if res.path_id:     # in case of non-isolated paths
+            if res.path_id is not None:     # in case of non-isolated paths
                 other_fib_entry = self.fib.get_entry(res.path_id)
                 if other_fib_entry is None:
                     raise Exception(f"No FIB entry found for qubit {res}")

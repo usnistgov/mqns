@@ -152,6 +152,7 @@ def run_simulation(t_coherence, seed):
 
     """
     json_topology = generate_topology(t_coherence)
+    print(json_topology)
 
     set_seed(seed)
     s = Simulator(0, sim_duration + 5e-06, accuracy=1000000)
