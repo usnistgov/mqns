@@ -452,7 +452,8 @@ class QuantumMemory(Entity):
         exc_qchannel: str | None = None,
         exc_direction: PathDirection | None = None,
         inc_qchannels: list[str] | None = None,
-        path_id: list[int] | None = None
+        path_id: list[int] | None = None,
+        tmp_path_id: list[int] | None = None
     ) -> list[tuple[MemoryQubit, QuantumModel]]:
         """Search for memory qubits that are eligible for use.
 
@@ -489,7 +490,9 @@ class QuantumMemory(Entity):
                 continue
             if exc_direction is not None and (qubit.path_direction == exc_direction):
                 continue
-            if inc_qchannels is not None and qubit.qchannel.name not in inc_qchannels:
+            #if inc_qchannels is not None and qubit.qchannel.name not in inc_qchannels:
+            #    continue
+            if tmp_path_id is not None and qubit.tmp_path_id not in tmp_path_id:
                 continue
             qubits.append((qubit, data))
         return qubits

@@ -75,7 +75,6 @@ class QubitFSM:
 class PathDirection(Enum):
     LEFT = auto()
     RIGHT = auto()
-    NONE = auto()
 
 class MemoryQubit:
     """An addressable qubit in memory, with a lifecycle."""
@@ -94,6 +93,8 @@ class MemoryQubit:
         """Optional path ID to which qubit is allocated"""
         self.active: str | None = None
         """Reservation key if qubit is reserved for entanglement, None otherwise"""
+        self.tmp_path_id: int|None = None
+        """Optional temporary path ID to which qubit is allocated (in dynamic qubit allocation)"""
         self.purif_rounds = 0
         """Number of purification rounds currently completed by the EPR stored on this qubit"""
         self.path_direction: PathDirection|None = None
@@ -116,7 +117,7 @@ class MemoryQubit:
     def __repr__(self) -> str:
         if self.addr is not None:
             return (
-                f"<memory qubit {self.addr}, ch={self.qchannel}, path_id={self.path_id}, "
-                + f"active={self.active}, purif_rounds={self.purif_rounds}, state={self.fsm}>"
+                f"<memory qubit {self.addr}, ch={self.qchannel}, path_id={self.path_id}, tmp_path_id={self.tmp_path_id} "
+                f"active={self.active}, purif_rounds={self.purif_rounds}, state={self.fsm}>"
             )
         return super().__repr__()
