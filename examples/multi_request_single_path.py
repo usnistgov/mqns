@@ -26,8 +26,8 @@ frequency = 1e6                  # memory frequency
 entg_attempt_rate = 50e6         # From fiber max frequency (50 MHz) AND detectors count rate (60 MHz)
 
 init_fidelity = 0.99
-p_swap = 1.0
-t_coherence = 0.1    # sec
+p_swap = 0.5
+t_coherence = 0.01    # sec
 
 node_capacity = 4
 
@@ -237,6 +237,7 @@ def generate_topology() -> dict:
     }
 
 json_topology = generate_topology()
+print(json_topology)
 
 set_seed(SEED_BASE)
 s = Simulator(0, sim_duration + 5e-06, accuracy=1000000)

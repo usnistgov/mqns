@@ -466,11 +466,12 @@ class QuantumMemory(Entity):
             exc_qchannel (Optional[str]): The name of the quantum channel to exclude.
             If None, no exclusion is applied.
             inc_qchannels (list[sr], optional): List of qchannel names the qubits should be assigned to.
-            This is used with statistical mux when no qubit-path allocation is set (i.e., path_id is None).
             exc_direction (Optional[PathDirection]): Qubit path direction to exclude.
             If None, no exclusion is applied.
             path_id (Optional[list[int]]): The list of path IDs the qubit must be allocated to.
             If None, any path ID is accepted.
+            tmp_path_id (list[int], optional): List of identifiers for the paths to match agains epr.tmp_path_id
+            in dynamic qubit allocation or statistical multiplexing.
 
         Returns:
             List[Tuple[MemoryQubit, QuantumModel]]:
@@ -490,9 +491,9 @@ class QuantumMemory(Entity):
                 continue
             if exc_direction is not None and (qubit.path_direction == exc_direction):
                 continue
-            #if inc_qchannels is not None and qubit.qchannel.name not in inc_qchannels:
-            #    continue
-            if tmp_path_id is not None and qubit.tmp_path_id not in tmp_path_id:
+            if inc_qchannels is not None and qubit.qchannel.name not in inc_qchannels:
+                continue
+            if tmp_path_id is not None and data.tmp_path_id not in tmp_path_id:
                 continue
             qubits.append((qubit, data))
         return qubits

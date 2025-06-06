@@ -184,9 +184,9 @@ class LinkLayer(Application):
             Key format: <node1>_<node2>_[<path_id>]_<local_qubit_addr>
             - The reservation is communicated via a classical message using the `RESERVE_QUBIT` command.
         """
+
         key = uuid.uuid4().hex
         assert key not in self.pending_init_reservation
-        qubit.tmp_path_id = None
         log.debug(f"{self.own}: start reservation with key={key}")
         qubit.active = key
         self.pending_init_reservation[key] = (qchannel, next_hop, qubit.addr)
@@ -395,7 +395,6 @@ class LinkLayer(Application):
             if avail_qubits:
                 log.debug(f"{self.own}: direct found available qubit for {key}")
                 avail_qubits[0].active = key
-                avail_qubits[0].tmp_path_id = None
                 msg: ReserveMsg = {"cmd": "RESERVE_QUBIT_OK", "path_id": path_id, "key": key}
                 cchannel.send(ClassicPacket(msg, src=self.own, dest=from_node), next_hop=from_node)
             else:
@@ -432,7 +431,6 @@ class LinkLayer(Application):
 
         log.debug(f"{self.own}: found available qubit for {key}")
         avail_qubits[0].active = key
-        avail_qubits[0].tmp_path_id = None
         msg: ReserveMsg = {"cmd": "RESERVE_QUBIT_OK", "path_id": path_id, "key": key}
         cchannel.send(ClassicPacket(msg, src=self.own, dest=from_node), next_hop=from_node)
         self.fifo_reservation_req.pop(0)

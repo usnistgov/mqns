@@ -122,6 +122,7 @@ def generate_topology() -> dict:
     }
 
 json_topology = generate_topology()
+print(json_topology)
 
 set_seed(SEED_BASE)
 s = Simulator(0, sim_duration + 5e-06, accuracy=1000000)

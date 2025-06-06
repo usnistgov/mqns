@@ -140,6 +140,7 @@ channel_lengths=[32, 18, 10]
 capacities=[(4, 3), (1, 2), (2, 4)]
 
 json_topology = generate_topology(nodes, mem_capacities, channel_lengths, capacities)
+print(json_topology)
 
 set_seed(SEED_BASE)
 s = Simulator(0, sim_duration + 5e-06, accuracy=1000000)
