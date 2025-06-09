@@ -1,7 +1,7 @@
 import argparse
 import itertools
 import logging
-from multiprocessing import Pool
+from multiprocessing import Pool, freeze_support
 from typing import cast
 
 import matplotlib.pyplot as plt
@@ -18,12 +18,13 @@ from qns.utils.rnd import set_seed
 
 log.logger.setLevel(logging.CRITICAL)
 
+# Configuration parameters
+# (some parameters can be overridden through command line arguments)
+
 SEED_BASE = 100
 
 light_speed = 2 * 10**5  # km/s
 
-
-# parameters
 sim_duration = 5  # 9
 
 fiber_alpha = 0.2
@@ -36,6 +37,13 @@ channel_qubits = 25
 init_fidelity = 0.99
 t_coherence = 0.01  # sec
 p_swap = 0.5
+
+TOTAL_DISTANCE = 150  # km
+
+N_RUNS = 10  # 30
+NUM_ROUTERS_OPTIONS = [3, 4, 5]
+DIST_PROPORTIONS = ["decreasing", "increasing", "mid_bottleneck", "uniform"]
+SWAP_CONFIGS = ["asap", "baln", "vora", "l2r"]
 
 
 def compute_distances_distribution(end_to_end_distance: int, number_of_routers: int, distance_proportion: str) -> list[int]:
@@ -201,29 +209,10 @@ def run_simulation(
     return e2e_count / sim_run, total_decohered / e2e_count if e2e_count > 0 else 0
 
 
-# Configuration parameters
-TOTAL_DISTANCE = 150  # km
-
-N_RUNS = 10  # 30
-NUM_ROUTERS_OPTIONS = [3, 4, 5]
-DIST_PROPORTIONS = ["decreasing", "increasing", "mid_bottleneck", "uniform"]
-SWAP_CONFIGS = ["asap", "baln", "vora", "l2r"]
-
-# Command line arguments
-parser = argparse.ArgumentParser()
-parser.add_argument("--runs", default=N_RUNS, type=int, help="Number of trials per parameter set.")
-parser.add_argument("--routers", action="append", type=int, help="Number of routers between source and destination.")
-parser.add_argument("--csv", type=str, help="Save results as CSV file.")
-parser.add_argument("--plt", type=str, help="Save plot as image file.")
-parser.add_argument("-j", default=1, type=int, help="Number of workers for parallel execution.")
-args = parser.parse_args()
-N_RUNS = cast(int, args.runs)
-if args.routers is not None:
-    NUM_ROUTERS_OPTIONS = cast(list[int], args.routers)
-
-
-# Simulation iteration
 def run_row(num_routers: int, dist_prop: str, swap_conf: str) -> dict:
+    """
+    Run simulations for one set of parameters.
+    """
     full_swapping_config = f"swap_{num_routers}_{swap_conf}"
     if swap_conf == "vora":
         full_swapping_config += f"_{dist_prop}"
@@ -255,63 +244,82 @@ def run_row(num_routers: int, dist_prop: str, swap_conf: str) -> dict:
     }
 
 
-# Simulator loop with process-based parallelism
-with Pool(processes=cast(int, args.j)) as pool:
-    results = pool.starmap(run_row, itertools.product(NUM_ROUTERS_OPTIONS, DIST_PROPORTIONS, SWAP_CONFIGS))
+def save_results(results: list[dict], *, save_csv: str | None, save_plt: str | None) -> None:
+    df = pd.DataFrame(results)
+    if save_csv is not None:
+        df.to_csv(save_csv, index=False)
 
-df = pd.DataFrame(results)
-if args.csv is not None:
-    df.to_csv(cast(str, args.csv), index=False)
+    # === Combined Plot ===
+    _, axes = plt.subplots(2, 3, figsize=(18, 10), sharey="row")
 
-# === Combined Plot ===
-fig, axes = plt.subplots(2, 3, figsize=(18, 10), sharey="row")
+    x_labels = DIST_PROPORTIONS
+    x = np.arange(len(x_labels))
+    width = 0.2
 
-x_labels = DIST_PROPORTIONS
-x = np.arange(len(x_labels))
-width = 0.2
+    for i, num_routers in enumerate(NUM_ROUTERS_OPTIONS):
+        df_subset = df[df["Routers"] == num_routers]
 
-for i, num_routers in enumerate(NUM_ROUTERS_OPTIONS):
-    df_subset = df[df["Routers"] == num_routers]
+        # --- Top Row: Entanglements Per Second ---
+        ax1 = axes[0, i]
+        for j, swap_conf in enumerate(SWAP_CONFIGS):
+            means = []
+            stds = []
+            for dist_prop in x_labels:
+                row = df_subset[(df_subset["Distance Distribution"] == dist_prop) & (df_subset["Swapping Config"] == swap_conf)]
+                means.append(row["Entanglements Per Second"].values[0])
+                stds.append(row["Entanglements Std"].values[0])
+            ax1.bar(x + j * width, means, width, yerr=stds, label=swap_conf)
 
-    # --- Top Row: Entanglements Per Second ---
-    ax1 = axes[0, i]
-    for j, swap_conf in enumerate(SWAP_CONFIGS):
-        means = []
-        stds = []
-        for dist_prop in x_labels:
-            row = df_subset[(df_subset["Distance Distribution"] == dist_prop) & (df_subset["Swapping Config"] == swap_conf)]
-            means.append(row["Entanglements Per Second"].values[0])
-            stds.append(row["Entanglements Std"].values[0])
-        ax1.bar(x + j * width, means, width, yerr=stds, label=swap_conf)
+        ax1.set_title(f"Entanglements/sec - {num_routers} Routers")
+        ax1.set_xticks(x + 1.5 * width)
+        ax1.set_xticklabels(x_labels)
+        if i == 0:
+            ax1.set_ylabel("Entanglements Per Second")
 
-    ax1.set_title(f"Entanglements/sec - {num_routers} Routers")
-    ax1.set_xticks(x + 1.5 * width)
-    ax1.set_xticklabels(x_labels)
-    if i == 0:
-        ax1.set_ylabel("Entanglements Per Second")
+        # --- Bottom Row: Expired Memories Per Entanglement ---
+        ax2 = axes[1, i]
+        for j, swap_conf in enumerate(SWAP_CONFIGS):
+            means = []
+            stds = []
+            for dist_prop in x_labels:
+                row = df_subset[(df_subset["Distance Distribution"] == dist_prop) & (df_subset["Swapping Config"] == swap_conf)]
+                means.append(row["Expired Memories Per Entanglement"].values[0])
+                stds.append(row["Expired Memories Std"].values[0])
+            ax2.bar(x + j * width, means, width, yerr=stds, label=swap_conf)
 
-    # --- Bottom Row: Expired Memories Per Entanglement ---
-    ax2 = axes[1, i]
-    for j, swap_conf in enumerate(SWAP_CONFIGS):
-        means = []
-        stds = []
-        for dist_prop in x_labels:
-            row = df_subset[(df_subset["Distance Distribution"] == dist_prop) & (df_subset["Swapping Config"] == swap_conf)]
-            means.append(row["Expired Memories Per Entanglement"].values[0])
-            stds.append(row["Expired Memories Std"].values[0])
-        ax2.bar(x + j * width, means, width, yerr=stds, label=swap_conf)
+        ax2.set_title(f"Expired Memories/Entg - {num_routers} Routers")
+        ax2.set_xticks(x + 1.5 * width)
+        ax2.set_xticklabels(x_labels)
+        if i == 0:
+            ax2.set_ylabel("Expired Memories per Entanglement")
 
-    ax2.set_title(f"Expired Memories/Entg - {num_routers} Routers")
-    ax2.set_xticks(x + 1.5 * width)
-    ax2.set_xticklabels(x_labels)
-    if i == 0:
-        ax2.set_ylabel("Expired Memories per Entanglement")
+    # Add legends only once
+    axes[0, 0].legend(loc="upper left")
+    axes[1, 0].legend(loc="upper left")
 
-# Add legends only once
-axes[0, 0].legend(loc="upper left")
-axes[1, 0].legend(loc="upper left")
+    plt.tight_layout()
+    if save_plt is not None:
+        plt.savefig(save_plt, dpi=300, transparent=True)
+    plt.show()
 
-plt.tight_layout()
-if args.plt is not None:
-    plt.savefig(cast(str, args.plt), dpi=300, transparent=True)
-plt.show()
+
+if __name__ == "__main__":
+    freeze_support()
+
+    # Command line arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--runs", default=N_RUNS, type=int, help="Number of trials per parameter set.")
+    parser.add_argument("--routers", action="append", type=int, help="Number of routers between source and destination.")
+    parser.add_argument("--csv", type=str, help="Save results as CSV file.")
+    parser.add_argument("--plt", type=str, help="Save plot as image file.")
+    parser.add_argument("-j", default=1, type=int, help="Number of workers for parallel execution.")
+    args = parser.parse_args()
+    N_RUNS = cast(int, args.runs)
+    if args.routers is not None:
+        NUM_ROUTERS_OPTIONS = cast(list[int], args.routers)
+
+    # Simulator loop with process-based parallelism
+    with Pool(processes=cast(int, args.j)) as pool:
+        results = pool.starmap(run_row, itertools.product(NUM_ROUTERS_OPTIONS, DIST_PROPORTIONS, SWAP_CONFIGS))
+
+    save_results(results, save_csv=args.csv, save_plt=args.plt)
