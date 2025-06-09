@@ -308,34 +308,47 @@ class ProactiveForwarder(Application):
                 qubit.fsm.to_purif()
                 self.qubit_is_purif(qubit, fib_entry, event.neighbor)
         else:                                   # for dynamic affectation (~ controlled statistical)
-            log.debug(f"{self.own}: Qubit not allocated to any path. Use dynamic affectation")
+            log.debug(f"{self.own}: Qubit not allocated to any path.")
             if qubit.qchannel is not None:            # Expected in all our cases so far
                 if qubit.qchannel.name in self.qchannel_paths_map:
-                    if self.statistical_mux:
-                        qchannel: QuantumChannel = self.own.get_qchannel(event.neighbor)
-                        if qchannel:
-                            qubit.fsm.to_purif()
-                            self.purif(event.qubit)
-                        else:
-                            raise Exception(f"No qchannel found for neighbor {event.neighbor.name}")
-                        return
-
+                    # available for every elementary EPR:
                     possible_path_ids = self.qchannel_paths_map[qubit.qchannel.name]
+
+                    # Statistical multiplexing
+                    if self.statistical_mux:
+                        log.debug(f"{self.own}: Statistical mux enabled")
+                        res = self.memory.get(address=qubit.addr)
+                        if not res:
+                            raise Exception(f"Cannot retrieve qubit {event.qubit}")
+                        _, epr = res
+                        log.debug(f"{self.own}: qubit {qubit}, set possible path IDs = {possible_path_ids}")
+                        epr.tmp_path_ids = list(possible_path_ids)     # to coordinate decisions along the path
+
+                        if self._can_enter_purif(partner=event.neighbor.name):
+                            qchannel: QuantumChannel = self.own.get_qchannel(event.neighbor)
+                            if qchannel:
+                                qubit.fsm.to_purif()
+                                self.purif(qubit)
+                            else:
+                                raise Exception(f"No qchannel found for neighbor {event.neighbor.name}")
+                        return
 
                     # Dynamic EPR effectation (not statistical mux)
                     # TODO: if paths have different swap policies
                     #       -> consider only paths for which this qubit may be eligible ??
+                    # Currently affects EPR to paths randomly
+                    log.debug(f"{self.own}: Dynamic EPR affectation enabled")
                     random_path_id = random.choice(possible_path_ids)
                     log.debug(f"{self.own}: Dynamically (random) affect EPR to path {random_path_id}")
                     res = self.memory.get(address=qubit.addr)
                     if res:
                         _, epr = res
                         if epr.src == self.own:
-                            epr.tmp_path_id = random_path_id
+                            epr.tmp_path_ids = [random_path_id]
 
                     fib_entry = self.fib.get_entry(random_path_id)
                     if fib_entry:
-                        if self.eval_qubit_eligibility(fib_entry, event.neighbor.name):
+                        if self._can_enter_purif(fib_entry, event.neighbor.name):
                             qchannel: QuantumChannel = self.own.get_qchannel(event.neighbor)
                             if qchannel:
                                 qubit.fsm.to_purif()
@@ -348,72 +361,6 @@ class ProactiveForwarder(Application):
                     raise Exception(f"{self.own}: qchannel {qubit.qchannel.name} not mapped to any path.")
             else:
                 raise Exception(f"{self.own}: No qubit-qchannel assignment. Not supported.")
-
-    # WIP:
-    # requires?
-    # - same swap sequence/policy for all paths
-    # - same purification scheme for all paths
-    def do_statistical_mux(self, event, possible_path_ids):
-        # if only one path is possible for this qubit -> use it
-        if len(possible_path_ids) == 1:
-            log.debug(f"{self.own}: Affect qubit to path {possible_path_ids[0]}")
-            fib_entry = self.fib.get_entry(possible_path_ids[0])
-            if fib_entry:
-                if self.eval_qubit_eligibility(fib_entry, event.neighbor.name):
-                    qchannel: QuantumChannel = self.own.get_qchannel(event.neighbor)
-                    if qchannel:
-                        event.qubit.fsm.to_purif()
-                        self.purif(event.qubit, fib_entry, event.neighbor)
-                    else:
-                        raise Exception(f"No qchannel found for neighbor {event.neighbor.name}")
-            else:
-                raise Exception(f"No FIB entry found for path_id {possible_path_ids[0]}")
-        else:
-            log.debug(f"{self.own}: Check if there are eligible qubit waiting")
-
-            # find qchannels whose qubits may be used with this qubit
-            target_set = set(possible_path_ids)
-            matched_channels = {
-                channel
-                for channel, path_ids in self.qchannel_paths_map.items()
-                if target_set.intersection(path_ids) and channel != event.qubit.qchannel.name
-            }
-
-            # Check if there is are eligible qubit waiting
-            res = self.select_eligible_qubit(exc_qchannel=event.qubit.qchannel.name, inc_qchannels=list(matched_channels))
-
-            # if there are eligible qubit -> use one (selected randomly)
-            if res:
-                # should be only one path -> maybe enforce only this case??
-                path_id = random.choice(self.qchannel_paths_map[res.qchannel.name])
-                log.debug(f"{self.own}: Use this qubit/EPR for path {path_id}")
-                fib_entry = self.fib.get_entry(path_id)
-                if fib_entry:
-                    if self.eval_qubit_eligibility(fib_entry, event.neighbor.name):
-                        qchannel: QuantumChannel = self.own.get_qchannel(event.neighbor)
-                        if qchannel:
-                            event.qubit.fsm.to_purif()
-                            self.purif(event.qubit, fib_entry, event.neighbor) # TODO: provide the selected qubit to swap!
-                        else:
-                            raise Exception(f"No qchannel found for neighbor {event.neighbor.name}")
-                else:
-                    raise Exception(f"No FIB entry found for path {path_id}")
-
-            # If no eligible qubit -> set qubit eligible (randomly) and use it with the next eligible qubit
-            else:
-                random_path_id = random.choice(possible_path_ids)
-                log.debug(f"{self.own}: No eligible qubit found. Affect qubit randomly to path {random_path_id}")
-                fib_entry = self.fib.get_entry(random_path_id)
-                if fib_entry:
-                    if self.eval_qubit_eligibility(fib_entry, event.neighbor.name):
-                        qchannel: QuantumChannel = self.own.get_qchannel(event.neighbor)
-                        if qchannel:
-                            event.qubit.fsm.to_purif()
-                            self.purif(event.qubit, fib_entry, event.neighbor)
-                        else:
-                            raise Exception(f"No qchannel found for neighbor {event.neighbor.name}")
-                else:
-                    raise Exception(f"No FIB entry found for path {random_path_id}")
 
     def _can_enter_purif(self, fib_entry: FIBEntry | None = None, partner: str | None = None) -> bool:
         """Evaluate if a qubit is eligible for purification.
@@ -429,10 +376,14 @@ class ProactiveForwarder(Application):
         Returns
         -------
             bool: True if eligible for swap/purification, False otherwise.
-
-        """
-        if fib_entry is None:       # temporarily ignoring purif in statistical mux
-            return True
+        """    
+        if fib_entry is None:       # temporary work around for statistical mux
+            if self.own.name.startswith("R"):
+                return True
+            if self.own.name.startswith("S") and partner.startswith("D") \
+                or self.own.name.startswith("D") and partner.startswith("S"):
+                return True
+            return False
 
         _, partner_rank = find_index_and_swapping_rank(fib_entry, partner)
         _, own_rank = find_index_and_swapping_rank(fib_entry, self.own.name)
@@ -726,8 +677,12 @@ class ProactiveForwarder(Application):
                     tmp_path_id=possible_path_ids)
         else:                                   # statistical mux
             # find qchannels whose qubits may be used with this qubit
-            possible_path_ids = self.qchannel_paths_map[qubit.qchannel.name]
-            target_set = set(possible_path_ids)
+            res = self.memory.get(address=qubit.addr)
+            if not res:
+                raise Exception(f"Cannot retrieve EPR for qubit {qubit}")
+            _, epr = res
+            # use path_ids to look for acceptable qchannels for swapping, excluding the qubit's qchannel
+            target_set = set(epr.tmp_path_ids)
             matched_channels = {
                 channel
                 for channel, path_ids in self.qchannel_paths_map.items()
@@ -739,13 +694,17 @@ class ProactiveForwarder(Application):
                 inc_qchannels=list(matched_channels))
 
         if res:      # do swapping
-            if fib_entry is None:
-                possible_path_ids_2 = self.qchannel_paths_map[res.qchannel.name]
-                path_id = select_common_element(possible_path_ids, possible_path_ids_2)
-                if path_id is None:
-                    raise Exception(f"Cannot select path ID from {possible_path_ids} and {possible_path_ids_2}")
-                fib_entry = self.fib.get_entry(path_id)
-
+            path_ids = None
+            if fib_entry is None:    # for statistical mux -> select a path
+                res2 = self.memory.get(address=res.addr)
+                if not res2:
+                    raise Exception(f"Cannot retrieve EPR for other qubit {qubit}")
+                _, epr2 = res2
+                path_ids = select_common_element(epr.tmp_path_ids, epr2.tmp_path_ids)
+                if not path_ids:
+                    raise Exception(f"Cannot select path ID from {epr.tmp_path_ids} and {epr2.tmp_path_ids}")
+                fib_entry = self.fib.get_entry(random.choice(path_ids))
+    
             if res.path_id is not None:     # in case of non-isolated paths
                 other_fib_entry = self.fib.get_entry(res.path_id)
                 if other_fib_entry is None:
@@ -753,7 +712,7 @@ class ProactiveForwarder(Application):
             else:    # in dynamic qubit allocation or statistical mux
                 other_fib_entry = fib_entry
 
-            self.do_swapping(qubit, res, fib_entry, other_fib_entry)
+            self.do_swapping(qubit, res, fib_entry, other_fib_entry, path_ids)
 
     def consume_and_release(self, qubit: MemoryQubit, *, e2e=True):
         """
@@ -798,7 +757,7 @@ class ProactiveForwarder(Application):
             path_id (list[int], optional): List of identifiers for the paths to match against
             qubit.path_id in static qubit-path allocation.
             A list of path IDs is used to support multiple non-isolated paths serving the same request.
-            tmp_path_id (list[int], optional): List of identifiers for the paths to match agains epr.tmp_path_id
+            tmp_path_id (list[int], optional): List of identifiers for the paths to match agains epr.tmp_path_ids
             in dynamic qubit allocation or statistical multiplexing.
 
         Returns
@@ -818,7 +777,13 @@ class ProactiveForwarder(Application):
             # (for statistical multiplexing, multipath, quasi-local swapping, etc.)
         return None
 
-    def do_swapping(self, mq0: MemoryQubit, mq1: MemoryQubit, fib_entry: FIBEntry, other_fib_entry: FIBEntry):
+    def do_swapping(
+        self, 
+        mq0: MemoryQubit, 
+        mq1: MemoryQubit, 
+        fib_entry: FIBEntry, 
+        other_fib_entry: FIBEntry,
+        path_ids: list[int] | None = None):
         """
         Perform swapping between two qubits at an intermediate node.
         These qubits must be in ELIGIBLE state and come from different qchannels.
@@ -867,8 +832,6 @@ class ProactiveForwarder(Application):
         assert next_epr is not None
         assert next_epr.name is not None
 
-        assert prev_epr.tmp_path_id == next_epr.tmp_path_id
-
         # Save ch_index metadata field onto elementary EPR.
         if not prev_epr.orig_eprs:
             prev_epr.ch_index = own_idx - 1
@@ -881,9 +844,16 @@ class ProactiveForwarder(Application):
 
         if new_epr is not None:  # swapping succeeded
             # Update properties in newly generated EPR.
-            new_epr.tmp_path_id = prev_epr.tmp_path_id
             new_epr.src = prev_partner
             new_epr.dst = next_partner
+            
+            # for dynamic EPR affectation and statistical mux
+            if prev_epr.tmp_path_ids is not None:
+                if not self.statistical_mux:
+                    assert prev_epr.tmp_path_ids == next_epr.tmp_path_ids
+                    new_epr.tmp_path_ids = list(prev_epr.tmp_path_ids)
+                else:
+                    new_epr.tmp_path_ids = path_ids
 
             # Keep records to support potential parallel swapping with prev_partner.
             _, prev_p_rank = find_index_and_swapping_rank(fib_entry, prev_partner.name)
@@ -1100,6 +1070,7 @@ class ProactiveForwarder(Application):
                 self.qubit_is_entangled(self.own, event)
             self.waiting_qubits = []
 
+
 def select_common_element(list1: list[int], list2: list[int]) -> int | None:
     # Convert to sets for efficient intersection
     set1 = set(list1)
@@ -1107,12 +1078,10 @@ def select_common_element(list1: list[int], list2: list[int]) -> int | None:
 
     # Case 1: one list has only one element
     if len(list1) == 1:
-        return list1[0] if list1[0] in set2 else None
+        return [list1[0]] if list1[0] in set2 else None
     if len(list2) == 1:
-        return list2[0] if list2[0] in set1 else None
+        return [list2[0]] if list2[0] in set1 else None
 
     # Case 2: both have more than one element
     common = list(set1 & set2)
-    if not common:
-        return None
-    return random.choice(common)
+    return common

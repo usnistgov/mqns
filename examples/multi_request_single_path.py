@@ -33,7 +33,7 @@ node_capacity = 4
 
 
 # 4-nodes topology
-swapping_config = "swap_3_l2r"          # FIXME: here we know there are 3 swaps on all paths
+swapping_config = "swap_3_asap"          # FIXME: here we know there are 3 swaps on all paths
 
 # Multipath settings
 routing_type = "MRSP_DYNAMIC"  # Controller installs one path for each S-D request, without qubit-path allocation
