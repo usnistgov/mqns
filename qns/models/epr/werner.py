@@ -26,6 +26,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import hashlib
+from typing import cast
 
 import numpy as np
 
@@ -81,7 +82,7 @@ class WernerStateEntanglement(BaseEntanglement["WernerStateEntanglement"], Quant
         ne.orig_eprs = self._merge_orig_eprs(epr)
 
         if ne.name is None:
-            eprs_name_list = [e.name for e in ne.orig_eprs]
+            eprs_name_list = [cast(str, e.name) for e in ne.orig_eprs]
             ne.name = hash("-".join(eprs_name_list))
 
         assert self.decoherence_time is not None
@@ -164,16 +165,15 @@ class WernerStateEntanglement(BaseEntanglement["WernerStateEntanglement"], Quant
         self.is_decoherenced = True
         return [q0, q1]
 
-    def _merge_orig_eprs(self, epr):
+    def _merge_orig_eprs(self, epr: "WernerStateEntanglement") -> list["WernerStateEntanglement"]:
         # Helper: get a dict of name -> epr from an object's orig_epr list
-        def epr_dict(obj):
+        def epr_dict(obj) -> dict[str, "WernerStateEntanglement"]:
             return {e.name: e for e in obj.orig_eprs}
 
         # Merge by name
         merged = epr_dict(self)
         for name, epr1 in epr_dict(epr).items():
-            if name not in merged:
-                merged[name] = epr1
+            merged.setdefault(name, epr1)
 
         # Add elementary eprs
         if self.ch_index > -1 and self.name not in merged:

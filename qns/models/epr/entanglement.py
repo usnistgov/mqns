@@ -62,7 +62,7 @@ class BaseEntanglement(Generic[EntanglementT]):
         """dst node"""
         self.ch_index = -1
         """index of this EPR along the path"""
-        self.orig_eprs = []
+        self.orig_eprs: list[EntanglementT] = []
         """Elementary EPRs from which this EPR is created via swapping"""
         self.read = False
         """to know when both end-nodes are aware of the EPR"""
