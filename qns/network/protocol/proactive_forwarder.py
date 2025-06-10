@@ -690,8 +690,9 @@ class ProactiveForwarder(Application):
             }
             # select qubits based on qchannels only
             res = self._select_eligible_qubit(
-                exc_qchannel=qubit.qchannel.name, 
-                inc_qchannels=list(matched_channels))
+                exc_qchannel=qubit.qchannel.name,
+                inc_qchannels=list(matched_channels),
+                tmp_path_id=epr.tmp_path_ids)
 
         if res:      # do swapping
             path_ids = None
@@ -772,6 +773,7 @@ class ProactiveForwarder(Application):
             path_id=path_id,
             tmp_path_id=tmp_path_id)
         if qubits:
+            log.debug(f"{self.own}: eligible qubits: {qubits}")
             return qubits[0][0]  # pick up one qubit
             # TODO: Other qubit selection
             # (for statistical multiplexing, multipath, quasi-local swapping, etc.)
@@ -968,6 +970,14 @@ class ProactiveForwarder(Application):
         (shared_epr, other_epr, my_new_epr) = self.parallel_swappings.pop(msg["epr"])
         _ = shared_epr
         assert my_new_epr.name is not None
+        
+        # safety in statistical mux to avoid conflictual swappings on different paths
+        if my_new_epr.tmp_path_ids is not None and msg["path_id"] not in my_new_epr.tmp_path_ids:
+            if self.statistical_mux:
+                log.debug(f"{self.own}: Conflictual parallel swapping in statistical mux -> silently ignore")
+                return
+            else:
+                raise Exception(f"{self.own}: Unexpected conflictual parallel swapping")
 
         # msg["swapping_node"] is the node that performed swapping and sent this message.
         # Assuming swapping_node is to the right of own node, various nodes and EPRs are as follows:
@@ -1005,6 +1015,19 @@ class ProactiveForwarder(Application):
         # The swapping_node successfully swapped in parallel with this node.
         # Merge the two swaps (physically already happened).
         merged_epr = new_epr.swapping(epr=other_epr)
+        
+        # adjust EPR paths for dynamic EPR affectation and statistical mux
+        if merged_epr is not None:
+            if new_epr.tmp_path_ids is not None:
+                if not self.statistical_mux:
+                    assert new_epr.tmp_path_ids == other_epr.tmp_path_ids
+                    merged_epr.tmp_path_ids = list(new_epr.tmp_path_ids)
+            else:
+                path_ids = select_common_element(new_epr.tmp_path_ids, other_epr.tmp_path_ids)
+                if not path_ids:
+                    raise Exception(f"Cannot select path ID from "
+                                f"{new_epr.tmp_path_ids} and {other_epr.tmp_path_ids}")
+                merged_epr.tmp_path_ids = path_ids
 
         # Determine the "destination" and "partner".
         if other_epr.dst == self.own:  # destination is to the left of own node

@@ -329,12 +329,24 @@ class LinkLayer(Application):
         log.debug(f"{self.own}: start qchannel with {event.neighbor}")
         qchannel = self.own.get_qchannel(event.neighbor)
         if event.type == TypeEnum.ADD:
+            # FIXME: check where we need to use event.path_id in `handle_active_channel()`
             if qchannel.name not in self.active_channels:
-                self.active_channels[qchannel.name] = (qchannel, event.neighbor)
+                self.active_channels[qchannel.name] = (qchannel, event.neighbor, [event.path_id])
                 if self.own.timing_mode == TimingModeEnum.ASYNC:
                     self.handle_active_channel(qchannel, event.neighbor)
             else:
-                raise Exception("Qchannel already handled")
+                (qchannel, neighbor, path_ids) = self.active_channels[qchannel.name]
+                if event.path_id not in path_ids:
+                    upd_path_ids = path_ids.append(event.path_id)
+                    self.active_channels[qchannel.name] = (qchannel, neighbor, upd_path_ids)
+                    log.debug(f"{self.own}: add path {event.path_id} to qchannel {qchannel.name}")
+                    if self.own.timing_mode == TimingModeEnum.ASYNC:
+                        self.handle_active_channel(qchannel, event.neighbor)
+                elif event.path_id is not None:
+                    raise Exception(f"Qchannel {qchannel.name} for path {event.path_id} already handled")
+                elif event.path_id is None:
+                    log.debug(f"{self.own}: no need to add qchannel {qchannel.name} with no path ID as "
+                            f"it is already added")
         else:
             self.active_channels.pop(qchannel.name, "Not Found")
         return True

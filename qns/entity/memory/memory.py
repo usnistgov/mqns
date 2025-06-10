@@ -481,6 +481,7 @@ class QuantumMemory(Entity):
         """
         qubits = []
         for qubit, data in self._storage:
+            print(f"{qubit},{data}")
             if data is None:
                 continue
             if qubit.fsm.state != QubitState.ELIGIBLE:
@@ -493,7 +494,7 @@ class QuantumMemory(Entity):
                 continue
             if inc_qchannels is not None and qubit.qchannel.name not in inc_qchannels:
                 continue
-            if tmp_path_id is not None and data.tmp_path_id not in tmp_path_id:
+            if tmp_path_id is not None and not set(tmp_path_id) & set(data.tmp_path_ids):
                 continue
             qubits.append((qubit, data))
         return qubits
