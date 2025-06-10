@@ -32,7 +32,7 @@ class ClassicPacketForwardApp(Application):
         """
         super().__init__()
         self.route = route
-        self.add_handler(self.handleClassicPacket, [RecvClassicPacket], [])
+        self.add_handler(self.handleClassicPacket, [RecvClassicPacket])
 
     def handleClassicPacket(self, node: Node, event: RecvClassicPacket):
         packet = event.packet
