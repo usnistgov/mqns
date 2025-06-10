@@ -66,7 +66,7 @@ class ProactiveForwarder(Application):
         self.waiting_qubits = []  # stores the qubits waiting for the INTERNAL phase (SYNC mode)
 
         # handler for classical packets
-        self.add_handler(self.RecvClassicPacketHandler, [RecvClassicPacket])
+        self.add_handler(self.RecvClassicPacketHandler, RecvClassicPacket)
 
         self.parallel_swappings = {}  # structure to manage potential parallel swappings
 

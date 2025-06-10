@@ -46,7 +46,7 @@ class SendApp(Application):
 class RecvApp(Application):
     def __init__(self):
         super().__init__()
-        self.add_handler(self.RecvClassicPacketHandler, [RecvClassicPacket], [])
+        self.add_handler(self.RecvClassicPacketHandler, RecvClassicPacket)
 
     def RecvClassicPacketHandler(self, node: Node, event: RecvClassicPacket):
         packet = event.packet

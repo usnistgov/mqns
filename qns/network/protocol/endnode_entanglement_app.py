@@ -72,8 +72,8 @@ class EndNodeEntanglementApp(Application):  # application to request entanglemen
         self.success_count = 0
         self.send_count = 0
 
-        self.add_handler(self.RecvClassicPacketHandler, [RecvClassicPacket], [Controller])
-        self.add_handler(self.RecvClassicPacketHandler, [RecvClassicPacket], [ProactiveRoutingControllerApp])
+        self.add_handler(self.RecvClassicPacketHandler, RecvClassicPacket, [Controller])
+        self.add_handler(self.RecvClassicPacketHandler, RecvClassicPacket, [ProactiveRoutingControllerApp])
 
     def install(self, node: QNode, simulator: Simulator):
         super().install(node, simulator)

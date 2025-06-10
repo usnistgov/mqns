@@ -30,7 +30,7 @@ class SendApp(Application):
 class RecvApp(Application):
     def __init__(self):
         super().__init__()
-        self.add_handler(self.RecvQubitHandler, [RecvQubitPacket])
+        self.add_handler(self.RecvQubitHandler, RecvQubitPacket)
         self.count = 0
 
     def RecvQubitHandler(self, node, event: Event) -> bool | None:

@@ -104,7 +104,7 @@ class BB84SendApp(Application):
         self.bit_leak = 0
         self.successful_key = []
 
-        self.add_handler(self.handleClassicPacket, [RecvClassicPacket], [self.cchannel])
+        self.add_handler(self.handleClassicPacket, RecvClassicPacket, [self.cchannel])
 
     def install(self, node: Node, simulator: Simulator):
         assert isinstance(node, QNode)
@@ -415,8 +415,8 @@ class BB84RecvApp(Application):
         self.bit_leak = 0
         self.successful_key = []
 
-        self.add_handler(self.handleQuantumPacket, [RecvQubitPacket], [self.qchannel])
-        self.add_handler(self.handleClassicPacket, [RecvClassicPacket], [self.cchannel])
+        self.add_handler(self.handleQuantumPacket, RecvQubitPacket, [self.qchannel])
+        self.add_handler(self.handleClassicPacket, RecvClassicPacket, [self.cchannel])
 
     def handleQuantumPacket(self, node: QNode, event: RecvQubitPacket):
         return self.recv(event)

@@ -202,8 +202,8 @@ def test_memory_async_qubit():
     class MemoryReadResponseApp(Application):
         def __init__(self):
             super().__init__()
-            self.add_handler(self.handleMemoryRead, [MemoryReadResponseEvent], [])
-            self.add_handler(self.handleMemoryWrite, [MemoryWriteResponseEvent], [])
+            self.add_handler(self.handleMemoryRead, MemoryReadResponseEvent)
+            self.add_handler(self.handleMemoryWrite, MemoryWriteResponseEvent)
             self.nReads = 0
             self.nWrites = 0
 

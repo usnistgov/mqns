@@ -29,7 +29,7 @@ def test_operator_sync():
 class RecvOperateApp(Application):
     def __init__(self):
         super().__init__()
-        self.add_handler(self.OperateResponseEventhandler, [OperateResponseEvent], [])
+        self.add_handler(self.OperateResponseEventhandler, OperateResponseEvent)
         self.count = 0
 
     def OperateResponseEventhandler(self, node, event: OperateResponseEvent) -> bool | None:

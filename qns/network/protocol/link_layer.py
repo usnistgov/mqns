@@ -102,8 +102,8 @@ class LinkLayer(Application):
         self.waiting_qubits = set()
 
         # handlers for extenral events
-        self.add_handler(self.RecvQubitHandler, [RecvQubitPacket])
-        self.add_handler(self.RecvClassicPacketHandler, [RecvClassicPacket])
+        self.add_handler(self.RecvQubitHandler, RecvQubitPacket)
+        self.add_handler(self.RecvClassicPacketHandler, RecvClassicPacket)
 
     # called at initialization of the node
     def install(self, node: Node, simulator: Simulator):
