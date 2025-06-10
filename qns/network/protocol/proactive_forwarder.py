@@ -18,6 +18,7 @@
 from collections.abc import Callable
 from typing import Any, Literal, TypedDict, cast
 import copy, random
+from enum import Enum, auto
 
 from qns.entity.cchannel import ClassicPacket, RecvClassicPacket
 from qns.entity.memory import QuantumMemory
@@ -29,7 +30,6 @@ from qns.network.protocol.event import ManageActiveChannels, QubitEntangledEvent
 from qns.network.protocol.fib import FIBEntry, ForwardingInformationBase, find_index_and_swapping_rank, is_isolated_links
 from qns.simulator import Simulator
 from qns.utils import log
-from enum import Enum, auto
 
 
 class NodeType(Enum):
@@ -326,7 +326,6 @@ class ProactiveForwarder(Application):
                         _, epr = res
                         log.debug(f"{self.own}: qubit {qubit}, set possible path IDs = {possible_path_ids}")
                         epr.tmp_path_ids = list(possible_path_ids)     # to coordinate decisions along the path
-
                         if self._can_enter_purif(partner=event.neighbor.name):
                             qchannel: QuantumChannel = self.own.get_qchannel(event.neighbor)
                             if qchannel:
@@ -377,7 +376,7 @@ class ProactiveForwarder(Application):
             fib_entry (dict, optional): FIB entry containing path and instructions.
             The only case where fib_entry is None is when statistical mux is used.
             In such case, only swapping policies (here SWAP-ASAP) is implemented as predefined orders cannot be
-            verified without explicit instructions (i.e, Path ID -> FIB entry).            
+            verified without explicit instructions (i.e, Path ID -> FIB entry).
             partner (str): Name of the partner node to compare against.
 
         Returns
@@ -726,14 +725,15 @@ class ProactiveForwarder(Application):
 
             # for non-isolated paths
             if res.path_id is not None and qubit.path_id != res.path_id and not self.isolate_paths:
-                ll = list(set([this_epr.src.name, this_epr.dst.name, other_epr.src.name, other_epr.dst.name]))
-                route = fib_entry['path_vector']
+                endpoints = {this_epr.src.name, this_epr.dst.name, other_epr.src.name, other_epr.dst.name}
+                
+                route = fib_entry["path_vector"]
                 fib_entry2 = self.fib.get_entry(res.path_id)
-                route2 = fib_entry2['path_vector']
+                route2 = fib_entry2["path_vector"]
 
                 # Check if both partner nodes are in each route
-                in_fib1 = set(ll).issubset(set(route))
-                in_fib2 = set(ll).issubset(set(route2))
+                in_fib1 = endpoints.issubset(set(route))
+                in_fib2 = endpoints.issubset(set(route2))
 
                 if in_fib1 and not in_fib2:
                     other_fib_entry = fib_entry
@@ -743,7 +743,7 @@ class ProactiveForwarder(Application):
                 elif in_fib1 and in_fib2:
                     other_fib_entry = fib_entry2
                 else:
-                    raise Exception(f"XXXXX")
+                    raise Exception("Cannot find EPR endpoints in installed paths")
 
             self.do_swapping(qubit, res, fib_entry, other_fib_entry, path_ids)
 
@@ -824,7 +824,6 @@ class ProactiveForwarder(Application):
         Partners are notified with SWAP_UPDATE messages.
         """
         simulator = self.simulator
-        own_idx, own_rank = find_index_and_swapping_rank(fib_entry, self.own.name)
 
         # Read both qubits and remove them from memory.
         #
@@ -865,12 +864,21 @@ class ProactiveForwarder(Application):
         assert next_qubit is not None
         assert next_epr is not None
         assert next_epr.name is not None
+        
+        prev_own_idx, prev_own_rank = find_index_and_swapping_rank(prev_fib_entry, self.own.name)
+        next_own_idx, next_own_rank = find_index_and_swapping_rank(next_fib_entry, self.own.name)
+
+        prev_route = prev_fib_entry["path_vector"]
+        prev_swap_sequence = prev_fib_entry["swap_sequence"]
+
+        next_route = next_fib_entry["path_vector"]
+        next_swap_sequence = next_fib_entry["swap_sequence"]
 
         # Save ch_index metadata field onto elementary EPR.
         if not prev_epr.orig_eprs:
-            prev_epr.ch_index = own_idx - 1
+            prev_epr.ch_index = prev_own_idx - 1
         if not next_epr.orig_eprs:
-            next_epr.ch_index = own_idx
+            next_epr.ch_index = next_own_idx
 
         # Attempt the swap.
         new_epr = prev_epr.swapping(epr=next_epr, ps=self.ps)
@@ -888,15 +896,20 @@ class ProactiveForwarder(Application):
                     new_epr.tmp_path_ids = list(prev_epr.tmp_path_ids)
                 else:
                     new_epr.tmp_path_ids = path_ids
+ 
+            # another node just swapped on a shared EPR and changed its src/dst
+            if prev_partner.name not in prev_route or next_partner.name not in next_route:
+                raise Exception(f"{self.own}: Conflictual parallel swapping "
+                                "caused by SWAP-ASAP with non-isolated paths")
 
             # Keep records to support potential parallel swapping with prev_partner.
-            _, prev_p_rank = find_index_and_swapping_rank(fib_entry, prev_partner.name)
-            if own_rank == prev_p_rank:
+            _, prev_p_rank = find_index_and_swapping_rank(prev_fib_entry, prev_partner.name)
+            if prev_own_rank == prev_p_rank:
                 self.parallel_swappings[prev_epr.name] = (prev_epr, next_epr, new_epr)
 
             # Keep records to support potential parallel swapping with next_partner.
-            _, next_p_rank = find_index_and_swapping_rank(fib_entry, next_partner.name)
-            if own_rank == next_p_rank:
+            _, next_p_rank = find_index_and_swapping_rank(next_fib_entry, next_partner.name)
+            if next_own_rank == next_p_rank:
                 self.parallel_swappings[next_epr.name] = (next_epr, prev_epr, new_epr)
 
         # Send SWAP_UPDATE to partners.
@@ -1059,6 +1072,14 @@ class ProactiveForwarder(Application):
                     raise Exception(f"Cannot select path ID from "
                                     f"{new_epr.tmp_path_ids} and {other_epr.tmp_path_ids}")
                 merged_epr.tmp_path_ids = path_ids
+                
+        # adjust EPR paths for non-isolated paths
+        if merged_epr is not None and new_epr.tmp_path_ids is None:
+            endpoints = {merged_epr.src.name, merged_epr.dst.name}
+            if not endpoints.issubset(set(fib_entry["path_vector"])):
+                log.debug(f"{self.own}: IGNORED conflictual parallel swapping. "
+                            "Caused by two nodes swapping a the same EPR with two different paths.")
+                return
 
         # Determine the "destination" and "partner".
         if other_epr.dst == self.own:  # destination is to the left of own node

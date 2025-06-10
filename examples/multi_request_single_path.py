@@ -34,6 +34,7 @@ swapping_config = "swap_3_asap"          # TODO: here we know there are 3 swaps 
 # Multipath settings
 routing_type = "MRSP_DYNAMIC"  # Controller installs one path for each S-D request, without qubit-path allocation
 
+# NOTE: Statistical works only with SWAP-ASAP
 statistical_mux = True          # enable statistical mux (True) or dynamic EPR affectation (False)
 
 # Quantum channel lengths
