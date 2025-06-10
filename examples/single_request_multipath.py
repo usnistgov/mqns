@@ -31,13 +31,11 @@ t_coherence = 0.01    # sec
 
 node_capacity = 4
 
-
-# 4-nodes topology
-swapping_config = "l2r"
+swapping_config = "asap"
 
 # Multipath settings
 routing_type = "SRMP_STATIC"  # Controller installs multiple paths for a single S-D request, with qubit-path allocation
-isolate_paths = True       # Routers can/cannot swap qubits allocated to different paths (but serving same S-D request)
+isolate_paths = False       # Routers can/cannot swap qubits allocated to different paths (but serving same S-D request)
 
 # Quantum channel lengths
 ch_S_R1 = 10

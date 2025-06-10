@@ -29,8 +29,6 @@ init_fidelity = 0.99
 p_swap = 0.5
 t_coherence = 0.01    # sec
 
-
-# 4-nodes topology
 swapping_config = "swap_2_l2r"
 
 def generate_topology(

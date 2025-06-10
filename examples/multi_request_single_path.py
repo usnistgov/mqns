@@ -29,13 +29,12 @@ init_fidelity = 0.99
 p_swap = 0.5
 t_coherence = 0.01    # sec
 
-
-# 4-nodes topology
-swapping_config = "swap_3_l2r"          # FIXME: here we know there are 3 swaps on all paths
+swapping_config = "swap_3_asap"          # TODO: here we know there are 3 swaps on all paths
 
 # Multipath settings
 routing_type = "MRSP_DYNAMIC"  # Controller installs one path for each S-D request, without qubit-path allocation
-isolate_paths = False       # Routers must not swap qubits allocated to different paths
+
+statistical_mux = True          # enable statistical mux (True) or dynamic EPR affectation (False)
 
 # Quantum channel lengths
 ch_S1_R1 = 10
@@ -71,7 +70,7 @@ def generate_topology() -> dict:
                     eta_s=eta_s,
                     frequency=frequency,
                 ),
-                ProactiveForwarder(ps=p_swap, isolate_paths=isolate_paths)
+                ProactiveForwarder(ps=p_swap, statistical_mux=statistical_mux)
             ]
         },
         {
@@ -89,7 +88,7 @@ def generate_topology() -> dict:
                     eta_s=eta_s,
                     frequency=frequency,
                 ),
-                ProactiveForwarder(ps=p_swap, isolate_paths=isolate_paths)
+                ProactiveForwarder(ps=p_swap, statistical_mux=statistical_mux)
             ]
         },
         {
@@ -107,7 +106,7 @@ def generate_topology() -> dict:
                     eta_s=eta_s,
                     frequency=frequency,
                 ),
-                ProactiveForwarder(ps=p_swap, isolate_paths=isolate_paths)
+                ProactiveForwarder(ps=p_swap, statistical_mux=statistical_mux)
             ]
         },
         {
@@ -125,7 +124,7 @@ def generate_topology() -> dict:
                     eta_s=eta_s,
                     frequency=frequency,
                 ),
-                ProactiveForwarder(ps=p_swap, isolate_paths=isolate_paths)
+                ProactiveForwarder(ps=p_swap, statistical_mux=statistical_mux)
             ]
         },
         {
@@ -143,7 +142,7 @@ def generate_topology() -> dict:
                     eta_s=eta_s,
                     frequency=frequency,
                 ),
-                ProactiveForwarder(ps=p_swap, isolate_paths=isolate_paths)
+                ProactiveForwarder(ps=p_swap, statistical_mux=statistical_mux)
             ]
         },
         {
@@ -161,7 +160,7 @@ def generate_topology() -> dict:
                     eta_s=eta_s,
                     frequency=frequency,
                 ),
-                ProactiveForwarder(ps=p_swap, isolate_paths=isolate_paths)
+                ProactiveForwarder(ps=p_swap, statistical_mux=statistical_mux)
             ]
         },
         {
@@ -179,7 +178,7 @@ def generate_topology() -> dict:
                     eta_s=eta_s,
                     frequency=frequency,
                 ),
-                ProactiveForwarder(ps=p_swap, isolate_paths=isolate_paths)
+                ProactiveForwarder(ps=p_swap, statistical_mux=statistical_mux)
             ]
         },
         {
@@ -197,7 +196,7 @@ def generate_topology() -> dict:
                     eta_s=eta_s,
                     frequency=frequency,
                 ),
-                ProactiveForwarder(ps=p_swap, isolate_paths=isolate_paths)
+                ProactiveForwarder(ps=p_swap, statistical_mux=statistical_mux)
             ]
         }
     ],

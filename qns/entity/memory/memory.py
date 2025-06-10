@@ -477,11 +477,9 @@ class QuantumMemory(Entity):
             List[Tuple[MemoryQubit, QuantumModel]]:
                 A list of tuples containing eligible memory qubits and their associated `QuantumModel` instances.
                 The list is empty if no matching qubits are found.
-
         """
         qubits = []
         for qubit, data in self._storage:
-            print(f"{qubit},{data}")
             if data is None:
                 continue
             if qubit.fsm.state != QubitState.ELIGIBLE:
