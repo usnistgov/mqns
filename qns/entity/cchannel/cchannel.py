@@ -162,7 +162,7 @@ class ClassicChannel(Entity):
             send_time = simulator.current_time
 
         # random drop
-        if get_rand() < self.drop_rate:
+        if self.drop_rate > 0 and get_rand() < self.drop_rate:
             log.debug(f"cchannel {self}: drop packet {packet} due to drop rate")
             return
         #  add delay
