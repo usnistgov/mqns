@@ -15,7 +15,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from typing import TYPE_CHECKING, Any, Callable, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Callable, TypeVar, cast, overload
 
 from qns.simulator import Event, Simulator
 
@@ -94,7 +94,15 @@ class Application:
         """
         self._dispatch_dict.append((EventTypeList, ByList, handler))
 
-    def get_node(self, *, node_type: type["NodeT"] | None = None) -> "NodeT":
+    @overload
+    def get_node(self) -> "Node":
+        pass
+
+    @overload
+    def get_node(self, *, node_type: type[NodeT]) -> NodeT:
+        pass
+
+    def get_node(self, *, node_type: type[NodeT] | None = None) -> NodeT:
         """Get the node that runs this application
 
         Returns:
