@@ -15,7 +15,6 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from qns.entity.node.qnode import QNode
 from qns.entity.qchannel.qchannel import QuantumChannel
 from qns.models.delay import DelayInput
 
@@ -29,7 +28,7 @@ class QubitLossChannel(QuantumChannel):
     def __init__(
         self,
         name: str,
-        node_list: list[QNode] = [],
+        *,
         bandwidth: int = 0,
         delay: DelayInput = 0,
         p_init: float = 0,
@@ -56,7 +55,6 @@ class QubitLossChannel(QuantumChannel):
         """
         super().__init__(
             name=name,
-            node_list=node_list,
             bandwidth=bandwidth,
             delay=delay,
             max_buffer_size=max_buffer_size,

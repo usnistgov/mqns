@@ -15,7 +15,8 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from qns.entity.base_channel import NextHopNotConnectionException
 from qns.entity.qchannel.losschannel import QubitLossChannel
 from qns.entity.qchannel.qchannel import QuantumChannel, QuantumChannelInitKwargs, RecvQubitPacket
 
-__all__ = ["QuantumChannel", "QuantumChannelInitKwargs", "QubitLossChannel", "RecvQubitPacket"]
+__all__ = ["QuantumChannel", "QuantumChannelInitKwargs", "QubitLossChannel", "RecvQubitPacket", "NextHopNotConnectionException"]

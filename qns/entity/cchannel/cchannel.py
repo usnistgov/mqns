@@ -26,13 +26,11 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import json
-from typing import Any, TypedDict
+from typing import Any
 
-from qns.entity.entity import Entity
+from qns.entity.base_channel import BaseChannel, BaseChannelInitKwargs
 from qns.entity.node import Node
-from qns.models.delay import DelayInput, parseDelay
-from qns.simulator import Event, Simulator, Time
-from qns.utils import get_rand, log
+from qns.simulator import Event, Time
 
 try:
     from typing import Unpack
@@ -87,18 +85,14 @@ class ClassicPacket:
         return len(self.msg)
 
 
-class ClassicChannelInitKwargs(TypedDict, total=False):
-    bandwidth: int
-    delay: DelayInput
-    drop_rate: float
-    max_buffer_size: int
-    length: float
+class ClassicChannelInitKwargs(BaseChannelInitKwargs):
+    pass
 
 
-class ClassicChannel(Entity):
+class ClassicChannel(BaseChannel[Node]):
     """ClassicChannel is the channel for classic message"""
 
-    def __init__(self, name: str, node_list: list[Node] = [], **kwargs: Unpack[ClassicChannelInitKwargs]):
+    def __init__(self, name: str, **kwargs: Unpack[ClassicChannelInitKwargs]):
         """Args:
         name (str): the name of this channel
         node_list (List[Node]): a list of QNodes that it connects to
@@ -110,25 +104,7 @@ class ClassicChannel(Entity):
             If it is full, the next coming packet will be dropped. 0 represents unlimited.
 
         """
-        super().__init__(name=name)
-        self.node_list = node_list.copy()
-        self.bandwidth = kwargs.get("bandwidth", 0)
-        self.delay_model = parseDelay(kwargs.get("delay", 0))
-        self.drop_rate = kwargs.get("drop_rate", 0.0)
-        assert 0.0 <= self.drop_rate <= 1.0
-        self.max_buffer_size = kwargs.get("max_buffer_size", 0)
-        self.length = kwargs.get("length", 0.0)
-        self._next_send_time: Time
-
-    def install(self, simulator: Simulator) -> None:
-        """``install`` is called before ``simulator`` runs to initialize or set initial events
-
-        Args:
-            simulator (qns.simulator.simulator.Simulator): the simulator
-
-        """
-        super().install(simulator)
-        self._next_send_time = simulator.ts
+        super().__init__(name, **kwargs)
 
     def send(self, packet: ClassicPacket, next_hop: Node, delay: float = 0):
         """Send a classic packet to the next_hop
@@ -141,42 +117,21 @@ class ClassicChannel(Entity):
                 the next_hop is not connected to this channel
 
         """
-        simulator = self.simulator
+        drop, recv_time = self._send(
+            packet_repr=f"packet {packet}",
+            packet_len=len(packet),
+            next_hop=next_hop,
+            delay=delay,
+        )
 
-        if next_hop not in self.node_list:
-            raise NextHopNotConnectionException
-
-        if self.bandwidth != 0:
-            if self._next_send_time <= simulator.current_time:
-                send_time = simulator.current_time
-            else:
-                send_time = self._next_send_time
-
-            if self.max_buffer_size != 0 and send_time > simulator.current_time + self.max_buffer_size / self.bandwidth:
-                # buffer is overflow
-                log.debug(f"cchannel {self}: drop packet {packet} due to overflow")
-                return
-
-            self._next_send_time = send_time + len(packet) / self.bandwidth
-        else:
-            send_time = simulator.current_time
-
-        # random drop
-        if get_rand() < self.drop_rate:
-            log.debug(f"cchannel {self}: drop packet {packet} due to drop rate")
+        if drop:
             return
-        #  add delay
-        recv_time = send_time + (self.delay_model.calculate() + delay)
 
         send_event = RecvClassicPacket(t=recv_time, name=None, by=self, cchannel=self, packet=packet, dest=next_hop)
-        simulator.add_event(send_event)
+        self.simulator.add_event(send_event)
 
     def __repr__(self) -> str:
         return "<cchannel " + self.name + ">"
-
-
-class NextHopNotConnectionException(Exception):
-    pass
 
 
 class RecvClassicPacket(Event):
