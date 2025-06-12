@@ -179,7 +179,11 @@ class LinkLayer(Application):
             - The reservation is communicated via a classical message using the `RESERVE_QUBIT` command.
 
         """
-        key = f"{self.own.name}_{next_hop.name}_{path_id}_{qubit.addr}"
+        key = self.own.name + "_" + next_hop.name
+        if path_id is not None:
+            key = key + "_" + str(path_id)
+        key = key + "_" + str(qubit.addr) + "_" + uuid.uuid4().hex
+
         if key in self.pending_init_reservation:
             raise Exception(f"{self.own}: reservation already started for {key}")
 
@@ -270,10 +274,11 @@ class LinkLayer(Application):
             raise Exception(f"{self.own}: (sender) Failed to store EPR {epr.name}")
 
         epr.path_id = local_qubit.path_id
-        qchannel.send(epr, next_hop)    # no drop
+        qchannel.send(epr, next_hop)  # no drop
         self.etg_count += 1
-        self.notify_entangled_qubit(neighbor=next_hop, qubit=local_qubit, \
-            delay=qchannel.delay_model.calculate() + 1e-6)   # wait 1tau to notify (+ a small delay to ensure events order)
+        self.notify_entangled_qubit(
+            neighbor=next_hop, qubit=local_qubit, delay=qchannel.delay_model.calculate() + 1e-6
+        )  # wait 1tau to notify (+ a small delay to ensure events order)
 
     def receive_quit(self, packet: RecvQubitPacket):
         """This method is called when a quantum channel delivers an entangled qubit (half of an EPR pair)
