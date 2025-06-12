@@ -10,7 +10,7 @@ length = 1000
 
 def drop_rate(length):
     # drop 0.2 db/KM
-    return 1 - np.exp(- length / 50000)
+    return 1 - np.exp(-length / 50000)
 
 
 def test_bb84_protocol():
@@ -18,8 +18,7 @@ def test_bb84_protocol():
     n1 = QNode(name="n1")
     n2 = QNode(name="n2")
 
-    qlink = QuantumChannel(name="l1", delay=length / light_speed,
-                           drop_rate=0)
+    qlink = QuantumChannel(name="l1", delay=length / light_speed, drop_rate=0)
 
     clink = ClassicChannel(name="c1", delay=length / light_speed)
 

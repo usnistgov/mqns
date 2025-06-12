@@ -2,7 +2,7 @@
 #    Date: 05/17/2025
 #    Summary of changes: Adapted logic to support dynamic approaches.
 #
-#    This file is based on a snapshot of SimQN (https://github.com/qnslab/SimQN),
+#    This file is based on a snapshot of SimQN (https://github.com/QNLab-USTC/SimQN),
 #    which is licensed under the GNU General Public License v3.0.
 #
 #    The original SimQN header is included below.
@@ -41,8 +41,9 @@ from qns.utils import log
 
 
 class Transmit:
-    def __init__(self, id: str, src: QNode, dst: QNode,
-                 first_epr_name: Optional[str] = None, second_epr_name: Optional[str] = None):
+    def __init__(
+        self, id: str, src: QNode, dst: QNode, first_epr_name: Optional[str] = None, second_epr_name: Optional[str] = None
+    ):
         self.id = id
         self.src = src
         self.dst = dst
@@ -54,7 +55,7 @@ class Transmit:
              epr: {self.first_epr_name}, {self.second_epr_name}>"
 
 
-class EndNodeEntanglementApp(Application):     # application to request entanglements then withdraw
+class EndNodeEntanglementApp(Application):  # application to request entanglements then withdraw
     def __init__(self, name: str, src, dest, attr: Dict = {}):
         super().__init__()
         self.name = name
@@ -71,8 +72,8 @@ class EndNodeEntanglementApp(Application):     # application to request entangle
         self.success_count = 0
         self.send_count = 0
 
-        self.add_handler(self.RecvClassicPacketHandler, [RecvClassicPacket], [Controller])
-        self.add_handler(self.RecvClassicPacketHandler, [RecvClassicPacket], [ProactiveRoutingControllerApp])
+        self.add_handler(self.RecvClassicPacketHandler, RecvClassicPacket, [Controller])
+        self.add_handler(self.RecvClassicPacketHandler, RecvClassicPacket, [ProactiveRoutingControllerApp])
 
     def install(self, node: QNode, simulator: Simulator):
         super().install(node, simulator)
@@ -91,7 +92,7 @@ class EndNodeEntanglementApp(Application):     # application to request entangle
     def RecvNewPair(self, app: ProactiveForwarder, event: Event):
         self.handle_pair(event)
 
-    def submit_request(self):      # send request to the controller
+    def submit_request(self):  # send request to the controller
         # insert the cancel request event
         t = self._simulator.tc + Time(sec=1 / self.send_rate)
         event = func_to_event(t, self.withdraw_request, by=self)
@@ -107,8 +108,7 @@ class EndNodeEntanglementApp(Application):     # application to request entangle
         if cchannel is None:
             raise Exception("No such classic channel to the controller")
 
-        classic_packet = ClassicPacket(
-            msg={"cmd": "submit_request", "attrs": {}}, src=self.own, dest=self.controller)
+        classic_packet = ClassicPacket(msg={"cmd": "submit_request", "attrs": {}}, src=self.own, dest=self.controller)
         cchannel.send(classic_packet, next_hop=self.controller)
         log.debug(f"{self.own}: send {classic_packet.msg} from {self.own} to {self.controller}")
 
@@ -122,40 +122,35 @@ class EndNodeEntanglementApp(Application):     # application to request entangle
         if cchannel is None:
             raise Exception("No such classic channel to the controller")
 
-        classic_packet = ClassicPacket(
-            msg={"cmd": "withdraw_request", "id": 0}, src=self.own, dest=self.controller)
+        classic_packet = ClassicPacket(msg={"cmd": "withdraw_request", "id": 0}, src=self.own, dest=self.controller)
         cchannel.send(classic_packet, next_hop=self.controller)
         log.debug(f"{self.own}: send {classic_packet.msg} from {self.own} to {self.controller}")
 
-    def handle_reponse(self, packet: RecvClassicPacket):      # handle response from controller
+    def handle_reponse(self, packet: RecvClassicPacket):  # handle response from controller
         msg = packet.packet.get()
         cchannel = packet.cchannel
 
-        from_node: QNode = cchannel.node_list[0] \
-            if cchannel.node_list[1] == self.own else cchannel.node_list[1]
+        from_node: QNode = cchannel.node_list[0] if cchannel.node_list[1] == self.own else cchannel.node_list[1]
 
         log.debug(f"{self.own}: recv {msg} from {from_node}")
 
         cmd = msg["cmd"]
 
         if cmd == "new_pair":
-            self.success_count+=1
+            self.success_count += 1
 
-
-    def handle_pair(self, packet: RecvClassicPacket):      # handle pairs from routing protocol
+    def handle_pair(self, packet: RecvClassicPacket):  # handle pairs from routing protocol
         msg = packet.packet.get()
         cchannel = packet.cchannel
 
-        from_node: QNode = cchannel.node_list[0] \
-            if cchannel.node_list[1] == self.own else cchannel.node_list[1]
+        from_node: QNode = cchannel.node_list[0] if cchannel.node_list[1] == self.own else cchannel.node_list[1]
 
         log.debug(f"{self.own}: recv {msg} from {from_node}")
 
         cmd = msg["cmd"]
 
         if cmd == "new_pair":
-            self.success_count+=1
-
+            self.success_count += 1
 
     # see what to do with this:
     def add_request(self, request):
@@ -168,6 +163,5 @@ class EndNodeEntanglementApp(Application):     # application to request entangle
         self.requests.append(request)
 
     def clear_request(self):
-        """Clear all requests
-        """
+        """Clear all requests"""
         self.requests.clear()

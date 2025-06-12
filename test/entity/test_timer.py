@@ -8,6 +8,7 @@ def test_timer():
     s = Simulator(0, 10, 1000)
 
     trigger_times: list[Time] = []
+
     def trigger_func():
         trigger_times.append(s.current_time)
 

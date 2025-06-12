@@ -2,7 +2,7 @@
 #    Date: 05/17/2025
 #    Summary of changes: Adapted logic to support dynamic approaches.
 #
-#    This file is based on a snapshot of SimQN (https://github.com/qnslab/SimQN),
+#    This file is based on a snapshot of SimQN (https://github.com/QNLab-USTC/SimQN),
 #    which is licensed under the GNU General Public License v3.0.
 #
 #    The original SimQN header is included below.
@@ -25,7 +25,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from typing import Any
+from typing import Any, TypedDict
 
 from qns.entity.entity import Entity
 from qns.entity.node import QNode
@@ -35,15 +35,26 @@ from qns.models.epr import BaseEntanglement
 from qns.simulator import Event, Simulator, Time
 from qns.utils import get_rand, log
 
+try:
+    from typing import Unpack
+except ImportError:
+    from typing_extensions import Unpack
+
+
+class QuantumChannelInitKwargs(TypedDict, total=False):
+    bandwidth: int
+    delay: DelayInput
+    drop_rate: float
+    max_buffer_size: int
+    length: float
+    decoherence_rate: float
+    transfer_error_model_args: dict
+
 
 class QuantumChannel(Entity):
-    """QuantumChannel is the channel for transmitting qubit
-    """
+    """QuantumChannel is the channel for transmitting qubit"""
 
-    def __init__(self, name: str|None = None, node_list: list[QNode] = [], *,
-                 bandwidth: int = 0, delay: DelayInput = 0, drop_rate: float = 0,
-                 max_buffer_size: int = 0, length: float = 0, decoherence_rate: float = 0,
-                 transfer_error_model_args: dict = {}):
+    def __init__(self, name: str, node_list: list[QNode] = [], **kwargs: Unpack[QuantumChannelInitKwargs]):
         """Args:
         name (str): the name of this channel
         node_list (List[QNode]): a list of QNodes that it connects to
@@ -60,14 +71,14 @@ class QuantumChannel(Entity):
         """
         super().__init__(name=name)
         self.node_list = node_list.copy()
-        self.bandwidth = bandwidth
-        self.delay_model = parseDelay(delay)
-        self.drop_rate = drop_rate
+        self.bandwidth = kwargs.get("bandwidth", 0)
+        self.delay_model = parseDelay(kwargs.get("delay", 0))
+        self.drop_rate = kwargs.get("drop_rate", 0.0)
         assert 0.0 <= self.drop_rate <= 1.0
-        self.max_buffer_size = max_buffer_size
-        self.length = length
-        self.decoherence_rate = decoherence_rate
-        self.transfer_error_model_args = transfer_error_model_args
+        self.max_buffer_size = kwargs.get("max_buffer_size", 0)
+        self.length = kwargs.get("length", 0.0)
+        self.decoherence_rate = kwargs.get("decoherence_rate", 0.0)
+        self.transfer_error_model_args = kwargs.get("transfer_error_model_args", {})
         self._next_send_time: Time
 
     def install(self, simulator: Simulator) -> None:
@@ -78,7 +89,7 @@ class QuantumChannel(Entity):
 
         """
         super().install(simulator)
-        self._next_send_time = self.simulator.ts
+        self._next_send_time = simulator.ts
 
     def send(self, qubit: QuantumModel, next_hop: QNode):
         """Send a qubit to the next_hop
@@ -96,14 +107,12 @@ class QuantumChannel(Entity):
             raise NextHopNotConnectionException
 
         if self.bandwidth != 0:
-
             if self._next_send_time <= simulator.current_time:
                 send_time = simulator.current_time
             else:
                 send_time = self._next_send_time
 
-            if self.max_buffer_size != 0 and \
-               send_time > simulator.current_time + self.max_buffer_size / self.bandwidth:
+            if self.max_buffer_size != 0 and send_time > simulator.current_time + self.max_buffer_size / self.bandwidth:
                 # buffer is overflow
                 log.debug(f"qchannel {self}: drop qubit {qubit} due to overflow")
                 return
@@ -116,7 +125,7 @@ class QuantumChannel(Entity):
         if self.drop_rate > 0 and get_rand() < self.drop_rate:
             log.debug(f"qchannel {self}: drop qubit {qubit} due to drop rate")
             if isinstance(qubit, BaseEntanglement):
-                qubit.set_decoherenced(True) # photon is lost -> flag this pair as decoherenced to inform receiver node
+                qubit.set_decoherenced(True)  # photon is lost -> flag this pair as decoherenced to inform receiver node
             return
 
         # add delay
@@ -124,14 +133,11 @@ class QuantumChannel(Entity):
 
         # operation on the qubit
         qubit.transfer_error_model(self.length, self.decoherence_rate, **self.transfer_error_model_args)
-        send_event = RecvQubitPacket(recv_time, name=None, by=self, qchannel=self,
-                                     qubit=qubit, dest=next_hop)
+        send_event = RecvQubitPacket(t=recv_time, by=self, qchannel=self, qubit=qubit, dest=next_hop)
         simulator.add_event(send_event)
 
     def __repr__(self) -> str:
-        if self.name is not None:
-            return "<qchannel "+self.name+">"
-        return super().__repr__()
+        return "<qchannel " + self.name + ">"
 
 
 class NextHopNotConnectionException(Exception):
@@ -139,16 +145,15 @@ class NextHopNotConnectionException(Exception):
 
 
 class RecvQubitPacket(Event):
-    """The event for a QNode to receive a classic packet
-    """
+    """The event for a QNode to receive a qubit"""
 
-    def __init__(self, t: Time|None = None, qchannel: QuantumChannel|None = None,
-                 qubit: QuantumModel|None = None, dest: QNode|None = None, name: str|None = None, by: Any = None):
+    def __init__(
+        self, *, t: Time, name: str | None = None, by: Any = None, qchannel: QuantumChannel, qubit: QuantumModel, dest: QNode
+    ):
         super().__init__(t=t, name=name, by=by)
         self.qchannel = qchannel
         self.qubit = qubit
         self.dest = dest
 
     def invoke(self) -> None:
-        assert self.dest is not None
         self.dest.handle(self)

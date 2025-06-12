@@ -25,12 +25,19 @@ from qns.simulator.ts import Time
 if TYPE_CHECKING:
     from qns.entity.operator.operator import QuantumOperator
 
-class OperateRequestEvent(Event):
-    """``OperateRequestEvent`` is the event that request a operator to handle
-    """
 
-    def __init__(self, operator: "QuantumOperator", qubits: list[QuantumModel] = [], *,
-                 t: Time|None = None, name: str|None = None, by: Any = None):
+class OperateRequestEvent(Event):
+    """``OperateRequestEvent`` is the event that request a operator to handle"""
+
+    def __init__(
+        self,
+        operator: "QuantumOperator",
+        qubits: list[QuantumModel] = [],
+        *,
+        t: Time | None = None,
+        name: str | None = None,
+        by: Any = None,
+    ):
         super().__init__(t=t, name=name, by=by)
         self.operator = operator
         self.qubits = qubits
@@ -40,11 +47,18 @@ class OperateRequestEvent(Event):
 
 
 class OperateResponseEvent(Event):
-    """``OperateResponseEvent`` is the event that returns the operating result
-    """
+    """``OperateResponseEvent`` is the event that returns the operating result"""
 
-    def __init__(self, node: QNode, result: int|list[int]|None = None, *,
-                 request: OperateRequestEvent, t: Time|None = None, name: str|None = None, by: Any = None):
+    def __init__(
+        self,
+        node: QNode,
+        result: int | list[int] | None = None,
+        *,
+        request: OperateRequestEvent,
+        t: Time | None = None,
+        name: str | None = None,
+        by: Any = None,
+    ):
         super().__init__(t=t, name=name, by=by)
         self.node = node
         self.result = result

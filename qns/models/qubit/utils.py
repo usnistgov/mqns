@@ -32,7 +32,7 @@ def kron(a: np.ndarray, b: np.ndarray) -> np.ndarray:
         a = a.reshape((1, 1))
     if b.shape == (1,):
         b = b.reshape((1, 1))
-    return (a[:, None, :, None]*b[None, :, None, :]).reshape(a.shape[0]*b.shape[0], a.shape[1]*b.shape[1])
+    return (a[:, None, :, None] * b[None, :, None, :]).reshape(a.shape[0] * b.shape[0], a.shape[1] * b.shape[1])
 
 
 def single_gate_expand(qubit: "Qubit", operator: Operator1) -> Operator1:
@@ -61,8 +61,8 @@ def joint(qubit1: "Qubit", qubit2: "Qubit") -> None:
         raise QGateStateJointError
 
     from qns.models.qubit.qubit import QState
-    nq = QState(qubit1.state.qubits+qubit2.state.qubits,
-                rho=kron(qubit1.state.rho, qubit2.state.rho))
+
+    nq = QState(qubit1.state.qubits + qubit2.state.qubits, rho=kron(qubit1.state.rho, qubit2.state.rho))
     for q in nq.qubits:
         q.state = nq
 
@@ -81,12 +81,11 @@ def partial_trace(rho: np.ndarray, idx: int) -> np.ndarray:
     num_qubit = int(np.log2(rho.shape[0]))
     qubit_axis = [(idx, num_qubit + idx)]
     minus_factor = [(i, 2 * i) for i in range(len(qubit_axis))]
-    minus_qubit_axis = [(q[0] - m[0], q[1] - m[1])
-                        for q, m in zip(qubit_axis, minus_factor)]
+    minus_qubit_axis = [(q[0] - m[0], q[1] - m[1]) for q, m in zip(qubit_axis, minus_factor)]
     rho_res = np.reshape(rho, [2, 2] * num_qubit)
     qubit_left = num_qubit - len(qubit_axis)
     for i, j in minus_qubit_axis:
         rho_res = np.trace(rho_res, axis1=i, axis2=j)
     if qubit_left > 1:
-        rho_res = np.reshape(rho_res, [2 ** qubit_left] * 2)
+        rho_res = np.reshape(rho_res, [2**qubit_left] * 2)
     return rho_res

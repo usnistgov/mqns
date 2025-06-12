@@ -19,8 +19,7 @@ from qns.entity import QNode
 
 
 class Request:
-    """Requests entanglement pairs between a source and a destination.
-    """
+    """Requests entanglement pairs between a source and a destination."""
 
     def __init__(self, src: QNode, dest: QNode, attr: dict = {}) -> None:
         """Args:

@@ -8,7 +8,7 @@ from qns.simulator.ts import Time
 
 
 class ProcessEvent(Event):
-    def __init__(self, t: Time, dest: Node, name: str|None = None, by: Any = None):
+    def __init__(self, t: Time, dest: Node, name: str | None = None, by: Any = None):
         super().__init__(t, name=name, by=by)
         self.dest = dest
 
@@ -29,8 +29,8 @@ class ProcessApp(Application):
             event = ProcessEvent(t=t, dest=self.get_node(), by=self)
             self.simulator.add_event(event)
 
-    def EventHandler(self, node, event: Event) -> bool|None:
-        expected_recv_time = [i+0.5 for i in range(0, 10)]
+    def EventHandler(self, node, event: Event) -> bool | None:
+        expected_recv_time = [i + 0.5 for i in range(0, 10)]
         print(f"recv event at {event.t}")
         assert cast(Time, event.t).sec in expected_recv_time
 

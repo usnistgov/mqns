@@ -37,7 +37,7 @@ def test_event_normal():
     print(te)
 
     te.invoke()
-    assert (not te.is_canceled)
+    assert not te.is_canceled
     te.cancel()
     assert te.is_canceled
 

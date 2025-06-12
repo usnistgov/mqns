@@ -29,9 +29,14 @@ class MixedStateEntanglement(BaseEntanglement["MixedStateEntanglement"], Quantum
     rho = A * Phi^+ + B * Psi^+ + C * Psi^- + D * Phi^-
     """
 
-    def __init__(self, fidelity: float = 1, b: float|None = None,
-                 c: float|None = None, d: float|None = None,
-                 name: str|None = None):
+    def __init__(
+        self,
+        fidelity: float = 1,
+        b: float | None = None,
+        c: float | None = None,
+        d: float | None = None,
+        name: str | None = None,
+    ):
         """Generate an entanglement with certain fidelity
 
         Args:
@@ -43,15 +48,14 @@ class MixedStateEntanglement(BaseEntanglement["MixedStateEntanglement"], Quantum
 
         """
         super().__init__(fidelity=fidelity, name=name)
-        self.b = b if b is not None else (1-fidelity)/3
-        self.c = c if c is not None else (1-fidelity)/3
-        self.d = d if d is not None else (1-fidelity)/3
+        self.b = b if b is not None else (1 - fidelity) / 3
+        self.c = c if c is not None else (1 - fidelity) / 3
+        self.d = d if d is not None else (1 - fidelity) / 3
         self.normalized()
 
     @property
     def a(self) -> float:
-        """A equals to the fidelity
-        """
+        """A equals to the fidelity"""
         return self.fidelity
 
     @a.setter
@@ -61,12 +65,14 @@ class MixedStateEntanglement(BaseEntanglement["MixedStateEntanglement"], Quantum
     def normalized(self):
         total = self.a + self.b + self.c + self.d
         # Normalized: a + b + c + d = 1
-        self.a = self.a/total
-        self.b = self.b/total
-        self.c = self.c/total
-        self.d = self.d/total
+        self.a = self.a / total
+        self.b = self.b / total
+        self.c = self.c / total
+        self.d = self.d / total
 
-    def swapping(self, epr: "MixedStateEntanglement", *, name: str|None = None, ps: float = 1) -> "MixedStateEntanglement|None":
+    def swapping(
+        self, epr: "MixedStateEntanglement", *, name: str | None = None, ps: float = 1
+    ) -> "MixedStateEntanglement|None":
         """Use `self` and `epr` to perfrom swapping and distribute a new entanglement
 
         Args:
@@ -83,17 +89,17 @@ class MixedStateEntanglement(BaseEntanglement["MixedStateEntanglement"], Quantum
         self.is_decoherenced = True
 
         r = get_rand()
-        if r > ps:              # swap failed
+        if r > ps:  # swap failed
             return None
 
-        ne.a = self.a*epr.a + self.b*epr.b + self.c*epr.c + self.d*epr.d
-        ne.b = self.a*epr.b + self.b*epr.a + self.c*epr.d + self.d*epr.c
-        ne.c = self.a*epr.c + self.b*epr.d + self.c*epr.a + self.d*epr.b
-        ne.d = self.a*epr.d + self.b*epr.c + self.c*epr.d + self.d*epr.a
+        ne.a = self.a * epr.a + self.b * epr.b + self.c * epr.c + self.d * epr.d
+        ne.b = self.a * epr.b + self.b * epr.a + self.c * epr.d + self.d * epr.c
+        ne.c = self.a * epr.c + self.b * epr.d + self.c * epr.a + self.d * epr.b
+        ne.d = self.a * epr.d + self.b * epr.c + self.c * epr.d + self.d * epr.a
         ne.normalized()
         return ne
 
-    def distillation(self, epr: "MixedStateEntanglement", name: str|None = None):
+    def distillation(self, epr: "MixedStateEntanglement", name: str | None = None):
         """Use `self` and `epr` to perfrom distillation and distribute a new entanglement.
         Using BBPSSW protocol.
 
@@ -111,16 +117,16 @@ class MixedStateEntanglement(BaseEntanglement["MixedStateEntanglement"], Quantum
             return
         epr.is_decoherenced = True
         self.is_decoherenced = True
-        p_succ = (self.a+self.d)*(epr.a+epr.d) + (self.b+self.c)*(epr.c + epr.b)
+        p_succ = (self.a + self.d) * (epr.a + epr.d) + (self.b + self.c) * (epr.c + epr.b)
 
         if get_rand() > p_succ:
             ne.is_decoherenced = True
             ne.fidelity = 0
             return
-        ne.a = (self.a*epr.a+self.d*epr.d)/p_succ
-        ne.b = (self.b*epr.b+self.c*epr.c)/p_succ
-        ne.c = (self.b*epr.c+self.c*epr.b)/p_succ
-        ne.d = (self.a*epr.d+self.d*epr.a)/p_succ
+        ne.a = (self.a * epr.a + self.d * epr.d) / p_succ
+        ne.b = (self.b * epr.b + self.c * epr.c) / p_succ
+        ne.c = (self.b * epr.c + self.c * epr.b) / p_succ
+        ne.d = (self.a * epr.d + self.d * epr.a) / p_succ
         ne.normalized()
         return ne
 
@@ -138,10 +144,10 @@ class MixedStateEntanglement(BaseEntanglement["MixedStateEntanglement"], Quantum
             kwargs: other parameters
 
         """
-        self.a = 0.25 + (self.a-0.25) * np.exp(-decoherence_rate * t)
-        self.b = 0.25 + (self.b-0.25) * np.exp(-decoherence_rate * t)
-        self.c = 0.25 + (self.c-0.25) * np.exp(-decoherence_rate * t)
-        self.d = 0.25 + (self.d-0.25) * np.exp(-decoherence_rate * t)
+        self.a = 0.25 + (self.a - 0.25) * np.exp(-decoherence_rate * t)
+        self.b = 0.25 + (self.b - 0.25) * np.exp(-decoherence_rate * t)
+        self.c = 0.25 + (self.c - 0.25) * np.exp(-decoherence_rate * t)
+        self.d = 0.25 + (self.d - 0.25) * np.exp(-decoherence_rate * t)
         self.normalized()
 
     def transfer_error_model(self, length: float = 0, decoherence_rate: float = 0, **kwargs):
@@ -158,10 +164,10 @@ class MixedStateEntanglement(BaseEntanglement["MixedStateEntanglement"], Quantum
             kwargs: other parameters
 
         """
-        self.a = 0.25 + (self.a-0.25) * np.exp(-decoherence_rate * length)
-        self.b = 0.25 + (self.b-0.25) * np.exp(-decoherence_rate * length)
-        self.c = 0.25 + (self.c-0.25) * np.exp(-decoherence_rate * length)
-        self.d = 0.25 + (self.d-0.25) * np.exp(-decoherence_rate * length)
+        self.a = 0.25 + (self.a - 0.25) * np.exp(-decoherence_rate * length)
+        self.b = 0.25 + (self.b - 0.25) * np.exp(-decoherence_rate * length)
+        self.c = 0.25 + (self.c - 0.25) * np.exp(-decoherence_rate * length)
+        self.d = 0.25 + (self.d - 0.25) * np.exp(-decoherence_rate * length)
         self.normalized()
 
     def to_qubits(self) -> list[Qubit]:
@@ -173,12 +179,16 @@ class MixedStateEntanglement(BaseEntanglement["MixedStateEntanglement"], Quantum
         q0 = Qubit(state=QUBIT_STATE_0, name="q0")
         q1 = Qubit(state=QUBIT_STATE_0, name="q1")
 
-        phi_p = 1/np.sqrt(2) * np.array([[1], [0], [0], [1]])
-        phi_n = 1/np.sqrt(2) * np.array([[1], [0], [0], [-1]])
-        psi_p = 1/np.sqrt(2) * np.array([[0], [1], [1], [0]])
-        psi_n = 1/np.sqrt(2) * np.array([[0], [1], [-1], [0]])
-        rho = self.a * np.dot(phi_p, phi_p.T.conjugate()) + self.b * np.dot(psi_p, psi_p.T.conjugate())\
-            + self.c * np.dot(psi_n, psi_n.T.conjugate()) + self.d * np.dot(phi_n, phi_n.T.conjugate())
+        phi_p = 1 / np.sqrt(2) * np.array([[1], [0], [0], [1]])
+        phi_n = 1 / np.sqrt(2) * np.array([[1], [0], [0], [-1]])
+        psi_p = 1 / np.sqrt(2) * np.array([[0], [1], [1], [0]])
+        psi_n = 1 / np.sqrt(2) * np.array([[0], [1], [-1], [0]])
+        rho = (
+            self.a * np.dot(phi_p, phi_p.T.conjugate())
+            + self.b * np.dot(psi_p, psi_p.T.conjugate())
+            + self.c * np.dot(psi_n, psi_n.T.conjugate())
+            + self.d * np.dot(phi_n, phi_n.T.conjugate())
+        )
 
         qs = QState([q0, q1], rho=rho)
         q0.state = qs

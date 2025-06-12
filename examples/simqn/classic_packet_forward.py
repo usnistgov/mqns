@@ -39,8 +39,7 @@ class SendApp(Application):
         cchannel.send(packet=packet, next_hop=next_hop)
 
         # calculate the next sending time
-        t = self._simulator.current_time + \
-            self._simulator.time(sec=1 / self.send_rate)
+        t = self._simulator.current_time + self._simulator.time(sec=1 / self.send_rate)
 
         # insert the next send event to the simulator
         event = func_to_event(t, self.send_packet, by=self)
@@ -62,9 +61,7 @@ class RecvApp(Application):
 def main():
     s = Simulator(0, 10, accuracy=10000000)
 
-    topo = LineTopology(nodes_number=10,
-                        qchannel_args={"delay": 0.1},
-                        cchannel_args={"delay": 0.1})
+    topo = LineTopology(nodes_number=10, qchannel_args={"delay": 0.1}, cchannel_args={"delay": 0.1})
 
     net = QuantumNetwork(topo=topo, classic_topo=ClassicTopology.Follow)
 

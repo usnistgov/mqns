@@ -14,9 +14,11 @@ log.logger.setLevel(logging.DEBUG)
 
 light_speed = 299791458
 
+
 def drop_rate(length):
     # drop 0.2 db/KM
-    return 1 - np.exp(- length / 50000)
+    return 1 - np.exp(-length / 50000)
+
 
 # constrains
 init_fidelity = 0.99
@@ -29,13 +31,13 @@ result = []
 
 s = Simulator(0, 10, accuracy=10000000)
 log.install(s)
-topo = LineTopology(nodes_number=nodes_number,
-        qchannel_args={"delay": link_length / light_speed, "drop_rate": drop_rate(link_length)},
-        cchannel_args={"delay": link_length / light_speed},
-        memory_args=[{
-            "capacity": memory_capacity,
-            "decoherence_rate": 0.1}],
-        nodes_apps=[EntanglementDistributionApp(init_fidelity=init_fidelity)])
+topo = LineTopology(
+    nodes_number=nodes_number,
+    qchannel_args={"delay": link_length / light_speed, "drop_rate": drop_rate(link_length)},
+    cchannel_args={"delay": link_length / light_speed},
+    memory_args=[{"capacity": memory_capacity, "decoherence_rate": 0.1}],
+    nodes_apps=[EntanglementDistributionApp(init_fidelity=init_fidelity)],
+)
 
 net = QuantumNetwork(topo=topo, classic_topo=ClassicTopology.All, route=DijkstraRouteAlgorithm())
 net.build_route()

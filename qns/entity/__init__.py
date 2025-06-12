@@ -2,7 +2,7 @@
 #    Date: 05/17/2025
 #    Summary of changes: Adapted logic to support dynamic approaches.
 #
-#    This file is based on a snapshot of SimQN (https://github.com/qnslab/SimQN),
+#    This file is based on a snapshot of SimQN (https://github.com/QNLab-USTC/SimQN),
 #    which is licensed under the GNU General Public License v3.0.
 #
 #    The original SimQN header is included below.
@@ -28,10 +28,10 @@
 from qns.entity.cchannel.cchannel import ClassicChannel, ClassicPacket, RecvClassicPacket
 from qns.entity.entity import Entity
 from qns.entity.memory.event import (
-           MemoryReadRequestEvent,
-           MemoryReadResponseEvent,
-           MemoryWriteRequestEvent,
-           MemoryWriteResponseEvent,
+    MemoryReadRequestEvent,
+    MemoryReadResponseEvent,
+    MemoryWriteRequestEvent,
+    MemoryWriteResponseEvent,
 )
 from qns.entity.memory.memory import QuantumMemory
 from qns.entity.monitor.monitor import Monitor, MonitorEvent
@@ -43,8 +43,27 @@ from qns.entity.operator import OperateRequestEvent, OperateResponseEvent, Quant
 from qns.entity.qchannel.qchannel import QuantumChannel, RecvQubitPacket
 from qns.entity.timer.timer import Timer
 
-__all__ = ["Entity", "Node", "QNode", "Controller", "Application", "Timer", "QuantumMemory", "ClassicChannel",
-           "QuantumMemory", "ClassicPacket", "RecvClassicPacket", "QuantumChannel", "RecvQubitPacket",
-           "QuantumOperator", "OperateRequestEvent", "OperateResponseEvent",
-           "MemoryReadRequestEvent", "MemoryReadResponseEvent",
-           "MemoryWriteRequestEvent", "MemoryWriteResponseEvent", "Monitor", "MonitorEvent"]
+__all__ = [
+    "Entity",
+    "Node",
+    "QNode",
+    "Controller",
+    "Application",
+    "Timer",
+    "QuantumMemory",
+    "ClassicChannel",
+    "QuantumMemory",
+    "ClassicPacket",
+    "RecvClassicPacket",
+    "QuantumChannel",
+    "RecvQubitPacket",
+    "QuantumOperator",
+    "OperateRequestEvent",
+    "OperateResponseEvent",
+    "MemoryReadRequestEvent",
+    "MemoryReadResponseEvent",
+    "MemoryWriteRequestEvent",
+    "MemoryWriteResponseEvent",
+    "Monitor",
+    "MonitorEvent",
+]

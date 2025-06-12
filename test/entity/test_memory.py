@@ -13,7 +13,8 @@ from qns.models.epr import BaseEntanglement, WernerStateEntanglement
 from qns.models.qubit import Qubit
 from qns.simulator import Simulator
 
-light_speed = 2 * 10**5 # km/s
+light_speed = 2 * 10**5  # km/s
+
 
 def test_write_and_read_with_path_and_key():
     mem = QuantumMemory("mem", capacity=2, decoherence_rate=1)
@@ -47,15 +48,14 @@ def test_write_and_read_with_path_and_key():
     assert mem.write(epr2, path_id=0, key=key) is None
 
     # Should be able to read it
-    epr1Read = mem.read(key="epr1")   # destructive reading
+    epr1Read = mem.read(key="epr1")  # destructive reading
     assert epr1Read is not None
     qubit, data = epr1Read
     assert isinstance(data, BaseEntanglement)
     assert data.name == "epr1"
     assert mem._usage == 0
 
-    res = mem.read(address=qubit.addr)
-    assert res is None
+    assert pytest.raises(ValueError, lambda: mem.read(address=qubit.addr, must=True))
 
 
 def test_channel_qubit_assignment_and_search():
@@ -66,10 +66,7 @@ def test_channel_qubit_assignment_and_search():
     sim = Simulator(0, 10)
     node.install(sim)
 
-    ch = QuantumChannel(
-        "qch",
-        { "node1": "S", "node2":"R", "capacity": 1, "parameters": {"length": 10, "delay": 10 / light_speed} }
-        )
+    ch = QuantumChannel("qch", length=10, delay=10 / light_speed)
     addr = mem.assign(ch)
     assert addr != -1
 
@@ -84,10 +81,7 @@ def test_channel_qubit_assignment_and_search():
 def test_decoherence_event_removes_qubit():
     mem = QuantumMemory("mem", decoherence_rate=1)
 
-    ch = QuantumChannel(
-        "qch",
-        { "node1": "S", "node2":"R", "capacity": 1, "parameters": {"length": 10, "delay": 10 / light_speed} }
-        )
+    ch = QuantumChannel("qch", length=10, delay=10 / light_speed)
     mem.assign(ch)
 
     node = QNode("n3")
@@ -168,8 +162,13 @@ def test_memory_sync_qubit():
     s = Simulator(0, 10, 1000)
     n1.install(s)
 
-    assert (m.write(q1))
-    assert (m.read(key="test_qubit") is not None)
+    assert m.write(q1)
+    assert m.read(key="test_qubit") is not None
+
+    assert m.get(key="nonexistent") is None
+    assert m.read(key="nonexistent") is None
+    assert pytest.raises(IndexError, lambda: m.get(key="nonexistent", must=True))
+    assert pytest.raises(IndexError, lambda: m.read(key="nonexistent", must=True))
 
 
 def test_memory_sync_qubit_limited():
@@ -181,34 +180,34 @@ def test_memory_sync_qubit_limited():
     n1.install(s)
 
     for i in range(5):
-        q = Qubit(name="q"+str(i+1))
-        assert (m.write(q))
-        assert (m.count == i+1)
+        q = Qubit(name="q" + str(i + 1))
+        assert m.write(q)
+        assert m.count == i + 1
 
     q = Qubit(name="q5")
-    assert (not m.write(q))
-    assert (m.is_full())
+    assert not m.write(q)
+    assert m.is_full()
 
     q = m.read(key="q4")
-    assert (q is not None)
-    assert (m.count == 4)
-    assert (not m.is_full())
+    assert q is not None
+    assert m.count == 4
+    assert not m.is_full()
     q = Qubit(name="q6")
-    assert (m.write(q))
-    assert (m.is_full())
-    assert (m._search(key="q6") == 3)
+    assert m.write(q)
+    assert m.is_full()
+    assert m._search(key="q6") == 3
 
 
 def test_memory_async_qubit():
     class MemoryReadResponseApp(Application):
         def __init__(self):
             super().__init__()
-            self.add_handler(self.handleMemoryRead, [MemoryReadResponseEvent], [])
-            self.add_handler(self.handleMemoryWrite, [MemoryWriteResponseEvent], [])
+            self.add_handler(self.handleMemoryRead, MemoryReadResponseEvent)
+            self.add_handler(self.handleMemoryWrite, MemoryWriteResponseEvent)
             self.nReads = 0
             self.nWrites = 0
 
-        def handleMemoryRead(self, node: QNode, event: MemoryReadResponseEvent) -> bool|None:
+        def handleMemoryRead(self, node: QNode, event: MemoryReadResponseEvent) -> bool | None:
             self.nReads += 1
             result = event.result
 
@@ -221,7 +220,7 @@ def test_memory_async_qubit():
             assert qubit.addr == 0
             assert isinstance(data, Qubit)
 
-        def handleMemoryWrite(self, node: QNode, event: MemoryWriteResponseEvent) -> bool|None:
+        def handleMemoryWrite(self, node: QNode, event: MemoryWriteResponseEvent) -> bool | None:
             self.nWrites += 1
             result = event.result
 

@@ -20,11 +20,9 @@ from qns.models.epr.entanglement import BaseEntanglement
 
 
 class BellStateEntanglement(BaseEntanglement["BellStateEntanglement"], QuantumModel):
-    """`BellStateEntanglement` is the ideal max entangled qubits. Its fidelity is always 1.
-    """
+    """`BellStateEntanglement` is the ideal max entangled qubits. Its fidelity is always 1."""
 
-    def swapping(self, epr: "BellStateEntanglement", *,
-                 name: str|None = None, ps: float = 1) -> "BellStateEntanglement|None":
+    def swapping(self, epr: "BellStateEntanglement", *, name: str | None = None, ps: float = 1) -> "BellStateEntanglement|None":
         ne = BellStateEntanglement(name=name)
         if self.is_decoherenced or epr.is_decoherenced:
             return None

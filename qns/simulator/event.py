@@ -21,10 +21,9 @@ from qns.simulator.ts import Time
 
 
 class Event:
-    """Basic event class in simulator
-    """
+    """Basic event class in simulator"""
 
-    def __init__(self, t: Time|None = None, name: str|None = None, by: Any = None):
+    def __init__(self, t: Time | None = None, name: str | None = None, by: Any = None):
         """Args:
         t (Time): the time slot of this event
         by: the entity or application that causes this event
@@ -37,13 +36,11 @@ class Event:
         self._is_canceled: bool = False
 
     def invoke(self) -> None:
-        """Invoke the event, should be implemented
-        """
+        """Invoke the event, should be implemented"""
         raise NotImplementedError
 
     def cancel(self) -> None:
-        """Cancel this event
-        """
+        """Cancel this event"""
         self._is_canceled = True
 
     @property
@@ -80,7 +77,7 @@ class Event:
         return "Event()"
 
 
-def func_to_event(t: Time, fn: Callable, name: str|None = None, by: Any = None, *args, **kwargs):
+def func_to_event(t: Time, fn: Callable, name: str | None = None, by: Any = None, *args, **kwargs):
     """Convert a function to an event, the function `fn` will be called at `t`.
     It is a simple method to wrap a function to an event.
 
@@ -94,7 +91,7 @@ def func_to_event(t: Time, fn: Callable, name: str|None = None, by: Any = None, 
     """
 
     class WrapperEvent(Event):
-        def __init__(self, t: Time|None = t, name_event=name):
+        def __init__(self, t: Time | None = t, name_event=name):
             super().__init__(t=t, name=name_event, by=by)
 
         def invoke(self) -> None:

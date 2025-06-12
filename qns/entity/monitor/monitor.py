@@ -26,15 +26,14 @@ if TYPE_CHECKING:
     from qns.network import QuantumNetwork
 
 
-AttributionFunc = Callable[[Simulator, "QuantumNetwork|None", Event|None], Any]
+AttributionFunc = Callable[[Simulator, "QuantumNetwork|None", Event | None], Any]
 """Callback function to calculate an attribution."""
 
-class MonitorEvent(Event):
-    """the event that notify the monitor to write down network status
-    """
 
-    def __init__(self, t: Time|None, monitor: "Monitor",
-                 name: str|None = None, by: Any = None):
+class MonitorEvent(Event):
+    """the event that notify the monitor to write down network status"""
+
+    def __init__(self, t: Time | None, monitor: "Monitor", name: str | None = None, by: Any = None):
         super().__init__(t, name, by)
         self.monitor = monitor
 
@@ -43,7 +42,7 @@ class MonitorEvent(Event):
 
 
 class Monitor(Entity):
-    def __init__(self, name: str|None = None, network: "QuantumNetwork|None" = None) -> None:
+    def __init__(self, name: str, network: "QuantumNetwork|None" = None) -> None:
         """Monitor is a virtual entity that helps users to collect network status.
 
         Args:
@@ -95,7 +94,7 @@ class Monitor(Entity):
         simulator = self.simulator
         current_time = simulator.tc.sec
         record: dict[str, Any] = {"time": current_time}
-        for (name, calculate_func) in self.attributions:
+        for name, calculate_func in self.attributions:
             record[name] = [calculate_func(simulator, self.network, event)]
         record_pd = pd.DataFrame(record)
         self.data = pd.concat([self.data, record_pd], ignore_index=True)

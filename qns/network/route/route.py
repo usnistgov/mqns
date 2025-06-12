@@ -21,8 +21,8 @@ from qns.entity.cchannel import ClassicChannel
 from qns.entity.node import Node, QNode
 from qns.entity.qchannel import QuantumChannel
 
-NodeT = TypeVar("NodeT", bound=Node|QNode)
-ChannelT = TypeVar("ChannelT", bound=ClassicChannel|QuantumChannel)
+NodeT = TypeVar("NodeT", bound=Node | QNode)
+ChannelT = TypeVar("ChannelT", bound=ClassicChannel | QuantumChannel)
 
 
 class NetworkRouteError(Exception):
@@ -30,8 +30,7 @@ class NetworkRouteError(Exception):
 
 
 class RouteImpl(Generic[NodeT, ChannelT]):
-    """This is the route protocol interface
-    """
+    """This is the route protocol interface"""
 
     def __init__(self, name: str = "route") -> None:
         self.name = name

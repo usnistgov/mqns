@@ -24,12 +24,14 @@ from qns.utils import log
 if TYPE_CHECKING:
     from qns.entity.qchannel import QuantumChannel
 
+
 class QubitState(Enum):
     ENTANGLED = auto()
     PURIF = auto()
     PENDING = auto()
     ELIGIBLE = auto()
     RELEASE = auto()
+
 
 class QubitFSM:
     def __init__(self):
@@ -42,9 +44,9 @@ class QubitFSM:
             log.debug(f"Unexpected transition: <{self.state}> -> <ENTANGLED>")
 
     def to_purif(self):
-        if self.state == QubitState.ENTANGLED:    # swapping conditions met -> go to first purif (if any)
+        if self.state == QubitState.ENTANGLED:  # swapping conditions met -> go to first purif (if any)
             self.state = QubitState.PURIF
-        elif self.state == QubitState.PENDING:    # pending purif succ -> go to next purif (if any)
+        elif self.state == QubitState.PENDING:  # pending purif succ -> go to next purif (if any)
             self.state = QubitState.PURIF
         else:
             log.debug(f"Unexpected transition: <{self.state}> -> <PURIF>")
@@ -70,9 +72,9 @@ class QubitFSM:
     def __repr__(self) -> str:
         return f"{self.state}"
 
+
 class MemoryQubit:
-    """An addressable qubit in memory, with a lifecycle.
-    """
+    """An addressable qubit in memory, with a lifecycle."""
 
     def __init__(self, addr: int):
         """Args:
@@ -84,9 +86,9 @@ class MemoryQubit:
         """state of the qubit according to the FSM"""
         self.qchannel: "QuantumChannel|None" = None
         """qchannel to which qubit is assigned to (currently only at topology creation time)"""
-        self.path_id: int|None = None
+        self.path_id: int | None = None
         """Optional path ID to which qubit is allocated"""
-        self.active: str|None = None
+        self.active: str | None = None
         """Reservation key if qubit is reserved for entanglement, None otherwise"""
         self.purif_rounds = 0
         """Number of purification rounds currently completed by the EPR stored on this qubit"""

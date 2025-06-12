@@ -34,19 +34,26 @@ class QubitWithError(Qubit):
         lkm = length / 1000
         standand_lkm = 50.0
         theta = get_rand() * lkm / standand_lkm * np.pi / 4
-        operation = np.array([[np.cos(theta), - np.sin(theta)], [np.sin(theta), np.cos(theta)]], dtype=np.complex128)
+        operation = np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]], dtype=np.complex128)
         self.state.operate(operator=operation)
 
 
 class BB84SendApp(Application):
-    def __init__(self, dest: QNode, qchannel: QuantumChannel,
-                 cchannel: ClassicChannel, send_rate=1000,
-                 min_length_for_post_processing=5000,
-                 proportion_for_estimating_error=0.4, max_cascade_round=4,
-                 cascade_alpha=0.73, cascade_beita=2,
-                 init_lower_cascade_key_block_size=5,
-                 init_upper_cascade_key_block_size=20,
-                 security=0.05):
+    def __init__(
+        self,
+        dest: QNode,
+        qchannel: QuantumChannel,
+        cchannel: ClassicChannel,
+        send_rate=1000,
+        min_length_for_post_processing=5000,
+        proportion_for_estimating_error=0.4,
+        max_cascade_round=4,
+        cascade_alpha=0.73,
+        cascade_beita=2,
+        init_lower_cascade_key_block_size=5,
+        init_upper_cascade_key_block_size=20,
+        security=0.05,
+    ):
         """Args:
         dest: QNode.
         qchannel: QuantumChannel.
@@ -97,7 +104,7 @@ class BB84SendApp(Application):
         self.bit_leak = 0
         self.successful_key = []
 
-        self.add_handler(self.handleClassicPacket, [RecvClassicPacket], [self.cchannel])
+        self.add_handler(self.handleClassicPacket, RecvClassicPacket, [self.cchannel])
 
     def install(self, node: Node, simulator: Simulator):
         assert isinstance(node, QNode)
@@ -117,8 +124,13 @@ class BB84SendApp(Application):
         #     self._simulator.add_event(event)
 
     def handleClassicPacket(self, node: QNode, event: RecvClassicPacket):
-        return self.check_basis(event) or self.recv_error_estimate_packet(event) or self.recv_cascade_ask_packet(event) or \
-            self.recv_check_error_ask_packet(event) or self.recv_privacy_amplification_ask_packet(event)
+        return (
+            self.check_basis(event)
+            or self.recv_error_estimate_packet(event)
+            or self.recv_cascade_ask_packet(event)
+            or self.recv_check_error_ask_packet(event)
+            or self.recv_privacy_amplification_ask_packet(event)
+        )
 
     def check_basis(self, event: RecvClassicPacket):
         packet = event.packet
@@ -139,8 +151,11 @@ class BB84SendApp(Application):
             # log.info(f"[{self._simulator.current_time}] src check {id} basis fail")
             self.fail_number += 1
 
-        packet = ClassicPacket(msg={"packet_class": "check_basis", "id": id, "basis": basis_src,
-                               "ret": self.measure_list[id]}, src=self._node, dest=self.dest)
+        packet = ClassicPacket(
+            msg={"packet_class": "check_basis", "id": id, "basis": basis_src, "ret": self.measure_list[id]},
+            src=self._node,
+            dest=self.dest,
+        )
         self.cchannel.send(packet, next_hop=self.dest)
         return True
 
@@ -148,15 +163,12 @@ class BB84SendApp(Application):
         simulator = self.simulator
 
         # randomly generate a qubit
-        state = get_choice([QUBIT_STATE_0, QUBIT_STATE_1,
-                            QUBIT_STATE_P, QUBIT_STATE_N])
+        state = get_choice([QUBIT_STATE_0, QUBIT_STATE_1, QUBIT_STATE_P, QUBIT_STATE_N])
         qubit = QubitWithError(state=state)
-        basis = BASIS_Z if (state == QUBIT_STATE_0).all() or (
-            state == QUBIT_STATE_1).all() else BASIS_X
+        basis = BASIS_Z if (state == QUBIT_STATE_0).all() or (state == QUBIT_STATE_1).all() else BASIS_X
         # basis_msg = "Z" if (basis == BASIS_Z).all() else "X"
 
-        ret = 0 if (state == QUBIT_STATE_0).all() or (
-            state == QUBIT_STATE_P).all() else 1
+        ret = 0 if (state == QUBIT_STATE_0).all() or (state == QUBIT_STATE_P).all() else 1
 
         qubit.id = self.count
         self.count += 1
@@ -218,24 +230,28 @@ class BB84SendApp(Application):
                 real_bit_index_for_cascade.append(i)
 
         # error estimate and set key block size in round1
-        self.cur_error_rate = error_in_estimate/real_bit_length_for_estimate
+        self.cur_error_rate = error_in_estimate / real_bit_length_for_estimate
 
-        if self.cur_error_rate <= (self.cascade_alpha/self.init_upper_cascade_key_block_size):
+        if self.cur_error_rate <= (self.cascade_alpha / self.init_upper_cascade_key_block_size):
             # error rate is smaller than threshold
             self.cur_cascade_key_block_size = self.init_upper_cascade_key_block_size
-        elif self.cur_error_rate >= (self.cascade_alpha/self.init_lower_cascade_key_block_size):
+        elif self.cur_error_rate >= (self.cascade_alpha / self.init_lower_cascade_key_block_size):
             self.cur_cascade_key_block_size = self.init_lower_cascade_key_block_size
         else:
-            self.cur_cascade_key_block_size = int(self.cascade_alpha/self.cur_error_rate)
+            self.cur_cascade_key_block_size = int(self.cascade_alpha / self.cur_error_rate)
 
         self.cur_cascade_round = 1
 
         # send error_estimate_reply packet
-        packet = ClassicPacket(msg={"packet_class": "error_estimate_reply",
-                                    "error_rate": self.cur_error_rate,
-                                    "real_bit_index_for_cascade": real_bit_index_for_cascade},
-                               src=self._node,
-                               dest=self.dest)
+        packet = ClassicPacket(
+            msg={
+                "packet_class": "error_estimate_reply",
+                "error_rate": self.cur_error_rate,
+                "real_bit_index_for_cascade": real_bit_index_for_cascade,
+            },
+            src=self._node,
+            dest=self.dest,
+        )
         self.cchannel.send(packet, next_hop=self.dest)
         return True
 
@@ -266,15 +282,15 @@ class BB84SendApp(Application):
 
         parity_answer = []
         for key_interval in parity_request:
-            temp_parity = cascade_parity(self.cascade_key[key_interval[0]:key_interval[1]+1])
+            temp_parity = cascade_parity(self.cascade_key[key_interval[0] : key_interval[1] + 1])
             parity_answer.append(temp_parity)
 
         self.bit_leak += len(parity_answer)
 
         # send cascade_reply packet
-        packet = ClassicPacket(msg={"packet_class": "cascade_reply",
-                                    "parity_answer": parity_answer},
-                               src=self._node, dest=self.dest)
+        packet = ClassicPacket(
+            msg={"packet_class": "cascade_reply", "parity_answer": parity_answer}, src=self._node, dest=self.dest
+        )
         self.cchannel.send(packet, next_hop=self.dest)
         return True
 
@@ -296,15 +312,15 @@ class BB84SendApp(Application):
         if hash_key != recv_hash_key:
             # cascade fail
             pa_flag = False
-            packet = ClassicPacket(msg={"packet_class": "check_error_reply",
-                                        "pa_flag": pa_flag},
-                                   src=self._node, dest=self.dest)
+            packet = ClassicPacket(
+                msg={"packet_class": "check_error_reply", "pa_flag": pa_flag}, src=self._node, dest=self.dest
+            )
         else:
             # cascade succeed
             pa_flag = True
-            packet = ClassicPacket(msg={"packet_class": "check_error_reply",
-                                        "pa_flag": pa_flag},
-                                   src=self._node, dest=self.dest)
+            packet = ClassicPacket(
+                msg={"packet_class": "check_error_reply", "pa_flag": pa_flag}, src=self._node, dest=self.dest
+            )
         self.cchannel.send(packet, next_hop=self.dest)
         return True
 
@@ -326,7 +342,7 @@ class BB84SendApp(Application):
             first_row = msg.get("first_row")
             first_col = msg.get("first_col")
             matrix_row = len(first_row)
-            matrix_col = len(first_col)+1
+            matrix_col = len(first_col) + 1
             toeplitz_matrix = pa_generate_toeplitz_matrix(matrix_row, matrix_col, first_row, first_col)
             self.successful_key += list(pa_randomize_key(self.cascade_key, toeplitz_matrix))
             self.using_post_processing = False
@@ -335,13 +351,20 @@ class BB84SendApp(Application):
 
 
 class BB84RecvApp(Application):
-    def __init__(self, src: QNode, qchannel: QuantumChannel, cchannel: ClassicChannel,
-                 min_length_for_post_processing=5000,
-                 proportion_for_estimating_error=0.4, max_cascade_round=4,
-                 cascade_alpha=0.73, cascade_beita=2,
-                 init_lower_cascade_key_block_size=5,
-                 init_upper_cascade_key_block_size=20,
-                 security=0.05):
+    def __init__(
+        self,
+        src: QNode,
+        qchannel: QuantumChannel,
+        cchannel: ClassicChannel,
+        min_length_for_post_processing=5000,
+        proportion_for_estimating_error=0.4,
+        max_cascade_round=4,
+        cascade_alpha=0.73,
+        cascade_beita=2,
+        init_lower_cascade_key_block_size=5,
+        init_upper_cascade_key_block_size=20,
+        security=0.05,
+    ):
         """Args:
         src: QNode.
         qchannel: QuantumChannel.
@@ -392,15 +415,19 @@ class BB84RecvApp(Application):
         self.bit_leak = 0
         self.successful_key = []
 
-        self.add_handler(self.handleQuantumPacket, [RecvQubitPacket], [self.qchannel])
-        self.add_handler(self.handleClassicPacket, [RecvClassicPacket], [self.cchannel])
+        self.add_handler(self.handleQuantumPacket, RecvQubitPacket, [self.qchannel])
+        self.add_handler(self.handleClassicPacket, RecvClassicPacket, [self.cchannel])
 
     def handleQuantumPacket(self, node: QNode, event: RecvQubitPacket):
         return self.recv(event)
 
     def handleClassicPacket(self, node: QNode, event: RecvClassicPacket):
-        return self.check_basis(event) or self.recv_error_estimate_reply_packet(event) or \
-            self.recv_cascade_reply_packet(event) or self.recv_check_error_reply_packet(event)
+        return (
+            self.check_basis(event)
+            or self.recv_error_estimate_reply_packet(event)
+            or self.recv_cascade_reply_packet(event)
+            or self.recv_check_error_reply_packet(event)
+        )
 
     def check_basis(self, event: RecvClassicPacket):
         packet = event.packet
@@ -442,12 +469,12 @@ class BB84RecvApp(Application):
         # log.info(f"[{self._simulator.current_time}] recv qubit {qubit.id}, \
         # basis: {basis_msg}, ret: {ret}")
         packet = ClassicPacket(
-            msg={"packet_class": "check_basis", "id": qubit.id, "basis": basis_msg}, src=self._node, dest=self.src)
+            msg={"packet_class": "check_basis", "id": qubit.id, "basis": basis_msg}, src=self._node, dest=self.src
+        )
         self.cchannel.send(packet, next_hop=self.src)
 
     def send_error_estimate_packet(self):
-        """BB84Recvapp send error estimate ask packet.
-        """
+        """BB84Recvapp send error estimate ask packet."""
         self.using_post_processing = True
         self.cur_cascade_round = 0
         self.cur_error_rate = 1e-6
@@ -471,11 +498,16 @@ class BB84RecvApp(Application):
                 self.post_processing_key[i] = item_temp
 
         # send error_estimate packet
-        packet = ClassicPacket(msg={"packet_class": "error_estimate",
-                                    "bit_index_for_estimate": list(bit_for_estimate.keys()),
-                                    "bit_for_estimate": list(bit_for_estimate.values()),
-                                    "bit_index_for_cascade": list(self.post_processing_key.keys())},
-                               src=self._node, dest=self.src)
+        packet = ClassicPacket(
+            msg={
+                "packet_class": "error_estimate",
+                "bit_index_for_estimate": list(bit_for_estimate.keys()),
+                "bit_for_estimate": list(bit_for_estimate.values()),
+                "bit_index_for_cascade": list(self.post_processing_key.keys()),
+            },
+            src=self._node,
+            dest=self.src,
+        )
         self.cchannel.send(packet, next_hop=self.src)
 
     def recv_error_estimate_reply_packet(self, event: RecvClassicPacket):
@@ -493,14 +525,14 @@ class BB84RecvApp(Application):
 
         # get error estimate info and set block size in round1
         self.cur_error_rate = msg.get("error_rate")
-        if self.cur_error_rate <= (self.cascade_alpha/self.init_upper_cascade_key_block_size):
+        if self.cur_error_rate <= (self.cascade_alpha / self.init_upper_cascade_key_block_size):
             # error rate is smaller than threshold
             self.cur_cascade_key_block_size = self.init_upper_cascade_key_block_size
-        elif self.cur_error_rate >= (self.cascade_alpha/self.init_lower_cascade_key_block_size):
+        elif self.cur_error_rate >= (self.cascade_alpha / self.init_lower_cascade_key_block_size):
             # error rate is bigger than threshold
             self.cur_cascade_key_block_size = self.init_lower_cascade_key_block_size
         else:
-            self.cur_cascade_key_block_size = int(self.cascade_alpha/self.cur_error_rate)
+            self.cur_cascade_key_block_size = int(self.cascade_alpha / self.cur_error_rate)
 
         self.cur_cascade_round = 1
 
@@ -525,11 +557,16 @@ class BB84RecvApp(Application):
                 break
 
         # send cascade_ask packet
-        packet = ClassicPacket(msg={"packet_class": "cascade_ask",
-                                    "parity_request": self.cascade_binary_set,
-                                    "round_change_flag": False,
-                                    "shuffle_index": []},
-                               src=self._node, dest=self.src)
+        packet = ClassicPacket(
+            msg={
+                "packet_class": "cascade_ask",
+                "parity_request": self.cascade_binary_set,
+                "round_change_flag": False,
+                "shuffle_index": [],
+            },
+            src=self._node,
+            dest=self.src,
+        )
         self.cchannel.send(packet, next_hop=self.src)
 
         return True
@@ -556,7 +593,7 @@ class BB84RecvApp(Application):
         # traverse all the blocks need to compare parity
         copy_cascade_binary_set = self.cascade_binary_set.copy()
         for key_interval in copy_cascade_binary_set:
-            temp_parity = cascade_parity(self.cascade_key[key_interval[0]:key_interval[1]+1])
+            temp_parity = cascade_parity(self.cascade_key[key_interval[0] : key_interval[1] + 1])
             if temp_parity == parity_answer[count_temp]:
                 # this block have even errors,can not correct in this round
                 self.cascade_binary_set.remove(key_interval)
@@ -606,16 +643,19 @@ class BB84RecvApp(Application):
 
         # send cascade_ask packet,distinguish whether privacy amplification is required
         if check_error_flag is False:
-            packet = ClassicPacket(msg={"packet_class": "cascade_ask",
-                                        "parity_request": self.cascade_binary_set,
-                                        "round_change_flag": round_change_flag,
-                                        "shuffle_index": shuffle_index},
-                                   src=self._node, dest=self.src)
+            packet = ClassicPacket(
+                msg={
+                    "packet_class": "cascade_ask",
+                    "parity_request": self.cascade_binary_set,
+                    "round_change_flag": round_change_flag,
+                    "shuffle_index": shuffle_index,
+                },
+                src=self._node,
+                dest=self.src,
+            )
         else:
             # check error
-            packet = ClassicPacket(msg={"packet_class": "check_error_ask",
-                                        "hash_key": hash_key},
-                                   src=self._node, dest=self.src)
+            packet = ClassicPacket(msg={"packet_class": "check_error_ask", "hash_key": hash_key}, src=self._node, dest=self.src)
         self.cchannel.send(packet, next_hop=self.src)
         return True
 
@@ -635,26 +675,36 @@ class BB84RecvApp(Application):
         if pa_flag is True:
             # check error succeed,Bob's privacy amplification operation
             matrix_row = len(self.cascade_key)
-            matrix_col = (1-self.security)*len(self.cascade_key)-self.bit_leak
+            matrix_col = (1 - self.security) * len(self.cascade_key) - self.bit_leak
             first_row = [random.randint(0, 1) for _ in range(matrix_row)]
-            first_col = [random.randint(0, 1) for _ in range(int(matrix_col)-1)]
+            first_col = [random.randint(0, 1) for _ in range(int(matrix_col) - 1)]
             toeplitz_matrix = pa_generate_toeplitz_matrix(matrix_row, matrix_col, first_row, first_col)
             self.successful_key += list(pa_randomize_key(self.cascade_key, toeplitz_matrix))
-            packet = ClassicPacket(msg={"packet_class": "privacy_amplification_ask",
-                                        "pa_flag": True,
-                                        "first_row": first_row,
-                                        "first_col": first_col},
-                                   src=self._node, dest=self.src)
+            packet = ClassicPacket(
+                msg={
+                    "packet_class": "privacy_amplification_ask",
+                    "pa_flag": True,
+                    "first_row": first_row,
+                    "first_col": first_col,
+                },
+                src=self._node,
+                dest=self.src,
+            )
             self.using_post_processing = False
         else:
             # check error fail,drop
             first_row = []
             first_col = []
-            packet = ClassicPacket(msg={"packet_class": "privacy_amplification_ask",
-                                        "pa_flag": False,
-                                        "first_row": first_row,
-                                        "first_col": first_col},
-                                   src=self._node, dest=self.src)
+            packet = ClassicPacket(
+                msg={
+                    "packet_class": "privacy_amplification_ask",
+                    "pa_flag": False,
+                    "first_row": first_row,
+                    "first_col": first_col,
+                },
+                src=self._node,
+                dest=self.src,
+            )
             self.using_post_processing = False
         self.cchannel.send(packet, next_hop=self.src)
         return True
@@ -681,10 +731,10 @@ def cascade_binary_divide(begin: int, end: int):
     """
     len = end - begin + 1
     if len % 2 == 1:
-        middle = int(len/2) + begin
+        middle = int(len / 2) + begin
     else:
-        middle = int(len/2) + begin - 1
-    return (begin, middle), (middle+1, end)
+        middle = int(len / 2) + begin - 1
+    return (begin, middle), (middle + 1, end)
 
 
 def cascade_key_shuffle(index: list):
@@ -713,11 +763,11 @@ def pa_generate_toeplitz_matrix(N: int, M: int, first_row: list, first_col: list
     toeplitz_matrix = [[0] * N for _ in range(M)]
     for i in range(N):
         toeplitz_matrix[0][i] = first_row[i]
-    for i in range(M-1):
-        toeplitz_matrix[i+1][0] = first_col[i]
+    for i in range(M - 1):
+        toeplitz_matrix[i + 1][0] = first_col[i]
     for i in range(1, M):
         for j in range(1, N):
-            toeplitz_matrix[i][j] = toeplitz_matrix[i-1][j-1]
+            toeplitz_matrix[i][j] = toeplitz_matrix[i - 1][j - 1]
     return toeplitz_matrix
 
 

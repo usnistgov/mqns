@@ -44,7 +44,7 @@ def DephaseError(self, p: float = 0, **kwargs):
     """
     if p < 0 or p > 1:
         raise Exception("Error decoherence rate, should be in [0, 1]")
-    self.stochastic_operate([I, Z], [1-p, p])
+    self.stochastic_operate([I, Z], [1 - p, p])
 
 
 def DepolarError(self, p: float = 0, **kwargs):
@@ -59,10 +59,10 @@ def DepolarError(self, p: float = 0, **kwargs):
     """
     if p < 0 or p > 1:
         raise Exception("Error decoherence rate, should be in [0, 1]")
-    if 1-3*p > 0:
-        self.stochastic_operate([I, X, Y, Z], [1-3*p, p, p, p])
+    if 1 - 3 * p > 0:
+        self.stochastic_operate([I, X, Y, Z], [1 - 3 * p, p, p, p])
     else:
-        self.stochastic_operate([X, Y, Z], [1/3, 1/3, 1/3])
+        self.stochastic_operate([X, Y, Z], [1 / 3, 1 / 3, 1 / 3])
 
 
 def BitFlipError(self, p: float = 0, **kwargs):
@@ -75,7 +75,7 @@ def BitFlipError(self, p: float = 0, **kwargs):
     """
     if p < 0 or p > 1:
         raise Exception("Error decoherence rate, should be in [0, 1]")
-    self.stochastic_operate([I, X], [1-p, p])
+    self.stochastic_operate([I, X], [1 - p, p])
 
 
 def DissipationError(self, p: float = 0, **kwargs):
@@ -96,6 +96,7 @@ def DissipationError(self, p: float = 0, **kwargs):
 
 def ErrorWithTime(ErrorModel):
     """Generate the error. The error possibility is 1-e^{-decoherence_rate * t}"""
+
     def GeneratedErrorWithTime(self, t: float = 0, decoherence_rate: float = 0, **kwargs):
         """The error model with time for this qubit. The error possibility is 1-e^{-decoherence_rate * t}.
 
@@ -106,11 +107,13 @@ def ErrorWithTime(ErrorModel):
         """
         p = 1 - np.exp(-decoherence_rate * t)
         ErrorModel(self, p, **kwargs)
+
     return GeneratedErrorWithTime
 
 
 def ErrorWithLength(ErrorModel):
     """Generate the error. The error possibility is 1-e^{-decoherence_rate * length}"""
+
     def GeneratedErrorWithLength(self, length: float = 0, decoherence_rate: float = 0, **kwargs):
         """The error model with length for this qubit. The error possibility is 1-e^{-decoherence_rate * length}.
 
@@ -121,6 +124,7 @@ def ErrorWithLength(ErrorModel):
         """
         p = 1 - np.exp(-decoherence_rate * length)
         ErrorModel(self, p, **kwargs)
+
     return GeneratedErrorWithLength
 
 

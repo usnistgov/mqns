@@ -23,8 +23,7 @@ from qns.simulator.ts import Time
 
 
 class DefaultEventPool:
-    """The default implement of the event pool
-    """
+    """The default implement of the event pool"""
 
     def __init__(self, ts: Time, te: Time):
         """Args:
@@ -39,8 +38,7 @@ class DefaultEventPool:
 
     @property
     def current_time(self) -> Time:
-        """Get the current time
-        """
+        """Get the current time"""
         return self.tc
 
     def add_event(self, event: Event) -> bool:
@@ -58,7 +56,7 @@ class DefaultEventPool:
         heapq.heappush(self.event_list, event)
         return True
 
-    def next_event(self) -> Event|None:
+    def next_event(self) -> Event | None:
         """Get the next event to be executed
 
         Returns:

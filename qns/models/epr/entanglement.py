@@ -2,7 +2,7 @@
 #    Date: 05/17/2025
 #    Summary of changes: Adapted logic to support dynamic approaches.
 #
-#    This file is based on a snapshot of SimQN (https://github.com/qnslab/SimQN),
+#    This file is based on a snapshot of SimQN (https://github.com/QNLab-USTC/SimQN),
 #    which is licensed under the GNU General Public License v3.0.
 #
 #    The original SimQN header is included below.
@@ -41,10 +41,9 @@ EntanglementT = TypeVar("EntanglementT")
 
 
 class BaseEntanglement(Generic[EntanglementT]):
-    """This is the base entanglement model
-    """
+    """This is the base entanglement model"""
 
-    def __init__(self, fidelity: float = 1, name: str|None = None):
+    def __init__(self, fidelity: float = 1, name: str | None = None):
         """Generate an entanglement with certain fidelity
 
         Args:
@@ -55,26 +54,27 @@ class BaseEntanglement(Generic[EntanglementT]):
         self.fidelity = fidelity
         self.name = name
         self.is_decoherenced = False
-        self.creation_time: Time|None = None
-        self.decoherence_time: Time|None = None
+        self.creation_time: Time | None = None
+        self.decoherence_time: Time | None = None
         self.src: "QNode|None" = None
         """src node"""
         self.dst: "QNode|None" = None
         """dst node"""
         self.ch_index = -1
         """index of this EPR along the path"""
-        self.orig_eprs = []
+        self.orig_eprs: list[EntanglementT] = []
         """Elementary EPRs from which this EPR is created via swapping"""
         self.read = False
         """to know when both end-nodes are aware of the EPR"""
-        self.key = None
+        self.key: str | None = None
         """to store the EPR in the right negotiated qubit at the dst node"""
+        self.attempts: int | None = None
+        self.path_id: int | None = None
 
     def set_decoherenced(self, value: bool):
         self.is_decoherenced = value
 
-
-    def swapping(self, epr: EntanglementT, *, name: str|None = None, ps: float = 1) -> EntanglementT|None:
+    def swapping(self, epr: EntanglementT, *, name: str | None = None, ps: float = 1) -> EntanglementT | None:
         """Use `self` and `epr` to perfrom swapping and distribute a new entanglement
 
         Args:
@@ -85,7 +85,7 @@ class BaseEntanglement(Generic[EntanglementT]):
         """
         raise NotImplementedError
 
-    def distillation(self, epr: EntanglementT) -> EntanglementT|None:
+    def distillation(self, epr: EntanglementT) -> EntanglementT | None:
         """Use `self` and `epr` to perfrom distillation and distribute a new entanglement
 
         Args:
@@ -142,7 +142,7 @@ class BaseEntanglement(Generic[EntanglementT]):
         self.is_decoherenced = True
         return q2
 
-    #def __repr__(self) -> str:
+    # def __repr__(self) -> str:
     #    if self.name is not None:
     #        return "<epr "+self.name+">"
     #    return super().__repr__()

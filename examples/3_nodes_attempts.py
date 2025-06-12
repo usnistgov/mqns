@@ -7,12 +7,10 @@ import pandas as pd
 from qns.entity.monitor import Monitor
 from qns.entity.qchannel import RecvQubitPacket
 from qns.network import QuantumNetwork, TimingModeEnum
-from qns.network.protocol.link_layer import LinkLayer
-from qns.network.protocol.proactive_forwarder import ProactiveForwarder
-from qns.network.protocol.proactive_routing_controller import ProactiveRoutingControllerApp
-from qns.network.route.dijkstra import DijkstraRouteAlgorithm
-from qns.network.topology.customtopo import CustomTopology
-from qns.simulator.simulator import Simulator
+from qns.network.protocol import LinkLayer, ProactiveForwarder, ProactiveRoutingControllerApp
+from qns.network.route import DijkstraRouteAlgorithm
+from qns.network.topology.customtopo import CustomTopology, Topo
+from qns.simulator import Simulator
 from qns.utils import log
 from qns.utils.rnd import set_seed
 
@@ -20,7 +18,7 @@ log.logger.setLevel(logging.CRITICAL)
 
 SEED_BASE = 100
 
-light_speed = 2 * 10**5 # km/s
+light_speed = 2 * 10**5  # km/s
 
 # parameters
 sim_duration = 1
@@ -28,97 +26,114 @@ sim_duration = 1
 fiber_alpha = 0.2
 eta_d = 0.95
 eta_s = 0.95
-frequency = 1e6                  # memory frequency
-entg_attempt_rate = 50e6         # From fiber max frequency (50 MHz) AND detectors count rate (60 MHz)
+frequency = 1e6  # memory frequency
+entg_attempt_rate = 50e6  # From fiber max frequency (50 MHz) AND detectors count rate (60 MHz)
 
 init_fidelity = 0.99
-t_coherence = 0.1    # sec
+t_coherence = 0.1  # sec
 p_swap = 0.5
 
 
-
 # 3-nodes topology
-swapping_config = "isolation_1"      # NOTE: This requires to disable swapping in the Forwarder module to work
+swapping_config = "isolation_1"  # NOTE: This requires to disable swapping in the Forwarder module to work
 ch_1 = 32
 ch_2 = 18
 
-def generate_topology(channel_qubits):
+
+def generate_topology(channel_qubits) -> Topo:
     return {
-    "qnodes": [
-        {
-            "name": "S",
-            "memory": {
-                "decoherence_rate": 1 / t_coherence,
-                "capacity": channel_qubits
+        "qnodes": [
+            {
+                "name": "S",
+                "memory": {"decoherence_rate": 1 / t_coherence, "capacity": channel_qubits},
+                "apps": [
+                    LinkLayer(
+                        attempt_rate=entg_attempt_rate,
+                        init_fidelity=init_fidelity,
+                        alpha_db_per_km=fiber_alpha,
+                        eta_d=eta_d,
+                        eta_s=eta_s,
+                        frequency=frequency,
+                    ),
+                    ProactiveForwarder(),
+                ],
             },
-            "apps": [LinkLayer(attempt_rate=entg_attempt_rate, init_fidelity=init_fidelity,
-                                 alpha_db_per_km=fiber_alpha,
-                                 eta_d=eta_d, eta_s=eta_s,
-                                 frequency=frequency), ProactiveForwarder()]
-        },
-        {
-            "name": "R",
-            "memory": {
-                "decoherence_rate": 1 / t_coherence,
-                "capacity": channel_qubits*2
+            {
+                "name": "R",
+                "memory": {"decoherence_rate": 1 / t_coherence, "capacity": channel_qubits * 2},
+                "apps": [
+                    LinkLayer(
+                        attempt_rate=entg_attempt_rate,
+                        init_fidelity=init_fidelity,
+                        alpha_db_per_km=fiber_alpha,
+                        eta_d=eta_d,
+                        eta_s=eta_s,
+                        frequency=frequency,
+                    ),
+                    ProactiveForwarder(ps=p_swap),
+                ],
             },
-            "apps": [LinkLayer(attempt_rate=entg_attempt_rate, init_fidelity=init_fidelity,
-                                 alpha_db_per_km=fiber_alpha,
-                                 eta_d=eta_d, eta_s=eta_s,
-                                 frequency=frequency), ProactiveForwarder(ps=p_swap)]
-        },
-        {
-            "name": "D",
-            "memory": {
-                "decoherence_rate": 1 / t_coherence,
-                "capacity": channel_qubits
+            {
+                "name": "D",
+                "memory": {"decoherence_rate": 1 / t_coherence, "capacity": channel_qubits},
+                "apps": [
+                    LinkLayer(
+                        attempt_rate=entg_attempt_rate,
+                        init_fidelity=init_fidelity,
+                        alpha_db_per_km=fiber_alpha,
+                        eta_d=eta_d,
+                        eta_s=eta_s,
+                        frequency=frequency,
+                    ),
+                    ProactiveForwarder(),
+                ],
             },
-            "apps": [LinkLayer(attempt_rate=entg_attempt_rate, init_fidelity=init_fidelity,
-                                 alpha_db_per_km=fiber_alpha,
-                                 eta_d=eta_d, eta_s=eta_s,
-                                 frequency=frequency), ProactiveForwarder()]
-        }
-    ],
-    "qchannels": [
-        { "node1": "S", "node2":"R", "capacity": channel_qubits, "parameters": {"length": ch_1, "delay": ch_1 / light_speed} },
-        { "node1": "R", "node2":"D", "capacity": channel_qubits, "parameters": {"length": ch_2, "delay": ch_2 / light_speed} }
-    ],
-    "cchannels": [
-        { "node1": "S", "node2":"R", "parameters": {"length": ch_1, "delay": ch_1 / light_speed} },
-        { "node1": "R", "node2":"D", "parameters": {"length": ch_2, "delay": ch_2 / light_speed} },
-        { "node1": "ctrl", "node2":"S", "parameters": {"length": 1.0, "delay": 1 / light_speed} },
-        { "node1": "ctrl", "node2":"R", "parameters": {"length": 1.0, "delay": 1 / light_speed} },
-        { "node1": "ctrl", "node2":"D", "parameters": {"length": 1.0, "delay": 1 / light_speed} }
-    ],
-    "controller": {
-        "name": "ctrl",
-        "apps": [ProactiveRoutingControllerApp(swapping=swapping_config)]
-    }
+        ],
+        "qchannels": [
+            {
+                "node1": "S",
+                "node2": "R",
+                "capacity": channel_qubits,
+                "parameters": {"length": ch_1, "delay": ch_1 / light_speed},
+            },
+            {
+                "node1": "R",
+                "node2": "D",
+                "capacity": channel_qubits,
+                "parameters": {"length": ch_2, "delay": ch_2 / light_speed},
+            },
+        ],
+        "cchannels": [
+            {"node1": "S", "node2": "R", "parameters": {"length": ch_1, "delay": ch_1 / light_speed}},
+            {"node1": "R", "node2": "D", "parameters": {"length": ch_2, "delay": ch_2 / light_speed}},
+            {"node1": "ctrl", "node2": "S", "parameters": {"length": 1.0, "delay": 1 / light_speed}},
+            {"node1": "ctrl", "node2": "R", "parameters": {"length": 1.0, "delay": 1 / light_speed}},
+            {"node1": "ctrl", "node2": "D", "parameters": {"length": 1.0, "delay": 1 / light_speed}},
+        ],
+        "controller": {"name": "ctrl", "apps": [ProactiveRoutingControllerApp(swapping=swapping_config)]},
     }
 
+
 def run_simulation(num_qubits, seed):
-    json_topology = generate_topology(channel_qubits = num_qubits)
+    json_topology = generate_topology(channel_qubits=num_qubits)
 
     set_seed(seed)
     s = Simulator(0, sim_duration + 5e-06, accuracy=1000000)
     log.install(s)
 
     topo = CustomTopology(json_topology)
-    net = QuantumNetwork(
-        topo=topo,
-        route=DijkstraRouteAlgorithm(),
-        timing_mode=TimingModeEnum.ASYNC
-    )
+    net = QuantumNetwork(topo=topo, route=DijkstraRouteAlgorithm(), timing_mode=TimingModeEnum.ASYNC)
     net.install(s)
 
     # attempts rate per second per qchannel
     attempts_rate = {}
     # etg rate per second per qchannel
     ent_rate = {}
+
     def watch_ent_rate(simulator, network, event):
         if event.qchannel.name in ent_rate:
-            ent_rate[event.qchannel.name]+=1
-            attempts_rate[event.qchannel.name]+=event.qubit.attempts
+            ent_rate[event.qchannel.name] += 1
+            attempts_rate[event.qchannel.name] += event.qubit.attempts
         else:
             ent_rate[event.qchannel.name] = 1
             attempts_rate[event.qchannel.name] = event.qubit.attempts
@@ -140,7 +155,7 @@ def run_simulation(num_qubits, seed):
 
 channel_map = {
     "q_S,R": 32,  # Channel name corresponding to 32 km link
-    "q_R,D": 18   # Channel name corresponding to 18 km link
+    "q_R,D": 18,  # Channel name corresponding to 18 km link
 }
 
 all_data = {
@@ -151,19 +166,16 @@ all_data = {
     "Success rate": [],
     "Attempts std": [],
     "Ent std": [],
-    "Success std": []
+    "Success std": [],
 }
 
 # Simulation loop
 N_RUNS = 100
-for M in range(1,6):
-    stats = {
-        32: {"attempts": [], "ent": [], "succ": []},
-        18: {"attempts": [], "ent": [], "succ": []}
-    }
+for M in range(1, 6):
+    stats = {32: {"attempts": [], "ent": [], "succ": []}, 18: {"attempts": [], "ent": [], "succ": []}}
 
     for i in range(N_RUNS):
-        print(f"Sim: M={M}, run #{i+1}")
+        print(f"Sim: M={M}, run #{i + 1}")
         seed = SEED_BASE + i
         attempts_rate, ent_rate, success_frac = run_simulation(M, seed)
         print(attempts_rate)
@@ -194,12 +206,11 @@ labels = {32: "L=32", 18: "L=18"}
 
 for L in [32, 18]:
     df_L = df[df["L"] == L]
-    axs[0].errorbar(df_L["M"], df_L["Attempts rate"], yerr=df_L["Attempts std"],
-                    marker="o", linestyle="--", label=labels[L], capsize=3)
-    axs[1].errorbar(df_L["M"], df_L["Entanglement rate"], yerr=df_L["Ent std"],
-                    marker="o", linestyle="--", capsize=3)
-    axs[2].errorbar(df_L["M"], df_L["Success rate"], yerr=df_L["Success std"],
-                    marker="o", linestyle="--", capsize=3)
+    axs[0].errorbar(
+        df_L["M"], df_L["Attempts rate"], yerr=df_L["Attempts std"], marker="o", linestyle="--", label=labels[L], capsize=3
+    )
+    axs[1].errorbar(df_L["M"], df_L["Entanglement rate"], yerr=df_L["Ent std"], marker="o", linestyle="--", capsize=3)
+    axs[2].errorbar(df_L["M"], df_L["Success rate"], yerr=df_L["Success std"], marker="o", linestyle="--", capsize=3)
 
 axs[0].set_title("Attempts rate")
 axs[1].set_title("Ent. rate")
@@ -216,10 +227,6 @@ fig.tight_layout()
 plt.show()
 
 
-
-
-
-
 # s.run_continuous()
 
 # import signal
@@ -228,9 +235,9 @@ plt.show()
 #     s.stop()
 # signal.signal(signal.SIGINT, stop_emulation)
 
-#results = []
-#for req in net.requests:
+# results = []
+# for req in net.requests:
 #    src = req.src
 #    results.append(src.apps[0].success_count)
-#fair = sum(results)**2 / (len(results) * sum([r**2 for r in results]))
-#log.monitor(requests_number, nodes_number, s.time_spend, sep=" ")
+# fair = sum(results)**2 / (len(results) * sum([r**2 for r in results]))
+# log.monitor(requests_number, nodes_number, s.time_spend, sep=" ")

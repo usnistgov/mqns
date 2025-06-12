@@ -2,7 +2,7 @@
 #    Date: 05/17/2025
 #    Summary of changes: Adapted logic to support dynamic approaches.
 #
-#    This file is based on a snapshot of SimQN (https://github.com/qnslab/SimQN),
+#    This file is based on a snapshot of SimQN (https://github.com/QNLab-USTC/SimQN),
 #    which is licensed under the GNU General Public License v3.0.
 #
 #    The original SimQN header is included below.
@@ -26,6 +26,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import hashlib
+from typing import cast
 
 import numpy as np
 
@@ -41,8 +42,7 @@ def hash(s1: str) -> str:
 
 
 class WernerStateEntanglement(BaseEntanglement["WernerStateEntanglement"], QuantumModel):
-    """A pair of entangled qubits in Werner State with a hidden-variable
-    """
+    """A pair of entangled qubits in Werner State with a hidden-variable"""
 
     def __deepcopy__(self, memo):
         return self
@@ -55,9 +55,9 @@ class WernerStateEntanglement(BaseEntanglement["WernerStateEntanglement"], Quant
     def fidelity(self, fidelity: float = 1):
         self.w = (fidelity * 4 - 1) / 3
 
-
-    def swapping(self, epr: "WernerStateEntanglement", *,
-                 name: str|None = None, ps: float = 1) -> "WernerStateEntanglement|None":
+    def swapping(
+        self, epr: "WernerStateEntanglement", *, name: str | None = None, ps: float = 1
+    ) -> "WernerStateEntanglement|None":
         """Use `self` and `epr` to perfrom swapping and distribute a new entanglement
 
         Args:
@@ -73,7 +73,7 @@ class WernerStateEntanglement(BaseEntanglement["WernerStateEntanglement"], Quant
             return None
 
         r = get_rand()
-        if r >= ps:              # swap failed
+        if r >= ps:  # swap failed
             epr.is_decoherenced = True
             self.is_decoherenced = True
             return None
@@ -82,7 +82,7 @@ class WernerStateEntanglement(BaseEntanglement["WernerStateEntanglement"], Quant
         ne.orig_eprs = self._merge_orig_eprs(epr)
 
         if ne.name is None:
-            eprs_name_list = [e.name for e in ne.orig_eprs]
+            eprs_name_list = [cast(str, e.name) for e in ne.orig_eprs]
             ne.name = hash("-".join(eprs_name_list))
 
         assert self.decoherence_time is not None
@@ -115,13 +115,12 @@ class WernerStateEntanglement(BaseEntanglement["WernerStateEntanglement"], Quant
         epr.is_decoherenced = True
         fmin = min(self.fidelity, epr.fidelity)
 
-        if get_rand() > (fmin ** 2 + 5 / 9 * (1 - fmin) ** 2 + 2 / 3 * fmin * (1 - fmin)):
+        if get_rand() > (fmin**2 + 5 / 9 * (1 - fmin) ** 2 + 2 / 3 * fmin * (1 - fmin)):
             self.is_decoherenced = True
             self.fidelity = 0
             return False
 
-        self.fidelity = (fmin ** 2 + (1 - fmin) ** 2 / 9) /\
-                      (fmin ** 2 + 5 / 9 * (1 - fmin) ** 2 + 2 / 3 * fmin * (1 - fmin))
+        self.fidelity = (fmin**2 + (1 - fmin) ** 2 / 9) / (fmin**2 + 5 / 9 * (1 - fmin) ** 2 + 2 / 3 * fmin * (1 - fmin))
         return True
 
     def store_error_model(self, t: float = 0, decoherence_rate: float = 0, **kwargs):
@@ -157,8 +156,8 @@ class WernerStateEntanglement(BaseEntanglement["WernerStateEntanglement"], Quant
         q0 = Qubit(state=QUBIT_STATE_0, name="q0")
         q1 = Qubit(state=QUBIT_STATE_0, name="q1")
 
-        phi_p = 1/np.sqrt(2) * np.array([[1], [0], [0], [1]])
-        rho = self.w * np.dot(phi_p, phi_p.T.conjugate()) + (1-self.w)/4 * np.identity(4)
+        phi_p = 1 / np.sqrt(2) * np.array([[1], [0], [0], [1]])
+        rho = self.w * np.dot(phi_p, phi_p.T.conjugate()) + (1 - self.w) / 4 * np.identity(4)
         print(rho)
         qs = QState([q0, q1], rho=rho)
         q0.state = qs
@@ -166,17 +165,15 @@ class WernerStateEntanglement(BaseEntanglement["WernerStateEntanglement"], Quant
         self.is_decoherenced = True
         return [q0, q1]
 
-
-    def _merge_orig_eprs(self, epr):
+    def _merge_orig_eprs(self, epr: "WernerStateEntanglement") -> list["WernerStateEntanglement"]:
         # Helper: get a dict of name -> epr from an object's orig_epr list
-        def epr_dict(obj):
-            return { e.name: e for e in obj.orig_eprs }
+        def epr_dict(obj) -> dict[str, "WernerStateEntanglement"]:
+            return {e.name: e for e in obj.orig_eprs}
 
         # Merge by name
         merged = epr_dict(self)
         for name, epr1 in epr_dict(epr).items():
-            if name not in merged:
-                merged[name] = epr1
+            merged.setdefault(name, epr1)
 
         # Add elementary eprs
         if self.ch_index > -1 and self.name not in merged:
@@ -185,17 +182,16 @@ class WernerStateEntanglement(BaseEntanglement["WernerStateEntanglement"], Quant
             merged["epr"] = epr
 
         # Sort the result by epr.index
-        return sorted(
-            merged.values(),
-            key=lambda e: e.ch_index
-        )
+        return sorted(merged.values(), key=lambda e: e.ch_index)
 
     def __repr__(self):
-        return (f"{self.__class__.__name__}("
+        return (
+            f"{self.__class__.__name__}("
             f"name={self.name}, fidelity={self.fidelity:.4f}, "
             f"is_decoherenced={self.is_decoherenced}, "
             f"src={self.src}, dst={self.dst}, "
             f"ch_index={self.ch_index}, "
             f"orig_eprs={[e.name if hasattr(e, 'name') else repr(e) for e in self.orig_eprs]}), "
             f"creation_time={self.creation_time}, "
-            f"decoherence_time={self.decoherence_time})")
+            f"decoherence_time={self.decoherence_time})"
+        )

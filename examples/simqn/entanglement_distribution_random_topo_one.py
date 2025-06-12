@@ -26,12 +26,14 @@ set_seed(100)
 s = Simulator(0, 10, accuracy=1000000)
 log.install(s)
 
-topo = RandomTopology(nodes_number=nodes_number,
-                              lines_number=lines_number,
-                              qchannel_args={"delay": qchannel_delay},
-                              cchannel_args={"delay": cchannel_delay},
-                              memory_args=[{"capacity": memory_capacity}],
-                              nodes_apps=[EntanglementDistributionApp(init_fidelity=init_fidelity)])
+topo = RandomTopology(
+    nodes_number=nodes_number,
+    lines_number=lines_number,
+    qchannel_args={"delay": qchannel_delay},
+    cchannel_args={"delay": cchannel_delay},
+    memory_args=[{"capacity": memory_capacity}],
+    nodes_apps=[EntanglementDistributionApp(init_fidelity=init_fidelity)],
+)
 
 # controller is set at the QuantumNetwork object, so we can use existing topologies and their builders
 net = QuantumNetwork(topo=topo, classic_topo=ClassicTopology.All, route=DijkstraRouteAlgorithm())
@@ -46,5 +48,5 @@ results = []
 for req in net.requests:
     src = req.src
     results.append(src.apps[0].success_count)
-fair = sum(results)**2 / (len(results) * sum([r**2 for r in results]))
+fair = sum(results) ** 2 / (len(results) * sum([r**2 for r in results]))
 log.monitor(requests_number, nodes_number, s.time_spend, sep=" ")

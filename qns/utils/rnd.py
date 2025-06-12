@@ -57,7 +57,7 @@ def get_randint(low: int, high: int) -> int:
         raise ValueError("input low")
     if low > high:
         raise ValueError("low should smaller than high")
-    return np.random.randint(low, high+1)
+    return np.random.randint(low, high + 1)
 
 
 def get_choice(a):
@@ -67,7 +67,7 @@ def get_choice(a):
         a: a iterable object
 
     """
-    return a[get_randint(0, len(a)-1)]
+    return a[get_randint(0, len(a) - 1)]
 
 
 def get_normal(mean: float = 0, std: float = 1):

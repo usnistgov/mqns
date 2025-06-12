@@ -26,14 +26,15 @@ from qns.simulator.simulator import Simulator
 
 
 class QuantumOperator(Entity):
-    """Quantum operator can perfrom quantum operation or measurements on qubits.
+    """Quantum operator can perform quantum operation or measurements on qubits.
     It has two modes:
         Synchronous mode, users can use the `operate` function to operate qubits directly without delay
         Asynchronous mode, users will use events to operate quantum operations asynchronously
     """
 
-    def __init__(self, name: str|None = None, *, node: QNode|None = None,
-                 gate: Callable[..., None|int|list[int]], delay: DelayInput = 0):
+    def __init__(
+        self, name: str, *, node: QNode | None = None, gate: Callable[..., None | int | list[int]], delay: DelayInput = 0
+    ):
         """Args:
         name (str): its name
         node (QNode): the quantum node that equips this memory
@@ -64,11 +65,10 @@ class QuantumOperator(Entity):
             simulator.add_event(response)
 
     def set_own(self, node: QNode):
-        """Set the owner of this quantum operator
-        """
+        """Set the owner of this quantum operator"""
         self.node = node
 
-    def operate(self, *qubits) -> int|list[int]|None:
+    def operate(self, *qubits) -> int | list[int] | None:
         """Operate on qubits and return the measure result
 
         Args:

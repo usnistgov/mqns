@@ -1,7 +1,8 @@
 from qns.models.delay.constdelay import ConstantDelayModel
 from qns.models.delay.delay import DelayModel
 
-DelayInput = float|DelayModel
+DelayInput = float | DelayModel
+
 
 def parseDelay(input: DelayInput) -> DelayModel:
     """

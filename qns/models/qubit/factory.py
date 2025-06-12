@@ -30,12 +30,17 @@ from qns.models.qubit.typing import QubitRho, QubitState
 
 
 class QubitFactory:
-    """QubitFactory is the factory class for building qubits with special error models.
-    """
+    """QubitFactory is the factory class for building qubits with special error models."""
 
-    def __init__(self, operate_decoherence_rate: float = 0, measure_decoherence_rate: float = 0,
-                 store_error_model=PrefectStorageErrorModel, transfer_error_model=PrefectTransferErrorModel,
-                 operate_error_model=PrefectOperateErrorModel, measure_error_model=PrefectMeasureErrorModel) -> None:
+    def __init__(
+        self,
+        operate_decoherence_rate: float = 0,
+        measure_decoherence_rate: float = 0,
+        store_error_model=PrefectStorageErrorModel,
+        transfer_error_model=PrefectTransferErrorModel,
+        operate_error_model=PrefectOperateErrorModel,
+        measure_error_model=PrefectMeasureErrorModel,
+    ) -> None:
         """Args:
         operate_decoherence_rate (float): the operate decoherence rate
         measure_decoherence_rate (float): the measure decoherence rate
@@ -52,9 +57,14 @@ class QubitFactory:
         self.operate_error_model = operate_error_model
         self.measure_error_model = measure_error_model
 
-    def __call__(self, state: QubitState = QUBIT_STATE_0, rho: QubitRho|None = None,
-                 operate_decoherence_rate: float|None = None, measure_decoherence_rate: float|None = None,
-                 name: str|None = None) -> Qubit:
+    def __call__(
+        self,
+        state: QubitState = QUBIT_STATE_0,
+        rho: QubitRho | None = None,
+        operate_decoherence_rate: float | None = None,
+        measure_decoherence_rate: float | None = None,
+        name: str | None = None,
+    ) -> Qubit:
         """Args:
         state (list): the initial state of a qubit, default is |0> = [1, 0]^T
         operate_decoherence_rate (float): the operate decoherence rate
@@ -66,8 +76,13 @@ class QubitFactory:
             operate_decoherence_rate = self.operate_decoherence_rate
         if measure_decoherence_rate is None:
             measure_decoherence_rate = self.measure_decoherence_rate
-        qubit = Qubit(state=state, rho=rho, operate_decoherence_rate=operate_decoherence_rate,
-                      measure_decoherence_rate=measure_decoherence_rate, name=name)
+        qubit = Qubit(
+            state=state,
+            rho=rho,
+            operate_decoherence_rate=operate_decoherence_rate,
+            measure_decoherence_rate=measure_decoherence_rate,
+            name=name,
+        )
         qubit.store_error_model = MethodType(self.store_error_model, qubit)
         qubit.transfer_error_model = MethodType(self.transfer_error_model, qubit)
         qubit.operate_error_model = MethodType(self.operate_error_model, qubit)

@@ -27,8 +27,7 @@ except ImportError:
 
 
 class RandomTopology(Topology):
-    """RandomTopology includes `nodes_number` Qnodes. The topology is randomly generated.
-    """
+    """RandomTopology includes `nodes_number` Qnodes. The topology is randomly generated."""
 
     def __init__(self, nodes_number: int, lines_number: int, **kwargs: Unpack[TopologyInitKwargs]):
         """Args:
@@ -50,7 +49,7 @@ class RandomTopology(Topology):
             nl.append(n)
 
         for i in range(self.nodes_number - 1):
-            n = QNode(f"n{i+2}")
+            n = QNode(f"n{i + 2}")
             nl.append(n)
 
             idx = get_randint(0, i)
@@ -58,7 +57,7 @@ class RandomTopology(Topology):
             mat[idx][i + 1] = 1
             mat[i + 1][idx] = 1
 
-            link = QuantumChannel(name=f"l{idx+1},{i+2}", **self.qchannel_args)
+            link = QuantumChannel(name=f"l{idx + 1},{i + 2}", **self.qchannel_args)
             ll.append(link)
             pn.add_qchannel(link)
             n.add_qchannel(link)
@@ -74,7 +73,7 @@ class RandomTopology(Topology):
                 mat[b][a] = 1
                 n = nl[a]
                 pn = nl[b]
-                link = QuantumChannel(name=f"l{a+1},{b+1}", **self.qchannel_args)
+                link = QuantumChannel(name=f"l{a + 1},{b + 1}", **self.qchannel_args)
                 ll.append(link)
                 pn.add_qchannel(link)
                 n.add_qchannel(link)

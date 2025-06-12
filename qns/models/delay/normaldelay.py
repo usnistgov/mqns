@@ -21,7 +21,7 @@ from qns.utils.rnd import get_normal
 
 
 class NormalDelayModel(DelayModel):
-    def __init__(self, mean_delay: float = 0, std: float = 0, name: str|None = None) -> None:
+    def __init__(self, mean_delay: float = 0, std: float = 0, name: str | None = None) -> None:
         """A random delay from normal distribution X~N(mean_delay, std^2)
 
         Args:

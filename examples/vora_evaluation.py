@@ -1,43 +1,54 @@
+import argparse
 import itertools
 import logging
+from copy import deepcopy
+from multiprocessing import Pool, freeze_support
+from typing import cast
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
 from qns.network import QuantumNetwork, TimingModeEnum
-from qns.network.protocol.link_layer import LinkLayer
-from qns.network.protocol.proactive_forwarder import ProactiveForwarder
-from qns.network.protocol.proactive_routing_controller import ProactiveRoutingControllerApp
-from qns.network.route.dijkstra import DijkstraRouteAlgorithm
-from qns.network.topology.customtopo import CustomTopology
-from qns.simulator.simulator import Simulator
+from qns.network.protocol import LinkLayer, ProactiveForwarder, ProactiveRoutingControllerApp
+from qns.network.route import DijkstraRouteAlgorithm
+from qns.network.topology.customtopo import CustomTopology, Topo, TopoCChannel, TopoController, TopoQChannel, TopoQNode
+from qns.simulator import Simulator
 from qns.utils import log
 from qns.utils.rnd import set_seed
 
 log.logger.setLevel(logging.CRITICAL)
 
-SEED_BASE = 100
 
-light_speed = 2 * 10**5 # km/s
+class ParameterSet:
+    def __init__(self):
+        self.seed_base = 100
+
+        self.light_speed = 2 * 10**5  # km/s
+
+        self.sim_duration = 5
+
+        self.fiber_alpha = 0.2
+        self.eta_d = 0.95
+        self.eta_s = 0.95
+        self.frequency = 1e3  # memory frequency
+        self.entg_attempt_rate = 50e6  # From fiber max frequency (50 MHz) AND detectors count rate (60 MHz)
+
+        self.channel_qubits = 25
+        self.init_fidelity = 0.99
+        self.t_coherence = 0.01  # sec
+        self.p_swap = 0.5
+
+        self.total_distance = 150  # km
+
+        self.n_runs = 10
+
+        self.number_of_routers: int
+        self.distance_proportion: str
+        self.swapping_config: str
 
 
-# parameters
-sim_duration = 5      # 9
-
-fiber_alpha = 0.2
-eta_d = 0.95
-eta_s = 0.95
-frequency = 1e3                  # memory frequency
-entg_attempt_rate = 50e6         # From fiber max frequency (50 MHz) AND detectors count rate (60 MHz)
-
-channel_qubits = 25
-init_fidelity = 0.99
-t_coherence = 0.01    # sec
-p_swap = 0.5
-
-
-def compute_distances_distribution(end_to_end_distance, number_of_routers, distance_proportion):
+def compute_distances_distribution(end_to_end_distance: int, number_of_routers: int, distance_proportion: str) -> list[int]:
     """Computes the distribution of channel distances between nodes in a quantum or classical network.
 
     Args:
@@ -56,12 +67,12 @@ def compute_distances_distribution(end_to_end_distance, number_of_routers, dista
     if distance_proportion == "uniform":
         return [end_to_end_distance // total_segments] * total_segments
     elif distance_proportion == "increasing":
-        weights = [i*2+ 1 for i in range(total_segments)]
+        weights = [i * 2 + 1 for i in range(total_segments)]
         total_weight = sum(weights)
         distances = [end_to_end_distance * (w / total_weight) for w in weights]
         return [int(d) for d in distances]
     elif distance_proportion == "decreasing":
-        weights = [i*2+ 1 for i in range(total_segments)][::-1]
+        weights = [i * 2 + 1 for i in range(total_segments)][::-1]
         total_weight = sum(weights)
         distances = [end_to_end_distance * (w / total_weight) for w in weights]
         return [int(d) for d in distances]
@@ -72,104 +83,116 @@ def compute_distances_distribution(end_to_end_distance, number_of_routers, dista
         # Compute middle distances
         if total_segments % 2 == 0:  # Even segments: two middle segments
             middle_distance = int(base_edge_distance * 1.2)
-            return [base_edge_distance] * (edge_segments // 2) + [middle_distance, middle_distance] + [base_edge_distance] \
-                * (edge_segments // 2)
+            return (
+                [base_edge_distance] * (edge_segments // 2)
+                + [middle_distance, middle_distance]
+                + [base_edge_distance] * (edge_segments // 2)
+            )
         else:  # Odd segments: single middle segment
             middle_distance = int(base_edge_distance * 1.2)
             return [base_edge_distance] * (edge_segments // 2) + [middle_distance] + [base_edge_distance] * (edge_segments // 2)
     else:
         raise ValueError(f"Invalid distance proportion type: {distance_proportion}")
 
-def generate_topology(number_of_routers, distance_proportion, swapping_config, total_distance):
+
+def generate_topology(p: ParameterSet) -> Topo:
     # Generate nodes
-    nodes = [{"name": "S", "memory": {"decoherence_rate": 1 / t_coherence, "capacity": channel_qubits},
-              "apps": [LinkLayer(attempt_rate=entg_attempt_rate, init_fidelity=init_fidelity,
-                                 alpha_db_per_km=fiber_alpha,
-                                 eta_d=eta_d, eta_s=eta_s,
-                                 frequency=frequency),
-                       ProactiveForwarder()]}]
-    for i in range(1, number_of_routers + 1):
-        nodes.append({
-            "name": f"R{i}",
-            "memory": {"decoherence_rate": 1 / t_coherence, "capacity": channel_qubits * 2},
-            "apps": [LinkLayer(attempt_rate=entg_attempt_rate, init_fidelity=init_fidelity,
-                               alpha_db_per_km=fiber_alpha,
-                               eta_d=eta_d, eta_s=eta_s,
-                               frequency=frequency), ProactiveForwarder(ps=p_swap)]
-        })
-    nodes.append({"name": "D", "memory": {"decoherence_rate": 1 / t_coherence, "capacity": channel_qubits},
-                  "apps": [LinkLayer(attempt_rate=entg_attempt_rate, init_fidelity=init_fidelity,
-                                     alpha_db_per_km=fiber_alpha,
-                                     eta_d=eta_d, eta_s=eta_s,
-                                     frequency=frequency), ProactiveForwarder()]})
+    nodes: list[TopoQNode] = []
+    nodes.append(
+        {
+            "name": "S",
+            "memory": {"decoherence_rate": 1 / p.t_coherence, "capacity": p.channel_qubits},
+            "apps": [
+                LinkLayer(
+                    attempt_rate=p.entg_attempt_rate,
+                    init_fidelity=p.init_fidelity,
+                    alpha_db_per_km=p.fiber_alpha,
+                    eta_d=p.eta_d,
+                    eta_s=p.eta_s,
+                    frequency=p.frequency,
+                ),
+                ProactiveForwarder(),
+            ],
+        }
+    )
+    for i in range(1, p.number_of_routers + 1):
+        nodes.append(
+            {
+                "name": f"R{i}",
+                "memory": {"decoherence_rate": 1 / p.t_coherence, "capacity": p.channel_qubits * 2},
+                "apps": [
+                    LinkLayer(
+                        attempt_rate=p.entg_attempt_rate,
+                        init_fidelity=p.init_fidelity,
+                        alpha_db_per_km=p.fiber_alpha,
+                        eta_d=p.eta_d,
+                        eta_s=p.eta_s,
+                        frequency=p.frequency,
+                    ),
+                    ProactiveForwarder(ps=p.p_swap),
+                ],
+            }
+        )
+    nodes.append(
+        {
+            "name": "D",
+            "memory": {"decoherence_rate": 1 / p.t_coherence, "capacity": p.channel_qubits},
+            "apps": [
+                LinkLayer(
+                    attempt_rate=p.entg_attempt_rate,
+                    init_fidelity=p.init_fidelity,
+                    alpha_db_per_km=p.fiber_alpha,
+                    eta_d=p.eta_d,
+                    eta_s=p.eta_s,
+                    frequency=p.frequency,
+                ),
+                ProactiveForwarder(),
+            ],
+        }
+    )
 
     # Compute distances
-    distances = compute_distances_distribution(total_distance, number_of_routers, distance_proportion)
+    distances = compute_distances_distribution(p.total_distance, p.number_of_routers, p.distance_proportion)
 
     # Generate qchannels and cchannels
-    qchannels = []
-    cchannels = []
-    names = ["S"] + [f"R{i}" for i in range(1, number_of_routers + 1)] + ["D"]
-    for i in range(len(names) - 1):
-        ch_len = distances[i]
-        qchannels.append({
-            "node1": names[i],
-            "node2": names[i+1],
-            "capacity": channel_qubits,
-            "parameters": {
-                "length": ch_len,
-                "delay": ch_len / light_speed
+    qchannels: list[TopoQChannel] = []
+    cchannels: list[TopoCChannel] = []
+    names = [node["name"] for node in nodes]
+    for i, ch_len in enumerate(distances):
+        qchannels.append(
+            {
+                "node1": names[i],
+                "node2": names[i + 1],
+                "capacity": p.channel_qubits,
+                "parameters": {"length": ch_len, "delay": ch_len / p.light_speed},
             }
-        })
-        cchannels.append({
-            "node1": names[i],
-            "node2": names[i+1],
-            "parameters": {
-                "length": ch_len,
-                "delay": ch_len / light_speed
-            }
-        })
+        )
+        cchannels.append(
+            {"node1": names[i], "node2": names[i + 1], "parameters": {"length": ch_len, "delay": ch_len / p.light_speed}}
+        )
 
     # Add classical channels to controller
     for name in names:
-        cchannels.append({
-            "node1": "ctrl",
-            "node2": name,
-            "parameters": {"length": 1.0, "delay": 1.0 / light_speed}
-        })
+        cchannels.append({"node1": "ctrl", "node2": name, "parameters": {"length": 1.0, "delay": 1.0 / p.light_speed}})
 
     # Define controller
-    controller = {
-        "name": "ctrl",
-        "apps": [ProactiveRoutingControllerApp(swapping=swapping_config)]
-    }
+    controller: TopoController = {"name": "ctrl", "apps": [ProactiveRoutingControllerApp(swapping=p.swapping_config)]}
 
-    return {
-        "qnodes": nodes,
-        "qchannels": qchannels,
-        "cchannels": cchannels,
-        "controller": controller
-    }
+    return {"qnodes": nodes, "qchannels": qchannels, "cchannels": cchannels, "controller": controller}
 
 
-def run_simulation(number_of_routers, distance_proportion, swapping_config, total_distance, seed):
-    json_topology = generate_topology(number_of_routers, distance_proportion, swapping_config, total_distance)
+def run_simulation(p: ParameterSet, seed: int) -> tuple[float, float]:
+    json_topology = generate_topology(p)
 
     set_seed(seed)
-    s = Simulator(0, sim_duration + 5e-06, accuracy=1000000)
+    s = Simulator(0, p.sim_duration + 5e-06, accuracy=1000000)
     log.install(s)
 
     topology = CustomTopology(json_topology)
     net = QuantumNetwork(
-        topo=topology,
-        route=DijkstraRouteAlgorithm(),
-        timing_mode=TimingModeEnum.ASYNC,
-        t_slot=0,
-        t_ext=0,
-        t_int=0
+        topo=topology, route=DijkstraRouteAlgorithm(), timing_mode=TimingModeEnum.ASYNC, t_slot=0, t_ext=0, t_int=0
     )
 
-    sim_run = sim_duration
     net.install(s)
     s.run()
 
@@ -177,36 +200,31 @@ def run_simulation(number_of_routers, distance_proportion, swapping_config, tota
     # total_etg = 0
     total_decohered = 0
     for node in net.get_nodes():
-        ll_app = node.get_apps(LinkLayer)[0]
+        ll_app = node.get_app(LinkLayer)
         # total_etg+=ll_app.etg_count
-        total_decohered+=ll_app.decoh_count
-    e2e_count = net.get_node("S").get_apps(ProactiveForwarder)[0].e2e_count
+        total_decohered += ll_app.decoh_count
+    e2e_count = net.get_node("S").get_app(ProactiveForwarder).e2e_count
 
-    return e2e_count / sim_run, total_decohered / e2e_count if e2e_count > 0 else 0
+    return e2e_count / p.sim_duration, total_decohered / e2e_count if e2e_count > 0 else 0
 
 
-# Configuration parameters
-TOTAL_DISTANCE = 150  # km
-
-N_RUNS = 10     # 30
-NUM_ROUTERS_OPTIONS = [3, 4, 5]
-DIST_PROPORTIONS = ["decreasing", "increasing", "mid_bottleneck", "uniform"]
-SWAP_CONFIGS = ["asap", "baln", "vora", "l2r"]
-
-results = []
-
-# Simulation loop
-for num_routers, dist_prop, swap_conf in itertools.product(NUM_ROUTERS_OPTIONS, DIST_PROPORTIONS, SWAP_CONFIGS):
-    full_swapping_config = f"swap_{num_routers}_{swap_conf}"
+def run_row(p: ParameterSet, num_routers: int, dist_prop: str, swap_conf: str) -> dict:
+    """
+    Run simulations for one parameter set.
+    """
+    p = deepcopy(p)
+    p.number_of_routers = num_routers
+    p.distance_proportion = dist_prop
+    p.swapping_config = f"swap_{num_routers}_{swap_conf}"
     if swap_conf == "vora":
-        full_swapping_config+=f"_{dist_prop}"
+        p.swapping_config += f"_{dist_prop}"
+
     entanglements = []
     expired = []
-    for i in range(N_RUNS):
-        print(f"Simulation: {num_routers} routers | {dist_prop} "+
-          f"distances | {swap_conf} | run #{i+1}")
-        seed = SEED_BASE + i
-        e2e_count, expired_count = run_simulation(num_routers, dist_prop, full_swapping_config, TOTAL_DISTANCE, seed)
+    for i in range(p.n_runs):
+        print(f"Simulation: {num_routers} routers | {dist_prop} " + f"distances | {swap_conf} | run #{i + 1}")
+        seed = p.seed_base + i
+        e2e_count, expired_count = run_simulation(p, seed)
         # print(f"==> expired_count: {expired_count}")
         entanglements.append(e2e_count)
         expired.append(expired_count)
@@ -216,7 +234,7 @@ for num_routers, dist_prop, swap_conf in itertools.product(NUM_ROUTERS_OPTIONS, 
     mean_exp = np.mean(expired)
     std_exp = np.std(expired)
 
-    results.append({
+    return {
         "Routers": num_routers,
         "Distance Distribution": dist_prop,
         "Swapping Config": swap_conf,
@@ -225,61 +243,92 @@ for num_routers, dist_prop, swap_conf in itertools.product(NUM_ROUTERS_OPTIONS, 
         "Entanglements All Runs": entanglements,
         "Expired Memories Per Entanglement": mean_exp,
         "Expired Memories Std": std_exp,
-        "Expired Memories All Runs": expired
-    })
+        "Expired Memories All Runs": expired,
+    }
 
-df = pd.DataFrame(results)
-# df.to_csv("trend_results_3.csv", index=False)
 
-# === Combined Plot ===
-fig, axes = plt.subplots(2, 3, figsize=(18, 10), sharey="row")
+def save_results(results: list[dict], *, save_csv: str | None, save_plt: str | None) -> None:
+    df = pd.DataFrame(results)
+    if save_csv is not None:
+        df.to_csv(save_csv, index=False)
 
-x_labels = DIST_PROPORTIONS
-x = np.arange(len(x_labels))
-width = 0.2
+    # === Combined Plot ===
+    _, axes = plt.subplots(2, 3, figsize=(18, 10), sharey="row")
 
-for i, num_routers in enumerate(NUM_ROUTERS_OPTIONS):
-    df_subset = df[df["Routers"] == num_routers]
+    x_labels = DIST_PROPORTIONS
+    x = np.arange(len(x_labels))
+    width = 0.2
 
-    # --- Top Row: Entanglements Per Second ---
-    ax1 = axes[0, i]
-    for j, swap_conf in enumerate(SWAP_CONFIGS):
-        means = []
-        stds = []
-        for dist_prop in x_labels:
-            row = df_subset[(df_subset["Distance Distribution"] == dist_prop) &
-                            (df_subset["Swapping Config"] == swap_conf)]
-            means.append(row["Entanglements Per Second"].values[0])
-            stds.append(row["Entanglements Std"].values[0])
-        ax1.bar(x + j * width, means, width, yerr=stds, label=swap_conf)
+    for i, num_routers in enumerate(NUM_ROUTERS_OPTIONS):
+        df_subset = df[df["Routers"] == num_routers]
 
-    ax1.set_title(f"Entanglements/sec - {num_routers} Routers")
-    ax1.set_xticks(x + 1.5 * width)
-    ax1.set_xticklabels(x_labels)
-    if i == 0:
-        ax1.set_ylabel("Entanglements Per Second")
+        # --- Top Row: Entanglements Per Second ---
+        ax1 = axes[0, i]
+        for j, swap_conf in enumerate(SWAP_CONFIGS):
+            means = []
+            stds = []
+            for dist_prop in x_labels:
+                row = df_subset[(df_subset["Distance Distribution"] == dist_prop) & (df_subset["Swapping Config"] == swap_conf)]
+                means.append(row["Entanglements Per Second"].values[0])
+                stds.append(row["Entanglements Std"].values[0])
+            ax1.bar(x + j * width, means, width, yerr=stds, label=swap_conf)
 
-    # --- Bottom Row: Expired Memories Per Entanglement ---
-    ax2 = axes[1, i]
-    for j, swap_conf in enumerate(SWAP_CONFIGS):
-        means = []
-        stds = []
-        for dist_prop in x_labels:
-            row = df_subset[(df_subset["Distance Distribution"] == dist_prop) &
-                            (df_subset["Swapping Config"] == swap_conf)]
-            means.append(row["Expired Memories Per Entanglement"].values[0])
-            stds.append(row["Expired Memories Std"].values[0])
-        ax2.bar(x + j * width, means, width, yerr=stds, label=swap_conf)
+        ax1.set_title(f"Entanglements/sec - {num_routers} Routers")
+        ax1.set_xticks(x + 1.5 * width)
+        ax1.set_xticklabels(x_labels)
+        if i == 0:
+            ax1.set_ylabel("Entanglements Per Second")
 
-    ax2.set_title(f"Expired Memories/Entg - {num_routers} Routers")
-    ax2.set_xticks(x + 1.5 * width)
-    ax2.set_xticklabels(x_labels)
-    if i == 0:
-        ax2.set_ylabel("Expired Memories per Entanglement")
+        # --- Bottom Row: Expired Memories Per Entanglement ---
+        ax2 = axes[1, i]
+        for j, swap_conf in enumerate(SWAP_CONFIGS):
+            means = []
+            stds = []
+            for dist_prop in x_labels:
+                row = df_subset[(df_subset["Distance Distribution"] == dist_prop) & (df_subset["Swapping Config"] == swap_conf)]
+                means.append(row["Expired Memories Per Entanglement"].values[0])
+                stds.append(row["Expired Memories Std"].values[0])
+            ax2.bar(x + j * width, means, width, yerr=stds, label=swap_conf)
 
-# Add legends only once
-axes[0, 0].legend(loc="upper left")
-axes[1, 0].legend(loc="upper left")
+        ax2.set_title(f"Expired Memories/Entg - {num_routers} Routers")
+        ax2.set_xticks(x + 1.5 * width)
+        ax2.set_xticklabels(x_labels)
+        if i == 0:
+            ax2.set_ylabel("Expired Memories per Entanglement")
 
-plt.tight_layout()
-plt.show()
+    # Add legends only once
+    axes[0, 0].legend(loc="upper left")
+    axes[1, 0].legend(loc="upper left")
+
+    plt.tight_layout()
+    if save_plt is not None:
+        plt.savefig(save_plt, dpi=300, transparent=True)
+    plt.show()
+
+
+NUM_ROUTERS_OPTIONS = [3, 4, 5]
+DIST_PROPORTIONS = ["decreasing", "increasing", "mid_bottleneck", "uniform"]
+SWAP_CONFIGS = ["asap", "baln", "vora", "l2r"]
+
+
+if __name__ == "__main__":
+    freeze_support()
+    p = ParameterSet()
+
+    # Command line arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--runs", default=p.n_runs, type=int, help="Number of trials per parameter set.")
+    parser.add_argument("--routers", action="append", type=int, help="Number of routers between source and destination.")
+    parser.add_argument("--csv", type=str, help="Save results as CSV file.")
+    parser.add_argument("--plt", type=str, help="Save plot as image file.")
+    parser.add_argument("-j", default=1, type=int, help="Number of workers for parallel execution.")
+    args = parser.parse_args()
+    p.n_runs = args.runs
+    if args.routers is not None:
+        NUM_ROUTERS_OPTIONS = cast(list[int], args.routers)
+
+    # Simulator loop with process-based parallelism
+    with Pool(processes=cast(int, args.j)) as pool:
+        results = pool.starmap(run_row, itertools.product([p], NUM_ROUTERS_OPTIONS, DIST_PROPORTIONS, SWAP_CONFIGS))
+
+    save_results(results, save_csv=args.csv, save_plt=args.plt)

@@ -19,10 +19,9 @@ from abc import ABC, abstractmethod
 
 
 class DelayModel(ABC):
-    """The model for delay in storing, operating and transmitting qubits or eprs.
-    """
+    """The model for delay in storing, operating and transmitting qubits or eprs."""
 
-    def __init__(self, name: str|None = None) -> None:
+    def __init__(self, name: str | None = None) -> None:
         """Args:
         name (str): the name of this delay model
 

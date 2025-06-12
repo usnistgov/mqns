@@ -2,7 +2,7 @@
 #    Date: 05/17/2025
 #    Summary of changes: Adapted logic to support dynamic approaches.
 #
-#    This file is based on a snapshot of SimQN (https://github.com/qnslab/SimQN),
+#    This file is based on a snapshot of SimQN (https://github.com/QNLab-USTC/SimQN),
 #    which is licensed under the GNU General Public License v3.0.
 #
 #    The original SimQN header is included below.
@@ -33,6 +33,13 @@ from qns.network.protocol.node_process_delay import NodeProcessDelayApp
 from qns.network.protocol.proactive_forwarder import ProactiveForwarder
 from qns.network.protocol.proactive_routing_controller import ProactiveRoutingControllerApp
 
-__all__ = ["BB84SendApp", "BB84RecvApp", "EntanglementDistributionApp",
-           "ClassicPacketForwardApp", "NodeProcessDelayApp",
-           "ProactiveForwarder", "LinkLayer", "ProactiveRoutingControllerApp"]
+__all__ = [
+    "BB84SendApp",
+    "BB84RecvApp",
+    "EntanglementDistributionApp",
+    "ClassicPacketForwardApp",
+    "NodeProcessDelayApp",
+    "ProactiveForwarder",
+    "LinkLayer",
+    "ProactiveRoutingControllerApp",
+]

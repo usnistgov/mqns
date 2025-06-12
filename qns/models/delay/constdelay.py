@@ -19,7 +19,7 @@ from qns.models.delay.delay import DelayModel
 
 
 class ConstantDelayModel(DelayModel):
-    def __init__(self, delay: float = 0, name: str|None = None) -> None:
+    def __init__(self, delay: float = 0, name: str | None = None) -> None:
         """A constant delay model
 
         Args:

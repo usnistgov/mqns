@@ -2,7 +2,7 @@
 #    Date: 05/17/2025
 #    Summary of changes: Adapted logic to support dynamic approaches.
 #
-#    This file is based on a snapshot of SimQN (https://github.com/qnslab/SimQN),
+#    This file is based on a snapshot of SimQN (https://github.com/QNLab-USTC/SimQN),
 #    which is licensed under the GNU General Public License v3.0.
 #
 #    The original SimQN header is included below.
@@ -30,21 +30,22 @@ import itertools
 from enum import Enum
 from typing import TypedDict
 
-from qns.entity.cchannel import ClassicChannel
-from qns.entity.memory import QuantumMemory
+from qns.entity.cchannel import ClassicChannel, ClassicChannelInitKwargs
+from qns.entity.memory import QuantumMemory, QuantumMemoryInitKwargs
 from qns.entity.node import Application, Controller, QNode
-from qns.entity.qchannel import QuantumChannel
+from qns.entity.qchannel import QuantumChannel, QuantumChannelInitKwargs
 
 try:
     from typing import Unpack
 except ImportError:
     from typing_extensions import Unpack
 
+
 class TopologyInitKwargs(TypedDict, total=False):
     nodes_apps: list[Application]
-    qchannel_args: dict
-    cchannel_args: dict
-    memory_args: dict
+    qchannel_args: QuantumChannelInitKwargs
+    cchannel_args: ClassicChannelInitKwargs
+    memory_args: QuantumMemoryInitKwargs
 
 
 class ClassicTopology(Enum):
@@ -54,8 +55,7 @@ class ClassicTopology(Enum):
 
 
 class Topology:
-    """Topology is a factory for QuantumNetwork
-    """
+    """Topology is a factory for QuantumNetwork"""
 
     def __init__(self, nodes_number: int, **kwargs: Unpack[TopologyInitKwargs]):
         """Args:
@@ -71,7 +71,7 @@ class Topology:
         self.qchannel_args = kwargs.get("qchannel_args", {})
         self.cchannel_args = kwargs.get("cchannel_args", {})
         self.memory_args = kwargs.get("memory_args", {})
-        self.controller: Controller|None = None
+        self.controller: Controller | None = None
 
     def build(self) -> tuple[list[QNode], list[QuantumChannel]]:
         """Build the special topology
@@ -105,8 +105,9 @@ class Topology:
             m = QuantumMemory(name=f"m{idx}", node=n, **self.memory_args)
             n.set_memory(m)
 
-    def add_cchannels(self, classic_topo: ClassicTopology = ClassicTopology.Empty,
-                      nl: list[QNode] = [], ll: list[QuantumChannel] = []) -> list[ClassicChannel]:
+    def add_cchannels(
+        self, *, classic_topo: ClassicTopology = ClassicTopology.Empty, nl: list[QNode] = [], ll: list[QuantumChannel] = []
+    ) -> list[ClassicChannel]:
         """Build classic network topology
 
         Args:
@@ -122,7 +123,7 @@ class Topology:
         if classic_topo == ClassicTopology.All:
             topo = list(itertools.combinations(nl, 2))
             for idx, (src, dst) in enumerate(topo):
-                cchannel = ClassicChannel(name=f"c{idx+1}", **self.cchannel_args)
+                cchannel = ClassicChannel(name=f"c{idx + 1}", **self.cchannel_args)
                 src.add_cchannel(cchannel=cchannel)
                 dst.add_cchannel(cchannel=cchannel)
                 cchannel_list.append(cchannel)

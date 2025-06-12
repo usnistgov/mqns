@@ -46,7 +46,7 @@ class SendApp(Application):
 class RecvApp(Application):
     def __init__(self):
         super().__init__()
-        self.add_handler(self.RecvClassicPacketHandler, [RecvClassicPacket], [])
+        self.add_handler(self.RecvClassicPacketHandler, RecvClassicPacket)
 
     def RecvClassicPacketHandler(self, node: Node, event: RecvClassicPacket):
         packet = event.packet
@@ -59,9 +59,7 @@ class RecvApp(Application):
 def test_classic_forward():
     s = Simulator(0, 10, accuracy=10000000)
 
-    topo = LinearTopology(nodes_number=10,
-                          qchannel_args={"delay": 0.1},
-                          cchannel_args={"delay": 0.1})
+    topo = LinearTopology(nodes_number=10, qchannel_args={"delay": 0.1}, cchannel_args={"delay": 0.1})
 
     net = QuantumNetwork(topo=topo, classic_topo=ClassicTopology.Follow)
 

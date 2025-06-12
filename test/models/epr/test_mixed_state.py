@@ -4,7 +4,6 @@ from qns.models.qubit.qubit import Qubit
 
 
 def test_mixed_state():
-
     e1 = MixedStateEntanglement(fidelity=0.95, name="e1")
     e2 = MixedStateEntanglement(fidelity=0.95, name="e2")
     e3 = e1.swapping(e2)

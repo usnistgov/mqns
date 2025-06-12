@@ -16,19 +16,59 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-from qns.entity.cchannel.cchannel import ClassicChannel
-from qns.entity.memory.memory import QuantumMemory
-from qns.entity.node.controller import Controller
-from qns.entity.node.qnode import QNode
-from qns.entity.qchannel.qchannel import QuantumChannel
+from typing import TypedDict
+
+from qns.entity.cchannel import ClassicChannel, ClassicChannelInitKwargs
+from qns.entity.memory import QuantumMemory, QuantumMemoryInitKwargs
+from qns.entity.node import Application, Controller, QNode
+from qns.entity.qchannel import QuantumChannel, QuantumChannelInitKwargs
 from qns.network.topology.topo import Topology
+
+try:
+    from typing import NotRequired
+except ImportError:
+    from typing_extensions import NotRequired
+
+
+class TopoQNode(TypedDict):
+    name: str
+    memory: QuantumMemoryInitKwargs
+    apps: list[Application]
+
+
+class TopoQChannel(TypedDict):
+    node1: str
+    node2: str
+    capacity: int
+    parameters: QuantumChannelInitKwargs
+
+
+class TopoCChannel(TypedDict):
+    node1: str
+    node2: str
+    parameters: ClassicChannelInitKwargs
+
+
+class TopoController(TypedDict):
+    name: str
+    apps: list[Application]
+
+
+class Topo(TypedDict):
+    qnodes: list[TopoQNode]
+    qchannels: list[TopoQChannel]
+    cchannels: list[TopoCChannel]
+    controller: NotRequired[TopoController]
 
 
 class CustomTopology(Topology):
-    """TopologyCreator processed the topology dict.
+    """
+    CustomTopology builds a topology from a JSON-like dict structure.
+
+    Nodes and channels are individually specified and can have heterogeneous parameters.
     """
 
-    def __init__(self, topo: dict = {}):
+    def __init__(self, topo: Topo):
         super().__init__(0)
         self.topo = topo
 
@@ -55,13 +95,16 @@ class CustomTopology(Topology):
             qcl.append(link)
 
             for qn in qnl:
-                if qn.name == ch["node1"] or qn.name == ch["node2"]:
-                    # Attach quantum channel to nodes
-                    qn.add_qchannel(link)
+                if qn.name not in (ch["node1"], ch["node2"]):
+                    continue
 
-                    for _ in range(ch["capacity"]):
-                        if qn.memory.assign(link) == -1:
-                            raise RuntimeError("Not enough qubits to assignment")
+                # Attach quantum channel to nodes
+                qn.add_qchannel(link)
+
+                memory = qn.get_memory()
+                for _ in range(ch["capacity"]):
+                    if memory.assign(link) == -1:
+                        raise RuntimeError("Not enough qubits to assignment")
 
         if "controller" in self.topo:
             self.controller = Controller(name=self.topo["controller"]["name"], apps=self.topo["controller"]["apps"])
@@ -69,7 +112,10 @@ class CustomTopology(Topology):
         self.qnl = qnl
         return qnl, qcl
 
-    def add_cchannels(self):
+    def add_cchannels(self, **kwargs):
+        if len(kwargs) != 0:
+            raise TypeError("CustomTopology.add_cchannels() does not accept classic_topo= keyword")
+
         ccl: list[ClassicChannel] = []
         for ch in self.topo["cchannels"]:
             link = ClassicChannel(name=f"c_{ch['node1']},{ch['node2']}", **ch["parameters"])

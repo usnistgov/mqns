@@ -19,16 +19,15 @@ from qns.simulator import Event, Simulator
 
 
 class Entity:
-    """This is the basic entity class, including memories, channels and nodes.
-    """
+    """This is the basic entity class, including memories, channels and nodes."""
 
-    def __init__(self, name: str|None = None):
+    def __init__(self, name: str):
         """Args:
         name (str): the name of this entity
 
         """
         self.name = name
-        self._simulator: Simulator|None = None
+        self._simulator: Simulator | None = None
 
     @property
     def simulator(self) -> Simulator:
@@ -63,6 +62,4 @@ class Entity:
         raise NotImplementedError
 
     def __repr__(self) -> str:
-        if self.name is not None:
-            return f"<entity {self.name}>"
-        return super().__repr__()
+        return f"<entity {self.name}>"

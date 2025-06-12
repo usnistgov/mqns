@@ -22,14 +22,13 @@ from qns.network.route.route import ChannelT, NetworkRouteError, NodeT, RouteImp
 
 MetricFunc = Callable[[ChannelT], float]
 
+
 class DijkstraRouteAlgorithm(RouteImpl[NodeT, ChannelT]):
-    """This is the dijkstra route algorithm implement
-    """
+    """This is the dijkstra route algorithm implement"""
 
     INF = math.inf
 
-    def __init__(self, name: str = "dijkstra",
-                 metric_func: MetricFunc = lambda _: 1) -> None:
+    def __init__(self, name: str = "dijkstra", metric_func: MetricFunc = lambda _: 1) -> None:
         """Args:
         name: the routing algorithm's name
         metric_func: the function that returns the metric for each channel.
@@ -41,7 +40,6 @@ class DijkstraRouteAlgorithm(RouteImpl[NodeT, ChannelT]):
         self.metric_func = metric_func
 
     def build(self, nodes: list[NodeT], channels: list[ChannelT]):
-
         for n in nodes:
             selected = []
             unselected = [u for u in nodes]

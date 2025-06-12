@@ -36,7 +36,7 @@ class GridTopology(Topology):
     If `shape` is an integer, it specifies total number of nodes and must be a perfect square number.
     """
 
-    def __init__(self, shape: int|tuple[int,int], **kwargs: Unpack[TopologyInitKwargs]):
+    def __init__(self, shape: int | tuple[int, int], **kwargs: Unpack[TopologyInitKwargs]):
         super().__init__(int(np.prod(shape)), **kwargs)
         if isinstance(shape, tuple):
             self.rows, self.cols = shape
@@ -50,7 +50,7 @@ class GridTopology(Topology):
         ll: list[QuantumChannel] = []
 
         for i in range(self.nodes_number):
-            n = QNode(f"n{i+1}")
+            n = QNode(f"n{i + 1}")
             nl.append(n)
 
         def qc(a: int, b: int):
@@ -62,14 +62,14 @@ class GridTopology(Topology):
         # horizontal links
         for r in range(self.rows):
             idx = r * self.cols
-            for c in range(self.cols-1):
-                qc(idx+c, idx+c+1)
+            for c in range(self.cols - 1):
+                qc(idx + c, idx + c + 1)
 
         # vertical links
-        for r in range(self.rows-1):
+        for r in range(self.rows - 1):
             idx = r * self.cols
             for c in range(self.cols):
-                qc(idx+c, idx+c+self.cols)
+                qc(idx + c, idx + c + self.cols)
 
         self._add_apps(nl)
         self._add_memories(nl)

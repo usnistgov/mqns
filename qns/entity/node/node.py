@@ -2,7 +2,7 @@
 #    Date: 05/17/2025
 #    Summary of changes: Adapted logic to support dynamic approaches.
 #
-#    This file is based on a snapshot of SimQN (https://github.com/qnslab/SimQN),
+#    This file is based on a snapshot of SimQN (https://github.com/QNLab-USTC/SimQN),
 #    which is licensed under the GNU General Public License v3.0.
 #
 #    The original SimQN header is included below.
@@ -37,11 +37,11 @@ if TYPE_CHECKING:
 
 ApplicationT = TypeVar("ApplicationT", bound=Application)
 
-class Node(Entity):
-    """Node is a generic node in the quantum network
-    """
 
-    def __init__(self, name: str, *, apps: list[Application]|None = None):
+class Node(Entity):
+    """Node is a generic node in the quantum network"""
+
+    def __init__(self, name: str, *, apps: list[Application] | None = None):
         """Args:
         name (str): the node's name
         apps (List[Application]): the installing applications.
@@ -50,20 +50,21 @@ class Node(Entity):
         super().__init__(name=name)
         self._network: "QuantumNetwork|None" = None
         self.cchannels: list["ClassicChannel"] = []
-        self.croute_table = [] # XXX unused
+        self.croute_table = []  # XXX unused
         self.apps: list[Application] = [] if apps is None else apps
 
         # set default timing to ASYNC
         from qns.network.network import TimingModeEnum
+
         self.timing_mode: TimingModeEnum = TimingModeEnum.ASYNC
 
     def install(self, simulator: Simulator) -> None:
-        """Called from Network.install()
-        """
+        """Called from Network.install()"""
         super().install(simulator)
         # initiate sub-entities
         for cchannel in self.cchannels:
             from qns.entity import ClassicChannel
+
             assert isinstance(cchannel, ClassicChannel)
             cchannel.install(simulator)
 
@@ -95,13 +96,30 @@ class Node(Entity):
         self.apps.append(app)
 
     def get_apps(self, app_type: type[ApplicationT]) -> list[ApplicationT]:
-        """Get an Application that is `app_type`
+        """
+        Retrieve applications of given type.
 
         Args:
             app_type: the class of app_type
 
         """
         return [app for app in self.apps if isinstance(app, app_type)]
+
+    def get_app(self, app_type: type[ApplicationT]) -> ApplicationT:
+        """
+        Retrieve an application of given type.
+        There must be exactly one instance of this application.
+
+        Args:
+            app_type: the class of app_type
+
+        Raises:
+            IndexError
+        """
+        apps = self.get_apps(app_type)
+        if len(apps) != 1:
+            raise IndexError(f"node {repr(self)} has {len(apps)} instances of {app_type}")
+        return apps[0]
 
     def add_cchannel(self, cchannel: "ClassicChannel"):
         """Add a classic channel in this Node
@@ -157,6 +175,4 @@ class Node(Entity):
             app.handle_sync_signal(signal_type)
 
     def __repr__(self) -> str:
-        if self.name is not None:
-            return f"<node {self.name}>"
-        return super().__repr__()
+        return f"<node {self.name}>"

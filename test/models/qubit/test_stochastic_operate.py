@@ -13,7 +13,6 @@ def test_stochastic_operate():
 
 
 def test_stochastic_operate2():
-
     q0 = Qubit(state=QUBIT_STATE_0, name="q0")
     q0.operate(Y)
     print(q0.state)

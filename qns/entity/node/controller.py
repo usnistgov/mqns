@@ -21,10 +21,9 @@ from qns.simulator import Simulator
 
 
 class Controller(Node):
-    """Controller computes routing and swapping instructions for quantum routers
-    """
+    """Controller computes routing and swapping instructions for quantum routers"""
 
-    def __init__(self, name: str, *, apps: list[Application]|None = None):
+    def __init__(self, name: str, *, apps: list[Application] | None = None):
         """Args:
         name (str): the node's name
         apps (List[Application]): the installing applications.
@@ -37,6 +36,4 @@ class Controller(Node):
         # do other things specific to the controller
 
     def __repr__(self) -> str:
-        if self.name is not None:
-            return f"<controller {self.name}>"
-        return super().__repr__()
+        return f"<controller {self.name}>"

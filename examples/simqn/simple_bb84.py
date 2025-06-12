@@ -11,7 +11,7 @@ light_speed = 299791458
 
 def drop_rate(length):
     # drop 0.2 db/KM
-    return 1 - np.exp(- length / 50000)
+    return 1 - np.exp(-length / 50000)
 
 
 for length in [1000, 5000, 10000, 50000, 100000, 150000]:
@@ -21,8 +21,7 @@ for length in [1000, 5000, 10000, 50000, 100000, 150000]:
         n1 = QNode(name="n1")
         n2 = QNode(name="n2")
 
-        qlink = QuantumChannel(name="l1", delay=length / light_speed,
-                               drop_rate=drop_rate(length))
+        qlink = QuantumChannel(name="l1", delay=length / light_speed, drop_rate=drop_rate(length))
 
         clink = ClassicChannel(name="c1", delay=length / light_speed)
 

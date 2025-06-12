@@ -34,8 +34,9 @@ from qns.utils import log
 
 
 class Transmit:
-    def __init__(self, id: str, src: QNode, dst: QNode,
-                 first_epr_name: Optional[str] = None, second_epr_name: Optional[str] = None):
+    def __init__(
+        self, id: str, src: QNode, dst: QNode, first_epr_name: Optional[str] = None, second_epr_name: Optional[str] = None
+    ):
         self.id = id
         self.src = src
         self.dst = dst
@@ -64,8 +65,8 @@ class EntanglementDistributionApp(Application):
         self.success_count = 0
         self.send_count = 0
 
-        self.add_handler(self.RecvQubitHandler, [RecvQubitPacket])
-        self.add_handler(self.RecvClassicPacketHandler, [RecvClassicPacket])
+        self.add_handler(self.RecvQubitHandler, RecvQubitPacket)
+        self.add_handler(self.RecvClassicPacketHandler, RecvClassicPacket)
 
     def install(self, node: QNode, simulator: Simulator):
         super().install(node, simulator)
@@ -94,7 +95,7 @@ class EntanglementDistributionApp(Application):
     def RecvClassicPacketHandler(self, node: QNode, event: Event):
         self.handle_response(event)
 
-    def new_distribution(self):      # E2E pairs Source to Destination (equiv. to application layer)
+    def new_distribution(self):  # E2E pairs Source to Destination (equiv. to application layer)
         # insert the next send event
         t = self._simulator.tc + Time(sec=1 / self.send_rate)
         event = func_to_event(t, self.new_distribution, by=self)
@@ -105,11 +106,7 @@ class EntanglementDistributionApp(Application):
         epr = self.generate_qubit(self.own, self.dst, None)
         log.debug(f"{self.own}: generate epr {epr.name}")
 
-        self.state[epr.transmit_id] = Transmit(
-            id=epr.transmit_id,
-            src=self.own,
-            dst=self.dst,
-            second_epr_name=epr.name)
+        self.state[epr.transmit_id] = Transmit(id=epr.transmit_id, src=self.own, dst=self.dst, second_epr_name=epr.name)
 
         log.debug(f"{self.own}: generate transmit {self.state[epr.transmit_id]}")
         if not self.memory.write(epr):
@@ -142,8 +139,7 @@ class EntanglementDistributionApp(Application):
 
     def response_distribution(self, packet: RecvQubitPacket):
         qchannel: QuantumChannel = packet.qchannel
-        from_node: QNode = qchannel.node_list[0] \
-            if qchannel.node_list[1] == self.own else qchannel.node_list[1]
+        from_node: QNode = qchannel.node_list[0] if qchannel.node_list[1] == self.own else qchannel.node_list[1]
 
         cchannel = self.own.get_cchannel(from_node)
 
@@ -152,17 +148,12 @@ class EntanglementDistributionApp(Application):
         log.debug(f"{self.own}: recv epr {epr.name} from {from_node}")
 
         # generate the second epr (curr_node - ?)
-        next_epr = self.generate_qubit(
-            src=epr.src, dst=epr.dst, transmit_id=epr.transmit_id)
+        next_epr = self.generate_qubit(src=epr.src, dst=epr.dst, transmit_id=epr.transmit_id)
         log.debug(f"{self.own}: generate epr {next_epr.name}")
         self.state[epr.transmit_id] = Transmit(
-            id=epr.transmit_id,
-            src=epr.src,
-            dst=epr.dst,
-            first_epr_name=epr.name,
-            second_epr_name=next_epr.name)
-        log.debug(
-            f"{self.own}: generate transmit {self.state[epr.transmit_id]}")
+            id=epr.transmit_id, src=epr.src, dst=epr.dst, first_epr_name=epr.name, second_epr_name=next_epr.name
+        )
+        log.debug(f"{self.own}: generate transmit {self.state[epr.transmit_id]}")
 
         log.debug(f"{self.own}: store {epr.name} and {next_epr.name}")
         ret1 = self.memory.write(epr)
@@ -172,24 +163,20 @@ class EntanglementDistributionApp(Application):
             # if failed (memory is full), destory all entanglements
             self.memory.read(epr)
             self.memory.read(next_epr)
-            classic_packet = ClassicPacket(
-                msg={"cmd": "revoke", "transmit_id": epr.transmit_id}, src=self.own, dest=from_node)
+            classic_packet = ClassicPacket(msg={"cmd": "revoke", "transmit_id": epr.transmit_id}, src=self.own, dest=from_node)
             cchannel.send(classic_packet, next_hop=from_node)
             log.debug(f"{self.own}: send {classic_packet.msg} to {from_node}")
             return
 
-        classic_packet = ClassicPacket(
-            msg={"cmd": "swap", "transmit_id": epr.transmit_id}, src=self.own, dest=from_node)
+        classic_packet = ClassicPacket(msg={"cmd": "swap", "transmit_id": epr.transmit_id}, src=self.own, dest=from_node)
         cchannel.send(classic_packet, next_hop=from_node)
-        log.debug(
-            f"{self.own}: send {classic_packet.msg} from {self.own} to {from_node}")
+        log.debug(f"{self.own}: send {classic_packet.msg} from {self.own} to {from_node}")
 
     def handle_response(self, packet: RecvClassicPacket):
         msg = packet.packet.get()
         cchannel = packet.cchannel
 
-        from_node: QNode = cchannel.node_list[0] \
-            if cchannel.node_list[1] == self.own else cchannel.node_list[1]
+        from_node: QNode = cchannel.node_list[0] if cchannel.node_list[1] == self.own else cchannel.node_list[1]
 
         log.debug(f"{self.own}: recv {msg} from {from_node}")
 
@@ -201,26 +188,20 @@ class EntanglementDistributionApp(Application):
             # check if not source of the request
             if self.own != transmit.src:
                 # perfrom entanglement swapping
-                first_epr: WernerStateEntanglement = self.memory.read(
-                    transmit.first_epr_name)
-                second_epr: WernerStateEntanglement = self.memory.read(
-                    transmit.second_epr_name)
+                first_epr: WernerStateEntanglement = self.memory.read(transmit.first_epr_name)
+                second_epr: WernerStateEntanglement = self.memory.read(transmit.second_epr_name)
                 new_epr = first_epr.swapping(second_epr, name=uuid.uuid4().hex)
-                log.debug(
-                    f"{self.own}:perform swap use {first_epr} and {second_epr}")
+                log.debug(f"{self.own}:perform swap use {first_epr} and {second_epr}")
                 log.debug(f"{self.own}:perform swap generate {new_epr}")
 
                 src: QNode = transmit.src
-                app: EntanglementDistributionApp = src.get_apps(
-                    EntanglementDistributionApp)[0]
+                app = src.get_app(EntanglementDistributionApp)
                 app.set_second_epr(new_epr, transmit_id=transmit_id)
 
-                app: EntanglementDistributionApp = from_node.get_apps(
-                    EntanglementDistributionApp)[0]
+                app = from_node.get_apps(EntanglementDistributionApp)
                 app.set_first_epr(new_epr, transmit_id=transmit_id)
 
-            classic_packet = ClassicPacket(
-                msg={"cmd": "next", "transmit_id": transmit_id}, src=self.own, dest=from_node)
+            classic_packet = ClassicPacket(msg={"cmd": "next", "transmit_id": transmit_id}, src=self.own, dest=from_node)
             cchannel.send(classic_packet, next_hop=from_node)
             log.debug(f"{self.own}: send {classic_packet.msg} to {from_node}")
         elif cmd == "next":
@@ -234,16 +215,13 @@ class EntanglementDistributionApp(Application):
                 self.success_count += 1
                 log.debug(f"{self.own}: successful distribute {result_epr}")
 
-                classic_packet = ClassicPacket(
-                    msg={"cmd": "succ", "transmit_id": transmit_id},
-                    src=self.own, dest=transmit.src)
+                classic_packet = ClassicPacket(msg={"cmd": "succ", "transmit_id": transmit_id}, src=self.own, dest=transmit.src)
                 try:
                     cchannel = self.own.get_cchannel(transmit.src)
                 except IndexError:
                     cchannel = None
                 if cchannel is not None:
-                    log.debug(
-                        f"{self.own}: send {classic_packet} to {from_node}")
+                    log.debug(f"{self.own}: send {classic_packet} to {from_node}")
                     cchannel.send(classic_packet, next_hop=transmit.src)
             else:
                 log.debug(f"{self.own}: begin new request {transmit_id}")
@@ -258,27 +236,25 @@ class EntanglementDistributionApp(Application):
             # clean memory
             log.debug(
                 f"{self.own}: clean memory {transmit.first_epr_name}\
-                    and {transmit.second_epr_name}")
+                    and {transmit.second_epr_name}"
+            )
             self.memory.read(transmit.first_epr_name)
             self.memory.read(transmit.second_epr_name)
             self.state[transmit_id] = None
             if self.own != transmit.src:
                 classic_packet = ClassicPacket(
-                    msg={"cmd": "revoke", "transmit_id": transmit_id},
-                    src=self.own, dest=transmit.src)
+                    msg={"cmd": "revoke", "transmit_id": transmit_id}, src=self.own, dest=transmit.src
+                )
                 try:
                     cchannel = self.own.get_cchannel(transmit.src)
                 except IndexError:
                     cchannel = None
                 if cchannel is not None:
-                    log.debug(
-                        f"{self.own}: send {classic_packet} to {from_node}")
+                    log.debug(f"{self.own}: send {classic_packet} to {from_node}")
                     cchannel.send(classic_packet, next_hop=transmit.src)
 
-    def generate_qubit(self, src: QNode, dst: QNode,
-                       transmit_id: Optional[str] = None) -> QuantumModel:
-        epr = WernerStateEntanglement(
-            fidelity=self.init_fidelity, name=uuid.uuid4().hex)
+    def generate_qubit(self, src: QNode, dst: QNode, transmit_id: Optional[str] = None) -> QuantumModel:
+        epr = WernerStateEntanglement(fidelity=self.init_fidelity, name=uuid.uuid4().hex)
         epr.src = src
         epr.dst = dst
         epr.transmit_id = transmit_id if transmit_id is not None else uuid.uuid4().hex

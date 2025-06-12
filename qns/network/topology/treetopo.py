@@ -24,6 +24,7 @@ try:
 except ImportError:
     from typing_extensions import Unpack
 
+
 class TreeTopology(Topology):
     """TreeTopology includes `nodes_number` Qnodes.
     The topology is a tree pattern, where each parent has `children_num` children.
@@ -43,7 +44,7 @@ class TreeTopology(Topology):
         ll: list[QuantumChannel] = []
 
         for i in range(self.nodes_number):
-            n = QNode(f"n{i+1}")
+            n = QNode(f"n{i + 1}")
             nl.append(n)
 
         for i in range(self.nodes_number):

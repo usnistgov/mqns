@@ -10,13 +10,14 @@ class ErrorEntanglement(WernerStateEntanglement):
     def store_error_model(self, t: float, **kwargs):
         # storage error will reduce the fidelity
         t_coh = kwargs.get("t_coh", 1)
-        self.w = self.w * np.exp(- 1 / t_coh)
+        self.w = self.w * np.exp(-1 / t_coh)
         print("xxx")
+
 
 n1 = QNode("n1")
 
 # memory error attributions: coherence time is 1 second
-m3 = QuantumMemory("m3", capacity = 10, decoherence_rate=0.2, store_error_model_args = {"t_coh": 1})
+m3 = QuantumMemory("m3", capacity=10, decoherence_rate=0.2, store_error_model_args={"t_coh": 1})
 n1.add_memory(m3)
 
 s = Simulator(0, 10, 1000)
@@ -29,4 +30,3 @@ m3.write(epr1)
 # after a while, the fidelity will drop
 epr2 = m3.read(epr1)
 print(epr2.fidelity)
-

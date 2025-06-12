@@ -30,8 +30,9 @@ class MPSimulations:
     with different experiment settings and leverage multiple processes.
     """
 
-    def __init__(self, settings: Dict = {}, iter_count: int = 1, aggregate: bool = True,
-                 cores: int = -1, name: Optional[str] = None) -> None:
+    def __init__(
+        self, settings: Dict = {}, iter_count: int = 1, aggregate: bool = True, cores: int = -1, name: Optional[str] = None
+    ) -> None:
         """Args:
         settings: a dictionary object that contains simulation settings,
                   e.g., {"node_num": [10, 20, 30], "request_num": [1, 2, 3], "memory_size": [50, 100]}
@@ -72,19 +73,18 @@ class MPSimulations:
 
     def _single_run(self, setting: Dict = {}):
         raw = {}
-        log.info(f"start simulation [{setting['_id']+1}/{self._total_simulation_count}] {setting}")
+        log.info(f"start simulation [{setting['_id'] + 1}/{self._total_simulation_count}] {setting}")
         result = self.run(setting=setting)
         raw.update(setting)
         raw.update(result)
-        log.info(f"finish simulation [{setting['_id']+1}/{self._total_simulation_count}] {result}")
+        log.info(f"finish simulation [{setting['_id'] + 1}/{self._total_simulation_count}] {result}")
         return raw
 
     def _init_worker(self):
         signal.signal(signal.SIGINT, signal.SIG_IGN)
 
     def start(self):
-        """Start the multiple process simulation
-        """
+        """Start the multiple process simulation"""
         self.prepare_setting()
         pool = multiprocessing.Pool(processes=self.cores, initializer=self._init_worker)
         try:
@@ -116,7 +116,7 @@ class MPSimulations:
             ck = mean.columns
             for k in ck:
                 if k not in self.settings.keys():
-                    new_name[k] = k+"_mean"
+                    new_name[k] = k + "_mean"
             mean = mean.rename(columns=new_name)
             mean = mean.groupby(by=list(self.settings.keys())).mean()
 
@@ -125,14 +125,13 @@ class MPSimulations:
             ck = std.columns
             for k in ck:
                 if k not in self.settings.keys():
-                    new_name[k] = k+"_std"
+                    new_name[k] = k + "_std"
             std = std.rename(columns=new_name)
             std = std.groupby(by=list(self.settings.keys())).std()
             self.aggregated_data = pd.merge(mean, std, on=list(self.settings.keys()))
 
     def prepare_setting(self):
-        """Generate the experiment setting for each experiments.
-        """
+        """Generate the experiment setting for each experiments."""
         keys = self.settings.keys()
         _tmp = []
         for k in keys:

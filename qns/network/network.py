@@ -2,7 +2,7 @@
 #    Date: 05/17/2025
 #    Summary of changes: Adapted logic to support dynamic approaches.
 #
-#    This file is based on a snapshot of SimQN (https://github.com/qnslab/SimQN),
+#    This file is based on a snapshot of SimQN (https://github.com/QNLab-USTC/SimQN),
 #    which is licensed under the GNU General Public License v3.0.
 #
 #    The original SimQN header is included below.
@@ -40,23 +40,30 @@ class TimingModeEnum(Enum):
     LSYNC = auto()
     SYNC = auto()
 
+
 class SignalTypeEnum(Enum):
-    EXTERNAL_START = auto()     # used by LSYNC to signal new slot
-    INTERNAL = auto()           # used by SYNC to set the phase
-    EXTERNAL = auto()           # used by SYNC to set the phase
-    ROUTING = auto()            # used by SYNC to set the phase
-    APP = auto()                # used by SYNC to set the phase
+    EXTERNAL_START = auto()  # used by LSYNC to signal new slot
+    INTERNAL = auto()  # used by SYNC to set the phase
+    EXTERNAL = auto()  # used by SYNC to set the phase
+    ROUTING = auto()  # used by SYNC to set the phase
+    APP = auto()  # used by SYNC to set the phase
+
 
 class QuantumNetwork:
-    """QuantumNetwork includes quantum nodes, quantum and classical channels, arranged in a given topology
-    """
+    """QuantumNetwork includes quantum nodes, quantum and classical channels, arranged in a given topology"""
 
-    def __init__(self, *,
-                 topo: Topology|None = None, route: RouteImpl|None = None,
-                 classic_topo: ClassicTopology|None = None,
-                 name: str|None = None,
-                 timing_mode: TimingModeEnum = TimingModeEnum.ASYNC,
-                 t_slot: float = 0, t_ext: float = 0, t_int: float = 0):
+    def __init__(
+        self,
+        *,
+        topo: Topology | None = None,
+        route: RouteImpl | None = None,
+        classic_topo: ClassicTopology | None = None,
+        name: str | None = None,
+        timing_mode: TimingModeEnum = TimingModeEnum.ASYNC,
+        t_slot: float = 0,
+        t_ext: float = 0,
+        t_int: float = 0,
+    ):
         """Args:
         topo: a `Topology` class.
         route: the routing implement. If route is None, the dijkstra algorithm will be used.
@@ -65,12 +72,12 @@ class QuantumNetwork:
 
         """
         self.timing_mode = timing_mode
-        self.t_slot = t_slot            # for LSYNC
-        self.t_ext = t_ext              # for SYNC
-        self.t_int = t_int              # for SYNC
+        self.t_slot = t_slot  # for LSYNC
+        self.t_ext = t_ext  # for SYNC
+        self.t_int = t_int  # for SYNC
 
         self.name = name
-        self.controller: Controller|None = None
+        self.controller: Controller | None = None
 
         if topo is None:
             self.nodes: list[QNode] = []
@@ -98,7 +105,6 @@ class QuantumNetwork:
             self.route: RouteImpl = route
 
         self.requests: list[Request] = []
-
 
     def install(self, s: Simulator):
         """Install all nodes (including channels, memories and applications) in this network
@@ -153,7 +159,6 @@ class QuantumNetwork:
         # TODO: add controller
         for node in self.nodes:
             node.handle_sync_signal(SignalTypeEnum.INTERNAL)
-
 
     def get_nodes(self):
         return self.nodes
@@ -267,13 +272,17 @@ class QuantumNetwork:
 
         """
         for idx, n in enumerate(self.nodes):
-            m = QuantumMemory(name=f"m{idx}", node=n, capacity=capacity, decoherence_rate=decoherence_rate,
-                              store_error_model_args=store_error_model_args)
+            m = QuantumMemory(
+                name=f"m{idx}",
+                node=n,
+                capacity=capacity,
+                decoherence_rate=decoherence_rate,
+                store_error_model_args=store_error_model_args,
+            )
             n.set_memory(m)
 
     def build_route(self):
-        """Build static route tables for each nodes
-        """
+        """Build static route tables for each nodes"""
         self.route.build(self.nodes, self.qchannels)
 
     def query_route(self, src: QNode, dest: QNode) -> list[tuple[float, QNode, list[QNode]]]:
@@ -284,7 +293,7 @@ class QuantumNetwork:
             dest: the destination node
 
         Returns:
-            A list of route paths. The result should be sortted by the priority.
+            A list of route paths. The result should be sorted by the priority.
             The element is a tuple containing: metric, the next-hop and the whole path.
 
         """

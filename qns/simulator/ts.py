@@ -31,7 +31,7 @@ def set_default_accuracy(time_slots: int):
 
 
 class Time:
-    def __init__(self, time_slot: int = 0, sec: int|float = 0, accuracy: int|None = None):
+    def __init__(self, time_slot: int = 0, sec: int | float = 0, accuracy: int | None = None):
         """Time: the time slot used in the simulator
 
         Args:

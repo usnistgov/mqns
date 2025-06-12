@@ -24,7 +24,7 @@ class NodeProcessDelayApp(Application):
     It is used to represent the processing delay on quantum nodes.
     """
 
-    def __init__(self, delay: float = 0, delay_event_list: type|tuple[type, ...]|None = None):
+    def __init__(self, delay: float = 0, delay_event_list: type | tuple[type, ...] | None = None):
         """Args:
         delay (float): the processing delay
         delay_event_list: a list of Event classic list that will add a delay.

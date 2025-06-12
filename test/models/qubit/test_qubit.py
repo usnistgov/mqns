@@ -12,7 +12,7 @@ def test_qubit():
     CNOT(q0, q1)
     c0 = q0.measure()
     c1 = q1.measure()
-    assert (c0 == c1)
+    assert c0 == c1
 
     q0 = Qubit(state=QUBIT_STATE_0, name="q0")
     q1 = Qubit(state=QUBIT_STATE_0, name="q1")
@@ -20,7 +20,7 @@ def test_qubit():
     CNOT(q0, q1)
     c0 = q0.measure()
     c1 = q1.measure()
-    assert (c0 == c1)
+    assert c0 == c1
 
 
 def test_qubit_rotate():
@@ -28,13 +28,13 @@ def test_qubit_rotate():
     q1 = Qubit(state=QUBIT_STATE_0, name="q1")
     RX(q0)
     U(q1, OPERATOR_RX(theta=np.pi / 4))
-    assert (q0.state.equal(q1.state))
+    assert q0.state.equal(q1.state)
 
     q0 = Qubit(state=QUBIT_STATE_0, name="q0")
     q1 = Qubit(state=QUBIT_STATE_0, name="q1")
     RY(q0)
     U(q1, OPERATOR_RY(theta=np.pi / 4))
-    assert (q0.state.equal(q1.state))
+    assert q0.state.equal(q1.state)
 
 
 def test_2qubit():
@@ -45,11 +45,11 @@ def test_2qubit():
     q0 = Qubit(state=QUBIT_STATE_0, name="q0")
     q1 = Qubit(state=QUBIT_STATE_1, name="q1")
     H(q0)
-    CR(q0, q1, theta=np.pi/4)
+    CR(q0, q1, theta=np.pi / 4)
     q0 = Qubit(state=QUBIT_STATE_0, name="q0")
     q1 = Qubit(state=QUBIT_STATE_1, name="q1")
     H(q0)
-    CR(q0, q1, theta=np.pi/2)
+    CR(q0, q1, theta=np.pi / 2)
 
 
 def test_swap():
@@ -60,13 +60,14 @@ def test_swap():
     Swap(q0, q1)
     Swap(q0, q2)
 
-    assert (q0.measure() == q1.measure())
-    assert (q2.measure() == 1)
+    assert q0.measure() == q1.measure()
+    assert q2.measure() == 1
 
 
 def test_toffoli():
     a = [QUBIT_STATE_0, QUBIT_STATE_1]
     import itertools
+
     all = itertools.product(a, a)
     for c in all:
         q0 = Qubit(state=c[0], name="q0")
@@ -75,9 +76,9 @@ def test_toffoli():
         Toffoli(q0, q1, q2)
         c2 = q2.measure()
         if (c[0] == QUBIT_STATE_1).all() and (c[1] == QUBIT_STATE_1).all():
-            assert (c2 == 1)
+            assert c2 == 1
         else:
-            assert (c2 == 0)
+            assert c2 == 0
 
 
 def test_state():
@@ -85,5 +86,6 @@ def test_state():
     # print('w: ', w)
     # print('v: ', v)
     from qns.models.qubit.const import QUBIT_STATE_N
+
     q0 = Qubit(state=QUBIT_STATE_N, name="q0")
     q0.state.state()

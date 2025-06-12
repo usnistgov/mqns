@@ -29,12 +29,14 @@ default_end_second = 60.0
 
 
 class Simulator:
-    """The discrete-event driven simulator core
-    """
+    """The discrete-event driven simulator core"""
 
-    def __init__(self, start_second: float = default_start_second,
-                 end_second: float = default_end_second,
-                 accuracy: int = default_accuracy):
+    def __init__(
+        self,
+        start_second: float = default_start_second,
+        end_second: float = default_end_second,
+        accuracy: int = default_accuracy,
+    ):
         """Args:
         start_second (float): the start second of the simulation
         end_second (float): the end second of the simulation
@@ -68,11 +70,10 @@ class Simulator:
 
     @property
     def tc(self) -> Time:
-        """The alias of `current_time`
-        """
+        """The alias of `current_time`"""
         return self.current_time
 
-    def time(self, time_slot: int|None = None, sec: int|float|None = None) -> Time:
+    def time(self, time_slot: int | None = None, sec: int | float | None = None) -> Time:
         """Produce a ``Time`` using either ``time_slot`` or ``sec``
 
         Args:
@@ -95,8 +96,7 @@ class Simulator:
             self.total_events += 1
 
     def run(self) -> None:
-        """Run the simulate
-        """
+        """Run the simulate"""
         log.debug("simulation started.")
 
         self._running = True
@@ -116,21 +116,22 @@ class Simulator:
         log.debug("simulation finished.")
 
         if tre - trs == 0:
-            log.debug(f"runtime {tre - trs}, {self.total_events} events,\
-                sim_time {self.te.sec - self.ts.sec}, xINF")
+            log.debug(
+                f"runtime {tre - trs}, {self.total_events} events,\
+                sim_time {self.te.sec - self.ts.sec}, xINF"
+            )
         else:
-            log.debug(f"runtime {tre - trs}, {self.total_events} events,\
-                sim_time {self.te.sec - self.ts.sec}, x{(self.te.sec - self.ts.sec)/(tre-trs)}")
+            log.debug(
+                f"runtime {tre - trs}, {self.total_events} events,\
+                sim_time {self.te.sec - self.ts.sec}, x{(self.te.sec - self.ts.sec) / (tre - trs)}"
+            )
 
     def stop(self) -> None:
-        """Stop the simulation loop
-        """
+        """Stop the simulation loop"""
         self._running = False
 
-
     def run_continuous(self) -> None:
-        """Run the simulation continuously until stopped.
-        """
+        """Run the simulation continuously until stopped."""
         log.debug("continuous simulation started.")
 
         self._running = True
@@ -156,5 +157,4 @@ class Simulator:
         if tre - trs == 0:
             log.debug(f"runtime {tre - trs}, {self.total_events} events, xINF")
         else:
-            log.debug(f"runtime {tre - trs}, {self.total_events} events, "
-                      f"x{self.current_time.sec / (tre - trs)}")
+            log.debug(f"runtime {tre - trs}, {self.total_events} events, x{self.current_time.sec / (tre - trs)}")

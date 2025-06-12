@@ -12,7 +12,7 @@ total_length = 100000
 
 def drop_rate(length):
     # drop 0.2 db/KM
-    return 1 - np.exp(- length / 50000)
+    return 1 - np.exp(-length / 50000)
 
 
 for num in [2, 3, 4, 5, 6]:
@@ -21,10 +21,12 @@ for num in [2, 3, 4, 5, 6]:
         length = total_length / (num - 1)
         s = Simulator(0, 10, accuracy=10000000000)
 
-        topo = LineTopology(num, nodes_apps=[], qchannel_args={
-                            "delay": length / light_speed,
-                            "drop_rate": drop_rate(length)},
-                            cchannel_args={"delay": length / light_speed})
+        topo = LineTopology(
+            num,
+            nodes_apps=[],
+            qchannel_args={"delay": length / light_speed, "drop_rate": drop_rate(length)},
+            cchannel_args={"delay": length / light_speed},
+        )
 
         net = QuantumNetwork(topo=topo, classic_topo=ClassicTopology.Follow)
 
@@ -35,7 +37,7 @@ for num in [2, 3, 4, 5, 6]:
             for c in net.cchannels:
                 if c.name == f"c-{qchannel.name}":
                     cchannel = c
-            assert (cchannel is not None)
+            assert cchannel is not None
 
             sp = BB84SendApp(dst, qchannel, cchannel, send_rate=1000)
             rp = BB84RecvApp(src, qchannel, cchannel)

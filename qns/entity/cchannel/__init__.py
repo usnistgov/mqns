@@ -15,6 +15,6 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from qns.entity.cchannel.cchannel import ClassicChannel, ClassicPacket, RecvClassicPacket
+from qns.entity.cchannel.cchannel import ClassicChannel, ClassicChannelInitKwargs, ClassicPacket, RecvClassicPacket
 
-__all__ = ["ClassicChannel", "ClassicPacket", "RecvClassicPacket"]
+__all__ = ["ClassicChannel", "ClassicChannelInitKwargs", "ClassicPacket", "RecvClassicPacket"]

@@ -14,16 +14,15 @@ class EPRDistributionSimulation(MPSimulations):
         memory_capacity = setting["memory_capacity"]
         send_rate = setting["send_rate"]
         s = Simulator(0, 10, accuracy=10000000)
-        topo = LineTopology(nodes_number=nodes_number,
-                            qchannel_args={"delay": delay, "drop_rate": 0.3},
-                            cchannel_args={"delay": delay},
-                            memory_args={
-                                "capacity": memory_capacity,
-                                "store_error_model_args": {"a": 0.2}},
-                            nodes_apps=[EntanglementDistributionApp(init_fidelity=0.99)])
+        topo = LineTopology(
+            nodes_number=nodes_number,
+            qchannel_args={"delay": delay, "drop_rate": 0.3},
+            cchannel_args={"delay": delay},
+            memory_args={"capacity": memory_capacity, "store_error_model_args": {"a": 0.2}},
+            nodes_apps=[EntanglementDistributionApp(init_fidelity=0.99)],
+        )
 
-        net = QuantumNetwork(
-            topo=topo, classic_topo=ClassicTopology.All, route=DijkstraRouteAlgorithm())
+        net = QuantumNetwork(topo=topo, classic_topo=ClassicTopology.All, route=DijkstraRouteAlgorithm())
         net.build_route()
 
         src = net.get_node("n1")
@@ -35,11 +34,16 @@ class EPRDistributionSimulation(MPSimulations):
 
 
 if __name__ == "__main__":
-    ss = EPRDistributionSimulation(settings={
-        "nodes_number": [5, 10, 15, 20, 25, 30],
-        "delay": [0.05],
-        "memory_capacity": [10, 20, 30],
-        "send_rate": [1000, 2000]
-    }, aggregate=True, iter_count=10, cores=20)
+    ss = EPRDistributionSimulation(
+        settings={
+            "nodes_number": [5, 10, 15, 20, 25, 30],
+            "delay": [0.05],
+            "memory_capacity": [10, 20, 30],
+            "send_rate": [1000, 2000],
+        },
+        aggregate=True,
+        iter_count=10,
+        cores=20,
+    )
     ss.start()
     print(ss.get_data())

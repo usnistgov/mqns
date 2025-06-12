@@ -21,7 +21,7 @@ def test_operator_sync():
 
     qubit = Qubit()
     ret = o1.operate(qubit)
-    assert (ret in [0, 1])
+    assert ret in [0, 1]
 
     s.run()
 
@@ -29,10 +29,10 @@ def test_operator_sync():
 class RecvOperateApp(Application):
     def __init__(self):
         super().__init__()
-        self.add_handler(self.OperateResponseEventhandler, [OperateResponseEvent], [])
+        self.add_handler(self.OperateResponseEventhandler, OperateResponseEvent)
         self.count = 0
 
-    def OperateResponseEventhandler(self, node, event: OperateResponseEvent) -> bool|None:
+    def OperateResponseEventhandler(self, node, event: OperateResponseEvent) -> bool | None:
         result = event.result
         assert self.simulator.tc.sec == 0.5
         assert result in [0, 1]

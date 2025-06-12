@@ -26,10 +26,19 @@ class QubitLossChannel(QuantumChannel):
     The loss rate is: 1-(1-p_init)*10^{- attenuation_rate * length / 10}
     """
 
-    def __init__(self, name: str|None = None, node_list: list[QNode] = [],
-                 bandwidth: int = 0, delay: DelayInput = 0, p_init: float = 0, attenuation_rate: float = 0,
-                 max_buffer_size: int = 0, length: float = 0, decoherence_rate: float = 0,
-                 transfer_error_model_args: dict = {}):
+    def __init__(
+        self,
+        name: str,
+        node_list: list[QNode] = [],
+        bandwidth: int = 0,
+        delay: DelayInput = 0,
+        p_init: float = 0,
+        attenuation_rate: float = 0,
+        max_buffer_size: int = 0,
+        length: float = 0,
+        decoherence_rate: float = 0,
+        transfer_error_model_args: dict = {},
+    ):
         """Args:
         name (str): the name of this channel
         node_list (List[QNode]): a list of QNodes that it connects to
@@ -57,4 +66,4 @@ class QubitLossChannel(QuantumChannel):
         )
         self.p_init = p_init
         self.attenuation_rate = attenuation_rate
-        self.drop_rate = 1 - (1-self.p_init) * 10**(-self.attenuation_rate * self.length / 10)
+        self.drop_rate = 1 - (1 - self.p_init) * 10 ** (-self.attenuation_rate * self.length / 10)

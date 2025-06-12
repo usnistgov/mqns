@@ -17,8 +17,7 @@
 
 
 class QuantumModel:
-    """The interface to present the backend models, including qubit, epr and other models.
-    """
+    """The interface to present the backend models, including qubit, epr and other models."""
 
     def store_error_model(self, t: float = 0, decoherence_rate: float = 0, **kwargs):
         """The error model for quantum memory.

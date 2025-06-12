@@ -20,7 +20,7 @@ from qns.utils.rnd import get_rand
 
 
 class UniformDelayModel(DelayModel):
-    def __init__(self, min_delay: float = 0, max_delay: float = 0, name: str|None = None) -> None:
+    def __init__(self, min_delay: float = 0, max_delay: float = 0, name: str | None = None) -> None:
         """A random delay from distribution X~U(min, max)
 
         Args:

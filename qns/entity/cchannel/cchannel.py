@@ -2,7 +2,7 @@
 #    Date: 05/17/2025
 #    Summary of changes: Adapted logic to support dynamic approaches.
 #
-#    This file is based on a snapshot of SimQN (https://github.com/qnslab/SimQN),
+#    This file is based on a snapshot of SimQN (https://github.com/QNLab-USTC/SimQN),
 #    which is licensed under the GNU General Public License v3.0.
 #
 #    The original SimQN header is included below.
@@ -26,7 +26,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import json
-from typing import Any
+from typing import Any, TypedDict
 
 from qns.entity.entity import Entity
 from qns.entity.node import Node
@@ -34,12 +34,16 @@ from qns.models.delay import DelayInput, parseDelay
 from qns.simulator import Event, Simulator, Time
 from qns.utils import get_rand, log
 
+try:
+    from typing import Unpack
+except ImportError:
+    from typing_extensions import Unpack
+
 
 class ClassicPacket:
-    """ClassicPacket is the message that transfer on a ClassicChannel
-    """
+    """ClassicPacket is the message that transfer on a ClassicChannel"""
 
-    def __init__(self, msg: Any, src: Node|None = None, dest: Node|None = None):
+    def __init__(self, msg: Any, src: Node | None = None, dest: Node | None = None):
         """Args:
         msg (Union[str, bytes, Any]): the message content.
             It can be a `str` or `bytes` type or can be dumpped to json.
@@ -48,10 +52,10 @@ class ClassicPacket:
 
         """
         self.is_json: bool = False
-        #if not isinstance(msg, (str, bytes)):
+        # if not isinstance(msg, (str, bytes)):
         #    self.msg = json.dumps(msg)
         #    self.is_json = True
-        #else:
+        # else:
         self.msg = msg
         self.src = src
         self.dest = dest
@@ -83,13 +87,18 @@ class ClassicPacket:
         return len(self.msg)
 
 
-class ClassicChannel(Entity):
-    """ClassicChannel is the channel for classic message
-    """
+class ClassicChannelInitKwargs(TypedDict, total=False):
+    bandwidth: int
+    delay: DelayInput
+    drop_rate: float
+    max_buffer_size: int
+    length: float
 
-    def __init__(self, name: str|None = None, node_list: list[Node] = [],
-                 bandwidth: int = 0, delay: DelayInput = 0, length: float = 0, drop_rate: float = 0,
-                 max_buffer_size: int = 0):
+
+class ClassicChannel(Entity):
+    """ClassicChannel is the channel for classic message"""
+
+    def __init__(self, name: str, node_list: list[Node] = [], **kwargs: Unpack[ClassicChannelInitKwargs]):
         """Args:
         name (str): the name of this channel
         node_list (List[Node]): a list of QNodes that it connects to
@@ -103,11 +112,12 @@ class ClassicChannel(Entity):
         """
         super().__init__(name=name)
         self.node_list = node_list.copy()
-        self.bandwidth = bandwidth
-        self.delay_model = parseDelay(delay)
-        self.drop_rate = drop_rate
-        self.length = length
-        self.max_buffer_size = max_buffer_size
+        self.bandwidth = kwargs.get("bandwidth", 0)
+        self.delay_model = parseDelay(kwargs.get("delay", 0))
+        self.drop_rate = kwargs.get("drop_rate", 0.0)
+        assert 0.0 <= self.drop_rate <= 1.0
+        self.max_buffer_size = kwargs.get("max_buffer_size", 0)
+        self.length = kwargs.get("length", 0.0)
         self._next_send_time: Time
 
     def install(self, simulator: Simulator) -> None:
@@ -118,7 +128,7 @@ class ClassicChannel(Entity):
 
         """
         super().install(simulator)
-        self._next_send_time = self.simulator.ts
+        self._next_send_time = simulator.ts
 
     def send(self, packet: ClassicPacket, next_hop: Node, delay: float = 0):
         """Send a classic packet to the next_hop
@@ -142,8 +152,7 @@ class ClassicChannel(Entity):
             else:
                 send_time = self._next_send_time
 
-            if self.max_buffer_size != 0 and \
-                send_time > simulator.current_time + self.max_buffer_size / self.bandwidth:
+            if self.max_buffer_size != 0 and send_time > simulator.current_time + self.max_buffer_size / self.bandwidth:
                 # buffer is overflow
                 log.debug(f"cchannel {self}: drop packet {packet} due to overflow")
                 return
@@ -159,14 +168,11 @@ class ClassicChannel(Entity):
         #  add delay
         recv_time = send_time + (self.delay_model.calculate() + delay)
 
-        send_event = RecvClassicPacket(recv_time, name=None, by=self,
-                                       cchannel=self, packet=packet, dest=next_hop)
+        send_event = RecvClassicPacket(t=recv_time, name=None, by=self, cchannel=self, packet=packet, dest=next_hop)
         simulator.add_event(send_event)
 
     def __repr__(self) -> str:
-        if self.name is not None:
-            return "<cchannel "+self.name+">"
-        return super().__repr__()
+        return "<cchannel " + self.name + ">"
 
 
 class NextHopNotConnectionException(Exception):
@@ -174,12 +180,11 @@ class NextHopNotConnectionException(Exception):
 
 
 class RecvClassicPacket(Event):
-    """The event for a Node to receive a classic packet
-    """
+    """The event for a Node to receive a classic packet"""
 
-    def __init__(self, t: Time, *, name: str|None = None,
-                 cchannel: ClassicChannel, packet: ClassicPacket, dest: Node,
-                 by: Any = None):
+    def __init__(
+        self, *, t: Time, name: str | None = None, by: Any = None, cchannel: ClassicChannel, packet: ClassicPacket, dest: Node
+    ):
         super().__init__(t=t, name=name, by=by)
         self.cchannel = cchannel
         self.packet = packet

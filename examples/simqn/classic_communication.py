@@ -1,4 +1,3 @@
-
 from qns.entity.cchannel.cchannel import ClassicChannel, ClassicPacket, RecvClassicPacket
 from qns.entity.node.app import Application
 from qns.entity.node.node import QNode
@@ -33,8 +32,7 @@ class SendApp(Application):
         self.cchannel.send(packet=packet, next_hop=self.dest)
 
         # calculate the next sending time
-        t = self._simulator.current_time + \
-            self._simulator.time(sec=1 / self.send_rate)
+        t = self._simulator.current_time + self._simulator.time(sec=1 / self.send_rate)
 
         # insert the next send event to the simulator
         event = func_to_event(t, self.send_packet, by=self)

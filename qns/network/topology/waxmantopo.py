@@ -29,9 +29,9 @@ try:
 except ImportError:
     from typing_extensions import Unpack
 
+
 class WaxmanTopology(Topology):
-    """WaxmanTopology is the random topology generator using Waxman's model.
-    """
+    """WaxmanTopology is the random topology generator using Waxman's model."""
 
     def __init__(self, nodes_number: int, size: float, alpha: float, beta: float, **kwargs: Unpack[TopologyInitKwargs]):
         """Args:
@@ -54,7 +54,7 @@ class WaxmanTopology(Topology):
         distance_table: dict[tuple[QNode, QNode], float] = {}
 
         for i in range(self.nodes_number):
-            n = QNode(f"n{i+1}")
+            n = QNode(f"n{i + 1}")
             nl.append(n)
             x = get_rand() * self.size
             y = get_rand() * self.size
@@ -63,8 +63,9 @@ class WaxmanTopology(Topology):
         L = 0
         cb = list(itertools.combinations(nl, 2))
         for n1, n2 in cb:
-            tmp_l = np.sqrt((location_table[n1][0] - location_table[n2][0]) ** 2
-                            + (location_table[n1][1] - location_table[n2][1]) ** 2)
+            tmp_l = np.sqrt(
+                (location_table[n1][0] - location_table[n2][0]) ** 2 + (location_table[n1][1] - location_table[n2][1]) ** 2
+            )
             distance_table[(n1, n2)] = tmp_l
             L = max(L, tmp_l)
 

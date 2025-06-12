@@ -2,7 +2,7 @@
 #    Date: 05/17/2025
 #    Summary of changes: Adapted logic to support dynamic approaches.
 #
-#    This file is based on a snapshot of SimQN (https://github.com/qnslab/SimQN),
+#    This file is based on a snapshot of SimQN (https://github.com/QNLab-USTC/SimQN),
 #    which is licensed under the GNU General Public License v3.0.
 #
 #    The original SimQN header is included below.
@@ -34,5 +34,14 @@ from qns.network.topology.topo import ClassicTopology, Topology
 from qns.network.topology.treetopo import TreeTopology
 from qns.network.topology.waxmantopo import WaxmanTopology
 
-__all__ = ["Topology", "ClassicTopology", "BasicTopology", "LinearTopology", "CustomTopology",
-           "TreeTopology", "GridTopology", "RandomTopology", "WaxmanTopology"]
+__all__ = [
+    "Topology",
+    "ClassicTopology",
+    "BasicTopology",
+    "LinearTopology",
+    "CustomTopology",
+    "TreeTopology",
+    "GridTopology",
+    "RandomTopology",
+    "WaxmanTopology",
+]

@@ -22,11 +22,9 @@ from qns.simulator import Event, Simulator, Time
 
 
 class Timer(Entity):
-    """A `Timer` is an `Entity` that trigger the function `trigger_func` one-shot or periodically.
-    """
+    """A `Timer` is an `Entity` that trigger the function `trigger_func` one-shot or periodically."""
 
-    def __init__(self, name: str, start_time: float, end_time: float = 0,
-                 step_time: float = 1, trigger_func=None):
+    def __init__(self, name: str, start_time: float, end_time: float = 0, step_time: float = 1, trigger_func=None):
         """Args:
         name: the timer's name
         start_time (float): the start time of the first event
@@ -67,10 +65,9 @@ class Timer(Entity):
 
 
 class TimerEvent(Event):
-    """TimerEvent is the event that triggers the Timer's `trigger_func`
-    """
+    """TimerEvent is the event that triggers the Timer's `trigger_func`"""
 
-    def __init__(self, timer: Timer, t: Time, name: str|None = None, by: Any = None):
+    def __init__(self, timer: Timer, t: Time, name: str | None = None, by: Any = None):
         super().__init__(t=t, name=name, by=by)
         self.timer = timer
 

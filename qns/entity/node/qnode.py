@@ -24,11 +24,11 @@ from qns.simulator import Simulator
 if TYPE_CHECKING:
     from qns.entity import QuantumChannel, QuantumMemory, QuantumOperator
 
-class QNode(Node):
-    """QNode is a quantum node in the quantum network. Inherits Node and add quantum elements.
-    """
 
-    def __init__(self, name: str, *, apps: list[Application]|None = None):
+class QNode(Node):
+    """QNode is a quantum node in the quantum network. Inherits Node and add quantum elements."""
+
+    def __init__(self, name: str, *, apps: list[Application] | None = None):
         """Args:
         name (str): the node's name
         apps (List[Application]): the installing applications.
@@ -38,12 +38,13 @@ class QNode(Node):
         self.qchannels: list["QuantumChannel"] = []
         self.memory: "QuantumMemory|None" = None
         self.operators: list["QuantumOperator"] = []
-        self.qroute_table = [] # XXX unused
+        self.qroute_table = []  # XXX unused
 
     def install(self, simulator: Simulator) -> None:
         super().install(simulator)
         # initiate sub-entities
         from qns.entity import QuantumChannel, QuantumMemory, QuantumOperator
+
         if self.memory is not None:
             assert isinstance(self.memory, QuantumMemory)
             self.memory.install(simulator)
@@ -115,6 +116,4 @@ class QNode(Node):
         raise IndexError(f"qchannel from {repr(self)} to {repr(dst)} does not exist")
 
     def __repr__(self) -> str:
-        if self.name is not None:
-            return f"<qnode {self.name}>"
-        return super().__repr__()
+        return f"<qnode {self.name}>"

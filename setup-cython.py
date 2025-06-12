@@ -2,7 +2,7 @@
 #    Date: 05/17/2025
 #    Summary of changes: Adapted logic to support dynamic approaches.
 #
-#    This file is based on a snapshot of SimQN (https://github.com/qnslab/SimQN),
+#    This file is based on a snapshot of SimQN (https://github.com/QNLab-USTC/SimQN),
 #    which is licensed under the GNU General Public License v3.0.
 #
 #    The original SimQN header is included below.
@@ -65,7 +65,7 @@ ext_modules = [
     Extension("qns.network.protocol.bb84", ["qns/network/protocol/bb84.py"]),
     Extension("qns.network.protocol.classicforward", ["qns/network/protocol/classicforward.py"]),
     Extension("qns.network.protocol.node_process_delay", ["qns/network/protocol/node_process_delay.py"]),
-    ]
+]
 
 
 setup(

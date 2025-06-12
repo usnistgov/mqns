@@ -29,11 +29,9 @@ default_start_second = 0.0
 
 
 class Emulator:
-    """The discrete-event driven simulator core, continuous mode enabled
-    """
+    """The discrete-event driven simulator core, continuous mode enabled"""
 
-    def __init__(self, start_second: float = default_start_second,
-                 accuracy: int = default_accuracy):
+    def __init__(self, start_second: float = default_start_second, accuracy: int = default_accuracy):
         """Args:
         start_second (float): the start second of the simulation
         accuracy (int): the number of time slots per second
@@ -64,8 +62,7 @@ class Emulator:
 
     @property
     def tc(self) -> Time:
-        """The alias of `current_time`
-        """
+        """The alias of `current_time`"""
         return self.current_time
 
     def time(self, time_slot: Optional[int] = None, sec: Optional[float] = None) -> Time:
@@ -90,13 +87,11 @@ class Emulator:
             self.total_events += 1
 
     def stop(self) -> None:
-        """Stop the continuous simulation loop
-        """
+        """Stop the continuous simulation loop"""
         self._running = False
 
     def run(self) -> None:
-        """Run the simulation continuously until stopped.
-        """
+        """Run the simulation continuously until stopped."""
         log.debug("continuous simulation started.")
 
         self._running = True
@@ -122,5 +117,4 @@ class Emulator:
         if tre - trs == 0:
             log.debug(f"runtime {tre - trs}, {self.total_events} events, xINF")
         else:
-            log.debug(f"runtime {tre - trs}, {self.total_events} events, "
-                      f"x{self.current_time.sec / (tre - trs)}")
+            log.debug(f"runtime {tre - trs}, {self.total_events} events, x{self.current_time.sec / (tre - trs)}")

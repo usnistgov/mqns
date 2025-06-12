@@ -2,7 +2,7 @@
 #    Date: 05/17/2025
 #    Summary of changes: Adapted logic to support dynamic approaches.
 #
-#    This file is based on a snapshot of SimQN (https://github.com/qnslab/SimQN),
+#    This file is based on a snapshot of SimQN (https://github.com/QNLab-USTC/SimQN),
 #    which is licensed under the GNU General Public License v3.0.
 #
 #    The original SimQN header is included below.
@@ -30,16 +30,31 @@ from qns.network.requests import Request
 from qns.network.route.dijkstra import DijkstraRouteAlgorithm
 from qns.network.route.route import NetworkRouteError, RouteImpl
 from qns.network.topology import (
-           BasicTopology,
-           CustomTopology,
-           GridTopology,
-           LinearTopology,
-           RandomTopology,
-           Topology,
-           TreeTopology,
-           WaxmanTopology,
+    BasicTopology,
+    CustomTopology,
+    GridTopology,
+    LinearTopology,
+    RandomTopology,
+    Topology,
+    TreeTopology,
+    WaxmanTopology,
 )
 
-__all__ = ["QuantumNetwork", "Request", "Topology", "LinearTopology", "NetworkRouteError",
-           "RandomTopology", "GridTopology", "TreeTopology", "BasicTopology", "WaxmanTopology", "CustomTopology",
-           "RouteImpl", "DijkstraRouteAlgorithm", "QNSNetworkError", "TimingModeEnum", "SignalTypeEnum"]
+__all__ = [
+    "QuantumNetwork",
+    "Request",
+    "Topology",
+    "LinearTopology",
+    "NetworkRouteError",
+    "RandomTopology",
+    "GridTopology",
+    "TreeTopology",
+    "BasicTopology",
+    "WaxmanTopology",
+    "CustomTopology",
+    "RouteImpl",
+    "DijkstraRouteAlgorithm",
+    "QNSNetworkError",
+    "TimingModeEnum",
+    "SignalTypeEnum",
+]

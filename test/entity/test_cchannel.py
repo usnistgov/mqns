@@ -36,8 +36,7 @@ class ClassicSendNode(Node):
 
 
 class SendEvent(Event):
-    def __init__(self, t: Time, node: ClassicSendNode, *,
-                 name: str|None = None, by: Any = None):
+    def __init__(self, t: Time, node: ClassicSendNode, *, name: str | None = None, by: Any = None):
         super().__init__(t=t, name=name, by=by)
         self.node: ClassicSendNode = node
 
@@ -61,8 +60,9 @@ def test_cchannel():
 def test_cchannel_normal_delay():
     n2 = ClassicRecvNode("n2")
     n1 = ClassicSendNode("n1", dest=n2)
-    l1 = ClassicChannel(name="l1", bandwidth=10, delay=NormalDelayModel(mean_delay=0.2, std=0.1),
-                        drop_rate=0.1, max_buffer_size=30)
+    l1 = ClassicChannel(
+        name="l1", bandwidth=10, delay=NormalDelayModel(mean_delay=0.2, std=0.1), drop_rate=0.1, max_buffer_size=30
+    )
     n1.add_cchannel(l1)
     n2.add_cchannel(l1)
 
@@ -75,8 +75,9 @@ def test_cchannel_normal_delay():
 def test_cchannel_uniform_delay():
     n2 = ClassicRecvNode("n2")
     n1 = ClassicSendNode("n1", dest=n2)
-    l1 = ClassicChannel(name="l1", bandwidth=10, delay=UniformDelayModel(min_delay=0.1, max_delay=0.3),
-                        drop_rate=0.1, max_buffer_size=30)
+    l1 = ClassicChannel(
+        name="l1", bandwidth=10, delay=UniformDelayModel(min_delay=0.1, max_delay=0.3), drop_rate=0.1, max_buffer_size=30
+    )
     n1.add_cchannel(l1)
     n2.add_cchannel(l1)
 

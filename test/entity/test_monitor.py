@@ -32,9 +32,9 @@ class RecvApp(Application):
     def __init__(self):
         super().__init__()
         self.count = 0
-        self.add_handler(self.RecvQubitHandler, [RecvQubitPacket])
+        self.add_handler(self.RecvQubitHandler, RecvQubitPacket)
 
-    def RecvQubitHandler(self, node, event: Event) -> bool|None:
+    def RecvQubitHandler(self, node, event: Event) -> bool | None:
         self.count += 1
 
 
@@ -52,7 +52,7 @@ def test_monitor_1():
     n1.install(s)
     n2.install(s)
 
-    m = Monitor()
+    m = Monitor("m")
 
     def watch_send_count(simulator, network, event):
         return sp.count
