@@ -95,7 +95,6 @@ class ClassicChannel(BaseChannel[Node]):
     def __init__(self, name: str, **kwargs: Unpack[ClassicChannelInitKwargs]):
         """Args:
         name (str): the name of this channel
-        node_list (List[Node]): a list of QNodes that it connects to
         bandwidth (int): the byte per second on this channel. 0 represents unlimited
         delay (Union[float, DelayModel]): the time delay for transmitting a packet. It is a float number or a ``DelayModel``
         length (float): the length of this channel
