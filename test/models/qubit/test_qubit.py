@@ -1,6 +1,8 @@
+import itertools
+
 import numpy as np
 
-from qns.models.qubit.const import OPERATOR_RX, OPERATOR_RY, QUBIT_STATE_0, QUBIT_STATE_1
+from qns.models.qubit.const import OPERATOR_RX, OPERATOR_RY, QUBIT_STATE_0, QUBIT_STATE_1, QUBIT_STATE_N
 from qns.models.qubit.gate import CNOT, CR, CZ, RX, RY, H, Swap, Toffoli, U
 from qns.models.qubit.qubit import Qubit
 
@@ -66,7 +68,6 @@ def test_swap():
 
 def test_toffoli():
     a = [QUBIT_STATE_0, QUBIT_STATE_1]
-    import itertools
 
     all = itertools.product(a, a)
     for c in all:
@@ -85,7 +86,5 @@ def test_state():
     # w,v = np.linalg.eig(np.array([[-1, 1, 0], [-4, 3, 0], [1, 0, 2]]))
     # print('w: ', w)
     # print('v: ', v)
-    from qns.models.qubit.const import QUBIT_STATE_N
-
     q0 = Qubit(state=QUBIT_STATE_N, name="q0")
     q0.state.state()

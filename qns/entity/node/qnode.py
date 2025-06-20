@@ -43,7 +43,7 @@ class QNode(Node):
     def install(self, simulator: Simulator) -> None:
         super().install(simulator)
         # initiate sub-entities
-        from qns.entity import QuantumChannel, QuantumMemory, QuantumOperator
+        from qns.entity import QuantumChannel, QuantumMemory, QuantumOperator  # noqa: PLC0415
 
         if self.memory is not None:
             assert isinstance(self.memory, QuantumMemory)
