@@ -54,7 +54,7 @@ class Node(Entity):
         self.apps: list[Application] = [] if apps is None else apps
 
         # set default timing to ASYNC
-        from qns.network.network import TimingModeEnum
+        from qns.network.network import TimingModeEnum  # noqa: PLC0415
 
         self.timing_mode: TimingModeEnum = TimingModeEnum.ASYNC
 
@@ -63,7 +63,7 @@ class Node(Entity):
         super().install(simulator)
         # initiate sub-entities
         for cchannel in self.cchannels:
-            from qns.entity import ClassicChannel
+            from qns.entity import ClassicChannel  # noqa: PLC0415
 
             assert isinstance(cchannel, ClassicChannel)
             cchannel.install(simulator)

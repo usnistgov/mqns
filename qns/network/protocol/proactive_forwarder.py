@@ -24,7 +24,7 @@ from qns.entity.memory.memory_qubit import MemoryQubit, QubitState
 from qns.entity.node import Application, Controller, Node, QNode
 from qns.models.epr import WernerStateEntanglement
 from qns.network import QuantumNetwork, SignalTypeEnum, TimingModeEnum
-from qns.network.protocol.event import QubitReleasedEvent
+from qns.network.protocol.event import ManageActiveChannels, QubitEntangledEvent, QubitReleasedEvent, TypeEnum
 from qns.network.protocol.fib import FIBEntry, ForwardingInformationBase
 from qns.simulator import Event, Simulator
 from qns.utils import log
@@ -80,7 +80,7 @@ class ProactiveForwarder(Application):
         self.memory = self.own.get_memory()
         self.net = self.own.network
 
-        from qns.network.protocol.link_layer import LinkLayer
+        from qns.network.protocol.link_layer import LinkLayer  # noqa: PLC0415
 
         self.link_layer = self.own.get_app(LinkLayer)
 
@@ -172,8 +172,6 @@ class ProactiveForwarder(Application):
 
         # call network function responsible for generating EPRs on right qchannel
         if right_neighbor:
-            from qns.network.protocol.event import ManageActiveChannels, TypeEnum
-
             t = simulator.tc
             ll_request = ManageActiveChannels(
                 link_layer=self.link_layer, neighbor=right_neighbor, type=TypeEnum.ADD, t=t, by=self
@@ -738,8 +736,6 @@ class ProactiveForwarder(Application):
             event (Event): The event to process, expected to be a QubitEntangledEvent.
 
         """
-        from qns.network.protocol.event import QubitEntangledEvent
-
         if isinstance(event, QubitEntangledEvent):
             if self.own.timing_mode in (TimingModeEnum.ASYNC, TimingModeEnum.LSYNC):
                 self.handle_entangled_qubit(event)

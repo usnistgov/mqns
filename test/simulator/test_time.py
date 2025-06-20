@@ -1,5 +1,7 @@
 import pytest
 
+from qns.simulator.event import func_to_event
+from qns.simulator.simulator import Simulator
 from qns.simulator.ts import Time, set_default_accuracy
 
 
@@ -93,9 +95,6 @@ def test_simulator_time():
     check whether the accuracy of subsequent events will be automatically synchronized with the simulator
     without special modification.
     """
-    from qns.simulator.event import func_to_event
-    from qns.simulator.simulator import Simulator
-
     s = Simulator(1, 10, 1000)
     s.run()
     print_event = func_to_event(Time(sec=1), print_msg, "hello world")

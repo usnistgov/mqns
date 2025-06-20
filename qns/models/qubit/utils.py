@@ -60,7 +60,7 @@ def joint(qubit1: "Qubit", qubit2: "Qubit") -> None:
     if len(set(qubit1.state.qubits) & set(qubit2.state.qubits)) > 0:
         raise QGateStateJointError
 
-    from qns.models.qubit.qubit import QState
+    from qns.models.qubit.qubit import QState  # noqa: PLC0415
 
     nq = QState(qubit1.state.qubits + qubit2.state.qubits, rho=kron(qubit1.state.rho, qubit2.state.rho))
     for q in nq.qubits:

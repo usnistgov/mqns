@@ -111,7 +111,7 @@ class LinkLayer(Application):
         self.own = self.get_node(node_type=QNode)
         self.memory = self.own.get_memory()
 
-        from qns.network.protocol.proactive_forwarder import ProactiveForwarder
+        from qns.network.protocol.proactive_forwarder import ProactiveForwarder  # noqa: PLC0415
 
         self.forwarder = self.own.get_app(ProactiveForwarder)
 

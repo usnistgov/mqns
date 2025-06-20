@@ -88,6 +88,9 @@ class Time:
         assert self.accuracy == other.accuracy
         return self.time_slot >= other.time_slot
 
+    def __hash__(self) -> int:
+        return hash(self.time_slot)
+
     def __add__(self, ts: "Time|int|float") -> "Time":
         """Add an offset to the Time object
 

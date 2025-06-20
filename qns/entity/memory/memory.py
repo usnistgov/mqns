@@ -104,7 +104,7 @@ class QuantumMemory(Entity):
         super().install(simulator)
         assert self.node is not None
 
-        from qns.network.protocol.link_layer import LinkLayer
+        from qns.network.protocol.link_layer import LinkLayer  # noqa: PLC0415
 
         try:
             self.link_layer = self.node.get_app(LinkLayer)
@@ -587,7 +587,7 @@ class QuantumMemory(Entity):
 
     def _emit_decohered_event(self, qubit: MemoryQubit):
         assert self.link_layer is not None
-        from qns.network.protocol.event import QubitDecoheredEvent
+        from qns.network.protocol.event import QubitDecoheredEvent  # noqa: PLC0415
 
         simulator = self.simulator
 

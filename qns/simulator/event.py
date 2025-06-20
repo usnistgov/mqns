@@ -71,6 +71,9 @@ class Event:
     def __ge__(self, other: "Event") -> bool:
         return not self < other
 
+    def __hash__(self) -> int:
+        return hash(self.t)
+
     def __repr__(self) -> str:
         if self.name is not None:
             return f"Event({self.name})"
