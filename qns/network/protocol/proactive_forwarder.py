@@ -101,24 +101,34 @@ class ProactiveForwarder(Application):
 
         self.ps = ps
 
-        self.net: QuantumNetwork  # Quantum Network instance
-        self.own: QNode  # Quantum node this Forwarder equips
-        self.memory: QuantumMemory  # Quantum memory of the node
+        self.net: QuantumNetwork
+        """quantum network instance"""
+        self.own: QNode
+        """quantum node this Forwarder equips"""
+        self.memory: QuantumMemory
+        """quantum memory of the node"""
 
-        self.fib: ForwardingInformationBase = ForwardingInformationBase()  # FIB structure
-        self.link_layer: "LinkLayer"  # Reference to the network function responsible for generating elementary EPRs
+        self.fib = ForwardingInformationBase()
+        """FIB structure"""
+        self.link_layer: "LinkLayer"
+        """network function responsible for generating elementary EPRs"""
 
-        # for SNYC mode
         self.sync_current_phase = SignalTypeEnum.INTERNAL
-        self.waiting_qubits = []  # stores the qubits waiting for the INTERNAL phase (SYNC mode)
+        self.waiting_qubits: list[QubitEntangledEvent] = []
+        """stores the qubits waiting for the INTERNAL phase (SYNC mode)"""
 
         # handler for classical packets
         self.add_handler(self.RecvClassicPacketHandler, RecvClassicPacket)
 
-        self.parallel_swappings = {}  # structure to manage potential parallel swappings
+        self.parallel_swappings: dict[
+            str, tuple[WernerStateEntanglement, WernerStateEntanglement, WernerStateEntanglement]
+        ] = {}
+        """manage potential parallel swappings"""
 
-        self.e2e_count = 0  # counts number of e2e generated EPRs
-        self.fidelity = 0.0  # stores fidelity of generated EPRs
+        self.e2e_count = 0
+        """counts number of e2e generated EPRs"""
+        self.fidelity = 0.0
+        """sum of fidelity of generated EPRs"""
 
     # called at initialization of the node
     def install(self, node: Node, simulator: Simulator):

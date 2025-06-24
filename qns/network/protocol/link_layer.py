@@ -33,7 +33,7 @@ from qns.network.protocol.event import (
     QubitReleasedEvent,
     TypeEnum,
 )
-from qns.simulator import Event, Simulator, Time, func_to_event
+from qns.simulator import Event, Simulator, func_to_event
 from qns.utils import log
 
 if TYPE_CHECKING:
@@ -87,28 +87,34 @@ class LinkLayer(Application):
         self.attempt_rate = attempt_rate
         self.light_speed_kms = light_speed_kms
 
-        self.own: QNode  # Quantum node this LinkLayer equips
-        self.memory: QuantumMemory  # Quantum memory of the node
-        self.forwarder: "ProactiveForwarder"  # Forwarder function of the node
+        self.own: QNode
+        """quantum node this LinkLayer equips"""
+        self.memory: QuantumMemory
+        """quantum memory of the node"""
+        self.forwarder: "ProactiveForwarder"
+        """forwarder function of the node"""
 
-        # stores the qchannels activated by the forwarding function at path installation
-        self.active_channels = {}
+        self.active_channels: dict[str, tuple[QuantumChannel, QNode]] = {}
+        """stores the qchannels activated by the forwarding function at path installation"""
 
-        self.pending_init_reservation = {}  # stores reservation requests sent by this node
+        self.pending_init_reservation: dict[str, tuple[QuantumChannel, QNode, int]] = {}
+        """stores reservation requests sent by this node"""
         self.fifo_reservation_req: list[tuple[str, int, ClassicChannel, QNode]] = []
         """stores received reservations requests awaiting for qubits"""
 
-        self.etg_count = 0  # counts number of generated entanglements
-        self.decoh_count = 0  # counts number of decohered qubits never swapped
+        self.etg_count = 0
+        """counts number of generated entanglements"""
+        self.decoh_count = 0
+        """counts number of decohered qubits never swapped"""
 
         self.sync_current_phase = SignalTypeEnum.EXTERNAL  # for SYNC and LSYNC timing modes
 
-        # In LSYNC mode: stores the qchannels that have all their qubits waiting for the next EXTERNAL phase
-        self.waiting_channels = {}
-        # In LSYNC mode: stores the qubits waiting for the next EXTERNAL phase
+        self.waiting_channels: dict[str, tuple[QuantumChannel, QNode]] = {}
+        """in LSYNC mode: stores the qchannels that have all their qubits waiting for the next EXTERNAL phase"""
         self.waiting_qubits = set()
+        """in LSYNC mode: stores the qubits waiting for the next EXTERNAL phase"""
 
-        # handlers for extenral events
+        # handlers for external events
         self.add_handler(self.RecvQubitHandler, RecvQubitPacket)
         self.add_handler(self.RecvClassicPacketHandler, RecvClassicPacket)
 
@@ -132,7 +138,7 @@ class LinkLayer(Application):
     def handle_active_channel(self, qchannel: QuantumChannel, next_hop: QNode):
         """This method starts EPR generation over the given quantum channel and the specified next-hop.
         It performs qubit reservation, and for each available qubit, an EPR creation event is scheduled
-        with a staggered delay based on EPR generation samping.
+        with a staggered delay based on EPR generation sampling.
 
         Args:
             qchannel (QuantumChannel): The quantum channel over which entanglement is to be attempted.
@@ -265,7 +271,7 @@ class LinkLayer(Application):
         """
         epr = WernerStateEntanglement(fidelity=self.init_fidelity, name=uuid.uuid4().hex)
         # qubit init at 2tau and we are at 6tau
-        epr.creation_time = self.simulator.tc - Time(sec=4 * qchannel.delay_model.calculate())
+        epr.creation_time = self.simulator.tc - (4 * qchannel.delay_model.calculate())
         epr.src = self.own
         epr.dst = next_hop
         epr.attempts = attempts
