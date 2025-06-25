@@ -16,7 +16,8 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import math
-from typing import Any, Callable, cast
+from collections.abc import Callable
+from typing import Any, cast
 
 from qns.network.route.route import ChannelT, NetworkRouteError, NodeT, RouteImpl
 

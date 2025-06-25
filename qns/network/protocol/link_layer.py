@@ -131,9 +131,11 @@ class LinkLayer(Application):
     def RecvQubitHandler(self, node: QNode, event: RecvQubitPacket):
         self.receive_qubit(event)
 
-    def RecvClassicPacketHandler(self, node: Node, event: RecvClassicPacket):
+    def RecvClassicPacketHandler(self, node: Node, event: RecvClassicPacket) -> bool:
         if event.packet.get()["cmd"] in ["RESERVE_QUBIT", "RESERVE_QUBIT_OK"]:
             self.handle_reservation(event)
+            return True
+        return False
 
     def handle_active_channel(self, qchannel: QuantumChannel, next_hop: QNode):
         """This method starts EPR generation over the given quantum channel and the specified next-hop.

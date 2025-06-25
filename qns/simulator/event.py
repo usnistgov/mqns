@@ -15,7 +15,8 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from qns.simulator.ts import Time
 

@@ -15,8 +15,8 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Callable, TypeVar, cast, overload
+from collections.abc import Callable, Sequence
+from typing import TYPE_CHECKING, Any, TypeVar, cast, overload
 
 from qns.simulator import Event, Simulator
 
