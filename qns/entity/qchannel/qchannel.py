@@ -50,7 +50,6 @@ class QuantumChannel(BaseChannel[QNode]):
     def __init__(self, name: str, **kwargs: Unpack[QuantumChannelInitKwargs]):
         """Args:
         name (str): the name of this channel
-        node_list (List[QNode]): a list of QNodes that it connects to
         bandwidth (int): the qubit per second on this channel. 0 represents unlimited
         delay (float): the time delay for transmitting a packet, or a ``DelayModel``
         drop_rate (float): probability of photon loss. 0 means never, 1 means always.

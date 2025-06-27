@@ -31,6 +31,26 @@ class FIBEntry(TypedDict):
     qubit_addresses: list[int]
 
 
+def find_index_and_swapping_rank(fib_entry: FIBEntry, node_name: str) -> int:
+    """
+    Determine the swapping rank of a node.
+
+    Args:
+        fib_entry: a FIB entry.
+        node_name: a node name that exists in path_vector.
+
+    Returns:
+        [0]: The node index in the route.
+        [1]: A nonnegative integer that represents swapping rank of the node.
+             A node with smaller rank shall perform swapping before a node with larger rank.
+
+    Raises:
+        IndexError - node does not exist in path_vector.
+    """
+    idx = fib_entry["path_vector"].index(node_name)
+    return idx, fib_entry["swap_sequence"][idx]
+
+
 class ForwardingInformationBase:
     def __init__(self):
         # The FIB table stores multiple path entries

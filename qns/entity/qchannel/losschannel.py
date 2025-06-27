@@ -40,7 +40,6 @@ class QubitLossChannel(QuantumChannel):
     ):
         """Args:
         name (str): the name of this channel
-        node_list (List[QNode]): a list of QNodes that it connects to
         bandwidth (int): the qubit per second on this channel. 0 represents unlimited
         delay (float): the time delay for transmitting a packet, or a ``DelayModel``
         p_init: the probability of loss a qubit immediately

@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Generic, TypedDict, TypeVar
 from qns.entity.entity import Entity
 from qns.entity.node import Node
 from qns.models.delay import DelayInput, parseDelay
-from qns.simulator import Event, Simulator, Time
+from qns.simulator import Simulator, Time
 from qns.utils import get_rand, log
 
 try:
@@ -12,7 +12,6 @@ except ImportError:
     from typing_extensions import Unpack
 
 NodeT = TypeVar("NodeT", bound=Node)
-EventT = TypeVar("EventT", bound=Event)
 
 if TYPE_CHECKING:
     from qns.entity.node import Node
@@ -31,11 +30,13 @@ class BaseChannel(Entity, Generic[NodeT]):
         super().__init__(name=name)
         self.node_list: list[NodeT] = []
         self.bandwidth = kwargs.get("bandwidth", 0)
+        assert self.bandwidth >= 0
         self.delay_model = parseDelay(kwargs.get("delay", 0))
         self.drop_rate = kwargs.get("drop_rate", 0.0)
         assert 0.0 <= self.drop_rate <= 1.0
         self.max_buffer_size = kwargs.get("max_buffer_size", 0)
         self.length = kwargs.get("length", 0.0)
+        assert self.length >= 0.0
         self._next_send_time: Time
 
     def install(self, simulator: Simulator) -> None:
