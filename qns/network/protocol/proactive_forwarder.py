@@ -307,7 +307,7 @@ class ProactiveForwarder(Application):
         simulator = self.simulator
         assert qubit.qchannel is not None
         # TODO: make this controllable
-        # # for isolated links -> consume immediatly
+        # # for isolated links -> consume immediately
         # _, qm = self.memory.read(address=qubit.addr, must=True)
         # qubit.fsm.to_release()
         # log.debug(f"{self.own}: consume entanglement: <{qubit.addr}> {qm.src.name} - {qm.dst.name}")
@@ -527,8 +527,9 @@ class ProactiveForwarder(Application):
 
         self.e2e_count += 1
         self.fidelity += qm.fidelity
-        event = QubitReleasedEvent(link_layer=self.link_layer, qubit=qubit, e2e=self.own.name == "S", t=simulator.tc, by=self)
-        simulator.add_event(event)
+        simulator.add_event(
+            QubitReleasedEvent(link_layer=self.link_layer, qubit=qubit, e2e=self.own.name == "S", t=simulator.tc, by=self)
+        )
 
     def do_swapping(self, mq0: MemoryQubit, mq1: MemoryQubit, fib_entry: FIBEntry):
         """
@@ -643,7 +644,6 @@ class ProactiveForwarder(Application):
             qubit, _ = qubit_pair
             self.parallel_swappings.pop(epr_name, None)
             self.su_sequential(msg, fib_entry, qubit, maybe_purif=(own_rank > sender_rank))
-            return
         elif own_rank == sender_rank and epr_name in self.parallel_swappings:
             self.su_parallel(msg, fib_entry, own_rank)
         else:
@@ -728,7 +728,7 @@ class ProactiveForwarder(Application):
                 "epr": my_new_epr.name,
                 "new_epr": None,
             }
-            self.send_msg(dest=destination, msg=su_msg, route=fib_entry["path_vector"], delay=True)
+            self.send_msg(dest=destination, msg=su_msg, route=fib_entry["path_vector"])
             return
 
         # The swapping_node successfully swapped in parallel with this node.
@@ -759,14 +759,14 @@ class ProactiveForwarder(Application):
             "epr": my_new_epr.name,
             "new_epr": merged_epr,
         }
-        self.send_msg(dest=destination, msg=su_msg, route=fib_entry["path_vector"], delay=True)
+        self.send_msg(dest=destination, msg=su_msg, route=fib_entry["path_vector"])
 
         # Update records to support potential parallel swapping with "partner".
         _, p_rank = find_index_and_swapping_rank(fib_entry, partner.name)
         if own_rank == p_rank and merged_epr is not None:
             self.parallel_swappings[new_epr.name] = (new_epr, other_epr, merged_epr)
 
-    def send_msg(self, dest: Node, msg: dict, route: list[str], delay: bool = False):
+    def send_msg(self, dest: Node, msg: dict, route: list[str]):
         own_idx = route.index(self.own.name)
         dest_idx = route.index(dest.name)
 
@@ -777,10 +777,7 @@ class ProactiveForwarder(Application):
 
         cchannel = self.own.get_cchannel(next_hop)
         classic_packet = ClassicPacket(msg=msg, src=self.own, dest=dest)
-        if delay:
-            cchannel.send(classic_packet, next_hop=next_hop, delay=cchannel.delay_model.calculate())
-        else:
-            cchannel.send(classic_packet, next_hop=next_hop)
+        cchannel.send(classic_packet, next_hop=next_hop)
 
     def handle_event(self, event: Event) -> None:
         """Handles external simulator events, specifically QubitEntangledEvent instances.

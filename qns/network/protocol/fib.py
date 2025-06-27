@@ -31,7 +31,7 @@ class FIBEntry(TypedDict):
     qubit_addresses: list[int]
 
 
-def find_index_and_swapping_rank(fib_entry: FIBEntry, node_name: str) -> int:
+def find_index_and_swapping_rank(fib_entry: FIBEntry, node_name: str) -> tuple[int, int]:
     """
     Determine the swapping rank of a node.
 
