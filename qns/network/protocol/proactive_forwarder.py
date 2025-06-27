@@ -509,7 +509,7 @@ class ProactiveForwarder(Application):
             # look for another eligible qubit
             res = self.select_eligible_qubit(exc_qchannel=qubit.qchannel.name, path_id=fib_entry["path_id"])
             if res:  # do swapping
-                self.start_swapping(qubit, res, fib_entry)
+                self.do_swapping(qubit, res, fib_entry)
 
     def consume_and_release(self, qubit: MemoryQubit):
         """
@@ -530,7 +530,7 @@ class ProactiveForwarder(Application):
         event = QubitReleasedEvent(link_layer=self.link_layer, qubit=qubit, e2e=self.own.name == "S", t=simulator.tc, by=self)
         simulator.add_event(event)
 
-    def start_swapping(self, mq0: MemoryQubit, mq1: MemoryQubit, fib_entry: FIBEntry):
+    def do_swapping(self, mq0: MemoryQubit, mq1: MemoryQubit, fib_entry: FIBEntry):
         """
         Perform swapping between two qubits at an intermediate node.
         These qubits must be in ELIGIBLE state and come from different qchannels.
@@ -637,15 +637,17 @@ class ProactiveForwarder(Application):
             log.debug(f"### {self.own}: VERIFY -> rcvd SU from higher-rank node")
             return
 
-        qubit = self.get_memory_qubit(msg["epr"])
-        if qubit is not None:
-            self.parallel_swappings.pop(msg["epr"], None)
+        epr_name = msg["epr"]
+        qubit_pair = self.memory.get(key=epr_name)
+        if qubit_pair is not None:
+            qubit, _ = qubit_pair
+            self.parallel_swappings.pop(epr_name, None)
             self.su_sequential(msg, fib_entry, qubit, maybe_purif=(own_rank > sender_rank))
             return
-        elif own_rank == sender_rank and msg["epr"] in self.parallel_swappings:
+        elif own_rank == sender_rank and epr_name in self.parallel_swappings:
             self.su_parallel(msg, fib_entry, own_rank)
         else:
-            log.debug(f"### {self.own}: EPR {msg['epr']} decohered during SU transmissions")
+            log.debug(f"### {self.own}: EPR {epr_name} decohered during SU transmissions")
 
     CLASSIC_SIGNALING_HANDLERS["SWAP_UPDATE"] = handle_swap_update
 
@@ -895,12 +897,6 @@ class ProactiveForwarder(Application):
         return None
 
     ###### Helper functions ######
-    def get_memory_qubit(self, epr_name: str):
-        res = self.memory.get(key=epr_name)
-        if res is not None:
-            return res[0]
-        return None
-
     def compute_qubit_allocation(self, path: list[str], m_v: list[int], node: str):
         if node not in path:
             return None, None  # Node not in path
