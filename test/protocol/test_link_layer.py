@@ -91,3 +91,43 @@ def test_link_layer_basic():
         assert app.decohere[0] == pytest.approx(8.1, abs=1e-3)
         # t=8.6, entanglement established after 0.5 seconds
         assert app.entangle[2] == pytest.approx(8.6, abs=1e-3)
+
+
+def test_link_layer_skip_ahead():
+    topo = LinearTopology(
+        nodes_number=2,
+        nodes_apps=[NetworkLayer(), LinkLayer()],
+        qchannel_args={"delay": 100 / 2e5, "length": 100},
+        cchannel_args={"delay": 100 / 2e5, "length": 100},
+        memory_args={"decoherence_rate": 1 / 1.0},
+    )
+    net = QuantumNetwork(topo=topo, classic_topo=ClassicTopology.Follow)
+    net.build_route()
+    n1 = net.get_node("n1")
+    n2 = net.get_node("n2")
+    qc = net.get_qchannel("l0,1")
+    n1.get_memory().assign(qc)
+    n2.get_memory().assign(qc)
+
+    simulator = Simulator(0.0, 10.0)
+    net.install(simulator)
+
+    a1 = n1.get_app(NetworkLayer)
+    a2 = n2.get_app(NetworkLayer)
+    simulator.add_event(
+        ManageActiveChannels(
+            neighbor=n2,
+            type=TypeEnum.ADD,
+            t=simulator.time(sec=0.5),
+            by=a1,
+        )
+    )
+
+    simulator.run()
+
+    for app in (a1, a2):
+        print((app.get_node().name, app.entangle, app.decohere))
+
+    assert len(a1.entangle) == len(a2.entangle) > 0
+    for t1, t2 in zip(a1.entangle, a2.entangle):
+        assert t1 == pytest.approx(t2, abs=1e-3)
