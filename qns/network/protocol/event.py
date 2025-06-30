@@ -16,16 +16,12 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from enum import Enum, auto
-from typing import TYPE_CHECKING, Any
+from typing import cast
 
-from qns.entity.memory.memory_qubit import MemoryQubit
-from qns.entity.node.qnode import QNode
+from qns.entity.memory import MemoryQubit, QuantumMemory
+from qns.entity.node import Application, QNode
 from qns.simulator.event import Event
 from qns.simulator.ts import Time
-
-if TYPE_CHECKING:
-    from qns.network.protocol.link_layer import LinkLayer
-    from qns.network.protocol.proactive_forwarder import ProactiveForwarder
 
 
 class TypeEnum(Enum):
@@ -34,77 +30,79 @@ class TypeEnum(Enum):
 
 
 class ManageActiveChannels(Event):
-    """``ManageActiveChannels`` is the event sent by the forwarder to request to start generating EPRs over a qchannel"""
+    """
+    Event sent by Forwarder to request LinkLayer to start generating EPRs over a qchannel.
+    """
 
     def __init__(
         self,
         *,
-        link_layer: "LinkLayer",
         neighbor: QNode,
         type: TypeEnum,
         t: Time,
         name: str | None = None,
-        by: Any | None = None,
+        by: Application,
     ):
         super().__init__(t=t, name=name, by=by)
-        self.link_layer = link_layer
         self.neighbor = neighbor
         self.type = type
 
     def invoke(self) -> None:
-        self.link_layer.handle_event(self)
+        cast(Application, self.by).get_node().handle(self)
 
 
 class QubitDecoheredEvent(Event):
-    """``QubitDecoheredEvent`` is the event that informs LinkLayer about a decohered qubit from Memory"""
+    """
+    Event sent by Memory to inform LinkLayer about a decohered qubit.
+    """
 
-    def __init__(self, *, link_layer: "LinkLayer", qubit: MemoryQubit, t: Time, name: str | None = None, by: Any | None = None):
+    def __init__(self, *, qubit: MemoryQubit, t: Time, name: str | None = None, by: QuantumMemory):
         super().__init__(t=t, name=name, by=by)
-        self.link_layer = link_layer
         self.qubit = qubit
 
     def invoke(self) -> None:
-        self.link_layer.handle_event(self)
+        cast(QNode, self.by.node).handle(self)
 
 
 class QubitReleasedEvent(Event):
-    """``QubitReleasedEvent`` is the event that informs LinkLayer about a released qubit from NetworkLayer"""
+    """
+    Event sent by Forwarder to inform LinkLayer about a released (no longer needed) qubit.
+    """
 
     def __init__(
         self,
         *,
-        link_layer: "LinkLayer",
         qubit: MemoryQubit,
         e2e: bool = False,
         t: Time,
         name: str | None = None,
-        by: Any | None = None,
+        by: Application,
     ):
         super().__init__(t=t, name=name, by=by)
-        self.link_layer = link_layer
         self.qubit = qubit
         self.e2e = e2e
 
     def invoke(self) -> None:
-        self.link_layer.handle_event(self)
+        cast(Application, self.by).get_node().handle(self)
 
 
 class QubitEntangledEvent(Event):
-    """``QubitEntangledEvent`` is the event that notifies NetworkLayer about new entangled qubit from LinkLayer"""
+    """
+    Event sent by LinkLayer to notify Forwarder about new entangled qubit.
+    """
 
     def __init__(
         self,
-        forwarder: "ProactiveForwarder",
+        *,
         neighbor: QNode,
         qubit: MemoryQubit,
         t: Time,
         name: str | None = None,
-        by: Any | None = None,
+        by: Application,
     ):
         super().__init__(t=t, name=name, by=by)
-        self.forwarder = forwarder
         self.neighbor = neighbor
         self.qubit = qubit
 
     def invoke(self) -> None:
-        self.forwarder.handle_event(self)
+        cast(Application, self.by).get_node().handle(self)
