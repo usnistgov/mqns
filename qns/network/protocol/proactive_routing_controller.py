@@ -68,17 +68,24 @@ swapping_settings = {
     "swap_5_vora_decreasing": [5, 2, 4, 1, 3, 0, 5],  # [3,0,2,0,1,0,3] ~ baln2
     "swap_5_vora_mid_bottleneck": [5, 0, 4, 2, 3, 1, 5],  # [3,0,2,0,1,0,3] ~ baln2
 }
+"""Predefined swapping orders."""
 
 
 class ProactiveRoutingControllerApp(Application):
-    """This is the centralized control plane app for Proactive Routing. Works with Proactive Forwarder on quantum nodes.
-    A predefined swapping order has to be added in `swapping_settings` map and selected through the `swapping` parameter.
+    """
+    Centralized control plane app for Proactive Routing.
+    Works with Proactive Forwarder on quantum nodes.
     """
 
-    def __init__(self, swapping: str):
-        """Args:
-        swapping (str): swapping order to use for the S-D path, chosen from `swapping_settings` map.
-
+    def __init__(self, *, swapping: str | list[int], purif: dict[str, int] = {}):
+        """
+        Args:
+            swapping: swapping order to use for the S-D path.
+                      If this is a string, it must be a key in `swapping_settings` array.
+                      If this is a list of ints, it is the swapping order vector.
+            purif: purification settings.
+                   Each key identifies a qchannel along the S-D path, written like "S-R1".
+                   Each value indicates the number of purification rounds at this hop.
         """
         super().__init__()
         self.net: QuantumNetwork
@@ -87,9 +94,11 @@ class ProactiveRoutingControllerApp(Application):
         """controller node running this app"""
 
         try:
-            self.swapping_order = swapping_settings[swapping]
+            self.swapping_order = swapping if isinstance(swapping, list) else swapping_settings[swapping]
         except KeyError:
             raise KeyError(f"{self.own}: Swapping {swapping} not configured")
+
+        self.purif = purif
 
     def install(self, node: Node, simulator: Simulator):
         super().install(node, simulator)
@@ -116,7 +125,8 @@ class ProactiveRoutingControllerApp(Application):
             - Sends installation instructions to each node along the path using classical channels.
 
         Raises:
-            Exception: If the computed route does not match the length expected by the current swapping configuration.
+            RuntimeError - no route from S to D.
+            RuntimeError - computed route length does not match swapping order vector.
 
         Notes:
             - `self.swapping_order` provides the expected swapping instructions.
@@ -132,13 +142,15 @@ class ProactiveRoutingControllerApp(Application):
         dst = self.net.get_node("D")
 
         route_result = self.net.query_route(src, dst)
+        if len(route_result) == 0:
+            raise RuntimeError(f"{self.own}: No route from {src} to {dst}")
         path_nodes = route_result[0][2]
         log.debug(f"{self.own}: Computed path: {path_nodes}")
 
         route = [n.name for n in path_nodes]
 
         if len(route) != len(self.swapping_order):
-            raise Exception(
+            raise RuntimeError(
                 f"{self.own}: Swapping {self.swapping_order} \
                 does not correspond to computed route: {route}"
             )
@@ -154,8 +166,7 @@ class ProactiveRoutingControllerApp(Application):
                 "swap": self.swapping_order,
                 "mux": "B",
                 "m_v": m_v,
-                # "purif": { 'S-R':1, 'R-D':1 },
-                "purif": {},
+                "purif": self.purif,
             }
             msg: "InstallPathMsg" = {"cmd": "install_path", "path_id": 0, "instructions": instructions}
 
