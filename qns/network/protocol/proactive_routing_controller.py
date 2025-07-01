@@ -86,6 +86,8 @@ class ProactiveRoutingControllerApp(Application):
             purif: purification settings.
                    Each key identifies a qchannel along the S-D path, written like "S-R1".
                    Each value indicates the number of purification rounds at this hop.
+
+        To disable automatic installation of a static route from S to D, pass swapping=[].
         """
         super().__init__()
         self.net: QuantumNetwork
@@ -105,8 +107,9 @@ class ProactiveRoutingControllerApp(Application):
         self.own = self.get_node(node_type=Controller)
         self.net = self.own.network
 
-        # install the test path on QNodes
-        self.install_static_path()
+        if len(self.swapping_order) > 0:
+            # install the test path on QNodes
+            self.install_static_path()
 
     def install_static_path(self):
         """Install a static path between nodes "S" (source) and "D" (destination) of the network topology.
@@ -126,7 +129,7 @@ class ProactiveRoutingControllerApp(Application):
 
         Raises:
             RuntimeError - no route from S to D.
-            RuntimeError - computed route length does not match swapping order vector.
+            ValueError - computed route length does not match swapping order vector.
 
         Notes:
             - `self.swapping_order` provides the expected swapping instructions.
@@ -148,27 +151,31 @@ class ProactiveRoutingControllerApp(Application):
         log.debug(f"{self.own}: Computed path: {path_nodes}")
 
         route = [n.name for n in path_nodes]
+        self.install_path_on_route(route, path_id=0, swap=self.swapping_order, purif=self.purif)
 
-        if len(route) != len(self.swapping_order):
-            raise RuntimeError(
-                f"{self.own}: Swapping {self.swapping_order} \
-                does not correspond to computed route: {route}"
-            )
+    def install_path_on_route(self, route: list[str], *, path_id: int, swap: list[int], purif: dict[str, int] = {}):
+        if len(route) != len(swap) or len(route) == 0:
+            raise ValueError("swapping order does not match route length")
+        for key in purif.keys():
+            tokens = key.split("-")
+            if len(tokens) != 2 or tokens[0] not in route or tokens[1] not in route:
+                raise ValueError(f"purification instruction {key} does not exist in route")
 
         m_v: list[int] = []
-        src_capacity = self.net.get_node(path_nodes[0].name).get_memory().capacity
-        for i in range(len(path_nodes) - 1):
+        src_capacity = self.net.get_node(route[0]).get_memory().capacity
+        for i in range(len(route) - 1):
             m_v.append(src_capacity)
 
-        for qnode in path_nodes:
+        for node_name in route:
+            qnode = self.net.get_node(node_name)
             instructions: "InstallPathInstructions" = {
                 "route": route,
-                "swap": self.swapping_order,
+                "swap": swap,
                 "mux": "B",
                 "m_v": m_v,
-                "purif": self.purif,
+                "purif": purif,
             }
-            msg: "InstallPathMsg" = {"cmd": "install_path", "path_id": 0, "instructions": instructions}
+            msg: "InstallPathMsg" = {"cmd": "install_path", "path_id": path_id, "instructions": instructions}
 
             cchannel = self.own.get_cchannel(qnode)
             cchannel.send(ClassicPacket(msg, src=self.own, dest=qnode), next_hop=qnode)
