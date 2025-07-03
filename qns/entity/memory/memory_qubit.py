@@ -44,9 +44,9 @@ class QubitFSM:
             log.debug(f"Unexpected transition: <{self.state}> -> <ENTANGLED>")
 
     def to_purif(self):
-        if self.state == QubitState.ENTANGLED:  # swapping conditions met -> go to first purif (if any)
-            self.state = QubitState.PURIF
-        elif self.state == QubitState.PENDING:  # pending purif succ -> go to next purif (if any)
+        if self.state in (QubitState.ENTANGLED, QubitState.PENDING):
+            # from ENTANGLED: swapping conditions met -> go to first purif (if any)
+            # from PENDING: pending purif succ -> go to next purif (if any)
             self.state = QubitState.PURIF
         else:
             log.debug(f"Unexpected transition: <{self.state}> -> <PURIF>")
@@ -58,7 +58,7 @@ class QubitFSM:
             log.debug(f"Unexpected transition: <{self.state}> -> <PENDING>")
 
     def to_release(self):
-        if self.state in [QubitState.ENTANGLED, QubitState.PURIF, QubitState.PENDING, QubitState.ELIGIBLE]:
+        if self.state in (QubitState.ENTANGLED, QubitState.PURIF, QubitState.PENDING, QubitState.ELIGIBLE):
             self.state = QubitState.RELEASE
         else:
             log.debug(f"Unexpected transition: <{self.state}> -> <RELEASE>")
@@ -107,6 +107,8 @@ class MemoryQubit:
 
     def __repr__(self) -> str:
         if self.addr is not None:
-            return f"<memory qubit {self.addr}, ch={self.qchannel}, path_id={self.path_id}, \
-                active={self.active}, purif_rounds={self.purif_rounds}, state={self.fsm}>"
+            return (
+                f"<memory qubit {self.addr}, ch={self.qchannel}, path_id={self.path_id}, "
+                + f"active={self.active}, purif_rounds={self.purif_rounds}, state={self.fsm}>"
+            )
         return super().__repr__()

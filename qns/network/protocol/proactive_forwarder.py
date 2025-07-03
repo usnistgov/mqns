@@ -327,7 +327,7 @@ class ProactiveForwarder(Application):
 
         is_primary = (own_rank, own_idx) < (partner_rank, partner_idx)
         if not is_primary:
-            log.debug(f"{self.own}: is not primary node for segment {segment_name} purification")
+            log.debug(f"{self.own}: is not primary node for segment {segment_name} purif")
             return
 
         candidate = self._select_purif_qubit(
@@ -338,7 +338,7 @@ class ProactiveForwarder(Application):
             purif_rounds=qubit.purif_rounds,
         )
         if not candidate:
-            log.debug(f"{self.own}: no candidate EPR for segment {segment_name} purification")
+            log.debug(f"{self.own}: no candidate EPR for segment {segment_name} purif round {1 + qubit.purif_rounds}")
             return
 
         self._send_purif_solicit(qubit, candidate, fib_entry, partner)
@@ -393,7 +393,7 @@ class ProactiveForwarder(Application):
         assert epr1.name is not None
 
         log.debug(
-            f"{self.own}: request purification qubit {mq0.addr} (F={epr0.fidelity}) and "
+            f"{self.own}: request purif qubit {mq0.addr} (F={epr0.fidelity}) and "
             + f"{mq1.addr} (F={epr1.fidelity}) with partner {partner.name}"
         )
 
@@ -436,25 +436,29 @@ class ProactiveForwarder(Application):
         assert isinstance(epr1, WernerStateEntanglement)
         assert epr1.name is not None
 
-        # TODO: support purif on qubit already in PURIF state but has fewer rounds
-        # TODO: if qubits in PURIF -> do purif, release consumed qubit,
-        # update pair + increment rounds (if succ, else release), reply
-        assert mq0.fsm.state == QubitState.ENTANGLED
-        assert mq1.fsm.state == QubitState.ENTANGLED
+        for mq in (mq0, mq1):
+            assert mq.fsm.state in (QubitState.ENTANGLED, QubitState.PURIF)
+            assert mq.purif_rounds == msg["round"]
 
-        partner = self.own.network.get_node(msg["purif_node"])
+        assert msg["partner"] == self.own.name
+        primary = self.own.network.get_node(msg["purif_node"])
         log.debug(
-            f"{self.own}: perform purification qubit {mq0.addr} (F={epr0.fidelity}) and "
-            + f"{mq1.addr} (F={epr1.fidelity}) with partner {partner.name}"
+            f"{self.own}: perform purif qubit {mq0.addr} (F={epr0.fidelity}) and "
+            + f"{mq1.addr} (F={epr1.fidelity}) for round {1 + mq0.purif_rounds} with primary {primary.name}"
         )
 
         # perform purification between EPRs
         result = epr0.purify(epr1)
+        log.debug(
+            f"{self.own}: purif {'succeeded' if result else 'failed'} on qubit {mq0.addr} (F={epr0.fidelity}) "
+            + f"for round {1 + mq0.purif_rounds} with primary {primary.name}"
+        )
+
         if result:
-            log.debug(f"{self.own}: purification succeeded on qubit {mq0.addr} (F={epr0.fidelity})")
+            mq0.purif_rounds += 1
             self.memory.update(old_qm=epr0.name, new_qm=epr0)
+            mq0.fsm.to_purif()
         else:
-            log.debug(f"{self.own}: purification failed on qubit {mq0.addr}")
             # in case of purification failure, release mq0
             self.memory.read(address=mq0.addr)  # destructive reading
             mq0.fsm.to_release()
@@ -470,7 +474,7 @@ class ProactiveForwarder(Application):
             "cmd": "PURIF_RESPONSE",
             "result": result,
         }
-        self.send_msg(dest=partner, msg=resp, route=fib_entry["path_vector"])
+        self.send_msg(dest=primary, msg=resp, route=fib_entry["path_vector"])
 
     CLASSIC_SIGNALING_HANDLERS["PURIF_SOLICIT"] = handle_purif_solicit
 
@@ -495,8 +499,8 @@ class ProactiveForwarder(Application):
 
         result = msg["result"]
         log.debug(
-            f"{self.own}: completed purification {'succeeded' if result else 'failed'} "
-            + f"qubit {qubit.addr} (F={epr.fidelity}) with partner {msg['partner']}"
+            f"{self.own}: purif {'succeeded' if result else 'failed'} on qubit {qubit.addr} (F={epr.fidelity}) "
+            + f"for round {1 + qubit.purif_rounds} with partner {msg['partner']}"
         )
 
         if not result:  # purif failed
@@ -753,6 +757,7 @@ class ProactiveForwarder(Application):
         if maybe_purif and self._can_enter_purif(fib_entry, msg["partner"]):
             # If own rank is higher than sender rank but lower than new partner rank,
             # it is our turn to purify the qubit and progress toward swapping.
+            qubit.purif_rounds = 0
             qubit.fsm.to_purif()
             partner = self.own.network.get_node(msg["partner"])
             self.qubit_is_purif(qubit, fib_entry, partner)
