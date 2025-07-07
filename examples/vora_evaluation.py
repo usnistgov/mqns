@@ -1,6 +1,5 @@
 import argparse
 import itertools
-import logging
 from copy import deepcopy
 from multiprocessing import Pool, freeze_support
 from typing import cast
@@ -17,7 +16,7 @@ from qns.simulator import Simulator
 from qns.utils import log
 from qns.utils.rnd import set_seed
 
-log.logger.setLevel(logging.CRITICAL)
+log.set_default_level("CRITICAL")
 
 
 class ParameterSet:

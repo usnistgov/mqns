@@ -1,5 +1,3 @@
-import logging
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -14,7 +12,7 @@ from qns.simulator import Simulator
 from qns.utils import log
 from qns.utils.rnd import set_seed
 
-log.logger.setLevel(logging.CRITICAL)
+log.set_default_level("CRITICAL")
 
 SEED_BASE = 100
 
