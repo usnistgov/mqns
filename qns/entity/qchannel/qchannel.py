@@ -54,19 +54,23 @@ class QuantumChannel(BaseChannel[QNode]):
         self.decoherence_rate = kwargs.get("decoherence_rate", 0.0)
         self.transfer_error_model_args = kwargs.get("transfer_error_model_args", {})
 
-    def assign_memory_qubits(self, *, capacity=1):
+    def assign_memory_qubits(self, *, capacity: int | dict[str, int] = 1):
         """
         Assign memory qubits at each node connected to the qchannel.
 
         Args:
             capacity: required quantity of qubits.
+                      If given as an integer, this applies to every node.
+                      If given as a dict, it should be a mapping from node name to capacity of this node,
+                      where every node connected to the qchannel must appear in the dict.
 
         Raises:
             RuntimeError - insufficient qubits.
         """
         for node in self.node_list:
             memory = node.get_memory()
-            for _ in range(capacity):
+            cap = capacity if isinstance(capacity, int) else capacity[node.name]
+            for _ in range(cap):
                 if memory.assign(self) == -1:
                     raise RuntimeError(f"insufficient qubits in {node} to assign to {self}")
 

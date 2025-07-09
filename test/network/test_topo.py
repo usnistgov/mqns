@@ -202,12 +202,12 @@ def test_custom_topo_basic():
     topo = CustomTopology(
         topo={
             "qnodes": [
-                {"name": "A", "memory": {"capacity": 1}, "apps": []},
+                {"name": "A", "memory": {"capacity": 2}, "apps": []},
                 {"name": "B", "memory": {"capacity": 4}, "apps": []},
                 {"name": "C", "memory": {"capacity": 3}, "apps": []},
             ],
             "qchannels": [
-                {"node1": "A", "node2": "B", "capacity": 1, "parameters": {}},
+                {"node1": "A", "node2": "B", "capacity1": 2, "capacity2": 1, "parameters": {}},
                 {"node1": "B", "node2": "C", "capacity": 3, "parameters": {}},
             ],
             "cchannels": [
@@ -232,8 +232,9 @@ def test_custom_topo_basic():
     qAB = net.get_qchannel("q_A,B")
     qBC = net.get_qchannel("q_B,C")
 
-    assert mA.capacity == 1
+    assert mA.capacity == 2
     assert mA.get(address=0, must=True)[0].qchannel == qAB
+    assert mA.get(address=1, must=True)[0].qchannel == qAB
     assert mB.capacity == 4
     assert mB.get(address=0, must=True)[0].qchannel == qAB
     assert mB.get(address=1, must=True)[0].qchannel == qBC

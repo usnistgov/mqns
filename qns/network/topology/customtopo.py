@@ -38,9 +38,17 @@ class TopoQNode(TypedDict):
 
 class TopoQChannel(TypedDict):
     node1: str
+    """first node name"""
     node2: str
-    capacity: int
+    """second node name"""
+    capacity1: NotRequired[int]
+    """quantity of memory qubits assigned to this qchannel at node1, defaults to `capacity`"""
+    capacity2: NotRequired[int]
+    """quantity of memory qubits assigned to this qchannel at node2, defaults to `capacity`"""
+    capacity: NotRequired[int]
+    """quantity of memory qubits assigned to this qchannel at each node, defaults to 1"""
     parameters: QuantumChannelInitKwargs
+    """qchannel constructor arguments"""
 
 
 class TopoCChannel(TypedDict):
@@ -91,17 +99,21 @@ class CustomTopology(Topology):
 
         # Create quantum channels and assign memories with proper capacity
         for ch in self.topo["qchannels"]:
-            link = QuantumChannel(name=f"q_{ch['node1']},{ch['node2']}", **ch["parameters"])
+            node1, node2 = ch["node1"], ch["node2"]
+            link = QuantumChannel(name=f"q_{node1},{node2}", **ch["parameters"])
             qcl.append(link)
 
+            # Attach quantum channel to nodes
             for qn in qnl:
-                if qn.name not in (ch["node1"], ch["node2"]):
-                    continue
+                if qn.name in (node1, node2):
+                    qn.add_qchannel(link)
 
-                # Attach quantum channel to nodes
-                qn.add_qchannel(link)
-
-            link.assign_memory_qubits(capacity=ch["capacity"])
+            link.assign_memory_qubits(
+                capacity={
+                    node1: ch.get("capacity1", ch.get("capacity", 1)),
+                    node2: ch.get("capacity2", ch.get("capacity", 1)),
+                }
+            )
 
         if "controller" in self.topo:
             self.controller = Controller(name=self.topo["controller"]["name"], apps=self.topo["controller"]["apps"])
