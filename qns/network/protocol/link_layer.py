@@ -153,7 +153,7 @@ class LinkLayer(Application):
                             by=self,
                             next_hop=next_hop,
                             qchannel=qchannel,
-                            qubit=qb
+                            qubit=qb,
                         )
                     )
                 else:
@@ -303,8 +303,10 @@ class LinkLayer(Application):
         assert isinstance(epr, WernerStateEntanglement)
         assert epr.decoherence_time is not None
 
-        log.debug(f"{self.own}: recv half-EPR {epr.name} from {from_node} on qchannel {event.qchannel.name}"
-                  f" | reservation key {epr.key}")
+        log.debug(
+            f"{self.own}: recv half-EPR {epr.name} from {from_node} on qchannel {event.qchannel.name}"
+            f" | reservation key {epr.key}"
+        )
 
         if epr.decoherence_time <= self.simulator.tc:
             raise Exception(f"{self.own}: Decoherence time already passed | {epr}")
@@ -334,7 +336,7 @@ class LinkLayer(Application):
                 if self.own.timing_mode == TimingModeEnum.ASYNC:
                     self.handle_active_channel(qchannel, event.neighbor)
 
-            else:     # happens when installing multiple paths
+            else:  # happens when installing multiple paths
                 qchannel, neighbor, path_ids = self.active_channels[qchannel.name]
                 if event.path_id not in path_ids:
                     upd_path_ids = path_ids.append(event.path_id)
@@ -345,8 +347,7 @@ class LinkLayer(Application):
                 elif event.path_id is not None:
                     raise Exception(f"Qchannel {qchannel.name} for path {event.path_id} already handled")
                 elif event.path_id is None:
-                    log.debug(f"{self.own}: no need to add qchannel {qchannel.name} with no path ID as "
-                            f"it is already added")
+                    log.debug(f"{self.own}: no need to add qchannel {qchannel.name} with no path ID as it is already added")
         else:
             self.active_channels.pop(qchannel.name, "Not Found")
         return True

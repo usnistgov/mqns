@@ -456,7 +456,7 @@ class QuantumMemory(Entity):
         exc_direction: PathDirection | None = None,
         inc_qchannels: list[str] | None = None,
         path_id: list[int] | None = None,
-        tmp_path_id: list[int] | None = None
+        tmp_path_id: list[int] | None = None,
     ) -> list[tuple[MemoryQubit, QuantumModel]]:
         """Search for memory qubits that are eligible for use.
 

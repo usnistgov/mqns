@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 
 swapping_settings = {
     # disable swapping (for studying isolated links)
-    "no_swap": [0,0,0],
+    "no_swap": [0, 0, 0],
     # for 1-repeater
     "swap_1": [1, 0, 1],
     # for 2-repeater
@@ -107,8 +107,10 @@ class ProactiveRoutingControllerApp(Application):
         self.purif = purif
 
         if routing_type and routing_type not in ["SRSP", "SRMP_STATIC", "MRSP_DYNAMIC"]:
-            raise Exception(f"{self.own}: Routing type {self.routing_type} not supported."
-                            f"Supported types: ['SRSP', 'SRMP_STATIC', 'MRSP_DYNAMIC']")
+            raise Exception(
+                f"{self.own}: Routing type {self.routing_type} not supported."
+                f"Supported types: ['SRSP', 'SRMP_STATIC', 'MRSP_DYNAMIC']"
+            )
         self.routing_type = routing_type
 
     def install(self, node: Node, simulator: Simulator):
@@ -170,8 +172,9 @@ class ProactiveRoutingControllerApp(Application):
             m_v = self.compute_m_v_min_cap(route)
             mux = "B"
 
-        self.install_path_on_route(route,
-            path_id=path_id, req_id=req_id, m_v=m_v, mux=mux, swap=self.swapping_order, purif=self.purif)
+        self.install_path_on_route(
+            route, path_id=path_id, req_id=req_id, m_v=m_v, mux=mux, swap=self.swapping_order, purif=self.purif
+        )
 
     def do_multiple_static_paths(self):
         """Install multiple static paths between nodes "S" (source) and "D" (destination) of the network topology.
@@ -205,7 +208,7 @@ class ProactiveRoutingControllerApp(Application):
         dst = self.net.get_node("D")
 
         # Get all shortest paths (M ≥ 1)
-        route_result = self.net.query_route(src, dst)    # Expected to be Yen's
+        route_result = self.net.query_route(src, dst)  # Expected to be Yen's
         paths = [r[2] for r in route_result]  # list of path_nodes (node objects)
 
         # Get all quantum channels and initialize usage count
@@ -227,7 +230,7 @@ class ProactiveRoutingControllerApp(Application):
             log.debug(f"{self.own}: Computed path #{path_id}: {route}")
 
             # Define swap config
-            swap_config = f"swap_{len(path_nodes)-2}_{self.swapping}"
+            swap_config = f"swap_{len(path_nodes) - 2}_{self.swapping}"
             if swap_config not in swapping_settings:
                 raise Exception(f"Swap config {swap_config} is needed but not found in swapping settings.")
 
@@ -262,8 +265,9 @@ class ProactiveRoutingControllerApp(Application):
                 m_v.append((left_ch_qubits, right_ch_qubits))
 
             # Send install instruction to each node on this path
-            self.install_path_on_route(route,
-                path_id=path_id, req_id=0, m_v=m_v, mux="B", swap=self.swapping_settings[swap_config], purif={})
+            self.install_path_on_route(
+                route, path_id=path_id, req_id=0, m_v=m_v, mux="B", swap=self.swapping_settings[swap_config], purif={}
+            )
 
     def do_multirequest_dynamic_paths(self):
         """Install one path between S1 and D1 and one path between S2 and D2 of the network topology.
@@ -272,7 +276,7 @@ class ProactiveRoutingControllerApp(Application):
         without qubit-path allocation; means dynamic EPR affectation or statistical mux is expected at nodes.
         """
         self.do_one_path(0, 0, "S1", "D1", False)
-        self.do_one_path(1, 1, "S2", "D2", False)       # keep path_id globally unique
+        self.do_one_path(1, 1, "S2", "D2", False)  # keep path_id globally unique
 
     def compute_m_v_min_cap(self, route: list[str]) -> list[tuple[int, int]]:
         """
@@ -285,8 +289,17 @@ class ProactiveRoutingControllerApp(Application):
         q = min(c) // 2
         return [(q, q) for _ in range(len(route) - 1)]
 
-    def install_path_on_route(self, route: list[str], *,
-        path_id: int, req_id: int, mux: str, swap: list[int], m_v: list[(int,int)] | None = None, purif: dict[str, int] = {}):
+    def install_path_on_route(
+        self,
+        route: list[str],
+        *,
+        path_id: int,
+        req_id: int,
+        mux: str,
+        swap: list[int],
+        m_v: list[(int, int)] | None = None,
+        purif: dict[str, int] = {},
+    ):
         """
         Install an explicitly specified path with the given route.
 
@@ -316,7 +329,7 @@ class ProactiveRoutingControllerApp(Application):
                 "route": route,
                 "swap": swap,
                 "mux": mux,
-                "purif": purif
+                "purif": purif,
             }
             if m_v is not None:
                 instructions["m_v"] = m_v
@@ -325,6 +338,7 @@ class ProactiveRoutingControllerApp(Application):
             cchannel = self.own.get_cchannel(qnode)
             cchannel.send(ClassicPacket(msg, src=self.own, dest=qnode), next_hop=qnode)
             log.debug(f"{self.own}: send {msg} to {qnode}")
+
 
 def check_purif_segment(route: list[str], segment_name: str) -> bool:
     try:

@@ -35,6 +35,7 @@ def build_linear_network(
 
     return net, simulator
 
+
 def test_proactive_path_validation():
     """Test controller path validation logic."""
     net, _ = build_linear_network(5)
@@ -66,7 +67,7 @@ def test_proactive_isolated():
     f1 = net.get_node("n1").get_app(ProactiveForwarder)
     f3 = net.get_node("n3").get_app(ProactiveForwarder)
 
-    ctrl.install_path_on_route(["n1", "n2", "n3"], path_id=0, req_id=0, mux="B", swap=[0, 0, 0], m_v=[(1,1),(1,1)])
+    ctrl.install_path_on_route(["n1", "n2", "n3"], path_id=0, req_id=0, mux="B", swap=[0, 0, 0], m_v=[(1, 1), (1, 1)])
     simulator.run()
 
     assert f1.e2e_count == 0
@@ -81,7 +82,7 @@ def test_proactive_basic():
     f2 = net.get_node("n2").get_app(ProactiveForwarder)
     f3 = net.get_node("n3").get_app(ProactiveForwarder)
 
-    ctrl.install_path_on_route(["n1", "n2", "n3"], path_id=0, req_id=0, mux="B", swap=[1, 0, 1], m_v=[(1,1),(1,1)])
+    ctrl.install_path_on_route(["n1", "n2", "n3"], path_id=0, req_id=0, mux="B", swap=[1, 0, 1], m_v=[(1, 1), (1, 1)])
     simulator.run()
 
     for app in (f1, f2, f3):
@@ -101,8 +102,9 @@ def test_proactive_purif_link1r():
     f2 = net.get_node("n2").get_app(ProactiveForwarder)
     f3 = net.get_node("n3").get_app(ProactiveForwarder)
 
-    ctrl.install_path_on_route(["n1", "n2", "n3"], path_id=0, req_id=0, mux="B", swap=[1, 0, 1],
-                               purif={"n1-n2": 1, "n2-n3": 1}, m_v=[(2,2),(2,2)])
+    ctrl.install_path_on_route(
+        ["n1", "n2", "n3"], path_id=0, req_id=0, mux="B", swap=[1, 0, 1], purif={"n1-n2": 1, "n2-n3": 1}, m_v=[(2, 2), (2, 2)]
+    )
     simulator.run()
 
     for app in (f1, f2, f3):
@@ -121,8 +123,9 @@ def test_proactive_purif_link2r():
     f2 = net.get_node("n2").get_app(ProactiveForwarder)
     f3 = net.get_node("n3").get_app(ProactiveForwarder)
 
-    ctrl.install_path_on_route(["n1", "n2", "n3"], path_id=0, req_id=0, mux="B", swap=[1, 0, 1],
-                               purif={"n1-n2": 2, "n2-n3": 2}, m_v=[(4,4),(4,4)])
+    ctrl.install_path_on_route(
+        ["n1", "n2", "n3"], path_id=0, req_id=0, mux="B", swap=[1, 0, 1], purif={"n1-n2": 2, "n2-n3": 2}, m_v=[(4, 4), (4, 4)]
+    )
     simulator.run()
 
     for app in (f1, f2, f3):

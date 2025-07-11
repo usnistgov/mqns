@@ -60,8 +60,8 @@ class YenRouteAlgorithm(RouteImpl[NodeT, ChannelT]):
                     continue
 
                 route_list = []
-                for path in paths[:self.k_paths]:
-                    cost = sum(G[path[i]][path[i+1]]["weight"] for i in range(len(path)-1))
+                for path in paths[: self.k_paths]:
+                    cost = sum(G[path[i]][path[i + 1]]["weight"] for i in range(len(path) - 1))
                     route_list.append((cost, path))
                 self.route_table[src][dst] = route_list
 

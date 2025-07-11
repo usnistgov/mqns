@@ -68,7 +68,7 @@ class BaseEntanglement(Generic[EntanglementT]):
         """to know when both end-nodes are aware of the EPR"""
         self.key: str | None = None
         """to store the EPR in the right negotiated qubit at the dst node"""
-        self.tmp_path_ids: [int]|None = None
+        self.tmp_path_ids: [int] | None = None
         """to store temporary path IDs when dynamic quit affectation or statistical mux is used"""
 
     def set_decoherenced(self, value: bool):
