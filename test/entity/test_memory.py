@@ -7,7 +7,6 @@ from qns.entity.memory import (
     MemoryWriteResponseEvent,
     QuantumMemory,
 )
-from qns.entity.memory.memory_qubit import PathDirection
 from qns.entity.node import Application, QNode
 from qns.entity.qchannel import QuantumChannel
 from qns.models.epr import BaseEntanglement, WernerStateEntanglement
@@ -20,13 +19,6 @@ def test_write_and_read_with_path_and_key():
     node = QNode("n1")
     node.set_memory(mem)
 
-    ch = QuantumChannel(
-        "qch",
-        { "node1": "S", "node2":"R", "capacity": 1, "parameters": {"length": 10, "delay": 10 / light_speed} }
-        )
-    addr = mem.assign(ch)
-    assert addr != -1
-
     sim = Simulator(0, 10)
     node.install(sim)
 
@@ -37,7 +29,7 @@ def test_write_and_read_with_path_and_key():
     key = "n1_peer_0_0"
 
     # First allocate memory with path ID
-    addr = mem.allocate(ch_name=ch.name, path_id=0, path_direction=PathDirection.LEFT)
+    addr = mem.allocate(path_id=0)
     assert addr != -1
     mem._storage[addr][0].active = key
 
@@ -114,13 +106,6 @@ def test_memory_clear_and_deallocate():
     node = QNode("n4")
     node.set_memory(mem)
 
-    ch = QuantumChannel(
-        "qch",
-        { "node1": "S", "node2":"R", "capacity": 1, "parameters": {"length": 10, "delay": 10 / light_speed} }
-        )
-    addr = mem.assign(ch)
-    assert addr != -1
-
     sim = Simulator(0, 5)
     node.install(sim)
 
@@ -136,7 +121,7 @@ def test_memory_clear_and_deallocate():
     assert not mem.is_full()
 
     # Test deallocate
-    idx = mem.allocate(ch_name=ch.name, path_id=7, path_direction=PathDirection.LEFT)
+    idx = mem.allocate(path_id=7)
     assert idx != -1
     assert mem.deallocate(idx)
     assert not mem.deallocate(999)  # invalid
@@ -147,17 +132,10 @@ def test_qubit_reservation_behavior():
     node = QNode("n5")
     node.set_memory(mem)
 
-    ch = QuantumChannel(
-        "qch",
-        { "node1": "S", "node2":"R", "capacity": 1, "parameters": {"length": 10, "delay": 10 / light_speed} }
-        )
-    addr = mem.assign(ch)
-    assert addr != -1
-
     sim = Simulator(0, 5)
     node.install(sim)
 
-    idx1 = mem.allocate(ch_name=ch.name, path_id=42, path_direction=PathDirection.LEFT)
+    idx1 = mem.allocate(path_id=42)
     assert idx1 != -1
     q1 = mem._storage[idx1][0]
     q1.active = "n5_n6_42_" + str(idx1)

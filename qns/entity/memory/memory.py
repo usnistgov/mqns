@@ -371,7 +371,7 @@ class QuantumMemory(Entity):
             event.cancel()
         self.pending_decohere_events = {}
 
-    def allocate(self, ch_name: str, path_id: int, path_direction: PathDirection|None = None) -> int:
+    def allocate(self, path_id: int, ch_name: str | None = None, path_direction: PathDirection | None = None) -> int:
         """
         Allocate an unused memory qubit to a given path ID.
 
@@ -379,21 +379,24 @@ class QuantumMemory(Entity):
         (i.e., `path_id` is None), assigns it the provided `path_id`, and returns its address.
 
         Args:
-            ch_name (str): The name of the quantum channel
-                       to which the memory qubit is assigned.
             path_id (int): The identifier of the entanglement path
-                       to which the memory qubit will be allocated.
+                    to which the memory qubit will be allocated.
+            ch_name (Optional[str]): The name of the quantum channel
+                    to which the memory qubit is assigned. Left optional for future dynamic qubit-qchannel assignment.
             path_direction (PathDirection): The end of the path to which the qubit allocated qubit points.
-                        This is typically either the source or the destination of the path (LEFT/RIGHT).
+                    This is typically either the source or the destination of the path (LEFT/RIGHT).
 
         Returns:
             int: The address of the allocated memory qubit, or -1 if no unallocated qubit is available.
 
         """
         for qubit, _ in self._storage:
-            if qubit.qchannel.name == ch_name and qubit.path_id is None:
-                qubit.allocate(path_id, path_direction)
-                return qubit.addr
+            if ch_name is not None and qubit.qchannel.name != ch_name:
+                continue
+            if qubit.path_id is not None:
+                continue
+            qubit.allocate(path_id, path_direction)
+            return qubit.addr
         return -1
 
     def deallocate(self, address: int) -> bool:
@@ -438,7 +441,7 @@ class QuantumMemory(Entity):
         for qubit, data in self._storage:
             if data is not None:
                 continue
-            if qubit.qchannel.name != ch_name:
+            if qubit.qchannel and qubit.qchannel.name != ch_name:
                 continue
             if qubit.active:
                 continue

@@ -77,7 +77,7 @@ class ProactiveRoutingControllerApp(Application):
     Works with Proactive Forwarder on quantum nodes.
     """
 
-    def __init__(self, *, swapping: str | list[int], purif: dict[str, int] = {}, routing_type: str = "SRSP"):
+    def __init__(self, *, swapping: str | list[int], purif: dict[str, int] = {}, routing_type: str | None = None):
         """
         Args:
             swapping: swapping order to use for the S-D path.
@@ -106,26 +106,25 @@ class ProactiveRoutingControllerApp(Application):
 
         self.purif = purif
 
-        if routing_type in ["SRSP", "SRMP_STATIC", "MRSP_DYNAMIC"]:
-            self.routing_type = routing_type
-        else:
+        if routing_type and routing_type not in ["SRSP", "SRMP_STATIC", "MRSP_DYNAMIC"]:
             raise Exception(f"{self.own}: Routing type {self.routing_type} not supported."
                             f"Supported types: ['SRSP', 'SRMP_STATIC', 'MRSP_DYNAMIC']")
+        self.routing_type = routing_type
 
     def install(self, node: Node, simulator: Simulator):
         super().install(node, simulator)
         self.own = self.get_node(node_type=Controller)
         self.net = self.own.network
-    
+
         # install the test path on QNodes
         if self.routing_type == "SRSP":
-            self.install_static_path(0, 0, "S", "D")
+            self.do_one_path(0, 0, "S", "D")
         elif self.routing_type == "SRMP_STATIC":
-            self.install_multiple_static_paths()
+            self.do_multiple_static_paths()
         elif self.routing_type == "MRSP_DYNAMIC":
-            self.install_multi_request_dynamic_paths()
+            self.do_multirequest_dynamic_paths()
 
-    def install_static_path(self, req_id: int, path_id: int, src: str, dst: str, allocate_qubits: bool = True):
+    def do_one_path(self, req_id: int, path_id: int, src: str, dst: str, allocate_qubits: bool = True):
         """Install a static path between src and dst of the network topology.
         It currently supports linear chain topology with a single src-dst path.
         It computes a path between src and dst and installs instructions with a predefined swapping order.
@@ -164,61 +163,17 @@ class ProactiveRoutingControllerApp(Application):
         log.debug(f"{self.own}: Computed path: {path_nodes}")
 
         route = [n.name for n in path_nodes]
-        self.install_path_on_route(route, path_id=0, swap=self.swapping_order, purif=self.purif)
 
-    def compute_m_v(self, route: list[str]) -> list[int]:
-        """
-        Compute buffer-space multiplexing vector based on minimum memory capacity.
-        """
-        c = [self.net.get_node(node_name).get_memory().capacity for node_name in route]
-        c[0] *= 2
-        c[-1] *= 2
-        return [min(c) // 2] * (len(route) - 1)
-
-    def install_path_on_route(self, route: list[str], *, path_id: int, swap: list[int], purif: dict[str, int] = {}):
-        """
-        Install an explicitly specified path with the given route.
-
-        Args:
-            route: a list of node names, in the order they appear in the path.
-                   There must a qchannel and a cchannel between adjacent nodes.
-            path_id: numeric identifier to uniquely identify this path within the network.
-            swap: swap sequence.
-                  This list shall have the same length as route.
-                  Each integer is the swapping rank of a node, as explained in `find_index_and_swapping_rank`.
-            purif: purification instructions.
-                   Each key is a segment name consists of two node names concatenated with a hyphen ("-"),
-                   where the nodes appear in the same order as in the route but do not have to be adjacent.
-                   Each value is an integer of the required rounds of purification at this segment.
-                   The default for every segment is zero i.e. no purification is performed.
-        """
-        if len(route) != len(swap) or len(route) == 0:
-            raise ValueError("swapping order does not match route length")
-        for segment_name in purif.keys():
-            if not check_purif_segment(route, segment_name):
-                raise ValueError(f"purif segment {segment_name} does not exist in route")
-
-        m_v = []
+        m_v = None
+        mux = "S"
         if allocate_qubits:
-            m_v = self.compute_m_v(route)
+            m_v = self.compute_m_v_min_cap(route)
+            mux = "B"
 
-        for node_name in route:
-            qnode = self.net.get_node(node_name)
-            instructions: "InstallPathInstructions" = {
-                "req_id": 0,
-                "route": route,
-                "swap": swap,
-                "mux": "B" if allocate_qubits else "S",
-                "m_v": m_v,
-                "purif": purif,
-            }
-            msg: "InstallPathMsg" = {"cmd": "install_path", "path_id": path_id, "instructions": instructions}
+        self.install_path_on_route(route,
+            path_id=path_id, req_id=req_id, m_v=m_v, mux=mux, swap=self.swapping_order, purif=self.purif)
 
-            cchannel = self.own.get_cchannel(qnode)
-            cchannel.send(ClassicPacket(msg, src=self.own, dest=qnode), next_hop=qnode)
-            log.debug(f"{self.own}: send {msg} to {qnode}")
-
-    def install_multiple_static_paths(self):
+    def do_multiple_static_paths(self):
         """Install multiple static paths between nodes "S" (source) and "D" (destination) of the network topology.
         It computes k-shortest paths between S and D and installs instructions with a predefined swapping order.
         Paths are not necessarily disjoint; they may share same qchannels.
@@ -245,27 +200,17 @@ class ProactiveRoutingControllerApp(Application):
             - Purification scheme has to be specified (hardcoded) in the function.
         """
         self.net.build_route()
-        network_nodes = self.net.get_nodes()
 
-        # Locate source and destination
-        src = dst = None
-        for qn in network_nodes:
-            if qn.name == "S":
-                src = qn
-            elif qn.name == "D":
-                dst = qn
+        src = self.net.get_node("S")
+        dst = self.net.get_node("D")
 
-        if src is None or dst is None:
-            raise Exception("Source or destination node not found.")
+        # Get all shortest paths (M ≥ 1)
+        route_result = self.net.query_route(src, dst)    # Expected to be Yen's
+        paths = [r[2] for r in route_result]  # list of path_nodes (node objects)
 
         # Get all quantum channels and initialize usage count
         network_channels = self.net.get_qchannels()
         qchannel_use_count = {ch.name: 0 for ch in network_channels}
-
-        # Get all shortest paths (M ≥ 1)
-        route_result = self.net.query_route(src, dst)
-        print(route_result)
-        paths = [r[2] for r in route_result]  # list of path_nodes (node objects)
 
         # Count usage of each quantum channel across all paths
         for path_nodes in paths:
@@ -286,7 +231,8 @@ class ProactiveRoutingControllerApp(Application):
             if swap_config not in swapping_settings:
                 raise Exception(f"Swap config {swap_config} is needed but not found in swapping settings.")
 
-            # Memory allocation vector m_v = [(left_qubits, right_qubits), ...]
+            # Compute buffer-space multiplexing vector as pairs of (qubits_at_node_i, qubits_at_node_i+1)
+            # The qubits are divided among all paths that share the qchannel
             m_v = []
             for i, node in enumerate(path_nodes):
                 node_obj = self.net.get_node(node.name)
@@ -316,33 +262,69 @@ class ProactiveRoutingControllerApp(Application):
                 m_v.append((left_ch_qubits, right_ch_qubits))
 
             # Send install instruction to each node on this path
-            for qnode in path_nodes:
-                instructions = {
-                    "req_id": 0,
-                    "route": route,
-                    "swap": swapping_settings[swap_config],
-                    "mux": "B",
-                    "m_v": m_v,
-                    "purif": {}  # Purification can be filled in if needed
-                }
+            self.install_path_on_route(route,
+                path_id=path_id, req_id=0, m_v=m_v, mux="B", swap=self.swapping_settings[swap_config], purif={})
 
-                cchannel = self.own.get_cchannel(qnode)
-                classic_packet = ClassicPacket(
-                    msg={"cmd": "install_path", "path_id": path_id, "instructions": instructions},
-                    src=self.own,
-                    dest=qnode
-                )
-                cchannel.send(classic_packet, next_hop=qnode)
-                log.debug(f"{self.own}: sent {classic_packet.msg} to {qnode}")
-
-    def install_multi_request_dynamic_paths(self):
+    def do_multirequest_dynamic_paths(self):
         """Install one path between S1 and D1 and one path between S2 and D2 of the network topology.
 
-        This method uses `install_static_path` to install a path between S1 and D1 (S2 and D2),
-        without qubit-path allocation.
+        This method uses `do_one_path` to install a path between S1 and D1 (S2 and D2),
+        without qubit-path allocation; means dynamic EPR affectation or statistical mux is expected at nodes.
         """
-        self.install_static_path(0, 0, "S1", "D1", False)
-        self.install_static_path(1, 1, "S2", "D2", False)       # keep path_id globally unique
+        self.do_one_path(0, 0, "S1", "D1", False)
+        self.do_one_path(1, 1, "S2", "D2", False)       # keep path_id globally unique
+
+    def compute_m_v_min_cap(self, route: list[str]) -> list[tuple[int, int]]:
+        """
+        Compute buffer-space multiplexing vector as pairs of (qubits_at_node_i, qubits_at_node_i+1)
+        based on minimum memory capacity.
+        """
+        c = [self.net.get_node(node_name).get_memory().capacity for node_name in route]
+        c[0] *= 2
+        c[-1] *= 2
+        q = min(c) // 2
+        return [(q, q) for _ in range(len(route) - 1)]
+
+    def install_path_on_route(self, route: list[str], *,
+        path_id: int, req_id: int, mux: str, swap: list[int], m_v: list[(int,int)] | None = None, purif: dict[str, int] = {}):
+        """
+        Install an explicitly specified path with the given route.
+
+        Args:
+            route: a list of node names, in the order they appear in the path.
+                   There must a qchannel and a cchannel between adjacent nodes.
+            path_id: numeric identifier to uniquely identify this path within the network.
+            swap: swap sequence.
+                  This list shall have the same length as route.
+                  Each integer is the swapping rank of a node, as explained in `find_index_and_swapping_rank`.
+            purif: purification instructions.
+                   Each key is a segment name consists of two node names concatenated with a hyphen ("-"),
+                   where the nodes appear in the same order as in the route but do not have to be adjacent.
+                   Each value is an integer of the required rounds of purification at this segment.
+                   The default for every segment is zero i.e. no purification is performed.
+        """
+        if len(route) != len(swap) or len(route) == 0:
+            raise ValueError("swapping order does not match route length")
+        for segment_name in purif.keys():
+            if not check_purif_segment(route, segment_name):
+                raise ValueError(f"purif segment {segment_name} does not exist in route")
+
+        for node_name in route:
+            qnode = self.net.get_node(node_name)
+            instructions: "InstallPathInstructions" = {
+                "req_id": req_id,
+                "route": route,
+                "swap": swap,
+                "mux": mux,
+                "purif": purif
+            }
+            if m_v is not None:
+                instructions["m_v"] = m_v
+            msg: "InstallPathMsg" = {"cmd": "install_path", "path_id": path_id, "instructions": instructions}
+
+            cchannel = self.own.get_cchannel(qnode)
+            cchannel.send(ClassicPacket(msg, src=self.own, dest=qnode), next_hop=qnode)
+            log.debug(f"{self.own}: send {msg} to {qnode}")
 
 def check_purif_segment(route: list[str], segment_name: str) -> bool:
     try:

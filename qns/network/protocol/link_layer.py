@@ -303,7 +303,7 @@ class LinkLayer(Application):
         assert isinstance(epr, WernerStateEntanglement)
         assert epr.decoherence_time is not None
 
-        log.debug(f"{self.own}: recv half-EPR {epr.name} from {from_node} on qchannel {qchannel.name}"
+        log.debug(f"{self.own}: recv half-EPR {epr.name} from {from_node} on qchannel {event.qchannel.name}"
                   f" | reservation key {epr.key}")
 
         if epr.decoherence_time <= self.simulator.tc:
@@ -329,13 +329,13 @@ class LinkLayer(Application):
         log.debug(f"{self.own}: start qchannel with {event.neighbor}")
         qchannel = self.own.get_qchannel(event.neighbor)
         if event.type == TypeEnum.ADD:
-            # FIXME: check where we need to use event.path_id in `handle_active_channel()`
             if qchannel.name not in self.active_channels:
                 self.active_channels[qchannel.name] = (qchannel, event.neighbor, [event.path_id])
                 if self.own.timing_mode == TimingModeEnum.ASYNC:
                     self.handle_active_channel(qchannel, event.neighbor)
-            else:
-                (qchannel, neighbor, path_ids) = self.active_channels[qchannel.name]
+
+            else:     # happens when installing multiple paths
+                qchannel, neighbor, path_ids = self.active_channels[qchannel.name]
                 if event.path_id not in path_ids:
                     upd_path_ids = path_ids.append(event.path_id)
                     self.active_channels[qchannel.name] = (qchannel, neighbor, upd_path_ids)
@@ -359,7 +359,7 @@ class LinkLayer(Application):
         assert qubit.qchannel is not None
         if qubit.qchannel.name in self.active_channels:
             # this node is the EPR initiator of the qchannel associated with the memory of this qubit
-            qchannel, next_hop = self.active_channels[qubit.qchannel.name]
+            qchannel, next_hop, path_ids = self.active_channels[qubit.qchannel.name]
             if self.own.timing_mode == TimingModeEnum.ASYNC:
                 self.start_reservation(next_hop=next_hop, qchannel=qchannel, qubit=qubit)
             elif is_decoh and self.own.timing_mode == TimingModeEnum.SYNC:

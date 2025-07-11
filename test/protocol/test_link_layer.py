@@ -65,6 +65,7 @@ def test_link_layer_basic():
             n1,
             n2,
             TypeEnum.ADD,
+            0,
             t=simulator.time(sec=0.5),
             by=a1,
         )
@@ -121,6 +122,7 @@ def test_link_layer_skip_ahead():
             n1,
             n2,
             TypeEnum.ADD,
+            0,
             t=simulator.time(sec=0.5),
             by=a1,
         )

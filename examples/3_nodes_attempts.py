@@ -31,11 +31,8 @@ p_swap = 0.5
 
 
 # 3-nodes topology
-<<<<<<< HEAD
-swapping_config = "isolation_1"  # NOTE: This requires to disable swapping in the Forwarder module to work
-=======
-swapping_config = "no_swap"      # NOTE: This requires to disable swapping in the Forwarder module to work
->>>>>>> 7f56f1b (fix: make controller routing configurable)
+swapping_config = "no_swap"
+
 ch_1 = 32
 ch_2 = 18
 
