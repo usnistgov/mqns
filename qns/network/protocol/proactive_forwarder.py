@@ -233,7 +233,7 @@ class ProactiveForwarder(Application):
         self.fib.add_entry(
             replace=True,
             path_id=path_id,
-            request_id=request_id
+            request_id=request_id,
             path_vector=route,
             swap_sequence=instructions["swap"],
             purification_scheme=instructions["purif"],
