@@ -279,6 +279,9 @@ class ProactiveForwarder(Application):
             return neighbor, None
 
         n_qubits = m_v[own_idx + m_v_offset][ch_side]
+        if n_qubits == 0:  # 0 means use all qubits assigned to this qchannel
+            n_qubits = len(self.memory.get_channel_qubits(qchannel.name))
+
         qubits = [
             self.memory.allocate(path_id=path_id, ch_name=qchannel.name, path_direction=path_direction) for _ in range(n_qubits)
         ]
@@ -342,7 +345,7 @@ class ProactiveForwarder(Application):
                             qchannel: QuantumChannel = self.own.get_qchannel(event.neighbor)
                             if qchannel:
                                 qubit.fsm.to_purif()
-                                self.purif(qubit)
+                                self.qubit_is_purif(qubit)
                             else:
                                 raise Exception(f"No qchannel found for neighbor {event.neighbor.name}")
                         return
@@ -367,7 +370,7 @@ class ProactiveForwarder(Application):
                             qchannel: QuantumChannel = self.own.get_qchannel(event.neighbor)
                             if qchannel:
                                 qubit.fsm.to_purif()
-                                self.purif(qubit, fib_entry, event.neighbor)
+                                self.qubit_is_purif(qubit, fib_entry, event.neighbor)
                             else:
                                 raise Exception(f"No qchannel found for neighbor {event.neighbor.name}")
                     else:

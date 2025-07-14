@@ -15,6 +15,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from enum import Enum, auto
 from typing import TYPE_CHECKING
 
 from qns.entity.cchannel import ClassicPacket
@@ -25,6 +26,12 @@ from qns.utils import log
 
 if TYPE_CHECKING:
     from qns.network.protocol.proactive_forwarder import InstallPathInstructions, InstallPathMsg
+
+
+class QubitAllocationType(Enum):
+    MIN_CAPACITY = auto()
+    FOLLOW_QCHANNEL = auto()
+
 
 swapping_settings = {
     # disable swapping (for studying isolated links)
@@ -77,7 +84,14 @@ class ProactiveRoutingControllerApp(Application):
     Works with Proactive Forwarder on quantum nodes.
     """
 
-    def __init__(self, *, swapping: str | list[int], purif: dict[str, int] = {}, routing_type: str | None = None):
+    def __init__(
+        self,
+        *,
+        swapping: str | list[int],
+        purif: dict[str, int] = {},
+        routing_type: str | None = None,
+        qubit_allocation: QubitAllocationType = QubitAllocationType.FOLLOW_QCHANNEL,
+    ):
         """
         Args:
             swapping: swapping order to use for the S-D path.
@@ -86,10 +100,15 @@ class ProactiveRoutingControllerApp(Application):
             purif: purification settings.
                    Each key identifies a qchannel along the S-D path, written like "S-R1".
                    Each value indicates the number of purification rounds at this hop.
-            routing_type (str): Type pf routing to run on the topology. Supported values:
+            routing_type (str): Type of routing to run on the topology. Supported values:
                 - SRSP (Single Request Single Path).
                 - SRMP_STATIC (Single Request Multiple Paths with qubit-path pre-allocation).
                 - SRMP_DYNAMIC (Single Request Multiple Paths without qubit-path pre-allocation).
+            qubit_allocation (QubitAllocationType): Type of qubit-path allocation to use with buffer-space mux.
+                Supported values:
+                - MIN_CAPACITY: uses the lowest qchannel capaciy along the path.
+                - FOLLOW_QCHANNEL: uses special value `0` to let nodes use all the qubits assigned to the qchannel
+                        connecting to the neighbor.
 
         To disable automatic installation of a static route from S to D, pass swapping=[].
         """
@@ -113,6 +132,8 @@ class ProactiveRoutingControllerApp(Application):
             )
         self.routing_type = routing_type
 
+        self.qubit_allocation = qubit_allocation
+
     def install(self, node: Node, simulator: Simulator):
         super().install(node, simulator)
         self.own = self.get_node(node_type=Controller)
@@ -120,13 +141,13 @@ class ProactiveRoutingControllerApp(Application):
 
         # install the test path on QNodes
         if self.routing_type == "SRSP":
-            self.do_one_path(0, 0, "S", "D")
+            self.do_one_path(0, 0, "S", "D", self.qubit_allocation)
         elif self.routing_type == "SRMP_STATIC":
             self.do_multiple_static_paths()
         elif self.routing_type == "MRSP_DYNAMIC":
             self.do_multirequest_dynamic_paths()
 
-    def do_one_path(self, req_id: int, path_id: int, src: str, dst: str, allocate_qubits: bool = True):
+    def do_one_path(self, req_id: int, path_id: int, src: str, dst: str, qubit_allocation: QubitAllocationType | None = None):
         """Install a static path between src and dst of the network topology.
         It currently supports linear chain topology with a single src-dst path.
         It computes a path between src and dst and installs instructions with a predefined swapping order.
@@ -137,10 +158,6 @@ class ProactiveRoutingControllerApp(Application):
             DijkstraRouteAlgorithm is the default algorithm and uses hop counts at metric.
             - Verifies that the number of nodes in the computed path matches the expected number
             of swapping steps based on the configured swapping strategy.
-            - If `allocate_qubits` is True, it constructs per-channel memory allocation vectors (m_v)
-            assuming buffer-space (B) multiplexing, following qubits-qchannels allocation defined at topology creation.
-            - If `allocate_qubits` is False, it does not construct qubit-path allocation (m_v),
-            and statistical multiplexing (S) is assumed.
             - Sends installation instructions to each node along the path using classical channels.
 
         Raises:
@@ -149,7 +166,6 @@ class ProactiveRoutingControllerApp(Application):
 
         Notes:
             - `self.swapping_order` provides the expected swapping instructions.
-            - Multiplexing strategy is hardcoded as "B" (buffer-space).
             - Path instructions are transmitted over classical channels using the `"install_path"` command.
             - Purification scheme has to be specified (hardcoded) in the function.
         """
@@ -166,10 +182,14 @@ class ProactiveRoutingControllerApp(Application):
 
         route = [n.name for n in path_nodes]
 
-        m_v = None
-        mux = "S"
-        if allocate_qubits:
+        if qubit_allocation is None:
+            m_v = None
+            mux = "S"
+        elif qubit_allocation == QubitAllocationType.MIN_CAPACITY:
             m_v = self.compute_m_v_min_cap(route)
+            mux = "B"
+        elif qubit_allocation == QubitAllocationType.FOLLOW_QCHANNEL:
+            m_v = self.compute_m_v_qchannel(route)
             mux = "B"
 
         self.install_path_on_route(
@@ -275,8 +295,8 @@ class ProactiveRoutingControllerApp(Application):
         This method uses `do_one_path` to install a path between S1 and D1 (S2 and D2),
         without qubit-path allocation; means dynamic EPR affectation or statistical mux is expected at nodes.
         """
-        self.do_one_path(0, 0, "S1", "D1", False)
-        self.do_one_path(1, 1, "S2", "D2", False)  # keep path_id globally unique
+        self.do_one_path(0, 0, "S1", "D1")
+        self.do_one_path(1, 1, "S2", "D2")  # keep path_id globally unique
 
     def compute_m_v_min_cap(self, route: list[str]) -> list[tuple[int, int]]:
         """
@@ -288,6 +308,13 @@ class ProactiveRoutingControllerApp(Application):
         c[-1] *= 2
         q = min(c) // 2
         return [(q, q) for _ in range(len(route) - 1)]
+
+    def compute_m_v_qchannel(self, route: list[str]) -> list[tuple[int, int]]:
+        """
+        Compute buffer-space multiplexing vector as pairs of (qubits_at_node_i, qubits_at_node_i+1)
+        based on qubit-qchannel assignment defined at topology creation.
+        """
+        return [(0, 0) for _ in range(len(route) - 1)]
 
     def install_path_on_route(
         self,
