@@ -1077,27 +1077,6 @@ class ProactiveForwarder(Application):
         # Merge the two swaps (physically already happened).
         merged_epr = new_epr.swapping(epr=other_epr)
 
-        # adjust EPR paths for dynamic EPR affectation and statistical mux
-        if merged_epr is not None and new_epr.tmp_path_ids is not None:
-            if not self.statistical_mux:
-                assert new_epr.tmp_path_ids == other_epr.tmp_path_ids
-                merged_epr.tmp_path_ids = list(new_epr.tmp_path_ids)
-            else:
-                path_ids = select_common_element(new_epr.tmp_path_ids, other_epr.tmp_path_ids)
-                if not path_ids:
-                    raise Exception(f"Cannot select path ID from {new_epr.tmp_path_ids} and {other_epr.tmp_path_ids}")
-                merged_epr.tmp_path_ids = path_ids
-
-        # adjust EPR paths for non-isolated paths
-        if merged_epr is not None and new_epr.tmp_path_ids is None:
-            endpoints = {merged_epr.src.name, merged_epr.dst.name}
-            if not endpoints.issubset(set(fib_entry["path_vector"])):
-                log.debug(
-                    f"{self.own}: IGNORED conflictual parallel swapping. "
-                    "Caused by two nodes swapping a the same EPR with two different paths."
-                )
-                return
-
         # Determine the "destination" and "partner".
         if other_epr.dst == self.own:  # destination is to the left of own node
             if merged_epr is not None:
@@ -1114,6 +1093,30 @@ class ProactiveForwarder(Application):
         assert partner is not None
         assert partner.name == msg["partner"]
         assert destination is not None
+
+        # adjust EPR paths for dynamic EPR affectation and statistical mux
+        if merged_epr is not None and new_epr.tmp_path_ids is not None:
+            if not self.statistical_mux:  # dynamic EPR affectation
+                assert new_epr.tmp_path_ids == other_epr.tmp_path_ids
+                merged_epr.tmp_path_ids = list(new_epr.tmp_path_ids)
+            else:  # statistical mux
+                path_ids = select_common_element(new_epr.tmp_path_ids, other_epr.tmp_path_ids)
+                if not path_ids:
+                    raise Exception(f"Cannot select path ID from {new_epr.tmp_path_ids} and {other_epr.tmp_path_ids}")
+                merged_epr.tmp_path_ids = path_ids
+
+        # check EPR for non-isolated paths
+        if merged_epr is not None:
+            endpoints = {merged_epr.src.name, merged_epr.dst.name}
+            if not endpoints.issubset(set(fib_entry["path_vector"])):
+                if self.isolate_paths:  # isolated-paths
+                    raise Exception("Unexpected conflictual parallel swapping")
+                else:
+                    log.debug(
+                        f"{self.own}: Ignored conflictual parallel swapping in non-isolated paths. "
+                        "Caused by two nodes swapping a the same EPR with two different paths."
+                    )
+                    return
 
         # Inform the "destination" of the swap result and new "partner".
         su_msg: SwapUpdateMsg = {

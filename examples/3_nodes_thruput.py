@@ -123,7 +123,7 @@ def generate_topology(t_coherence: float) -> Topo:
             {"node1": "ctrl", "node2": "R", "parameters": {"length": 1.0}},
             {"node1": "ctrl", "node2": "D", "parameters": {"length": 1.0}},
         ],
-        "controller": {"name": "ctrl", "apps": [ProactiveRoutingControllerApp(swapping=swapping_config)]},
+        "controller": {"name": "ctrl", "apps": [ProactiveRoutingControllerApp(routing_type="SRSP", swapping=swapping_config)]},
     }
 
 

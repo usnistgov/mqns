@@ -103,7 +103,7 @@ def generate_topology(
         cchannels.append({"node1": node1, "node2": node2, "parameters": {"length": length, "delay": length / light_speed}})
 
     # Controller and links to all nodes
-    controller = {"name": "ctrl", "apps": [ProactiveRoutingControllerApp(swapping=swapping_config)]}
+    controller = {"name": "ctrl", "apps": [ProactiveRoutingControllerApp(routing_type="SRSP", swapping=swapping_config)]}
     for node in nodes:
         cchannels.append({"node1": "ctrl", "node2": node, "parameters": {"length": 1.0, "delay": 1.0 / light_speed}})
 
