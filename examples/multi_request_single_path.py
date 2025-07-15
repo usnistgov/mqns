@@ -29,7 +29,7 @@ init_fidelity = 0.99
 p_swap = 0.5
 t_coherence = 0.01  # sec
 
-swapping_config = "swap_3_asap"  # TODO: here we know there are 3 swaps on all paths
+swapping_order = "swap_3_asap"  # TODO: here we know there are 3 swaps on all paths
 
 # Multipath settings
 routing_type = "MRSP_DYNAMIC"  # Controller installs one path for each S-D request, without qubit-path allocation
@@ -229,7 +229,7 @@ def generate_topology() -> dict:
         ],
         "controller": {
             "name": "ctrl",
-            "apps": [ProactiveRoutingControllerApp(swapping=swapping_config, routing_type=routing_type)],
+            "apps": [ProactiveRoutingControllerApp(swapping=swapping_order, routing_type=routing_type)],
         },
     }
 

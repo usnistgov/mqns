@@ -31,13 +31,13 @@ t_coherence = 0.01  # sec
 
 node_capacity = 4
 
-swapping_config = "l2r"
+swapping_policy = "r2l"
 
 # Multipath settings
 routing_type = "SRMP_STATIC"  # Controller installs multiple paths for a single S-D request, with qubit-path allocation
 
 # NOTE: Non-isolated paths does not work with SWAP-ASAP
-isolate_paths = False  # Routers can/cannot swap qubits allocated to different paths (but serving same S-D request)
+isolate_paths = True  # Routers can/cannot swap qubits allocated to different paths (but serving same S-D request)
 
 # Quantum channel lengths
 ch_S_R1 = 10
@@ -152,7 +152,7 @@ def generate_topology() -> dict:
         ],
         "controller": {
             "name": "ctrl",
-            "apps": [ProactiveRoutingControllerApp(swapping=swapping_config, routing_type=routing_type)],
+            "apps": [ProactiveRoutingControllerApp(swapping_policy=swapping_policy, routing_type=routing_type)],
         },
     }
 
