@@ -320,7 +320,6 @@ class LinkLayer(Application):
         """Schedule an event to notify the forwarder about a new entangled qubit"""
         simulator = self.simulator
 
-        qubit.purif_rounds = 0
         qubit.fsm.to_entangled()
         simulator.add_event(QubitEntangledEvent(self.own, neighbor, qubit, t=simulator.tc + delay, by=self))
 

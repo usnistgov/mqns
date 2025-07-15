@@ -194,9 +194,8 @@ def run_simulation(p: ParameterSet, seed: int) -> tuple[float, float]:
     total_decohered = 0
     for node in net.get_nodes():
         ll_app = node.get_app(LinkLayer)
-        # total_etg+=ll_app.etg_count
         total_decohered += ll_app.decoh_count
-    e2e_count = net.get_node("S").get_app(ProactiveForwarder).e2e_count
+    e2e_count = net.get_node("S").get_app(ProactiveForwarder).cnt.n_consumed
 
     return e2e_count / p.sim_duration, total_decohered / e2e_count if e2e_count > 0 else 0
 

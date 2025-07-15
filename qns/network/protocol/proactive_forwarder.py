@@ -76,10 +76,51 @@ class SwapUpdateMsg(TypedDict):
     new_epr: WernerStateEntanglement | None  # None means swapping failed
 
 
+class ProactiveForwarderCounters:
+    def __init__(self):
+        self.n_entg = 0
+        """how many elementary entanglements received from link layer"""
+        self.n_purif: list[int] = []
+        """how many entanglements completed i-th purif round (zero-based index)"""
+        self.n_eligible = 0
+        """how many entanglements completed all purif rounds and became eligible"""
+        self.n_swapped_s = 0
+        """how many swaps succeeded sequentially"""
+        self.n_swapped_p = 0
+        """how many swaps succeeded with parallel merging"""
+        self.n_consumed = 0
+        """how many entanglements were consumed (either end-to-end or in isolated links mode)"""
+        self.consumed_sum_fidelity = 0.0
+        """sum of fidelity of consumed entanglements"""
+
+    def increment_n_purif(self, i: int):
+        if len(self.n_purif) <= i:
+            self.n_purif += [0] * (i + 1 - len(self.n_purif))
+        self.n_purif[i] += 1
+
+    @property
+    def n_swapped(self) -> int:
+        """how many swaps succeeded"""
+        return self.n_swapped_s + self.n_swapped_p
+
+    @property
+    def consumed_avg_fidelity(self) -> float:
+        """average fidelity of consumed entanglements"""
+        return 0.0 if self.n_consumed == 0 else self.consumed_sum_fidelity / self.n_consumed
+
+    def __repr__(self) -> str:
+        return (
+            f"entg={self.n_entg} purif={self.n_purif} eligible={self.n_eligible} "
+            + f"swapped={self.n_swapped_s}+{self.n_swapped_p} "
+            + f"consumed={self.n_consumed} (F={self.consumed_avg_fidelity})"
+        )
+
+
 class ProactiveForwarder(Application):
-    """ProactiveForwarder is the forwarder of QNodes and receives routing instructions from the controller.
+    """
+    ProactiveForwarder is the forwarder of QNodes and receives routing instructions from the controller.
     It implements the forwarding phase (i.e., entanglement generation and swapping) while the centralized
-    routing is done at the controller. Purification will be moved to a separate network function.
+    routing is done at the controller.
     """
 
     def __init__(self, ps: float = 1.0):
@@ -120,10 +161,7 @@ class ProactiveForwarder(Application):
         ] = {}
         """manage potential parallel swappings"""
 
-        self.e2e_count = 0
-        """counts number of e2e generated EPRs"""
-        self.fidelity = 0.0
-        """sum of fidelity of generated EPRs"""
+        self.cnt = ProactiveForwarderCounters()
 
     def install(self, node: Node, simulator: Simulator):
         """called at initialization of the node"""
@@ -256,38 +294,19 @@ class ProactiveForwarder(Application):
             self.waiting_qubits.append(event)
             return
 
+        self.cnt.n_entg += 1
+
         qubit = event.qubit
         assert qubit.fsm.state == QubitState.ENTANGLED
         if qubit.path_id is not None:  # for buffer-space mux
             fib_entry = self.fib.get_entry(qubit.path_id)
             if not fib_entry:
                 raise Exception(f"No FIB entry found for path_id {qubit.path_id}")
-            if self._can_enter_purif(fib_entry, event.neighbor.name):
-                self.own.get_qchannel(event.neighbor)  # ensure qchannel exists
-                qubit.fsm.to_purif()
-                self.qubit_is_purif(qubit, fib_entry, event.neighbor)
+            qubit.purif_rounds = 0
+            qubit.fsm.to_purif()
+            self.qubit_is_purif(qubit, fib_entry, event.neighbor)
         else:  # for statistical mux
             log.debug("Qubit not allocated to a path. Statistical mux not supported yet.")
-
-    def _can_enter_purif(self, fib_entry: FIBEntry, partner: str) -> bool:
-        """Evaluate if a qubit is eligible for purification.
-        Compares the local node's swap rank to its partner's in the given path.
-        A qubit is eligible for purification if the partner's swap rank is greater
-        than or equal to the local node's rank.
-
-        Parameters
-        ----------
-            fib_entry (Dict): FIB entry containing the path and swap sequence.
-            partner (str): Name of the partner node to compare against.
-
-        Returns
-        -------
-            bool: True if eligible for swap/purification, False otherwise.
-
-        """
-        _, partner_rank = find_index_and_swapping_rank(fib_entry, partner)
-        _, own_rank = find_index_and_swapping_rank(fib_entry, self.own.name)
-        return partner_rank >= own_rank
 
     def qubit_is_purif(self, qubit: MemoryQubit, fib_entry: FIBEntry, partner: QNode):
         """
@@ -310,6 +329,9 @@ class ProactiveForwarder(Application):
 
         partner_idx, partner_rank = find_index_and_swapping_rank(fib_entry, partner.name)
         own_idx, own_rank = find_index_and_swapping_rank(fib_entry, self.own.name)
+        if own_rank > partner_rank:
+            # swapping order disallows initiating purif / swap / consumption
+            return
 
         segment_name = f"{self.own.name}-{partner.name}" if own_idx < partner_idx else f"{partner.name}-{self.own.name}"
         want_rounds = fib_entry["purification_scheme"].get(segment_name, 0)
@@ -319,6 +341,7 @@ class ProactiveForwarder(Application):
         )
 
         if qubit.purif_rounds == want_rounds:
+            self.cnt.n_eligible += 1
             qubit.purif_rounds = 0
             qubit.fsm.to_eligible()
             self.qubit_is_eligible(qubit, fib_entry)
@@ -437,7 +460,7 @@ class ProactiveForwarder(Application):
         assert epr1.name is not None
 
         for mq in (mq0, mq1):
-            assert mq.fsm.state in (QubitState.ENTANGLED, QubitState.PURIF)
+            assert mq.fsm.state == QubitState.PURIF
             assert mq.purif_rounds == msg["round"]
 
         assert msg["partner"] == self.own.name
@@ -455,9 +478,11 @@ class ProactiveForwarder(Application):
         )
 
         if result:
+            self.cnt.increment_n_purif(mq0.purif_rounds)
             mq0.purif_rounds += 1
             self.memory.update(old_qm=epr0.name, new_qm=epr0)
             mq0.fsm.to_purif()
+            self.qubit_is_purif(mq0, fib_entry, primary)
         else:
             # in case of purification failure, release mq0
             self.memory.read(address=mq0.addr)  # destructive reading
@@ -510,11 +535,11 @@ class ProactiveForwarder(Application):
             return
 
         # purif succeeded
-        self.memory.update(old_qm=epr.name, new_qm=epr)
+        self.cnt.increment_n_purif(qubit.purif_rounds)
         qubit.purif_rounds += 1
+        self.memory.update(old_qm=epr.name, new_qm=epr)
         qubit.fsm.to_purif()
-        partner = self.own.network.get_node(msg["partner"])
-        self.qubit_is_purif(qubit, fib_entry, partner)
+        self.qubit_is_purif(qubit, fib_entry, self.own.network.get_node(msg["partner"]))
 
     CLASSIC_SIGNALING_HANDLERS["PURIF_RESPONSE"] = handle_purif_response
 
@@ -542,7 +567,7 @@ class ProactiveForwarder(Application):
             return
 
         if is_isolated_links(fib_entry):  # no swapping in isolated links
-            self.consume_and_release(qubit, e2e=False)
+            self.consume_and_release(qubit)
             return
 
         route = fib_entry["path_vector"]
@@ -556,28 +581,6 @@ class ProactiveForwarder(Application):
         res = self._select_eligible_qubit(exc_qchannel=qubit.qchannel.name, path_id=fib_entry["path_id"])
         if res:  # do swapping
             self.do_swapping(qubit, res, fib_entry)
-
-    def consume_and_release(self, qubit: MemoryQubit, *, e2e=True):
-        """
-        Consume an entangled qubit.
-
-        Args:
-            e2e: If true, this is an end node and the qubit is entangled with the other end node.
-                 Relevant counters are incremented.
-        """
-        simulator = self.simulator
-
-        _, qm = self.memory.read(address=qubit.addr, must=True)
-        assert isinstance(qm, WernerStateEntanglement)
-        assert qm.src is not None
-        assert qm.dst is not None
-        qubit.fsm.to_release()
-        log.debug(f"{self.own}: consume EPR: {qm.name} -> {qm.src.name}-{qm.dst.name} | F={qm.fidelity}")
-
-        if e2e:
-            self.e2e_count += 1
-            self.fidelity += qm.fidelity
-        simulator.add_event(QubitReleasedEvent(self.own, qubit, t=simulator.tc, by=self))
 
     def _select_eligible_qubit(self, exc_qchannel: str, path_id: int | None = None) -> MemoryQubit | None:
         """Searches for an eligible qubit in memory that matches the specified path ID and
@@ -656,6 +659,8 @@ class ProactiveForwarder(Application):
         log.debug(f"{self.own}: SWAP {'SUCC' if new_epr else 'FAILED'} | {prev_qubit} x {next_qubit}")
 
         if new_epr is not None:  # swapping succeeded
+            self.cnt.n_swapped_s += 1
+
             # Update properties in newly generated EPR.
             new_epr.src = prev_partner
             new_epr.dst = next_partner
@@ -754,7 +759,7 @@ class ProactiveForwarder(Application):
             log.debug(f"### {self.own}: VERIFY -> EPR update {updated}")
             return
 
-        if maybe_purif and self._can_enter_purif(fib_entry, msg["partner"]):
+        if maybe_purif:
             # If own rank is higher than sender rank but lower than new partner rank,
             # it is our turn to purify the qubit and progress toward swapping.
             qubit.purif_rounds = 0
@@ -826,6 +831,9 @@ class ProactiveForwarder(Application):
         assert partner.name == msg["partner"]
         assert destination is not None
 
+        if merged_epr is not None:
+            self.cnt.n_swapped_p += 1
+
         # Inform the "destination" of the swap result and new "partner".
         su_msg: SwapUpdateMsg = {
             "cmd": "SWAP_UPDATE",
@@ -842,6 +850,23 @@ class ProactiveForwarder(Application):
         if own_rank == p_rank and merged_epr is not None:
             assert new_epr.name is not None
             self.parallel_swappings[new_epr.name] = (new_epr, other_epr, merged_epr)
+
+    def consume_and_release(self, qubit: MemoryQubit):
+        """
+        Consume an entangled qubit.
+        """
+        simulator = self.simulator
+
+        _, qm = self.memory.read(address=qubit.addr, must=True)
+        assert isinstance(qm, WernerStateEntanglement)
+        assert qm.src is not None
+        assert qm.dst is not None
+        qubit.fsm.to_release()
+        log.debug(f"{self.own}: consume EPR: {qm.name} -> {qm.src.name}-{qm.dst.name} | F={qm.fidelity}")
+
+        self.cnt.n_consumed += 1
+        self.cnt.consumed_sum_fidelity += qm.fidelity
+        simulator.add_event(QubitReleasedEvent(self.own, qubit, t=simulator.tc, by=self))
 
     def send_msg(self, dest: Node, msg: Any, route: list[str]):
         own_idx = route.index(self.own.name)

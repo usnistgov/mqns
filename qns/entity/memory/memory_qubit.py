@@ -27,10 +27,33 @@ if TYPE_CHECKING:
 
 class QubitState(Enum):
     ENTANGLED = auto()
+    """
+    Qubit is half of an elementary entanglement delivered from link layer
+    """
     PURIF = auto()
+    """
+    Qubit is used by forwarder for zero or more rounds of purification.
+    `qubit.qubit_rounds` indicates how many purification rounds have been completed.
+
+    This state is set on the qubit at both primary and non-primary node of a purification segment,
+    but only the primary node is permitted to to initiate purification.
+    """
     PENDING = auto()
+    """
+    The forwarder has initiated purification of the qubit with its partner on a segment.
+    `qubit.qubit_rounds` indicates how many purification rounds have been completed, excluding the current round.
+    """
     ELIGIBLE = auto()
+    """
+    Qubit has completed the required rounds of purification and ready for swapping or end-to-end consumption.
+
+    This state is set on the qubit only if own node has a swapping rank no less than the other node in the entanglement.
+    """
     RELEASE = auto()
+    """
+    Qubit is not used by the forwarder.
+    The link layer may generate a new elementary entanglement into this qubit.
+    """
 
 
 class QubitFSM:
