@@ -121,14 +121,16 @@ class LinkLayer(Application):
             return True
         return False
 
-    def handle_active_channel(self, qchannel: QuantumChannel, next_hop: QNode):
+    def handle_active_channel(self, qchannel: QuantumChannel, next_hop: QNode, path_id: int | None = None):
         """This method starts EPR generation over the given quantum channel and the specified next-hop.
         It performs qubit reservation, and for each available qubit, an EPR creation event is scheduled
         with a staggered delay based on EPR generation sampling.
 
         Args:
-            qchannel (QuantumChannel): The quantum channel over which entanglement is to be attempted.
-            next_hop (QNode): The neighboring node with which to initiate the negotiation.
+            qchannel: The quantum channel over which entanglement is to be attempted.
+            next_hop: The neighboring node with which to initiate the negotiation.
+            path_id: The path_id to restict attempts to path-allocated qubits only.
+                    Needed in multipath where a channel may be activated while not all qubits have been allocated to paths.
 
         Raises:
             Exception: If a qubit assigned to the channel is unexpectedly already associated
@@ -142,8 +144,10 @@ class LinkLayer(Application):
         simulator = self.simulator
         qubits = self.memory.get_channel_qubits(ch_name=qchannel.name)
         log.debug(f"{self.own}: {qchannel.name} has assigned qubits: {qubits}")
-        # log.debug(f"{self.own}: handling active qchannel for path: {path_id}")
         for i, (qb, data) in enumerate(qubits):
+            log.debug(f"{self.own}: {qb.path_id, path_id}")
+            if qb.path_id != path_id:
+                continue
             if qb.active is None:
                 if data is None:
                     simulator.add_event(
@@ -187,7 +191,7 @@ class LinkLayer(Application):
 
         key = uuid.uuid4().hex
         assert key not in self.pending_init_reservation
-        log.debug(f"{self.own}: start reservation with key={key}")
+        log.debug(f"{self.own}: start reservation | key = {key} | path = {qubit.path_id}")
         qubit.active = key
         self.pending_init_reservation[key] = (qchannel, next_hop, qubit.addr)
         msg: ReserveMsg = {"cmd": "RESERVE_QUBIT", "path_id": qubit.path_id, "key": key}
@@ -264,9 +268,8 @@ class LinkLayer(Application):
         epr.attempts = attempts
         epr.key = key
 
-        log.debug(f"{self.own}: send half-EPR {epr.name} to {next_hop} | reservation key {epr.key}")
-
         local_qubit = self.memory.write(qm=epr, address=address)
+        log.debug(f"{self.own}: send half-EPR {epr.name} to {next_hop} | key {epr.key} | path {local_qubit.path_id}")
 
         if not local_qubit:
             raise Exception(f"{self.own}: (sender) Failed to store EPR {epr.name}")
@@ -303,10 +306,7 @@ class LinkLayer(Application):
         assert isinstance(epr, WernerStateEntanglement)
         assert epr.decoherence_time is not None
 
-        log.debug(
-            f"{self.own}: recv half-EPR {epr.name} from {from_node} on qchannel {event.qchannel.name}"
-            f" | reservation key {epr.key}"
-        )
+        log.debug(f"{self.own}: recv half-EPR {epr.name} from {from_node} | reservation key {epr.key}")
 
         if epr.decoherence_time <= self.simulator.tc:
             raise Exception(f"{self.own}: Decoherence time already passed | {epr}")
@@ -334,7 +334,7 @@ class LinkLayer(Application):
             if qchannel.name not in self.active_channels:
                 self.active_channels[qchannel.name] = (qchannel, event.neighbor, [event.path_id])
                 if self.own.timing_mode == TimingModeEnum.ASYNC:
-                    self.handle_active_channel(qchannel, event.neighbor)
+                    self.handle_active_channel(qchannel, event.neighbor, event.path_id)
 
             else:  # happens when installing multiple paths
                 qchannel, neighbor, path_ids = self.active_channels[qchannel.name]
@@ -343,7 +343,7 @@ class LinkLayer(Application):
                     self.active_channels[qchannel.name] = (qchannel, neighbor, upd_path_ids)
                     log.debug(f"{self.own}: add path {event.path_id} to qchannel {qchannel.name}")
                     if self.own.timing_mode == TimingModeEnum.ASYNC:
-                        self.handle_active_channel(qchannel, event.neighbor)
+                        self.handle_active_channel(qchannel, event.neighbor, event.path_id)
                 elif event.path_id is not None:
                     raise Exception(f"Qchannel {qchannel.name} for path {event.path_id} already handled")
                 elif event.path_id is None:
@@ -406,7 +406,7 @@ class LinkLayer(Application):
             # log.debug(f"{self.own}: rcvd RESERVE_QUBIT {key}")
             avail_qubits = self.memory.search_available_qubits(ch_name=qchannel.name, path_id=path_id)
             if avail_qubits:
-                # log.debug(f"{self.own}: direct found available qubit for {key}")
+                # log.debug(f"{self.own}: direct found available qubit | key = {key}")
                 avail_qubits[0].active = key
                 msg: ReserveMsg = {"cmd": "RESERVE_QUBIT_OK", "path_id": path_id, "key": key}
                 cchannel.send(ClassicPacket(msg, src=self.own, dest=from_node), next_hop=from_node)
@@ -414,7 +414,7 @@ class LinkLayer(Application):
                 # log.debug(f"{self.own}: didn't find available qubit for {key}")
                 self.fifo_reservation_req.append((key, path_id, cchannel, from_node, qchannel))
         elif cmd == "RESERVE_QUBIT_OK":
-            # log.debug(f"{self.own}: returned qubit available with {key}")
+            # log.debug(f"{self.own}: returned qubit available | key = {key}")
             (qchannel, next_hop, address) = self.pending_init_reservation[key]
             self.generate_entanglement(qchannel=qchannel, next_hop=next_hop, address=address, key=key)
             self.pending_init_reservation.pop(key, None)
@@ -437,12 +437,12 @@ class LinkLayer(Application):
             return
 
         (key, path_id, cchannel, from_node, qchannel) = self.fifo_reservation_req[0]
-        log.debug(f"{self.own}: handle pending negoc {key}")
+        # log.debug(f"{self.own}: handle pending reservation | key = {key}")
         avail_qubits = self.memory.search_available_qubits(ch_name=qchannel.name, path_id=path_id)
         if not avail_qubits:
             return
 
-        log.debug(f"{self.own}: found available qubit for {key}")
+        # log.debug(f"{self.own}: found available qubit | key = {key}")
         avail_qubits[0].active = key
         msg: ReserveMsg = {"cmd": "RESERVE_QUBIT_OK", "path_id": path_id, "key": key}
         cchannel.send(ClassicPacket(msg, src=self.own, dest=from_node), next_hop=from_node)

@@ -54,6 +54,7 @@ swapping_settings = {
     # for 4-repeater
     "swap_4_asap": [1, 0, 0, 0, 0, 1],
     "swap_4_baln": [3, 0, 1, 0, 2, 3],
+    "swap_4_baln2": [3, 2, 0, 1, 0, 3],
     "swap_4_l2r": [4, 0, 1, 2, 3, 4],
     "swap_4_r2l": [4, 3, 2, 1, 0, 4],
     "swap_4_vora_uniform": [4, 0, 3, 1, 2, 4],  # equiv. [3,0,2,0,1,3]
@@ -87,7 +88,8 @@ class ProactiveRoutingControllerApp(Application):
     def __init__(
         self,
         *,
-        swapping: str | list[int],
+        swapping: str | list[int] = [],
+        swapping_policy: str | None = None,
         purif: dict[str, int] = {},
         routing_type: str | None = None,
         qubit_allocation: QubitAllocationType = QubitAllocationType.FOLLOW_QCHANNEL,
@@ -97,6 +99,8 @@ class ProactiveRoutingControllerApp(Application):
             swapping: swapping order to use for the S-D path.
                       If this is a string, it must be a key in `swapping_settings` array.
                       If this is a list of ints, it is the swapping order vector.
+            swapping_policy: swapping order or policy without specific path length.
+                    Accepted values: `l2r`, `r2l`, `baln`, `asap`.
             purif: purification settings.
                    Each key identifies a qchannel along the S-D path, written like "S-R1".
                    Each value indicates the number of purification rounds at this hop.
@@ -122,6 +126,8 @@ class ProactiveRoutingControllerApp(Application):
             self.swapping_order = swapping if isinstance(swapping, list) else swapping_settings[swapping]
         except KeyError:
             raise KeyError(f"{self.own}: Swapping {swapping} not configured")
+
+        self.swapping_policy = swapping_policy
 
         self.purif = purif
 
@@ -171,8 +177,8 @@ class ProactiveRoutingControllerApp(Application):
         """
         self.net.build_route()
 
-        src = self.net.get_node("S")
-        dst = self.net.get_node("D")
+        src = self.net.get_node(src)
+        dst = self.net.get_node(dst)
 
         route_result = self.net.query_route(src, dst)
         if len(route_result) == 0:
@@ -192,9 +198,16 @@ class ProactiveRoutingControllerApp(Application):
             m_v = self.compute_m_v_qchannel(route)
             mux = "B"
 
-        self.install_path_on_route(
-            route, path_id=path_id, req_id=req_id, m_v=m_v, mux=mux, swap=self.swapping_order, purif=self.purif
-        )
+        # Use explicit swapping order is given
+        if self.swapping_order:
+            swap = self.swapping_order
+        else:  # define order from policy and path length
+            swapping_order = f"swap_{len(path_nodes) - 2}_{self.swapping_policy}"
+            if swapping_order not in swapping_settings:
+                raise Exception(f"Swapping order {swapping_order} is needed but not found in swapping settings.")
+            swap = swapping_settings[swapping_order]
+
+        self.install_path_on_route(route, path_id=path_id, req_id=req_id, m_v=m_v, mux=mux, swap=swap, purif=self.purif)
 
     def do_multiple_static_paths(self):
         """Install multiple static paths between nodes "S" (source) and "D" (destination) of the network topology.
@@ -249,45 +262,42 @@ class ProactiveRoutingControllerApp(Application):
             route = [n.name for n in path_nodes]
             log.debug(f"{self.own}: Computed path #{path_id}: {route}")
 
-            # Define swap config
-            swap_config = f"swap_{len(path_nodes) - 2}_{self.swapping}"
-            if swap_config not in swapping_settings:
-                raise Exception(f"Swap config {swap_config} is needed but not found in swapping settings.")
+            # Use explicit swapping order is given
+            if self.swapping_order:
+                swap = self.swapping_order
+            else:  # define order from policy and path length
+                swapping_order = f"swap_{len(path_nodes) - 2}_{self.swapping_policy}"
+                if swapping_order not in swapping_settings:
+                    raise Exception(f"Swapping order {swapping_order} is needed but not found in swapping settings.")
+                swap = swapping_settings[swapping_order]
 
             # Compute buffer-space multiplexing vector as pairs of (qubits_at_node_i, qubits_at_node_i+1)
             # The qubits are divided among all paths that share the qchannel
             m_v = []
-            for i, node in enumerate(path_nodes):
-                node_obj = self.net.get_node(node.name)
-                left_ch_qubits = 0
-                right_ch_qubits = 0
+            for i in range(len(path_nodes) - 1):
+                node_a = path_nodes[i].name
+                node_b = path_nodes[i + 1].name
 
-                # Left channel
-                if i > 0:
-                    prev_node = path_nodes[i - 1].name
-                    left_ch_name = f"q_{prev_node},{node.name}"
-                    if left_ch_name not in qchannel_names:
-                        raise Exception(f"Qchannel not found: {left_ch_name}")
-                    full_qubits = node_obj.memory.get_channel_qubits(left_ch_name)
-                    share = qchannel_use_count[left_ch_name]
-                    left_ch_qubits = len(full_qubits) // share if share > 0 else len(full_qubits)
+                node_a_obj = self.net.get_node(node_a)
+                node_b_obj = self.net.get_node(node_b)
 
-                # Right channel
-                if i < len(path_nodes) - 1:
-                    next_node = path_nodes[i + 1].name
-                    right_ch_name = f"q_{node.name},{next_node}"
-                    if right_ch_name not in qchannel_names:
-                        raise Exception(f"Qchannel not found: {right_ch_name}")
-                    full_qubits = node_obj.memory.get_channel_qubits(right_ch_name)
-                    share = qchannel_use_count[right_ch_name]
-                    right_ch_qubits = len(full_qubits) // share if share > 0 else len(full_qubits)
+                # From node_i
+                ch_name = f"q_{node_a},{node_b}"
+                if ch_name not in qchannel_names:
+                    raise Exception(f"Qchannel not found: {ch_name}")
+                shared = qchannel_use_count[ch_name]
 
-                m_v.append((left_ch_qubits, right_ch_qubits))
+                full_qubits_a = node_a_obj.memory.get_channel_qubits(ch_name)
+                qubits_a = len(full_qubits_a) // shared if shared > 0 else len(full_qubits_a)
+
+                # From node_i+1
+                full_qubits_b = node_b_obj.memory.get_channel_qubits(ch_name)
+                qubits_b = len(full_qubits_b) // shared if shared > 0 else len(full_qubits_b)
+
+                m_v.append((qubits_a, qubits_b))
 
             # Send install instruction to each node on this path
-            self.install_path_on_route(
-                route, path_id=path_id, req_id=0, m_v=m_v, mux="B", swap=self.swapping_settings[swap_config], purif={}
-            )
+            self.install_path_on_route(route, path_id=path_id, req_id=0, m_v=m_v, mux="B", swap=swap, purif={})
 
     def do_multirequest_dynamic_paths(self):
         """Install one path between S1 and D1 and one path between S2 and D2 of the network topology.

@@ -35,7 +35,15 @@ class ManageActiveChannels(Event):
     """
 
     def __init__(
-        self, node: QNode, neighbor: QNode, type: TypeEnum, path_id: int, *, t: Time, name: str | None = None, by: Any = None
+        self,
+        node: QNode,
+        neighbor: QNode,
+        type: TypeEnum,
+        path_id: int | None = None,
+        *,
+        t: Time,
+        name: str | None = None,
+        by: Any = None,
     ):
         super().__init__(t=t, name=name, by=by)
         self.node = node

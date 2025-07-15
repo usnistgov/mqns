@@ -286,7 +286,7 @@ class QuantumMemory(Entity):
 
         idx = -1
         for i, (q, v) in enumerate(self._storage):
-            if v is None and (key is None or key == q.active):  # Check if the slot is empty
+            if v is None and (key is None or key == q.active):
                 if (path_id is None or q.path_id == path_id) and (address is None or q.addr == address):
                     idx = i
                     break

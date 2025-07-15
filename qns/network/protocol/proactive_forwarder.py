@@ -178,6 +178,8 @@ class ProactiveForwarder(Application):
         if msg["cmd"] not in self.CLASSIC_SIGNALING_HANDLERS:
             return False
 
+        log.debug(f"{self.own.name}: {msg}")
+
         path_id: int = msg["path_id"]
         fib_entry = self.fib.get_entry(path_id)
         if not fib_entry:
@@ -247,7 +249,8 @@ class ProactiveForwarder(Application):
 
         # instruct LinkLayer to start generating EPRs on the qchannel toward the right neighbor
         if r_neighbor:
-            simulator.add_event(ManageActiveChannels(self.own, r_neighbor, TypeEnum.ADD, path_id, t=simulator.tc, by=self))
+            p = path_id if instructions["mux"] == "B" else None
+            simulator.add_event(ManageActiveChannels(self.own, r_neighbor, TypeEnum.ADD, p, t=simulator.tc, by=self))
 
         # TODO: remove path, type=TypeEnum.REMOVE
         return True
@@ -317,7 +320,7 @@ class ProactiveForwarder(Application):
         qubit = event.qubit
         assert qubit.fsm.state == QubitState.ENTANGLED
         if qubit.path_id is not None:  # for buffer-space mux
-            log.debug(f"{self.own}: Qubit statically allocated to path {qubit.path_id}")
+            # log.debug(f"{self.own}: Qubit statically allocated to path {qubit.path_id}")
             fib_entry = self.fib.get_entry(qubit.path_id)
             if not fib_entry:
                 raise Exception(f"No FIB entry found for path_id {qubit.path_id}")
@@ -412,6 +415,7 @@ class ProactiveForwarder(Application):
                 return True
             return False
 
+        log.debug(f"{self.own}: {fib_entry} , {partner}")
         _, partner_rank = find_index_and_swapping_rank(fib_entry, partner)
         _, own_rank = find_index_and_swapping_rank(fib_entry, self.own.name)
         return partner_rank >= own_rank
@@ -697,6 +701,7 @@ class ProactiveForwarder(Application):
                 if not self.isolate_paths:
                     # if not isolated paths -> include other paths serving the same request
                     possible_path_ids = self.request_paths_map[fib_entry["request_id"]]
+                    log.debug(f"{self.own}: path ids {possible_path_ids}")
 
                 res = self._select_eligible_qubit(
                     exc_qchannel=qubit.qchannel.name, exc_direction=qubit.path_direction, path_id=possible_path_ids
@@ -735,32 +740,33 @@ class ProactiveForwarder(Application):
                 fib_entry = self.fib.get_entry(random.choice(path_ids))  # no need to be coordinated accross the path
 
             # Get both qubits
-            other_qubit, other_epr = self.memory.get(address=res.addr)
-            this_qubit, this_epr = self.memory.get(address=qubit.addr)
+            # other_qubit, other_epr = self.memory.get(address=res.addr)
+            # this_qubit, this_epr = self.memory.get(address=qubit.addr)
 
             other_fib_entry = fib_entry  # for all other cases except non-isolated paths
 
             # for non-isolated paths
-            if res.path_id is not None and qubit.path_id != res.path_id and not self.isolate_paths:
-                endpoints = {this_epr.src.name, this_epr.dst.name, other_epr.src.name, other_epr.dst.name}
+            # if res.path_id is not None and qubit.path_id != res.path_id and not self.isolate_paths:
+            #     log.debug(f"{self.own}: swapping in non-isolated paths {(qubit.path_id, res.path_id)}")
+            #     endpoints = {this_epr.src.name, this_epr.dst.name, other_epr.src.name, other_epr.dst.name}
 
-                route = fib_entry["path_vector"]
-                fib_entry2 = self.fib.get_entry(res.path_id)
-                route2 = fib_entry2["path_vector"]
+            #     route = fib_entry["path_vector"]
+            #     fib_entry2 = self.fib.get_entry(res.path_id)
+            #     route2 = fib_entry2["path_vector"]
 
-                # Check if both partner nodes are in each route
-                in_fib1 = endpoints.issubset(set(route))
-                in_fib2 = endpoints.issubset(set(route2))
+            #     # Check if both partner nodes are in each route
+            #     in_fib1 = endpoints.issubset(set(route))
+            #     in_fib2 = endpoints.issubset(set(route2))
 
-                if in_fib1 and not in_fib2:
-                    other_fib_entry = fib_entry
-                elif in_fib2 and not in_fib1:
-                    fib_entry = fib_entry2
-                    other_fib_entry = fib_entry
-                elif in_fib1 and in_fib2:
-                    other_fib_entry = fib_entry2
-                else:
-                    raise Exception("Cannot find EPR endpoints in installed paths")
+            #     if in_fib1 and not in_fib2:
+            #         other_fib_entry = fib_entry
+            #     elif in_fib2 and not in_fib1:
+            #         fib_entry = fib_entry2
+            #         other_fib_entry = fib_entry
+            #     elif in_fib1 and in_fib2:
+            #         other_fib_entry = fib_entry2
+            #     else:
+            #         raise Exception("Cannot find EPR endpoints in installed paths")
 
             self.do_swapping(qubit, res, fib_entry, other_fib_entry, path_ids)
 
@@ -824,7 +830,7 @@ class ProactiveForwarder(Application):
             tmp_path_id=tmp_path_id,
         )
         if qubits:
-            log.debug(f"{self.own}: eligible qubits: {qubits}")
+            # log.debug(f"{self.own}: eligible qubits: {qubits}")
             return qubits[0][0]  # pick up one qubit
             # TODO: Other qubit selection
             # (for statistical multiplexing, multipath, quasi-local swapping, etc.)
@@ -889,10 +895,7 @@ class ProactiveForwarder(Application):
         next_own_idx, next_own_rank = find_index_and_swapping_rank(next_fib_entry, self.own.name)
 
         prev_route = prev_fib_entry["path_vector"]
-        # prev_swap_sequence = prev_fib_entry["swap_sequence"]
-
         next_route = next_fib_entry["path_vector"]
-        # next_swap_sequence = next_fib_entry["swap_sequence"]
 
         # Save ch_index metadata field onto elementary EPR.
         if not prev_epr.orig_eprs:
@@ -938,9 +941,7 @@ class ProactiveForwarder(Application):
         ):
             su_msg: SwapUpdateMsg = {
                 "cmd": "SWAP_UPDATE",
-                # "path_id": fib_entry["path_id"],
-                # For multipath non-isolated: use qubit path ID to make sure the receiving node knows the path
-                "path_id": qubit.path_id,  # should be equivalent to using fib_entry.path_id
+                "path_id": fib_entry["path_id"],
                 "swapping_node": self.own.name,
                 "partner": new_partner.name,
                 "epr": cast(str, old_epr.name),
@@ -1109,17 +1110,17 @@ class ProactiveForwarder(Application):
                 merged_epr.tmp_path_ids = path_ids
 
         # check EPR for non-isolated paths
-        if merged_epr is not None:
-            endpoints = {merged_epr.src.name, merged_epr.dst.name}
-            if not endpoints.issubset(set(fib_entry["path_vector"])):
-                if self.isolate_paths:  # isolated-paths
-                    raise Exception("Unexpected conflictual parallel swapping")
-                else:
-                    log.debug(
-                        f"{self.own}: Ignored conflictual parallel swapping in non-isolated paths. "
-                        "Caused by two nodes swapping a the same EPR with two different paths."
-                    )
-                    return
+        # if merged_epr is not None:
+        #     endpoints = {merged_epr.src.name, merged_epr.dst.name}
+        #     if not endpoints.issubset(set(fib_entry["path_vector"])):
+        #         if self.isolate_paths:  # isolated-paths
+        #             raise Exception("Unexpected conflictual parallel swapping")
+        #         else:
+        #             log.debug(
+        #                 f"{self.own}: Ignored conflictual parallel swapping in non-isolated paths. "
+        #                 "Caused by two nodes swapping a the same EPR with two different paths."
+        #             )
+        #             return
 
         # Inform the "destination" of the swap result and new "partner".
         su_msg: SwapUpdateMsg = {
