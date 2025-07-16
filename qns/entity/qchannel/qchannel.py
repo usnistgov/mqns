@@ -25,6 +25,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from enum import Enum, auto
 from typing import Any
 
 from qns.entity.base_channel import BaseChannel, BaseChannelInitKwargs
@@ -39,7 +40,19 @@ except ImportError:
     from typing_extensions import Unpack
 
 
+class LinkType(Enum):
+    DIM_BK_SEQ = auto()  # detection-in-midpoint with simple Barrett-kok protocol as implemented in Sequence
+    DIM_BK = auto()  # detection-in-midpoint with simple Barrett-kok protocol
+    SR = auto()  # sender-receiver
+    SIM = auto()  # source-in-midpoint
+    DIM_BK_TD = auto()  # detection-in-midpoint with simple Barrett-kok protocol and quantum transduction
+    SR_TD = auto()  # sender-receiver with quantum transduction
+    SIM_TD = auto()  # source-in-midpoint with quantum transduction
+
+
 class QuantumChannelInitKwargs(BaseChannelInitKwargs, total=False):
+    link_architecture: LinkType
+    """Type of link architecture for elementary EPR generation"""
     decoherence_rate: float
     """Decoherence rate passed to transfer_error_model."""
     transfer_error_model_args: dict
@@ -51,6 +64,7 @@ class QuantumChannel(BaseChannel[QNode]):
 
     def __init__(self, name: str, **kwargs: Unpack[QuantumChannelInitKwargs]):
         super().__init__(name, **kwargs)
+        self.link_architecture = kwargs.get("link_architecture", LinkType.DIM_BK_SEQ)
         self.decoherence_rate = kwargs.get("decoherence_rate", 0.0)
         self.transfer_error_model_args = kwargs.get("transfer_error_model_args", {})
 
