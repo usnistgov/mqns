@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from qns.entity.qchannel import LinkType
 from qns.network import QuantumNetwork, TimingModeEnum
 from qns.network.protocol import LinkLayer, ProactiveForwarder, ProactiveRoutingControllerApp
 from qns.network.route import DijkstraRouteAlgorithm
@@ -107,13 +108,13 @@ def generate_topology(t_coherence: float) -> Topo:
                 "node1": "S",
                 "node2": "R",
                 "capacity": channel_qubits,
-                "parameters": {"length": ch_1},
+                "parameters": {"length": ch_1, "link_architecture": LinkType.DIM_BK_SEQ},
             },
             {
                 "node1": "R",
                 "node2": "D",
                 "capacity": channel_qubits,
-                "parameters": {"length": ch_2},
+                "parameters": {"length": ch_2, "link_architecture": LinkType.DIM_BK_SEQ},
             },
         ],
         "cchannels": [

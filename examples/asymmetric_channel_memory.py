@@ -91,7 +91,7 @@ def generate_topology(
                 "node2": node2,
                 "capacity1": cap1,
                 "capacity2": cap2,
-                "parameters": {"length": length, "delay": length / light_speed},
+                "parameters": {"length": length},
             }
         )
 
@@ -100,12 +100,12 @@ def generate_topology(
     for i in range(len(nodes) - 1):
         node1, node2 = nodes[i], nodes[i + 1]
         length = channel_lengths[i]
-        cchannels.append({"node1": node1, "node2": node2, "parameters": {"length": length, "delay": length / light_speed}})
+        cchannels.append({"node1": node1, "node2": node2, "parameters": {"length": length}})
 
     # Controller and links to all nodes
     controller = {"name": "ctrl", "apps": [ProactiveRoutingControllerApp(routing_type="SRSP", swapping=swapping_config)]}
     for node in nodes:
-        cchannels.append({"node1": "ctrl", "node2": node, "parameters": {"length": 1.0, "delay": 1.0 / light_speed}})
+        cchannels.append({"node1": "ctrl", "node2": node, "parameters": {"length": 1.0}})
 
     return {"qnodes": qnodes, "qchannels": qchannels, "cchannels": cchannels, "controller": controller}
 

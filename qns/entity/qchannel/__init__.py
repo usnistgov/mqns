@@ -17,6 +17,13 @@
 
 from qns.entity.base_channel import NextHopNotConnectionException
 from qns.entity.qchannel.losschannel import QubitLossChannel
-from qns.entity.qchannel.qchannel import QuantumChannel, QuantumChannelInitKwargs, RecvQubitPacket
+from qns.entity.qchannel.qchannel import LinkType, QuantumChannel, QuantumChannelInitKwargs, RecvQubitPacket
 
-__all__ = ["QuantumChannel", "QuantumChannelInitKwargs", "QubitLossChannel", "RecvQubitPacket", "NextHopNotConnectionException"]
+__all__ = [
+    "QuantumChannel",
+    "LinkType",
+    "QuantumChannelInitKwargs",
+    "QubitLossChannel",
+    "RecvQubitPacket",
+    "NextHopNotConnectionException",
+]
