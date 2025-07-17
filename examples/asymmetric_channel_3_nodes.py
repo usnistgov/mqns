@@ -38,8 +38,9 @@ swapping_config = "swap_1"
 def generate_topology(
     nodes: list[str],
     mem_capacities: list[int],
-    channel_lengths: list[float],
-    capacities: list[tuple[int, int]],
+    ch_lengths: list[float],
+    ch_capacities: list[tuple[int, int]],
+    link_architectures: list[str],
     t_coherence: float,
 ) -> dict:
     """
@@ -49,17 +50,19 @@ def generate_topology(
         nodes (list[str]): List of node names.
         mem_capacities (list[int]): Number of qubits per node.
         channel_lengths (list[float]): Lengths of quantum channels between adjacent nodes.
-        capacities (list[tuple[int, int]]): (left, right) qubit allocation per qchannel.
+        ch_capacities (list[tuple[int, int]]): (left, right) qubit allocation per qchannel.
 
     Returns:
         dict: A topology dictionary.
     """
     if len(nodes) != len(mem_capacities):
         raise ValueError("mem_capacities must match number of nodes")
-    if len(channel_lengths) != len(nodes) - 1:
-        raise ValueError("channel_lengths must be len(nodes) - 1")
-    if len(capacities) != len(nodes) - 1:
-        raise ValueError("capacities must be len(nodes) - 1")
+    if len(ch_lengths) != len(nodes) - 1:
+        raise ValueError("ch_lengths must be len(nodes) - 1")
+    if len(ch_capacities) != len(nodes) - 1:
+        raise ValueError("ch_capacities must be len(nodes) - 1")
+    if len(link_architectures) != len(nodes) - 1:
+        raise ValueError("link_architectures must be len(nodes) - 1")
 
     # Create QNodes
     qnodes = []
@@ -89,8 +92,9 @@ def generate_topology(
     qchannels = []
     for i in range(len(nodes) - 1):
         node1, node2 = nodes[i], nodes[i + 1]
-        length = channel_lengths[i]
-        cap1, cap2 = capacities[i]
+        length = ch_lengths[i]
+        cap1, cap2 = ch_capacities[i]
+        link_arch = link_architectures[i]
 
         qchannels.append(
             {
@@ -98,7 +102,7 @@ def generate_topology(
                 "node2": node2,
                 "capacity1": cap1,
                 "capacity2": cap2,
-                "parameters": {"length": length, "link_architecture": LinkType.DIM_BK_SEQ},
+                "parameters": {"length": length, "link_architecture": link_arch},
             }
         )
 
@@ -106,7 +110,7 @@ def generate_topology(
     cchannels = []
     for i in range(len(nodes) - 1):
         node1, node2 = nodes[i], nodes[i + 1]
-        length = channel_lengths[i]
+        length = ch_lengths[i]
         cchannels.append({"node1": node1, "node2": node2, "parameters": {"length": length}})
 
     # Controller and links to all nodes
@@ -120,12 +124,13 @@ def generate_topology(
 def run_simulation(
     nodes: list[str],
     mem_capacities: list[int],
-    channel_lengths: list[float],
-    capacities: list[tuple[int, int]],
+    ch_lengths: list[float],
+    ch_capacities: list[tuple[int, int]],
+    link_architectures: list[str],
     t_coherence: float,
     seed: int,
 ):
-    json_topology = generate_topology(nodes, mem_capacities, channel_lengths, ch_capacities, t_coherence)
+    json_topology = generate_topology(nodes, mem_capacities, ch_lengths, ch_capacities, link_architectures, t_coherence)
     # print(json_topology)
 
     set_seed(seed)
@@ -160,15 +165,17 @@ N_RUNS = 3
 SEED_BASE = 42
 TOTAL_QUBITS = 6
 
+ch_lengths = [20, 20]
+
 # Experiment parameters
 t_cohere_values = [5e-3, 10e-3, 20e-3]
 mem_allocs = [(1, 5), (2, 4), (3, 3), (4, 2), (5, 1)]
 mem_labels = [str(m) for m in mem_allocs]
 
 channel_configs = {
-    "Equal": [25, 25],
-    "L1 > L2": [32, 18],
-    "L1 < L2": [18, 32],
+    "Equal": [LinkType.SR, LinkType.SR],  # [25, 25]
+    "L1 > L2": [LinkType.SIM, LinkType.DIM_BK],  # [32, 18]
+    "L1 < L2": [LinkType.DIM_BK, LinkType.SIM],  # [18, 32]
 }
 
 # Store results: results[t_cohere][length_label] = dict of lists
@@ -178,7 +185,7 @@ results = {
 }
 
 for t_cohere in t_cohere_values:
-    for length_label, ch_lengths in channel_configs.items():
+    for length_label, link_architectures in channel_configs.items():
         for left, right in mem_allocs:
             rates = []
             fids = []
@@ -191,8 +198,9 @@ for t_cohere in t_cohere_values:
                 rate, *_, fidelity = run_simulation(
                     nodes=["S", "R", "D"],
                     mem_capacities=[TOTAL_QUBITS, TOTAL_QUBITS, TOTAL_QUBITS],
-                    channel_lengths=ch_lengths,
-                    capacities=ch_capacities,
+                    ch_lengths=ch_lengths,
+                    ch_capacities=ch_capacities,
+                    link_architectures=link_architectures,
                     t_coherence=t_cohere,
                     seed=seed,
                 )

@@ -22,9 +22,11 @@ eta_s = 0.95
 frequency = 1e6  # memory frequency
 entg_attempt_rate = 50e6  # From fiber max frequency (50 MHz) AND detectors count rate (60 MHz)
 
-channel_qubits = 2
+channel_qubits = 10
 init_fidelity = 0.7
 p_swap = 0.5
+
+purif_scheme = {"S-R": 5, "R-D": 5}
 
 
 # 3-nodes topology
@@ -112,7 +114,10 @@ def generate_topology(t_coherence) -> Topo:
             {"node1": "ctrl", "node2": "R", "parameters": {"length": 1.0}},
             {"node1": "ctrl", "node2": "D", "parameters": {"length": 1.0}},
         ],
-        "controller": {"name": "ctrl", "apps": [ProactiveRoutingControllerApp(routing_type="SRSP", swapping=swapping_config)]},
+        "controller": {
+            "name": "ctrl",
+            "apps": [ProactiveRoutingControllerApp(routing_type="SRSP", swapping=swapping_config, purif=purif_scheme)],
+        },
     }
 
 
@@ -146,7 +151,7 @@ def run_simulation(t_coherence, seed):
 
 results = {"T_cohere": [], "Mean Rate": [], "Std Rate": [], "Mean F": [], "Std F": []}
 
-t_cohere_values = [1]
+t_cohere_values = [0.1]
 # t_cohere_values = [2e-3, 5e-3, 1e-2, 2e-2, 3e-2, 4e-2, 8e-2, 1e-1]
 # t_cohere_values = np.geomspace(2e-3, 1e-1, 8)
 

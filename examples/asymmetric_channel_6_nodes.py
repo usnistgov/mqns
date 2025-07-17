@@ -36,7 +36,7 @@ def generate_topology(
     nodes: list[str],
     mem_capacities: list[int],
     channel_lengths: list[float],
-    capacities: list[tuple[int, int]],
+    ch_capacities: list[tuple[int, int]],
     t_coherence: float,
     swapping_order: str,
 ) -> dict:
@@ -47,7 +47,7 @@ def generate_topology(
         nodes (list[str]): List of node names.
         mem_capacities (list[int]): Number of qubits per node.
         channel_lengths (list[float]): Lengths of quantum channels between adjacent nodes.
-        capacities (list[tuple[int, int]]): (left, right) qubit allocation per qchannel.
+        ch_capacities (list[tuple[int, int]]): (left, right) qubit allocation per qchannel.
 
     Returns:
         dict: A topology dictionary.
@@ -56,8 +56,8 @@ def generate_topology(
         raise ValueError("mem_capacities must match number of nodes")
     if len(channel_lengths) != len(nodes) - 1:
         raise ValueError("channel_lengths must be len(nodes) - 1")
-    if len(capacities) != len(nodes) - 1:
-        raise ValueError("capacities must be len(nodes) - 1")
+    if len(ch_capacities) != len(nodes) - 1:
+        raise ValueError("ch_capacities must be len(nodes) - 1")
 
     # Create QNodes
     qnodes = []
@@ -88,7 +88,7 @@ def generate_topology(
     for i in range(len(nodes) - 1):
         node1, node2 = nodes[i], nodes[i + 1]
         length = channel_lengths[i]
-        cap1, cap2 = capacities[i]
+        cap1, cap2 = ch_capacities[i]
 
         qchannels.append(
             {
@@ -119,13 +119,13 @@ def run_simulation(
     nodes: list[str],
     mem_capacities: list[int],
     channel_lengths: list[float],
-    capacities: list[tuple[int, int]],
+    ch_capacities: list[tuple[int, int]],
     t_coherence: float,
     swapping_order: str,
     seed: int,
 ):
     json_topology = generate_topology(nodes, mem_capacities, channel_lengths, ch_capacities, t_coherence, swapping_order)
-    # print(json_topology)
+    print(json_topology)
 
     set_seed(seed)
     s = Simulator(0, sim_duration + 5e-06, accuracy=1000000)
@@ -191,7 +191,7 @@ for mem_label, mem_allocs in ch_capacities_configs.items():
                     nodes=nodes,
                     mem_capacities=mem_capacities,
                     channel_lengths=channel_lengths,
-                    capacities=ch_capacities,
+                    ch_capacities=ch_capacities,
                     t_coherence=t_cohere,
                     swapping_order=swapping_config,
                     seed=seed,

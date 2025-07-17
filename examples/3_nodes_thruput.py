@@ -34,6 +34,8 @@ swapping_config = "swap_1"
 ch_1 = 32
 ch_2 = 18
 
+link_architecture = LinkType.DIM_BK_SEQ
+
 
 def generate_topology(t_coherence: float) -> Topo:
     """
@@ -108,13 +110,13 @@ def generate_topology(t_coherence: float) -> Topo:
                 "node1": "S",
                 "node2": "R",
                 "capacity": channel_qubits,
-                "parameters": {"length": ch_1, "link_architecture": LinkType.DIM_BK_SEQ},
+                "parameters": {"length": ch_1, "link_architecture": link_architecture},
             },
             {
                 "node1": "R",
                 "node2": "D",
                 "capacity": channel_qubits,
-                "parameters": {"length": ch_2, "link_architecture": LinkType.DIM_BK_SEQ},
+                "parameters": {"length": ch_2, "link_architecture": link_architecture},
             },
         ],
         "cchannels": [
