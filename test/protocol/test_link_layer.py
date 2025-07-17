@@ -28,7 +28,7 @@ class NetworkLayer(Application):
         super().install(node, simulator)
         self.own = self.get_node(node_type=QNode)
 
-    def handle_entangle(self, _, event: QubitEntangledEvent):
+    def handle_entangle(self, event: QubitEntangledEvent):
         self.entangle.append(event.t.sec)
         if not isinstance(self.release_after, float):
             return
@@ -37,7 +37,7 @@ class NetworkLayer(Application):
         self.simulator.add_event(QubitReleasedEvent(self.own, event.qubit, t=event.t + self.release_after, by=self))
         self.release_after = None
 
-    def handle_decohere(self, _, event: QubitDecoheredEvent):
+    def handle_decohere(self, event: QubitDecoheredEvent):
         self.decohere.append(event.t.sec)
 
 

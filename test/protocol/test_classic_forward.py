@@ -48,10 +48,10 @@ class RecvApp(Application):
         super().__init__()
         self.add_handler(self.RecvClassicPacketHandler, RecvClassicPacket)
 
-    def RecvClassicPacketHandler(self, node: Node, event: RecvClassicPacket):
+    def RecvClassicPacketHandler(self, event: RecvClassicPacket):
         packet = event.packet
         msg = packet.get()
-        output = f"{node} recv packet: {msg} from {packet.src}->{packet.dest}"
+        output = f"{self.get_node()} recv packet: {msg} from {packet.src}->{packet.dest}"
         print(output)
         assert output == "<qnode n10> recv packet: Hello,world from <qnode n1> from <qnode n1>-><qnode n10>"
 

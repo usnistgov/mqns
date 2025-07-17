@@ -76,15 +76,16 @@ class Node(Entity):
             app.install(self, simulator)
 
     def handle(self, event: Event) -> None:
-        """This function will handle an `Event`.
-        This event will be passed to every applications in apps list in order.
+        """
+        Dispatch an `Event` that happens on this Node.
+        This event is passed to every application in apps list in order.
 
         Args:
-            event (Event): the event that happens on this QNode
+            event (Event): the event that happens on this Node
 
         """
         for app in self.apps:
-            skip = app.handle(self, event)
+            skip = app.handle(event)
             if skip:
                 break
 

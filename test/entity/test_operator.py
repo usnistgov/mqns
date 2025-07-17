@@ -32,7 +32,7 @@ class RecvOperateApp(Application):
         self.add_handler(self.OperateResponseEventhandler, OperateResponseEvent)
         self.count = 0
 
-    def OperateResponseEventhandler(self, node, event: OperateResponseEvent) -> bool | None:
+    def OperateResponseEventhandler(self, event: OperateResponseEvent) -> bool | None:
         result = event.result
         assert self.simulator.tc.sec == 0.5
         assert result in [0, 1]

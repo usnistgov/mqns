@@ -33,7 +33,7 @@ class RecvApp(Application):
         self.add_handler(self.RecvQubitHandler, RecvQubitPacket)
         self.count = 0
 
-    def RecvQubitHandler(self, node, event: Event) -> bool | None:
+    def RecvQubitHandler(self, _: Event) -> bool | None:
         self.count += 1
 
 

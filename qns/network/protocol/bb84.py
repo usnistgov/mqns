@@ -123,7 +123,7 @@ class BB84SendApp(Application):
         #     event = func_to_event(t, self.send_qubit)
         #     self._simulator.add_event(event)
 
-    def handleClassicPacket(self, node: QNode, event: RecvClassicPacket):
+    def handleClassicPacket(self, event: RecvClassicPacket):
         return (
             self.check_basis(event)
             or self.recv_error_estimate_packet(event)
@@ -418,10 +418,10 @@ class BB84RecvApp(Application):
         self.add_handler(self.handleQuantumPacket, RecvQubitPacket, [self.qchannel])
         self.add_handler(self.handleClassicPacket, RecvClassicPacket, [self.cchannel])
 
-    def handleQuantumPacket(self, node: QNode, event: RecvQubitPacket):
+    def handleQuantumPacket(self, event: RecvQubitPacket):
         return self.recv(event)
 
-    def handleClassicPacket(self, node: QNode, event: RecvClassicPacket):
+    def handleClassicPacket(self, event: RecvClassicPacket):
         return (
             self.check_basis(event)
             or self.recv_error_estimate_reply_packet(event)

@@ -16,7 +16,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from qns.entity.cchannel import RecvClassicPacket
-from qns.entity.node import Application, Node
+from qns.entity.node import Application
 from qns.network.route import RouteImpl
 
 
@@ -34,7 +34,7 @@ class ClassicPacketForwardApp(Application):
         self.route = route
         self.add_handler(self.handleClassicPacket, RecvClassicPacket)
 
-    def handleClassicPacket(self, node: Node, event: RecvClassicPacket):
+    def handleClassicPacket(self, event: RecvClassicPacket):
         packet = event.packet
         self_node = self.get_node()
 

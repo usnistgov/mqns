@@ -184,7 +184,7 @@ class ProactiveForwarder(Application):
 
     CLASSIC_SIGNALING_HANDLERS: dict[str, Callable[["ProactiveForwarder", Any, FIBEntry], None]] = {}
 
-    def RecvClassicPacketHandler(self, _: Node, event: RecvClassicPacket) -> bool:
+    def RecvClassicPacketHandler(self, event: RecvClassicPacket) -> bool:
         """
         Receives a classical packet and dispatches it as control or signaling.
 
@@ -280,7 +280,7 @@ class ProactiveForwarder(Application):
 
         return neighbor, qubits
 
-    def qubit_is_entangled(self, node: QNode, event: QubitEntangledEvent):
+    def qubit_is_entangled(self, event: QubitEntangledEvent):
         """
         Handle a qubit entering ENTANGLED state.
         QubitEntangledEvent is either delivered from simulator or dequeued from `self.waiting_qubits`.
@@ -299,7 +299,6 @@ class ProactiveForwarder(Application):
             event: Event containing the entangled qubit and its associated metadata (e.g., neighbor).
 
         """
-        _ = node
         if self.own.timing_mode == TimingModeEnum.SYNC and self.sync_current_phase == SignalTypeEnum.EXTERNAL:
             # Accept new etg while we are in EXT phase
             # Assume t_coh > t_ext: QubitEntangledEvent events should correspond to different qubits, no redundancy
@@ -914,5 +913,5 @@ class ProactiveForwarder(Application):
             # internal phase -> time to handle all entangled qubits
             log.debug(f"{self.own}: there are {len(self.waiting_qubits)} etg qubits to process")
             for event in self.waiting_qubits:
-                self.qubit_is_entangled(self.own, event)
+                self.qubit_is_entangled(event)
             self.waiting_qubits = []

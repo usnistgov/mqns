@@ -21,7 +21,7 @@ class ProcessApp(Application):
         super().__init__()
         self.add_handler(self.EventHandler)
 
-    def install(self, node, simulator: Simulator):
+    def install(self, node: Node, simulator: Simulator):
         super().install(node, simulator)
 
         for i in range(0, 10):
@@ -29,7 +29,7 @@ class ProcessApp(Application):
             event = ProcessEvent(t=t, dest=self.get_node(), by=self)
             self.simulator.add_event(event)
 
-    def EventHandler(self, node, event: Event) -> bool | None:
+    def EventHandler(self, event: Event) -> bool | None:
         expected_recv_time = [i + 0.5 for i in range(0, 10)]
         print(f"recv event at {event.t}")
         assert cast(Time, event.t).sec in expected_recv_time
