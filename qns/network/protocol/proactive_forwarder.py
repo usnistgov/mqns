@@ -132,7 +132,14 @@ class ProactiveForwarder(Application):
     routing is done at the controller.
     """
 
-    def __init__(self, *, ps: float = 1.0, isolate_paths: bool = True, statistical_mux: bool = False):
+    def __init__(
+        self,
+        *,
+        ps: float = 1.0,
+        isolate_paths: bool = True,
+        statistical_mux: bool = False,
+        path_select_fn: Callable[[list[FIBEntry]], int] | None = None,
+    ):
         """This constructor sets up a node's entanglement forwarding logic in a quantum network.
         It configures the swapping success probability and preparing internal
         state for managing memory, routing instructions (via FIB), synchronization,
@@ -145,6 +152,7 @@ class ProactiveForwarder(Application):
             but serving the same S-D request.
             statistical_mux (bool): When qubit-path allocation is disabled, use statistical multiplexing
             or the default dynamic random EPR affectation.
+            path_select_fn: custom path selection function for dynamic EPR allocation
         """
         super().__init__()
 
@@ -170,6 +178,9 @@ class ProactiveForwarder(Application):
 
         self.qchannel_paths_map = defaultdict[str, list[int]](lambda: [])
         """stores path-qchannel relationship (for statistical mux)"""
+
+        self.path_select_fn = path_select_fn or random_path_selector
+        """stores path selection function for dynamic EPR allocation"""
 
         # event handlers
         self.add_handler(self.RecvClassicPacketHandler, RecvClassicPacket)
@@ -407,15 +418,14 @@ class ProactiveForwarder(Application):
             # Dynamic EPR effectation (not statistical mux)
             # TODO: if paths have different swap policies
             #       -> consider only paths for which this qubit may be eligible ??
-            # Currently affects EPR to paths randomly
+            # Default is to affect EPR to paths randomly
             log.debug(f"{self.own}: Dynamic EPR affectation enabled")
             _, epr = self.memory.get(address=qubit.addr, must=True)
             assert isinstance(epr, WernerStateEntanglement)
-            # TODO: watch if this creates any misbehavior!
             if epr.tmp_path_ids is None:  # whatever neighbor is first
-                random_path_id = random.choice(possible_path_ids)
-                log.debug(f"{self.own}: Dynamically (random) affect EPR {epr.name} to path {random_path_id}")
-                epr.tmp_path_ids = [random_path_id]
+                fib_entries: list[FIBEntry] = [self.fib.get_entry(pid) for pid in possible_path_ids]
+                path_id = self.path_select_fn(fib_entries)
+                epr.tmp_path_ids = [path_id]
 
             fib_entry = self.fib.get_entry(epr.tmp_path_ids[0])
             if not fib_entry:
@@ -1212,3 +1222,7 @@ def select_common_element(list1: list[int], list2: list[int]) -> list[int] | Non
     # Case 2: both have more than one element
     common = list(set1 & set2)
     return common
+
+
+def random_path_selector(fibs: list[FIBEntry]) -> int:
+    return random.choice(fibs)["path_id"]
