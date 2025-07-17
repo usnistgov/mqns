@@ -49,12 +49,7 @@ class ClassicPacket:
         dest (Node): the destination of this message
 
         """
-        self.is_json: bool = False
-        # if not isinstance(msg, (str, bytes)):
-        #    self.msg = json.dumps(msg)
-        #    self.is_json = True
-        # else:
-        self.msg = msg
+        self.is_json, self.msg = (False, msg) if isinstance(msg, (str, bytes)) else (True, json.dumps(msg))
         self.src = src
         self.dest = dest
 
@@ -77,9 +72,7 @@ class ClassicPacket:
             (Union[str, bytes, Any])
 
         """
-        if self.is_json:
-            return json.loads(self.msg)
-        return self.msg
+        return json.loads(self.msg) if self.is_json else self.msg
 
     def __len__(self) -> int:
         return len(self.msg)
