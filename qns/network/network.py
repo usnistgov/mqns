@@ -103,19 +103,19 @@ class QuantumNetwork:
 
         self.requests: list[Request] = []
 
-    def install(self, s: Simulator):
+    def install(self, simulator: Simulator):
         """Install all nodes (including channels, memories and applications) in this network
 
         Args:
-            simulator (qns.simulator.simulator.Simulator): the simulator
+            simulator (Simulator): the simulator
 
         """
-        self._simulator = s
+        self._simulator = simulator
 
         for n in self.nodes:
-            n.install(s)
+            n.install(simulator)
         if self.controller:
-            self.controller.install(s)
+            self.controller.install(simulator)
 
         if self.timing_mode == TimingModeEnum.SYNC and self.t_ext > 0 and self.t_int > 0:
             signal_seq = SignalSequence(
@@ -124,7 +124,7 @@ class QuantumNetwork:
                     (SignalTypeEnum.INTERNAL, self.t_int),
                 ]
             )
-            self._simulator.add_event(func_to_event(self._simulator.ts, self.send_sync_signal, signal_seq=signal_seq, by=self))
+            simulator.add_event(func_to_event(self._simulator.ts, self.send_sync_signal, signal_seq, by=self))
 
     def send_sync_signal(self, signal_seq: SignalSequence):
         this_phase = signal_seq.popleft()
@@ -133,7 +133,7 @@ class QuantumNetwork:
 
         # schedule next sync signal
         self._simulator.add_event(
-            func_to_event(self._simulator.tc + phase_duration, self.send_sync_signal, signal_seq=signal_seq, by=self)
+            func_to_event(self._simulator.tc + phase_duration, self.send_sync_signal, signal_seq, by=self)
         )
 
         log.debug(f"TIME_SYNC: signal {phase_signal.name} phase")

@@ -148,11 +148,11 @@ class LinkLayer(Application):
                     func_to_event(
                         simulator.tc + i * 1 / self.attempt_rate,
                         self.start_reservation,
+                        next_hop,
+                        qchannel,
+                        qb,
+                        qb.path_id,
                         by=self,
-                        next_hop=next_hop,
-                        qchannel=qchannel,
-                        qubit=qb,
-                        path_id=qb.path_id,
                     )
                 )
             else:
@@ -229,12 +229,12 @@ class LinkLayer(Application):
             func_to_event(
                 simulator.tc + succ_attempt_time,
                 self.do_successful_attempt,
+                qchannel,
+                next_hop,
+                address,
+                attempts,
+                key,
                 by=self,
-                qchannel=qchannel,
-                next_hop=next_hop,
-                address=address,
-                attempts=attempts,
-                key=key,
             )
         )
 

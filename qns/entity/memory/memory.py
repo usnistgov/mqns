@@ -305,7 +305,7 @@ class QuantumMemory(Entity):
         # schedule an event at T_coh to decohere the qubit
         if self.decoherence_rate:
             decoherence_t = qm.creation_time + (1 / self.decoherence_rate)
-            event = func_to_event(decoherence_t, self.decohere_qubit, by=self, qubit=qubit, qm=qm)
+            event = func_to_event(decoherence_t, self.decohere_qubit, qubit, qm, by=self)
             self.pending_decohere_events[qm.name] = event
             self.simulator.add_event(event)
             qm.decoherence_time = decoherence_t
@@ -354,7 +354,7 @@ class QuantumMemory(Entity):
         assert new_qm.decoherence_time is not None
 
         # schedule an event at old T_coh to decohere the qubit
-        new_event = func_to_event(new_qm.decoherence_time, self.decohere_qubit, by=self, qubit=qubit, qm=new_qm)
+        new_event = func_to_event(new_qm.decoherence_time, self.decohere_qubit, qubit, new_qm, by=self)
         self.pending_decohere_events[new_qm.name] = new_event
         self.simulator.add_event(new_event)
         return True

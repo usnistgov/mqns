@@ -16,9 +16,7 @@ class SendApp(Application):
 
     def install(self, node: Node, simulator: Simulator):
         super().install(node, simulator)
-        t = simulator.ts
-        event = func_to_event(t, self.send_packet, by=self)
-        simulator.add_event(event)
+        simulator.add_event(func_to_event(simulator.ts, self.send_packet, by=self))
 
     def send_packet(self):
         simulator = self.simulator
