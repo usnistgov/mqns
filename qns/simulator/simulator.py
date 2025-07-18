@@ -17,6 +17,7 @@
 
 import math
 import time
+from collections import defaultdict
 from typing import TYPE_CHECKING
 
 from qns.simulator.event import Event
@@ -64,7 +65,7 @@ class Simulator:
         self.status = {}
         self.total_events = 0
 
-        self.watch_event: dict[type[Event], list["Monitor"]] = {}
+        self.watch_event = defaultdict[type[Event], list["Monitor"]](lambda: [])
 
         self._running = False
 

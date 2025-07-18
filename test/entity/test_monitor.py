@@ -57,9 +57,9 @@ def test_monitor_1():
     def watch_recv_count(simulator, network, event):
         return rp.count
 
-    m.add_attribution(name="send_count", calculate_func=watch_send_count)
-    m.add_attribution(name="recv_count", calculate_func=watch_recv_count)
-    m.add_attribution(name="event_name", calculate_func=lambda s, n, e: e.__class__)
+    m.add_attribution("send_count", watch_send_count)
+    m.add_attribution("recv_count", watch_recv_count)
+    m.add_attribution("event_name", lambda s, n, e: e.__class__.__name__ if e.name is None else e.name)
 
     m.at_start()
     m.at_finish()

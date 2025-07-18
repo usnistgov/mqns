@@ -27,16 +27,17 @@ if TYPE_CHECKING:
     from qns.network.network import QuantumNetwork
 
 
-AttributionFunc = Callable[[Simulator, "QuantumNetwork|None", Event | None], Any]
+AttributionFunc = Callable[[Simulator, "QuantumNetwork|None", Event], Any]
 """Callback function to calculate an attribution."""
 
 
 class MonitorEvent(Event):
     """the event that notify the monitor to write down network status"""
 
-    def __init__(self, t: Time, monitor: "Monitor", name: str | None = None, by: Any = None):
+    def __init__(self, t: Time, monitor: "Monitor", *, period: Time | None = None, name: str | None = None, by: Any = None):
         super().__init__(t, name, by)
         self.monitor = monitor
+        self.period = period
 
     def invoke(self) -> None:
         self.monitor.handle(self)
@@ -44,64 +45,58 @@ class MonitorEvent(Event):
 
 class Monitor(Entity):
     def __init__(self, name: str, network: "QuantumNetwork|None" = None) -> None:
-        """Monitor is a virtual entity that helps users to collect network status.
+        """
+        Virtual entity that helps users collect network status.
 
         Args:
-            name (str): the monitor's name
-            network (Optional[QuantumNetwork]): a optional parameter, the quantum network.
+            name: monitor name.
+            network: the quantum network.
 
         """
         super().__init__(name=name)
         self.network = network
-        self.data: pd.DataFrame = pd.DataFrame()
+        self.data = pd.DataFrame()
 
         self.attributions: list[tuple[str, AttributionFunc]] = []
 
-        self.watch_at_time = False
         self.watch_at_start = False
         self.watch_at_finish = False
         self.watch_period: list[float] = []
-        self.watch_event = []
+        self.watch_event: list[type[Event]] = []
 
     def install(self, simulator: Simulator) -> None:
-        super().install(simulator=simulator)
-
-        if self.watch_at_start or self.watch_at_finish or len(self.watch_period) > 0:
-            self.watch_at_time = True
+        super().install(simulator)
 
         if self.watch_at_start:
-            event = MonitorEvent(t=simulator.ts, monitor=self, name="start watch event", by=self)
-            simulator.add_event(event)
-        if self.watch_at_finish:
-            event = MonitorEvent(t=simulator.te, monitor=self, name="finish watch event", by=self)
-            simulator.add_event(event)
+            simulator.add_event(MonitorEvent(simulator.ts, self, name="start watch event", by=self))
+
+        if simulator.te is not None and self.watch_at_finish:
+            simulator.add_event(MonitorEvent(simulator.te, self, name="finish watch event", by=self))
+
         for p in self.watch_period:
-            t = simulator.ts
-            while t <= simulator.te:
-                t = t + p
-                event = MonitorEvent(t=t, monitor=self, name=f"period watch event({p})", by=self)
-                simulator.add_event(event)
+            simulator.add_event(
+                MonitorEvent(simulator.ts, self, period=simulator.time(sec=p), name=f"period watch event({p})", by=self)
+            )
 
         for event_type in self.watch_event:
-            try:
-                simulator.watch_event[event_type].append(self)
-            except (IndexError, KeyError, ValueError):
-                simulator.watch_event[event_type] = [self]
+            simulator.watch_event[event_type].append(self)
 
     def handle(self, event: Event) -> None:
-        self.calculate_date(event)
-
-    def calculate_date(self, event: Event):
         simulator = self.simulator
-        current_time = simulator.tc.sec
-        record: dict[str, Any] = {"time": current_time}
+
+        record: dict[str, Any] = {"time": simulator.tc.sec}
         for name, calculate_func in self.attributions:
             record[name] = [calculate_func(simulator, self.network, event)]
         record_pd = pd.DataFrame(record)
         self.data = pd.concat([self.data, record_pd], ignore_index=True)
 
-    def get_data(self):
-        """Get the collected data.
+        if isinstance(event, MonitorEvent) and event.period is not None:
+            event.t += event.period
+            simulator.add_event(event)
+
+    def get_data(self) -> pd.DataFrame:
+        """
+        Retrieve the collected data.
 
         Returns:
             the collected data, as a ``pd.DataFrame``.
@@ -110,7 +105,9 @@ class Monitor(Entity):
         return self.data
 
     def add_attribution(self, name: str, calculate_func: AttributionFunc) -> None:
-        """Set an attribution that will be recorded. For example, an attribution could be the throughput, or the fidelity.
+        """
+        Set an attribution that will be recorded.
+        For example, an attribution could be the throughput or the fidelity.
 
         Args:
             name (str): the column's name, e.g., fidelity, throughput, time ...
@@ -131,26 +128,25 @@ class Monitor(Entity):
         self.attributions.append((name, calculate_func))
 
     def at_start(self) -> None:
-        """Watch the initial status before the simulation starts.
-
-        Usage:
-            m.at_start()
+        """
+        Watch the initial status before the simulation starts.
         """
         self.watch_at_start = True
 
     def at_finish(self) -> None:
-        """Watch the final status after the simulation.
+        """
+        Watch the final status after the simulation.
 
-        Usage:
-            m.at_finish()
+        This does not work in a continuous simulation or if the simulation is stopped with `Simulator.stop()`.
         """
         self.watch_at_finish = True
 
     def at_period(self, period_time: float) -> None:
-        """Watch network status at a constant period.
+        """
+        Watch network status at a constant interval.
 
         Args:
-            period_time (float): the period of watching network status [s]
+            period_time (float): the interval in seconds.
 
         Usage:
             # record network status every 3 seconds.
@@ -161,10 +157,11 @@ class Monitor(Entity):
         self.watch_period.append(period_time)
 
     def at_event(self, event_type: type[Event]) -> None:
-        """Watch network status whenever the event happens
+        """
+        Watch network status whenever the event happens.
 
         Args:
-            event_type (Event): the watching event
+            event_type (Event): the watched event.
 
         Usage:
             # record network status when a node receives a qubit
