@@ -55,9 +55,8 @@ class Monitor(Entity):
         """
         super().__init__(name=name)
         self.network = network
-        self.data = pd.DataFrame()
-
         self.attributions: list[tuple[str, AttributionFunc]] = []
+        self.records: dict[str, list[Any]] = {"time": []}
 
         self.watch_at_start = False
         self.watch_at_finish = False
@@ -84,11 +83,9 @@ class Monitor(Entity):
     def handle(self, event: Event) -> None:
         simulator = self.simulator
 
-        record: dict[str, Any] = {"time": [simulator.tc.sec]}
+        self.records["time"].append(simulator.tc.sec)
         for name, calculate_func in self.attributions:
-            record[name] = [calculate_func(simulator, self.network, event)]
-        record_pd = pd.DataFrame(record)
-        self.data = pd.concat([self.data, record_pd], ignore_index=True)
+            self.records[name].append(calculate_func(simulator, self.network, event))
 
         if isinstance(event, MonitorEvent) and event.period is not None:
             event.t += event.period
@@ -98,11 +95,8 @@ class Monitor(Entity):
         """
         Retrieve the collected data.
 
-        Returns:
-            the collected data, as a ``pd.DataFrame``.
-
         """
-        return self.data
+        return pd.DataFrame(self.records)
 
     def add_attribution(self, name: str, calculate_func: AttributionFunc) -> None:
         """
@@ -110,10 +104,8 @@ class Monitor(Entity):
         For example, an attribution could be the throughput or the fidelity.
 
         Args:
-            name (str): the column's name, e.g., fidelity, throughput, time ...
-            calculate_func (Callable[[Simulator, Optional[QuantumNetwork], Optional[Event]]):
-                a function to calculate the value, it has three input parameters (Simulator, QuantumNetwork, Event),
-                and it returns the value.
+            name: column name, e.g., fidelity, throughput, time.
+            calculate_func: a function to calculate the value.
 
         Usage:
             m = Monitor()
@@ -125,12 +117,15 @@ class Monitor(Entity):
             m.add_attribution("count", lambda s,network,e: network.nodes[-1].name)
 
         """
+        assert self._simulator is None
         self.attributions.append((name, calculate_func))
+        self.records[name] = []
 
     def at_start(self) -> None:
         """
         Watch the initial status before the simulation starts.
         """
+        assert self._simulator is None
         self.watch_at_start = True
 
     def at_finish(self) -> None:
@@ -139,6 +134,7 @@ class Monitor(Entity):
 
         This does not work in a continuous simulation or if the simulation is stopped with `Simulator.stop()`.
         """
+        assert self._simulator is None
         self.watch_at_finish = True
 
     def at_period(self, period_time: float) -> None:
@@ -153,6 +149,7 @@ class Monitor(Entity):
             m.at_period(3)
 
         """
+        assert self._simulator is None
         assert period_time > 0
         self.watch_period.append(period_time)
 
@@ -168,4 +165,5 @@ class Monitor(Entity):
             m.at_event(RecvQubitPacket)
 
         """
+        assert self._simulator is None
         self.watch_event.append(event_type)
