@@ -16,6 +16,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import random
+from collections import defaultdict
 from collections.abc import Callable
 from typing import Any, Literal, TypedDict, cast
 
@@ -25,7 +26,6 @@ from qns.entity.cchannel import ClassicPacket, RecvClassicPacket
 from qns.entity.memory import QuantumMemory
 from qns.entity.memory.memory_qubit import MemoryQubit, PathDirection, QubitState
 from qns.entity.node import Application, Node, QNode
-from qns.entity.qchannel import QuantumChannel
 from qns.models.core import QuantumModel
 from qns.models.epr import WernerStateEntanglement
 from qns.network import QuantumNetwork, SignalTypeEnum, TimingModeEnum
@@ -132,7 +132,7 @@ class ProactiveForwarder(Application):
     routing is done at the controller.
     """
 
-    def __init__(self, ps: float = 1.0, isolate_paths: bool = True, statistical_mux: bool = False):
+    def __init__(self, *, ps: float = 1.0, isolate_paths: bool = True, statistical_mux: bool = False):
         """This constructor sets up a node's entanglement forwarding logic in a quantum network.
         It configures the swapping success probability and preparing internal
         state for managing memory, routing instructions (via FIB), synchronization,
@@ -165,10 +165,10 @@ class ProactiveForwarder(Application):
         self.waiting_qubits: list[QubitEntangledEvent] = []
         """stores the qubits waiting for the INTERNAL phase (SYNC mode)"""
 
-        self.request_paths_map: dict[int, list[int]] = {}
+        self.request_paths_map = defaultdict[int, list[int]](lambda: [])
         """stores paths associated with the same S-D request (for non-isolated paths)"""
 
-        self.qchannel_paths_map: dict[str, list[int]] = {}
+        self.qchannel_paths_map = defaultdict[str, list[int]](lambda: [])
         """stores path-qchannel relationship (for statistical mux)"""
 
         # event handlers
@@ -269,10 +269,7 @@ class ProactiveForwarder(Application):
         request_id = instructions["req_id"]
 
         # maintain map of path ID associated with each request ID
-        if request_id not in self.request_paths_map:
-            self.request_paths_map[request_id] = [path_id]
-        else:
-            self.request_paths_map[request_id].append(path_id)
+        self.request_paths_map[request_id].append(path_id)
 
         route = instructions["route"]
         log.debug(f"{self.own.name}: routing instructions of path {path_id}: {instructions}")
@@ -288,9 +285,11 @@ class ProactiveForwarder(Application):
         # m_v = [ (4,2) , (2,4) ]
         # S--(4,2)--R--(2,4)--D
         # here, R should allocate 2 qubits toward S.
-        _, l_qubits = self._find_neighbor_and_allocate_qubits(path_id, route, -1, m_v, -1, 1, PathDirection.LEFT)
+        _, l_qubits = self._find_neighbor_and_allocate_qubits(
+            path_id, route, route_offset=-1, m_v=m_v, m_v_offset=-1, ch_side=1, path_direction=PathDirection.LEFT
+        )
         r_neighbor, r_qubits = self._find_neighbor_and_allocate_qubits(
-            path_id, route, 1, m_v, 0, 0, path_direction=PathDirection.RIGHT
+            path_id, route, route_offset=1, m_v=m_v, m_v_offset=0, ch_side=0, path_direction=PathDirection.RIGHT
         )
 
         if m_v is not None:
@@ -319,6 +318,7 @@ class ProactiveForwarder(Application):
         self,
         path_id: int,
         route: list[str],
+        *,
         route_offset: int,  # to locate which side of the route we want (left/right)
         m_v: MultiplexingVector | None,
         m_v_offset: int,  # to locate which qchannel we want in m_v
@@ -331,13 +331,8 @@ class ProactiveForwarder(Application):
             return None, []
 
         neighbor = self.net.get_node(route[neigh_idx])
-        qchannel: QuantumChannel = self.own.get_qchannel(neighbor)  # ensure qchannel exists
-
-        if qchannel.name not in self.qchannel_paths_map:
-            self.qchannel_paths_map[qchannel.name] = [path_id]
-        else:
-            self.qchannel_paths_map[qchannel.name].append(path_id)
-
+        qchannel = self.own.get_qchannel(neighbor)
+        self.qchannel_paths_map[qchannel.name].append(path_id)
         if m_v is None:
             return neighbor, None
 
@@ -389,102 +384,45 @@ class ProactiveForwarder(Application):
             self.qubit_is_purif(qubit, fib_entry, event.neighbor)
         else:  # for dynamic affectation (~ controlled statistical)
             log.debug(f"{self.own}: Qubit not allocated to any path.")
-            if qubit.qchannel is not None:  # Expected in all our cases so far
-                if qubit.qchannel.name in self.qchannel_paths_map:
-                    epr = None
-
-                    # available for every elementary EPR:
-                    possible_path_ids = self.qchannel_paths_map[qubit.qchannel.name]
-
-                    # Statistical multiplexing
-                    if self.statistical_mux:
-                        log.debug(f"{self.own}: Statistical mux enabled")
-                        res = self.memory.get(address=qubit.addr)
-                        if not res:
-                            raise Exception(f"Cannot retrieve qubit {event.qubit}")
-                        _, epr = res
-                        assert isinstance(epr, WernerStateEntanglement)
-                        log.debug(f"{self.own}: qubit {qubit}, set possible path IDs = {possible_path_ids}")
-                        epr.tmp_path_ids = list(possible_path_ids)  # to coordinate decisions along the path
-                        if self._can_enter_purif(None, event.neighbor.name):
-                            qchannel: QuantumChannel = self.own.get_qchannel(event.neighbor)
-                            if qchannel:
-                                qubit.fsm.to_purif()
-                                self.qubit_is_purif(qubit)
-                            else:
-                                raise Exception(f"No qchannel found for neighbor {event.neighbor.name}")
-                        return
-
-                    # Dynamic EPR effectation (not statistical mux)
-                    # TODO: if paths have different swap policies
-                    #       -> consider only paths for which this qubit may be eligible ??
-                    # Currently affects EPR to paths randomly
-                    log.debug(f"{self.own}: Dynamic EPR affectation enabled")
-                    res = self.memory.get(address=qubit.addr)
-                    if res:
-                        _, epr = res
-                        assert isinstance(epr, WernerStateEntanglement)
-                        # TODO: watch if this creates any misbehavior!
-                        if epr.tmp_path_ids is None:  # whatever neighbor is first
-                            random_path_id = random.choice(possible_path_ids)
-                            log.debug(f"{self.own}: Dynamically (random) affect EPR {epr.name} to path {random_path_id}")
-                            epr.tmp_path_ids = [random_path_id]
-
-                    assert isinstance(epr, WernerStateEntanglement)
-                    assert epr.tmp_path_ids is not None
-                    fib_entry = self.fib.get_entry(epr.tmp_path_ids[0])
-                    if fib_entry:
-                        if self._can_enter_purif(fib_entry, event.neighbor.name):
-                            qchannel: QuantumChannel = self.own.get_qchannel(event.neighbor)
-                            if qchannel:
-                                qubit.fsm.to_purif()
-                                self.qubit_is_purif(qubit, fib_entry, event.neighbor)
-                            else:
-                                raise Exception(f"No qchannel found for neighbor {event.neighbor.name}")
-                    else:
-                        raise Exception(f"No FIB entry found for path_id {possible_path_ids[0]}")
-                else:
-                    raise Exception(f"{self.own}: qchannel {qubit.qchannel.name} not mapped to any path.")
-            else:
+            if qubit.qchannel is None:
                 raise Exception(f"{self.own}: No qubit-qchannel assignment. Not supported.")
+            if qubit.qchannel.name not in self.qchannel_paths_map:
+                raise Exception(f"{self.own}: qchannel {qubit.qchannel.name} not mapped to any path.")
 
-    def _can_enter_purif(self, fib_entry: FIBEntry | None, partner: str) -> bool:
-        """Evaluate if a qubit is eligible for purification.
-        Compares the local node's swap rank to its partner's in the given path.
-        A qubit is eligible for purification if the partner's swap rank is greater
-        than or equal to the local node's rank.
+            # available for every elementary EPR:
+            possible_path_ids = self.qchannel_paths_map[qubit.qchannel.name]
 
-        Parameters
-        ----------
-            fib_entry (dict, optional): FIB entry containing path and instructions.
-            The only case where fib_entry is None is when statistical mux is used.
-            In such case, only swapping policies (here SWAP-ASAP) is implemented as predefined orders cannot be
-            verified without explicit instructions (i.e, Path ID -> FIB entry).
-            partner (str): Name of the partner node to compare against.
+            # Statistical multiplexing
+            if self.statistical_mux:
+                log.debug(f"{self.own}: Statistical mux enabled")
+                _, epr = self.memory.get(address=qubit.addr, must=True)
+                assert isinstance(epr, WernerStateEntanglement)
+                log.debug(f"{self.own}: qubit {qubit}, set possible path IDs = {possible_path_ids}")
+                epr.tmp_path_ids = list(possible_path_ids)  # to coordinate decisions along the path
+                self.own.get_qchannel(event.neighbor)  # ensure qchannel exists
+                qubit.fsm.to_purif()
+                self.qubit_is_purif(qubit)
+                return
 
-        Returns
-        -------
-            bool: True if eligible for swap/purification, False otherwise.
-        """
+            # Dynamic EPR effectation (not statistical mux)
+            # TODO: if paths have different swap policies
+            #       -> consider only paths for which this qubit may be eligible ??
+            # Currently affects EPR to paths randomly
+            log.debug(f"{self.own}: Dynamic EPR affectation enabled")
+            _, epr = self.memory.get(address=qubit.addr, must=True)
+            assert isinstance(epr, WernerStateEntanglement)
+            # TODO: watch if this creates any misbehavior!
+            if epr.tmp_path_ids is None:  # whatever neighbor is first
+                random_path_id = random.choice(possible_path_ids)
+                log.debug(f"{self.own}: Dynamically (random) affect EPR {epr.name} to path {random_path_id}")
+                epr.tmp_path_ids = [random_path_id]
 
-        if fib_entry is None:  # limitted support for statistical mux
-            if self.own.name.startswith("R"):  # any entangled qubit at intermediate node is always eligible
-                return True
-            assert partner is not None
-            # entangled qubit at end-node is eligible only if entangled with another end-node
-            if (
-                self.own.name.startswith("S")
-                and partner.startswith("D")
-                or self.own.name.startswith("D")
-                and partner.startswith("S")
-            ):
-                return True
-            return False
-
-        log.debug(f"{self.own}: {fib_entry} , {partner}")
-        _, partner_rank = find_index_and_swapping_rank(fib_entry, partner)
-        _, own_rank = find_index_and_swapping_rank(fib_entry, self.own.name)
-        return partner_rank >= own_rank
+            fib_entry = self.fib.get_entry(epr.tmp_path_ids[0])
+            if not fib_entry:
+                raise Exception(f"No FIB entry found for path_id {possible_path_ids[0]}")
+            self.own.get_qchannel(event.neighbor)  # ensure qchannel exists
+            qubit.fsm.to_purif()
+            self.qubit_is_purif(qubit, fib_entry, event.neighbor)
 
     def qubit_is_purif(self, qubit: MemoryQubit, fib_entry: FIBEntry | None = None, partner: QNode | None = None):
         """
