@@ -35,7 +35,7 @@ from qns.entity.memory.event import (
     MemoryWriteRequestEvent,
     MemoryWriteResponseEvent,
 )
-from qns.entity.memory.memory_qubit import MemoryQubit, QubitState
+from qns.entity.memory.memory_qubit import MemoryQubit, PathDirection, QubitState
 from qns.entity.node import QNode
 from qns.models.core import QuantumModel
 from qns.models.delay import DelayInput, parseDelay
@@ -285,7 +285,7 @@ class QuantumMemory(Entity):
 
         idx = -1
         for i, (q, v) in enumerate(self._storage):
-            if v is None and (key is None or key == q.active):  # Check if the slot is empty
+            if v is None and (key is None or key == q.active):
                 if (path_id is None or q.path_id == path_id) and (address is None or q.addr == address):
                     idx = i
                     break
@@ -368,7 +368,7 @@ class QuantumMemory(Entity):
             event.cancel()
         self.pending_decohere_events = {}
 
-    def allocate(self, path_id: int) -> int:
+    def allocate(self, path_id: int, ch_name: str | None = None, path_direction: PathDirection | None = None) -> int:
         """
         Allocate an unused memory qubit to a given path ID.
 
@@ -377,16 +377,23 @@ class QuantumMemory(Entity):
 
         Args:
             path_id (int): The identifier of the entanglement path
-                       to which the memory qubit will be assigned.
+                    to which the memory qubit will be allocated.
+            ch_name (Optional[str]): The name of the quantum channel
+                    to which the memory qubit is assigned. Left optional for future dynamic qubit-qchannel assignment.
+            path_direction (PathDirection): The end of the path to which the qubit allocated qubit points.
+                    This is typically either the source or the destination of the path (LEFT/RIGHT).
 
         Returns:
             int: The address of the allocated memory qubit, or -1 if no unallocated qubit is available.
 
         """
         for qubit, _ in self._storage:
-            if qubit.path_id is None:
-                qubit.allocate(path_id)
-                return qubit.addr
+            if ch_name is not None and qubit.qchannel.name != ch_name:
+                continue
+            if qubit.path_id is not None:
+                continue
+            qubit.allocate(path_id, path_direction)
+            return qubit.addr
         return -1
 
     def deallocate(self, address: int) -> bool:
@@ -410,7 +417,7 @@ class QuantumMemory(Entity):
                 return True
         return False
 
-    def search_available_qubits(self, path_id: int | None = None) -> list[MemoryQubit]:
+    def search_available_qubits(self, ch_name: str, path_id: int | None = None) -> list[MemoryQubit]:
         """Search for available (unoccupied and inactive) memory qubits, optionally filtered by path ID.
 
         This method returns all memory qubits that:
@@ -419,6 +426,7 @@ class QuantumMemory(Entity):
             - (Optionally) are assigned to the specified path ID.
 
         Args:
+            ch_name (str): Name of the qchannel the qubits should be assigned to.
             path_id (Optional[int]): The path ID to filter qubits by. If None, any path ID is accepted.
 
         Returns:
@@ -430,6 +438,8 @@ class QuantumMemory(Entity):
         for qubit, data in self._storage:
             if data is not None:
                 continue
+            if qubit.qchannel and qubit.qchannel.name != ch_name:
+                continue
             if qubit.active:
                 continue
             if path_id is not None and qubit.path_id != path_id:
@@ -438,7 +448,12 @@ class QuantumMemory(Entity):
         return qubits
 
     def search_eligible_qubits(
-        self, exc_qchannel: str | None = None, path_id: int | None = None
+        self,
+        exc_qchannel: str | None = None,
+        exc_direction: PathDirection | None = None,
+        inc_qchannels: list[str] | None = None,
+        path_id: list[int] | None = None,
+        tmp_path_id: list[int] | None = None,
     ) -> list[tuple[MemoryQubit, QuantumModel]]:
         """Search for memory qubits that are eligible for use.
 
@@ -448,14 +463,20 @@ class QuantumMemory(Entity):
             - (Optionally) are not associated with the specified quantum channel (`qchannel`).
 
         Args:
-            exc_qchannel (Optional[str]): The name of the quantum channel to exclude. If None, no exclusion is applied.
-            path_id (Optional[int]): The path ID the qubit must be assigned to. If None, any path ID is accepted.
+            exc_qchannel (Optional[str]): The name of the quantum channel to exclude.
+            If None, no exclusion is applied.
+            inc_qchannels (list[sr], optional): List of qchannel names the qubits should be assigned to.
+            exc_direction (Optional[PathDirection]): Qubit path direction to exclude.
+            If None, no exclusion is applied.
+            path_id (Optional[list[int]]): The list of path IDs the qubit must be allocated to.
+            If None, any path ID is accepted.
+            tmp_path_id (list[int], optional): List of identifiers for the paths to match agains epr.tmp_path_id
+            in dynamic qubit allocation or statistical multiplexing.
 
         Returns:
             List[Tuple[MemoryQubit, QuantumModel]]:
                 A list of tuples containing eligible memory qubits and their associated `QuantumModel` instances.
                 The list is empty if no matching qubits are found.
-
         """
         qubits = []
         for qubit, data in self._storage:
@@ -463,9 +484,15 @@ class QuantumMemory(Entity):
                 continue
             if qubit.fsm.state != QubitState.ELIGIBLE:
                 continue
-            if path_id is not None and qubit.path_id != path_id:
+            if path_id is not None and qubit.path_id not in path_id:
                 continue
             if exc_qchannel is not None and (qubit.qchannel is None or qubit.qchannel.name == exc_qchannel):
+                continue
+            if exc_direction is not None and (qubit.path_direction == exc_direction):
+                continue
+            if inc_qchannels is not None and qubit.qchannel.name not in inc_qchannels:
+                continue
+            if tmp_path_id is not None and not set(tmp_path_id) & set(data.tmp_path_ids):
                 continue
             qubits.append((qubit, data))
         return qubits

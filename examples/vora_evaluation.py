@@ -171,7 +171,10 @@ def generate_topology(p: ParameterSet) -> Topo:
         cchannels.append({"node1": "ctrl", "node2": name, "parameters": {"length": 1.0}})
 
     # Define controller
-    controller: TopoController = {"name": "ctrl", "apps": [ProactiveRoutingControllerApp(swapping=p.swapping_config)]}
+    controller: TopoController = {
+        "name": "ctrl",
+        "apps": [ProactiveRoutingControllerApp(routing_type="SRSP", swapping=p.swapping_config)],
+    }
 
     return {"qnodes": nodes, "qchannels": qchannels, "cchannels": cchannels, "controller": controller}
 

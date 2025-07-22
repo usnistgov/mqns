@@ -25,6 +25,7 @@ except ImportError:
 
 class FIBEntry(TypedDict):
     path_id: int
+    request_id: int
     path_vector: list[str]
     swap_sequence: list[int]
     purification_scheme: dict[str, int]
@@ -111,7 +112,8 @@ class ForwardingInformationBase:
     def __repr__(self):
         """Return a string representation of the forwarding table."""
         return "\n".join(
-            f"Path ID: {path_id}, Path: {entry['path_vector']}, Swap Sequence: {entry['swap_sequence']}, "
+            f"Path ID: {path_id}, Request ID: {entry['request_id']}, Path: {entry['path_vector']}, "
+            f"Swap Sequence: {entry['swap_sequence']}, "
             f"Purification: {entry['purification_scheme']}, Qubit Addresses: {entry['qubit_addresses']}"
             for path_id, entry in self.table.items()
         )

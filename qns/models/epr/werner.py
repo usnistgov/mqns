@@ -191,5 +191,6 @@ class WernerStateEntanglement(BaseEntanglement["WernerStateEntanglement"], Quant
             f"ch_index={self.ch_index}, "
             f"orig_eprs={[e.name if hasattr(e, 'name') else repr(e) for e in self.orig_eprs]}), "
             f"creation_time={self.creation_time}, "
-            f"decoherence_time={self.decoherence_time})"
+            f"decoherence_time={self.decoherence_time}), "
+            f"tmp_path_ids={self.tmp_path_ids})"
         )
