@@ -20,8 +20,6 @@ from collections import defaultdict
 from collections.abc import Callable
 from typing import Any, Literal, TypedDict, cast
 
-from typing_extensions import deprecated
-
 from qns.entity.cchannel import ClassicPacket, RecvClassicPacket
 from qns.entity.memory import QuantumMemory
 from qns.entity.memory.memory_qubit import MemoryQubit, PathDirection, QubitState
@@ -207,16 +205,6 @@ class ProactiveForwarder(Application):
         """to enable statistical mux"""
 
         self.cnt = ProactiveForwarderCounters()
-
-    @property
-    @deprecated(".cnt.n_consumed")
-    def e2e_count(self):
-        return self.cnt.n_consumed
-
-    @property
-    @deprecated(".cnt.consumed_sum_fidelity or .cnt.consumed_avg_fidelity")
-    def fidelity(self):
-        return self.cnt.consumed_sum_fidelity
 
     def install(self, node: Node, simulator: Simulator):
         """called at initialization of the node"""

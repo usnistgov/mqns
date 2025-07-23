@@ -1,20 +1,19 @@
-import argparse
 import itertools
 from copy import deepcopy
 from multiprocessing import Pool, freeze_support
-from typing import cast
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from tap import Tap
 
 from qns.network import QuantumNetwork
 from qns.network.protocol import LinkLayer, ProactiveForwarder, ProactiveRoutingControllerApp
-from qns.network.route import DijkstraRouteAlgorithm
 from qns.network.topology.customtopo import CustomTopology, Topo, TopoCChannel, TopoController, TopoQChannel, TopoQNode
 from qns.simulator import Simulator
-from qns.utils import log
-from qns.utils.rnd import set_seed
+from qns.utils import log, set_seed
+
+from examples_common.stats import gather_etg_decoh
 
 log.set_default_level("CRITICAL")
 
@@ -187,19 +186,14 @@ def run_simulation(p: ParameterSet, seed: int) -> tuple[float, float]:
     log.install(s)
 
     topology = CustomTopology(json_topology)
-    net = QuantumNetwork(topo=topology, route=DijkstraRouteAlgorithm())
+    net = QuantumNetwork(topo=topology)
 
     net.install(s)
     s.run()
 
     #### get stats
-    # total_etg = 0
-    total_decohered = 0
-    for node in net.get_nodes():
-        ll_app = node.get_app(LinkLayer)
-        total_decohered += ll_app.decoh_count
+    _, total_decohered, _ = gather_etg_decoh(net)
     e2e_count = net.get_node("S").get_app(ProactiveForwarder).cnt.n_consumed
-
     return e2e_count / p.sim_duration, total_decohered / e2e_count if e2e_count > 0 else 0
 
 
@@ -242,9 +236,9 @@ def run_row(p: ParameterSet, num_routers: int, dist_prop: str, swap_conf: str) -
     }
 
 
-def save_results(results: list[dict], *, save_csv: str | None, save_plt: str | None) -> None:
+def save_results(results: list[dict], *, save_csv: str, save_plt: str) -> None:
     df = pd.DataFrame(results)
-    if save_csv is not None:
+    if save_csv:
         df.to_csv(save_csv, index=False)
 
     # === Combined Plot ===
@@ -296,7 +290,7 @@ def save_results(results: list[dict], *, save_csv: str | None, save_plt: str | N
     axes[1, 0].legend(loc="upper left")
 
     plt.tight_layout()
-    if save_plt is not None:
+    if save_plt:
         plt.savefig(save_plt, dpi=300, transparent=True)
     plt.show()
 
@@ -311,19 +305,18 @@ if __name__ == "__main__":
     p = ParameterSet()
 
     # Command line arguments
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--runs", default=p.n_runs, type=int, help="Number of trials per parameter set.")
-    parser.add_argument("--routers", action="append", type=int, help="Number of routers between source and destination.")
-    parser.add_argument("--csv", type=str, help="Save results as CSV file.")
-    parser.add_argument("--plt", type=str, help="Save plot as image file.")
-    parser.add_argument("-j", default=1, type=int, help="Number of workers for parallel execution.")
-    args = parser.parse_args()
+    class Args(Tap):
+        workers: int = 1  # number of workers for parallel execution
+        runs: int = 10  # number of trials per parameter set
+        csv: str = ""  # save results as CSV file
+        plt: str = ""  # save plot as image file
+
+    args = Args().parse_args()
+
     p.n_runs = args.runs
-    if args.routers is not None:
-        NUM_ROUTERS_OPTIONS = cast(list[int], args.routers)
 
     # Simulator loop with process-based parallelism
-    with Pool(processes=cast(int, args.j)) as pool:
+    with Pool(processes=args.workers) as pool:
         results = pool.starmap(run_row, itertools.product([p], NUM_ROUTERS_OPTIONS, DIST_PROPORTIONS, SWAP_CONFIGS))
 
     save_results(results, save_csv=args.csv, save_plt=args.plt)

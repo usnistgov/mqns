@@ -1,13 +1,22 @@
 import numpy as np
 import pandas as pd
+from tap import Tap
 
-from qns.network import QuantumNetwork, TimingModeEnum
-from qns.network.protocol import LinkLayer, ProactiveForwarder, ProactiveRoutingControllerApp
-from qns.network.route import DijkstraRouteAlgorithm
-from qns.network.topology.customtopo import CustomTopology, Topo
+from qns.network.network import QuantumNetwork
+from qns.network.protocol import LinkLayer, ProactiveForwarder
 from qns.simulator import Simulator
-from qns.utils import log
-from qns.utils.rnd import set_seed
+from qns.utils import log, set_seed
+
+from examples_common.topo_3_nodes import build_topology
+
+
+# Command line arguments
+class Args(Tap):
+    runs: int = 1  # number of trials per parameter set
+    csv: str = ""  # save results as CSV file
+
+
+args = Args().parse_args()
 
 log.set_default_level("DEBUG")
 
@@ -16,115 +25,18 @@ SEED_BASE = 100
 # parameters
 sim_duration = 5
 
-fiber_alpha = 0.2
-eta_d = 0.95
-eta_s = 0.95
-frequency = 1e6  # memory frequency
-entg_attempt_rate = 50e6  # From fiber max frequency (50 MHz) AND detectors count rate (60 MHz)
 
-channel_qubits = 2
-init_fidelity = 0.7
-p_swap = 0.5
-
-
-# 3-nodes topology
-swapping_config = "swap_1"
-ch_1 = 32
-ch_2 = 18
-
-
-def generate_topology(t_coherence) -> Topo:
-    return {
-        "qnodes": [
-            {
-                "name": "S",
-                "memory": {
-                    "decoherence_rate": 1 / t_coherence,
-                    "capacity": channel_qubits,
-                },
-                "apps": [
-                    LinkLayer(
-                        attempt_rate=entg_attempt_rate,
-                        init_fidelity=init_fidelity,
-                        alpha_db_per_km=fiber_alpha,
-                        eta_d=eta_d,
-                        eta_s=eta_s,
-                        frequency=frequency,
-                    ),
-                    ProactiveForwarder(),
-                ],
-            },
-            {
-                "name": "R",
-                "memory": {
-                    "decoherence_rate": 1 / t_coherence,
-                    "capacity": channel_qubits * 2,
-                },
-                "apps": [
-                    LinkLayer(
-                        attempt_rate=entg_attempt_rate,
-                        init_fidelity=init_fidelity,
-                        alpha_db_per_km=fiber_alpha,
-                        eta_d=eta_d,
-                        eta_s=eta_s,
-                        frequency=frequency,
-                    ),
-                    ProactiveForwarder(ps=p_swap),
-                ],
-            },
-            {
-                "name": "D",
-                "memory": {
-                    "decoherence_rate": 1 / t_coherence,
-                    "capacity": channel_qubits,
-                },
-                "apps": [
-                    LinkLayer(
-                        attempt_rate=entg_attempt_rate,
-                        init_fidelity=init_fidelity,
-                        alpha_db_per_km=fiber_alpha,
-                        eta_d=eta_d,
-                        eta_s=eta_s,
-                        frequency=frequency,
-                    ),
-                    ProactiveForwarder(),
-                ],
-            },
-        ],
-        "qchannels": [
-            {
-                "node1": "S",
-                "node2": "R",
-                "capacity": channel_qubits,
-                "parameters": {"length": ch_1},
-            },
-            {
-                "node1": "R",
-                "node2": "D",
-                "capacity": channel_qubits,
-                "parameters": {"length": ch_2},
-            },
-        ],
-        "cchannels": [
-            {"node1": "S", "node2": "R", "parameters": {"length": ch_1}},
-            {"node1": "R", "node2": "D", "parameters": {"length": ch_2}},
-            {"node1": "ctrl", "node2": "S", "parameters": {"length": 1.0}},
-            {"node1": "ctrl", "node2": "R", "parameters": {"length": 1.0}},
-            {"node1": "ctrl", "node2": "D", "parameters": {"length": 1.0}},
-        ],
-        "controller": {"name": "ctrl", "apps": [ProactiveRoutingControllerApp(routing_type="SRSP", swapping=swapping_config)]},
-    }
-
-
-def run_simulation(t_coherence, seed):
-    json_topology = generate_topology(t_coherence)
-
+def run_simulation(t_coherence: float, seed: int):
     set_seed(seed)
     s = Simulator(0, sim_duration + 5e-06, accuracy=1000000)
     log.install(s)
 
-    topo = CustomTopology(json_topology)
-    net = QuantumNetwork(topo=topo, route=DijkstraRouteAlgorithm(), timing_mode=TimingModeEnum.ASYNC)
+    topo = build_topology(
+        t_coherence=t_coherence,
+        channel_qubits=2,
+        init_fidelity=0.7,
+    )
+    net = QuantumNetwork(topo=topo)
     net.install(s)
 
     s.run()
@@ -137,9 +49,9 @@ def run_simulation(t_coherence, seed):
         total_etg += ll_app.etg_count
         total_decohered += ll_app.decoh_count
 
-    e2e_count = net.get_node("S").get_app(ProactiveForwarder).e2e_count
-    e2e_rate = e2e_count / sim_duration
-    mean_fidelity = net.get_node("S").get_app(ProactiveForwarder).fidelity / e2e_count if e2e_count > 0 else 0
+    fw_s = net.get_node("S").get_app(ProactiveForwarder)
+    e2e_rate = fw_s.cnt.n_consumed / sim_duration
+    mean_fidelity = fw_s.cnt.consumed_avg_fidelity
 
     return e2e_rate, mean_fidelity, total_decohered / total_etg if total_etg > 0 else 0
 
@@ -150,11 +62,10 @@ t_cohere_values = [1]
 # t_cohere_values = [2e-3, 5e-3, 1e-2, 2e-2, 3e-2, 4e-2, 8e-2, 1e-1]
 # t_cohere_values = np.geomspace(2e-3, 1e-1, 8)
 
-N_RUNS = 1
 for t_cohere in t_cohere_values:
     rates = []
     fids = []
-    for i in range(N_RUNS):
+    for i in range(args.runs):
         print(f"T_cohere={t_cohere:.4f}, run {i + 1}")
         seed = SEED_BASE + i
         rate, f, *_ = run_simulation(t_cohere, seed)
@@ -169,5 +80,7 @@ for t_cohere in t_cohere_values:
 
 # Convert to DataFrame
 df = pd.DataFrame(results)
+if args.csv:
+    df.to_csv(args.csv, index=False)
 
 print(df)
