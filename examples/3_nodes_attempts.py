@@ -6,10 +6,10 @@ from tap import Tap
 from qns.entity.monitor import Monitor
 from qns.entity.qchannel import RecvQubitPacket
 from qns.network import QuantumNetwork
-from qns.network.protocol import LinkLayer, ProactiveForwarder, ProactiveRoutingControllerApp
-from qns.network.topology.customtopo import CustomTopology, Topo
 from qns.simulator import Simulator
 from qns.utils import log, set_seed
+
+from examples_common.topo_3_nodes import build_topology
 
 
 # Command line arguments
@@ -28,106 +28,13 @@ SEED_BASE = 100
 # parameters
 sim_duration = 1
 
-fiber_alpha = 0.2
-eta_d = 0.95
-eta_s = 0.95
-frequency = 1e6  # memory frequency
-entg_attempt_rate = 50e6  # From fiber max frequency (50 MHz) AND detectors count rate (60 MHz)
 
-init_fidelity = 0.99
-t_coherence = 0.1  # sec
-p_swap = 0.5
-
-
-# 3-nodes topology
-swapping_config = "no_swap"
-
-ch_1 = 32
-ch_2 = 18
-
-
-def generate_topology(channel_qubits) -> Topo:
-    return {
-        "qnodes": [
-            {
-                "name": "S",
-                "memory": {"decoherence_rate": 1 / t_coherence, "capacity": channel_qubits},
-                "apps": [
-                    LinkLayer(
-                        attempt_rate=entg_attempt_rate,
-                        init_fidelity=init_fidelity,
-                        alpha_db_per_km=fiber_alpha,
-                        eta_d=eta_d,
-                        eta_s=eta_s,
-                        frequency=frequency,
-                    ),
-                    ProactiveForwarder(),
-                ],
-            },
-            {
-                "name": "R",
-                "memory": {"decoherence_rate": 1 / t_coherence, "capacity": channel_qubits * 2},
-                "apps": [
-                    LinkLayer(
-                        attempt_rate=entg_attempt_rate,
-                        init_fidelity=init_fidelity,
-                        alpha_db_per_km=fiber_alpha,
-                        eta_d=eta_d,
-                        eta_s=eta_s,
-                        frequency=frequency,
-                    ),
-                    ProactiveForwarder(ps=p_swap),
-                ],
-            },
-            {
-                "name": "D",
-                "memory": {"decoherence_rate": 1 / t_coherence, "capacity": channel_qubits},
-                "apps": [
-                    LinkLayer(
-                        attempt_rate=entg_attempt_rate,
-                        init_fidelity=init_fidelity,
-                        alpha_db_per_km=fiber_alpha,
-                        eta_d=eta_d,
-                        eta_s=eta_s,
-                        frequency=frequency,
-                    ),
-                    ProactiveForwarder(),
-                ],
-            },
-        ],
-        "qchannels": [
-            {
-                "node1": "S",
-                "node2": "R",
-                "capacity": channel_qubits,
-                "parameters": {"length": ch_1},
-            },
-            {
-                "node1": "R",
-                "node2": "D",
-                "capacity": channel_qubits,
-                "parameters": {"length": ch_2},
-            },
-        ],
-        "cchannels": [
-            {"node1": "S", "node2": "R", "parameters": {"length": ch_1}},
-            {"node1": "R", "node2": "D", "parameters": {"length": ch_2}},
-            {"node1": "ctrl", "node2": "S", "parameters": {"length": 1.0}},
-            {"node1": "ctrl", "node2": "R", "parameters": {"length": 1.0}},
-            {"node1": "ctrl", "node2": "D", "parameters": {"length": 1.0}},
-        ],
-        "controller": {"name": "ctrl", "apps": [ProactiveRoutingControllerApp(routing_type="SRSP", swapping=swapping_config)]},
-    }
-
-
-def run_simulation(num_qubits, seed):
-    json_topology = generate_topology(channel_qubits=num_qubits)
-
+def run_simulation(num_qubits: int, seed: int):
     set_seed(seed)
     s = Simulator(0, sim_duration + 5e-06, accuracy=1000000)
     log.install(s)
 
-    topo = CustomTopology(json_topology)
+    topo = build_topology(t_coherence=0.1, channel_qubits=num_qubits, swapping_order="no_swap")
     net = QuantumNetwork(topo=topo)
     net.install(s)
 
