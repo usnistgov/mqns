@@ -1,3 +1,4 @@
+from qns.entity.qchannel import LinkType
 from qns.network.protocol import LinkLayer, ProactiveForwarder, ProactiveRoutingControllerApp
 from qns.network.topology.customtopo import CustomTopology, Topo, TopoCChannel, TopoController, TopoQChannel, TopoQNode
 from qns.network.topology.topo import Topology
@@ -16,8 +17,9 @@ def build_topology(
     *,
     nodes: list[str],
     mem_capacities: list[int],
-    channel_lengths: list[float],
-    capacities: list[tuple[int, int]],
+    ch_lengths: list[float],
+    ch_capacities: list[tuple[int, int]],
+    link_architectures: list[LinkType] | None = None,
     t_coherence: float,
     swapping_order: str,
 ) -> Topology:
@@ -25,17 +27,23 @@ def build_topology(
     Generate a linear topology with explicit memory and channel configurations.
 
     Args:
-        nodes (list[str]): List of node names.
-        mem_capacities (list[int]): Number of qubits per node.
-        channel_lengths (list[float]): Lengths of quantum channels between adjacent nodes.
-        capacities (list[tuple[int, int]]): (left, right) qubit allocation per qchannel.
+        nodes: List of node names.
+        mem_capacities: Number of qubits per node.
+        ch_lengths: Lengths of quantum channels between adjacent nodes.
+        ch_capacities: (left, right) qubit allocation per qchannel.
+        link_architectures: Link architecture per qchannel, default is DIM_BK_SEQ.
     """
-    if len(nodes) != len(mem_capacities):
-        raise ValueError("mem_capacities must match number of nodes")
-    if len(channel_lengths) != len(nodes) - 1:
-        raise ValueError("channel_lengths must be len(nodes) - 1")
-    if len(capacities) != len(nodes) - 1:
-        raise ValueError("capacities must be len(nodes) - 1")
+    if len(mem_capacities) != len(nodes):
+        raise ValueError(f"mem_capacities must have {len(nodes)} items")
+    n_links = len(nodes) - 1
+    if len(ch_lengths) != n_links:
+        raise ValueError(f"ch_lengths must have {n_links} items")
+    if len(ch_capacities) != n_links:
+        raise ValueError(f"ch_capacities must have {n_links} items")
+    if link_architectures is None:
+        link_architectures = [LinkType.DIM_BK_SEQ] * n_links
+    elif len(link_architectures) != n_links:
+        raise ValueError(f"link_architectures must have {n_links} items")
 
     qnodes: list[TopoQNode] = []
     for name, mem_capacity in zip(nodes, mem_capacities):
@@ -62,7 +70,7 @@ def build_topology(
 
     qchannels: list[TopoQChannel] = []
     cchannels: list[TopoCChannel] = []
-    for i, (length, (cap1, cap2)) in enumerate(zip(channel_lengths, capacities)):
+    for i, (length, (cap1, cap2), link_arch) in enumerate(zip(ch_lengths, ch_capacities, link_architectures)):
         node1, node2 = nodes[i], nodes[i + 1]
         qchannels.append(
             {
@@ -70,7 +78,7 @@ def build_topology(
                 "node2": node2,
                 "capacity1": cap1,
                 "capacity2": cap2,
-                "parameters": {"length": length},
+                "parameters": {"length": length, "link_architecture": link_arch},
             }
         )
         cchannels.append({"node1": node1, "node2": node2, "parameters": {"length": length}})

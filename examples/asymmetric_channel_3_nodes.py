@@ -1,125 +1,35 @@
-import logging
+import json
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
+from tap import Tap
 
 from qns.entity.qchannel import LinkType
-from qns.network import QuantumNetwork, TimingModeEnum
-from qns.network.protocol.link_layer import LinkLayer
-from qns.network.protocol.proactive_forwarder import ProactiveForwarder
-from qns.network.protocol.proactive_routing_controller import ProactiveRoutingControllerApp
-from qns.network.route.dijkstra import DijkstraRouteAlgorithm
-from qns.network.topology.customtopo import CustomTopology
-from qns.simulator.simulator import Simulator
-from qns.utils import log
-from qns.utils.rnd import set_seed
+from qns.network.network import QuantumNetwork
+from qns.network.protocol import ProactiveForwarder
+from qns.simulator import Simulator
+from qns.utils import log, set_seed
 
-log.logger.setLevel(logging.CRITICAL)
+from examples_common.stats import gather_etg_decoh
+from examples_common.topo_asymmetric_channel import build_topology
+
+
+# Command line arguments
+class Args(Tap):
+    runs: int = 3  # number of trials per parameter set
+    json: str = ""  # save results as JSON file
+    plt: str = ""  # save plot as image file
+
+
+args = Args().parse_args()
+
+log.set_default_level("CRITICAL")
 
 SEED_BASE = 100
 
-light_speed = 2 * 10**5  # km/s
-
 # parameters
 sim_duration = 3
-
-fiber_alpha = 0.2
-eta_d = 0.95
-eta_s = 0.95
-frequency = 1e6  # memory frequency
-entg_attempt_rate = 50e6  # From fiber max frequency (50 MHz) AND detectors count rate (60 MHz)
-
-init_fidelity = 0.99
-p_swap = 0.5
-
-swapping_config = "swap_1"
-
-
-def generate_topology(
-    nodes: list[str],
-    mem_capacities: list[int],
-    ch_lengths: list[float],
-    ch_capacities: list[tuple[int, int]],
-    link_architectures: list[str],
-    t_coherence: float,
-) -> dict:
-    """
-    Generate a linear topology with explicit memory and channel configurations.
-
-    Args:
-        nodes (list[str]): List of node names.
-        mem_capacities (list[int]): Number of qubits per node.
-        channel_lengths (list[float]): Lengths of quantum channels between adjacent nodes.
-        ch_capacities (list[tuple[int, int]]): (left, right) qubit allocation per qchannel.
-
-    Returns:
-        dict: A topology dictionary.
-    """
-    if len(nodes) != len(mem_capacities):
-        raise ValueError("mem_capacities must match number of nodes")
-    if len(ch_lengths) != len(nodes) - 1:
-        raise ValueError("ch_lengths must be len(nodes) - 1")
-    if len(ch_capacities) != len(nodes) - 1:
-        raise ValueError("ch_capacities must be len(nodes) - 1")
-    if len(link_architectures) != len(nodes) - 1:
-        raise ValueError("link_architectures must be len(nodes) - 1")
-
-    # Create QNodes
-    qnodes = []
-    for i, name in enumerate(nodes):
-        qnodes.append(
-            {
-                "name": name,
-                "memory": {
-                    "decoherence_rate": 1 / t_coherence,
-                    "capacity": mem_capacities[i],
-                },
-                "apps": [
-                    LinkLayer(
-                        attempt_rate=entg_attempt_rate,
-                        init_fidelity=init_fidelity,
-                        alpha_db_per_km=fiber_alpha,
-                        eta_d=eta_d,
-                        eta_s=eta_s,
-                        frequency=frequency,
-                    ),
-                    ProactiveForwarder(ps=p_swap),
-                ],
-            }
-        )
-
-    # Create Quantum Channels
-    qchannels = []
-    for i in range(len(nodes) - 1):
-        node1, node2 = nodes[i], nodes[i + 1]
-        length = ch_lengths[i]
-        cap1, cap2 = ch_capacities[i]
-        link_arch = link_architectures[i]
-
-        qchannels.append(
-            {
-                "node1": node1,
-                "node2": node2,
-                "capacity1": cap1,
-                "capacity2": cap2,
-                "parameters": {"length": length, "link_architecture": link_arch},
-            }
-        )
-
-    # Classical Channels
-    cchannels = []
-    for i in range(len(nodes) - 1):
-        node1, node2 = nodes[i], nodes[i + 1]
-        length = ch_lengths[i]
-        cchannels.append({"node1": node1, "node2": node2, "parameters": {"length": length}})
-
-    # Controller and links to all nodes
-    controller = {"name": "ctrl", "apps": [ProactiveRoutingControllerApp(routing_type="SRSP", swapping=swapping_config)]}
-    for node in nodes:
-        cchannels.append({"node1": "ctrl", "node2": node, "parameters": {"length": 1.0}})
-
-    return {"qnodes": qnodes, "qchannels": qchannels, "cchannels": cchannels, "controller": controller}
 
 
 def run_simulation(
@@ -127,55 +37,51 @@ def run_simulation(
     mem_capacities: list[int],
     ch_lengths: list[float],
     ch_capacities: list[tuple[int, int]],
-    link_architectures: list[str],
+    link_architectures: list[LinkType],
     t_coherence: float,
     seed: int,
 ):
-    json_topology = generate_topology(nodes, mem_capacities, ch_lengths, ch_capacities, link_architectures, t_coherence)
-    # print(json_topology)
-
     set_seed(seed)
     s = Simulator(0, sim_duration + 5e-06, accuracy=1000000)
     log.install(s)
 
-    topo = CustomTopology(json_topology)
-    net = QuantumNetwork(topo=topo, route=DijkstraRouteAlgorithm(), timing_mode=TimingModeEnum.ASYNC)
+    topo = build_topology(
+        nodes=nodes,
+        mem_capacities=mem_capacities,
+        ch_lengths=ch_lengths,
+        ch_capacities=ch_capacities,
+        t_coherence=t_coherence,
+        link_architectures=link_architectures,
+        swapping_order="swap_1",
+    )
+    net = QuantumNetwork(topo=topo)
     net.install(s)
 
     s.run()
 
     #### get stats
-    total_etg = 0
-    total_decohered = 0
-    for node in net.get_nodes():
-        ll_app = node.get_app(LinkLayer)
-        total_etg += ll_app.etg_count
-        total_decohered += ll_app.decoh_count
-
-    e2e_count = net.get_node("S").get_app(ProactiveForwarder).e2e_count
-    e2e_rate = e2e_count / sim_duration
-    mean_fidelity = net.get_node("S").get_app(ProactiveForwarder).fidelity / e2e_count if e2e_count > 0 else 0
-
-    return e2e_rate, total_decohered / total_etg if total_etg > 0 else 0, mean_fidelity
+    _, _, decoh_ratio = gather_etg_decoh(net)
+    fw_s = net.get_node("S").get_app(ProactiveForwarder)
+    e2e_rate = fw_s.cnt.n_consumed / sim_duration
+    mean_fidelity = fw_s.cnt.consumed_avg_fidelity
+    return e2e_rate, decoh_ratio, mean_fidelity
 
 
 ########################### Main #########################
 
 # Constants
-N_RUNS = 3
 SEED_BASE = 42
 TOTAL_QUBITS = 6
 
-ch_lengths = [20, 20]
+ch_lengths: list[float] = [20, 20]
 
 # Experiment parameters
-# t_cohere_values = [5e-3, 10e-3, 20e-3]
 t_cohere_values = [1e-3, 10e-3]
 mem_allocs = [(1, 5), (2, 4), (3, 3), (4, 2), (5, 1)]
 mem_labels = [str(m) for m in mem_allocs]
 
 channel_configs = {
-  #  "DIM-DIM": [LinkType.DIM_BK, LinkType.DIM_BK],  # [25, 25]
+    #  "DIM-DIM": [LinkType.DIM_BK, LinkType.DIM_BK],  # [25, 25]
     "SR-SR": [LinkType.SR, LinkType.SR],  # [25, 25]
     "SIM-DIM": [LinkType.SIM, LinkType.DIM_BK],  # [32, 18]
     "DIM-SIM": [LinkType.DIM_BK, LinkType.SIM],  # [18, 32]
@@ -192,7 +98,7 @@ for t_cohere in t_cohere_values:
         for left, right in mem_allocs:
             rates = []
             fids = []
-            for i in range(N_RUNS):
+            for i in range(args.runs):
                 print(f"{length_label}, T_cohere={t_cohere:.3f}, Mem alloc={[left, right]}, run {i + 1}")
                 seed = SEED_BASE + i
 
@@ -216,22 +122,28 @@ for t_cohere in t_cohere_values:
             res["fid_mean"].append(np.mean(fids))
             res["fid_std"].append(np.std(fids))
 
+if args.json:
+    with open(args.json, "w") as file:
+        json.dump(results, file)
 
-import matplotlib as mpl
+########################### Plot: Entanglement Rate #########################
+
 
 # Update font and figure styling for academic readability at small dimensions
-mpl.rcParams.update({
-    "font.size": 18,
-    "axes.titlesize": 20,
-    "axes.labelsize": 18,
-    "legend.fontsize": 16,
-    "xtick.labelsize": 16,
-    "ytick.labelsize": 16,
-    "figure.titlesize": 22,
-    "lines.linewidth": 2,
-    "lines.markersize": 6,
-    "errorbar.capsize": 4
-})
+mpl.rcParams.update(
+    {
+        "font.size": 18,
+        "axes.titlesize": 20,
+        "axes.labelsize": 18,
+        "legend.fontsize": 16,
+        "xtick.labelsize": 16,
+        "ytick.labelsize": 16,
+        "figure.titlesize": 22,
+        "lines.linewidth": 2,
+        "lines.markersize": 6,
+        "errorbar.capsize": 4,
+    }
+)
 
 # Redraw plot with updated font sizes
 fig_combined, axs = plt.subplots(2, 2, figsize=(8, 6), sharex=True)
@@ -245,8 +157,7 @@ for idx, t_cohere in enumerate(t_cohere_values):
     ax_rate = axs[row_rate][col]
     for length_label in channel_configs:
         res = results[t_cohere][length_label]
-        ax_rate.errorbar(mem_labels, res["rate_mean"], yerr=res["rate_std"],
-                         fmt="o--", capsize=4, label=length_label)
+        ax_rate.errorbar(mem_labels, res["rate_mean"], yerr=res["rate_std"], fmt="o--", capsize=4, label=length_label)
     ax_rate.set_title(f"T_cohere: {int(t_cohere * 1e3)} ms")
     ax_rate.set_ylabel("Ent. per second")
     ax_rate.grid(True, which="both", ls="--", lw=0.6, alpha=0.8)
@@ -257,13 +168,13 @@ for idx, t_cohere in enumerate(t_cohere_values):
     ax_fid = axs[row_fid][col]
     for length_label in channel_configs:
         res = results[t_cohere][length_label]
-        ax_fid.errorbar(mem_labels, res["fid_mean"], yerr=res["fid_std"],
-                        fmt="s--", capsize=4, label=length_label)
+        ax_fid.errorbar(mem_labels, res["fid_mean"], yerr=res["fid_std"], fmt="s--", capsize=4, label=length_label)
     ax_fid.set_xlabel("Memory Allocation")
     ax_fid.set_ylabel("Fidelity")
     ax_fid.grid(True, which="both", ls="--", lw=0.6, alpha=0.8)
 
 # fig_combined.suptitle("Entanglement Rate and Fidelity vs Memory Allocation", fontsize=22)
-fig_combined.tight_layout(rect=[0, 0, 1, 0.95])
+fig_combined.tight_layout(rect=(0, 0, 1, 0.95))
+if args.plt:
+    plt.savefig(args.plt, dpi=300, transparent=True)
 plt.show()
-

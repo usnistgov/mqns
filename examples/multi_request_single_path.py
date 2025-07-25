@@ -1,24 +1,31 @@
-import logging
+import json
 import random
 from collections.abc import Callable
-
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
+from tap import Tap
 
-from qns.network import QuantumNetwork, TimingModeEnum
+from qns.entity.node import Application
+from qns.network.network import QuantumNetwork
+from qns.network.protocol import LinkLayer, ProactiveForwarder, ProactiveRoutingControllerApp
 from qns.network.protocol.fib import FIBEntry
-from qns.network.protocol.link_layer import LinkLayer
-from qns.network.protocol.proactive_forwarder import ProactiveForwarder
-from qns.network.protocol.proactive_routing_controller import ProactiveRoutingControllerApp
-from qns.network.route.dijkstra import DijkstraRouteAlgorithm
-from qns.network.topology.customtopo import CustomTopology
-from qns.simulator.simulator import Simulator
-from qns.utils import log
-from qns.utils.rnd import set_seed
+from qns.network.topology.customtopo import CustomTopology, Topo
+from qns.simulator import Simulator
+from qns.utils import log, set_seed
 
-log.logger.setLevel(logging.CRITICAL)
+
+# Command line arguments
+class Args(Tap):
+    runs: int = 3  # number of trials per parameter set
+    json: str = ""  # save results as JSON file
+    plt: str = ""  # save plot as image file
+
+
+args = Args().parse_args()
+
+log.set_default_level("CRITICAL")
 
 SEED_BASE = 100
 
@@ -48,7 +55,7 @@ ch_R3_D2 = 10
 
 
 # path selection strategy for dynamic EPR allocation
-def select_weighted_by_swaps(fibs: list[FIBEntry]) -> int:
+def select_weighted_by_swaps(fibs: list[FIBEntry]) -> int | None:
     if not fibs:
         return None
 
@@ -61,13 +68,27 @@ def select_weighted_by_swaps(fibs: list[FIBEntry]) -> int:
 
 def generate_topology(
     t_coherence: float, p_swap: float, statistical_mux: bool, path_select_fn: Callable[[list[FIBEntry]], int] | None
-) -> dict:
+) -> Topo:
     """
     Defines the topology with globally declared simulation parameters.
 
     Returns:
         dict: the topology definition to be used to build the quantum network.
     """
+
+    def make_qnode_apps() -> list[Application]:
+        return [
+            LinkLayer(
+                attempt_rate=entg_attempt_rate,
+                init_fidelity=init_fidelity,
+                alpha_db_per_km=fiber_alpha,
+                eta_d=eta_d,
+                eta_s=eta_s,
+                frequency=frequency,
+            ),
+            ProactiveForwarder(ps=p_swap, statistical_mux=statistical_mux, path_select_fn=path_select_fn),
+        ]
+
     return {
         "qnodes": [
             {
@@ -76,17 +97,7 @@ def generate_topology(
                     "decoherence_rate": 1 / t_coherence,
                     "capacity": 1,
                 },
-                "apps": [
-                    LinkLayer(
-                        attempt_rate=entg_attempt_rate,
-                        init_fidelity=init_fidelity,
-                        alpha_db_per_km=fiber_alpha,
-                        eta_d=eta_d,
-                        eta_s=eta_s,
-                        frequency=frequency,
-                    ),
-                    ProactiveForwarder(ps=p_swap, statistical_mux=statistical_mux, path_select_fn=path_select_fn),
-                ],
+                "apps": make_qnode_apps(),
             },
             {
                 "name": "S2",
@@ -94,17 +105,7 @@ def generate_topology(
                     "decoherence_rate": 1 / t_coherence,
                     "capacity": 1,
                 },
-                "apps": [
-                    LinkLayer(
-                        attempt_rate=entg_attempt_rate,
-                        init_fidelity=init_fidelity,
-                        alpha_db_per_km=fiber_alpha,
-                        eta_d=eta_d,
-                        eta_s=eta_s,
-                        frequency=frequency,
-                    ),
-                    ProactiveForwarder(ps=p_swap, statistical_mux=statistical_mux, path_select_fn=path_select_fn),
-                ],
+                "apps": make_qnode_apps(),
             },
             {
                 "name": "D1",
@@ -112,17 +113,7 @@ def generate_topology(
                     "decoherence_rate": 1 / t_coherence,
                     "capacity": 1,
                 },
-                "apps": [
-                    LinkLayer(
-                        attempt_rate=entg_attempt_rate,
-                        init_fidelity=init_fidelity,
-                        alpha_db_per_km=fiber_alpha,
-                        eta_d=eta_d,
-                        eta_s=eta_s,
-                        frequency=frequency,
-                    ),
-                    ProactiveForwarder(ps=p_swap, statistical_mux=statistical_mux, path_select_fn=path_select_fn),
-                ],
+                "apps": make_qnode_apps(),
             },
             {
                 "name": "D2",
@@ -130,17 +121,7 @@ def generate_topology(
                     "decoherence_rate": 1 / t_coherence,
                     "capacity": 1,
                 },
-                "apps": [
-                    LinkLayer(
-                        attempt_rate=entg_attempt_rate,
-                        init_fidelity=init_fidelity,
-                        alpha_db_per_km=fiber_alpha,
-                        eta_d=eta_d,
-                        eta_s=eta_s,
-                        frequency=frequency,
-                    ),
-                    ProactiveForwarder(ps=p_swap, statistical_mux=statistical_mux, path_select_fn=path_select_fn),
-                ],
+                "apps": make_qnode_apps(),
             },
             {
                 "name": "R1",
@@ -148,17 +129,7 @@ def generate_topology(
                     "decoherence_rate": 1 / t_coherence,
                     "capacity": 2,
                 },
-                "apps": [
-                    LinkLayer(
-                        attempt_rate=entg_attempt_rate,
-                        init_fidelity=init_fidelity,
-                        alpha_db_per_km=fiber_alpha,
-                        eta_d=eta_d,
-                        eta_s=eta_s,
-                        frequency=frequency,
-                    ),
-                    ProactiveForwarder(ps=p_swap, statistical_mux=statistical_mux, path_select_fn=path_select_fn),
-                ],
+                "apps": make_qnode_apps(),
             },
             {
                 "name": "R2",
@@ -166,17 +137,7 @@ def generate_topology(
                     "decoherence_rate": 1 / t_coherence,
                     "capacity": 3,
                 },
-                "apps": [
-                    LinkLayer(
-                        attempt_rate=entg_attempt_rate,
-                        init_fidelity=init_fidelity,
-                        alpha_db_per_km=fiber_alpha,
-                        eta_d=eta_d,
-                        eta_s=eta_s,
-                        frequency=frequency,
-                    ),
-                    ProactiveForwarder(ps=p_swap, statistical_mux=statistical_mux, path_select_fn=path_select_fn),
-                ],
+                "apps": make_qnode_apps(),
             },
             {
                 "name": "R3",
@@ -184,17 +145,7 @@ def generate_topology(
                     "decoherence_rate": 1 / t_coherence,
                     "capacity": 3,
                 },
-                "apps": [
-                    LinkLayer(
-                        attempt_rate=entg_attempt_rate,
-                        init_fidelity=init_fidelity,
-                        alpha_db_per_km=fiber_alpha,
-                        eta_d=eta_d,
-                        eta_s=eta_s,
-                        frequency=frequency,
-                    ),
-                    ProactiveForwarder(ps=p_swap, statistical_mux=statistical_mux, path_select_fn=path_select_fn),
-                ],
+                "apps": make_qnode_apps(),
             },
         ],
         "qchannels": [
@@ -238,37 +189,22 @@ def run_simulation(
     log.install(s)
 
     topo = CustomTopology(json_topology)
-    net = QuantumNetwork(topo=topo, route=DijkstraRouteAlgorithm(), timing_mode=TimingModeEnum.ASYNC)
+    net = QuantumNetwork(topo=topo)
     net.install(s)
 
     s.run()
 
-    #### get stats
-    total_etg = 0
-    total_decohered = 0
-    for node in net.get_nodes():
-        ll_app = node.get_apps(LinkLayer)[0]
-        total_etg += ll_app.etg_count
-        total_decohered += ll_app.decoh_count
-
-    e2e_rate_1 = net.get_node("S1").get_apps(ProactiveForwarder)[0].e2e_count / sim_duration
-    e2e_rate_2 = net.get_node("S2").get_apps(ProactiveForwarder)[0].e2e_count / sim_duration
-
-    #### get stats
-    e2e_count_1 = net.get_node("S1").get_app(ProactiveForwarder).e2e_count
-    e2e_rate_1 = e2e_count_1 / sim_duration
-    mean_fidelity_1 = net.get_node("S1").get_app(ProactiveForwarder).fidelity / e2e_count_1 if e2e_count_1 > 0 else 0
-
-    e2e_count_2 = net.get_node("S2").get_app(ProactiveForwarder).e2e_count
-    e2e_rate_2 = e2e_count_2 / sim_duration
-    mean_fidelity_2 = net.get_node("S2").get_app(ProactiveForwarder).fidelity / e2e_count_2 if e2e_count_2 > 0 else 0
-
+    #### get stats: e2e_rate and mean_fidelity
+    fw_s1 = net.get_node("S1").get_app(ProactiveForwarder)
+    fw_s2 = net.get_node("S2").get_app(ProactiveForwarder)
     # [(path 1), (path 2), ...]
-    return [(e2e_rate_1, mean_fidelity_1), (e2e_rate_2, mean_fidelity_2)]
+    return [
+        (fw_s1.cnt.n_consumed / sim_duration, fw_s1.cnt.consumed_avg_fidelity),
+        (fw_s2.cnt.n_consumed / sim_duration, fw_s2.cnt.consumed_avg_fidelity),
+    ]
 
 
 # Simulation constants
-N_RUNS = 3
 SEED_BASE = 100
 p_swap = 0.5
 t_cohere_values = [5e-3, 10e-3, 20e-3]
@@ -288,7 +224,7 @@ for strategy, config in strategies.items():
     for t_cohere in t_cohere_values:
         path_rates = [[], []]
         path_fids = [[], []]
-        for i in range(N_RUNS):
+        for i in range(args.runs):
             print(f"{strategy, config}, T_cohere={t_cohere:.3f}, run #{i}")
             seed = SEED_BASE + i
             (rate1, fid1), (rate2, fid2) = run_simulation(
@@ -309,20 +245,27 @@ for strategy, config in strategies.items():
             std_fid = np.std(path_fids[path])
             results[strategy][path].append((mean_rate, std_rate, mean_fid, std_fid))
 
-mpl.rcParams.update({
-    "font.size": 18,
-    "axes.titlesize": 18,
-    "axes.labelsize": 18,
-    "legend.fontsize": 16,
-    "xtick.labelsize": 16,
-    "ytick.labelsize": 16,
-    "figure.titlesize": 22,
-    "lines.linewidth": 2,
-    "lines.markersize": 7,
-    "errorbar.capsize": 4
-})
 
-fig, axs = plt.subplots(2, 2, figsize=(9, 8), sharex=True, sharey='row')
+if args.json:
+    with open(args.json, "w") as file:
+        json.dump(results, file)
+
+mpl.rcParams.update(
+    {
+        "font.size": 18,
+        "axes.titlesize": 18,
+        "axes.labelsize": 18,
+        "legend.fontsize": 16,
+        "xtick.labelsize": 16,
+        "ytick.labelsize": 16,
+        "figure.titlesize": 22,
+        "lines.linewidth": 2,
+        "lines.markersize": 7,
+        "errorbar.capsize": 4,
+    }
+)
+
+fig, axs = plt.subplots(2, 2, figsize=(9, 8), sharex=True, sharey="row")
 
 # Plot Entanglement Rate
 for strategy in strategies:
@@ -364,5 +307,7 @@ for ax in axs[1]:
     ax.grid(True)
 
 axs[1][1].legend(title="Strategy", loc="lower right")
-fig.tight_layout(rect=[0, 0, 1, 0.95])
+fig.tight_layout(rect=(0, 0, 1, 0.95))
+if args.plt:
+    plt.savefig(args.plt, dpi=300, transparent=True)
 plt.show()

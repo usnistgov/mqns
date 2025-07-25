@@ -22,8 +22,8 @@ log.install(s)
 topo = build_topology(
     nodes=["S", "R1", "R2", "D"],
     mem_capacities=[4, 4, 4, 4],  # number of qubits per node should be enough for qchannels
-    channel_lengths=[32, 18, 10],
-    capacities=[(4, 3), (1, 2), (2, 4)],
+    ch_lengths=[32, 18, 10],
+    ch_capacities=[(4, 3), (1, 2), (2, 4)],
     t_coherence=0.01,  # sec
     swapping_order="swap_2_l2r",
 )
