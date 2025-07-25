@@ -394,9 +394,10 @@ class ProactiveForwarder(Application):
                 assert isinstance(epr, WernerStateEntanglement)
                 log.debug(f"{self.own}: qubit {qubit}, set possible path IDs = {possible_path_ids}")
                 epr.tmp_path_ids = list(possible_path_ids)  # to coordinate decisions along the path
-                self.own.get_qchannel(event.neighbor)  # ensure qchannel exists
-                qubit.fsm.to_purif()
-                self.qubit_is_purif(qubit)
+                if _can_enter_purif(self.own.name, event.neighbor.name):
+                    self.own.get_qchannel(event.neighbor)  # ensure qchannel exists
+                    qubit.fsm.to_purif()
+                    self.qubit_is_purif(qubit)
                 return
 
             # Dynamic EPR effectation (not statistical mux)
@@ -1187,6 +1188,20 @@ class ProactiveForwarder(Application):
             for event in self.waiting_qubits:
                 self.qubit_is_entangled(event)
             self.waiting_qubits = []
+
+
+def _can_enter_purif(own_name: str, partner_name: str) -> bool:
+    """
+    Evaluate if a qubit is eligible for purification, in statistical_mux only with limited support.
+
+    - Any entangled qubit at intermediate node is always eligible.
+    - Entangled qubit at end-node is eligible only if entangled with another end-node.
+    """
+    return (
+        (own_name.startswith("R"))
+        or (own_name.startswith("S") and partner_name.startswith("D"))
+        or (own_name.startswith("D") and partner_name.startswith("S"))
+    )
 
 
 def select_common_element(list1: list[int], list2: list[int]) -> list[int] | None:
