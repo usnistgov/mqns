@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -5,8 +7,9 @@ from tap import Tap
 
 from qns.entity.monitor import Monitor
 from qns.entity.qchannel import RecvQubitPacket
+from qns.models.epr import BaseEntanglement
 from qns.network.network import QuantumNetwork
-from qns.simulator import Simulator
+from qns.simulator import Event, Simulator
 from qns.utils import log, set_seed
 
 from examples_common.topo_3_nodes import build_topology
@@ -38,18 +41,17 @@ def run_simulation(num_qubits: int, seed: int):
     net = QuantumNetwork(topo=topo)
     net.install(s)
 
-    # attempts rate per second per qchannel
-    attempts_rate = {}
-    # etg rate per second per qchannel
-    ent_rate = {}
+    counts = defaultdict[str, list[int]](lambda: [0, 0])
 
-    def watch_ent_rate(simulator, network, event):
-        if event.qchannel.name in ent_rate:
-            ent_rate[event.qchannel.name] += 1
-            attempts_rate[event.qchannel.name] += event.qubit.attempts
-        else:
-            ent_rate[event.qchannel.name] = 1
-            attempts_rate[event.qchannel.name] = event.qubit.attempts
+    def watch_ent_rate(simulator: Simulator, network: QuantumNetwork | None, event: Event):
+        _ = simulator
+        _ = network
+        assert isinstance(event, RecvQubitPacket)
+        assert isinstance(event.qubit, BaseEntanglement)
+        assert event.qubit.attempts is not None
+        record = counts[event.qchannel.name]
+        record[0] += 1
+        record[1] += event.qubit.attempts
 
     m_ent_rate = Monitor(name="ent_rate", network=None)
     m_ent_rate.add_attribution(name="ent_rate", calculate_func=watch_ent_rate)
@@ -58,8 +60,8 @@ def run_simulation(num_qubits: int, seed: int):
 
     s.run()
 
-    attempts_rate.update({k: v / sim_duration for k, v in attempts_rate.items()})
-    ent_rate.update({k: v / sim_duration for k, v in ent_rate.items()})
+    attempts_rate = {k: v[1] / sim_duration for k, v in counts.items()}
+    ent_rate = {k: v[0] / sim_duration for k, v in counts.items()}
 
     # fraction of successful attempts per channel
     success_frac = {k: ent_rate[k] / attempts_rate[k] if attempts_rate[k] != 0 else 0 for k in ent_rate}
@@ -159,19 +161,3 @@ fig.tight_layout()
 if args.plt:
     fig.savefig(args.plt, dpi=300, transparent=True)
 plt.show()
-
-
-# s.run_continuous()
-
-# import signal
-# def stop_emulation(sig, frame):
-#     print('Stopping simulation...')
-#     s.stop()
-# signal.signal(signal.SIGINT, stop_emulation)
-
-# results = []
-# for req in net.requests:
-#    src = req.src
-#    results.append(src.apps[0].success_count)
-# fair = sum(results)**2 / (len(results) * sum([r**2 for r in results]))
-# log.monitor(requests_number, nodes_number, s.time_spend, sep=" ")
