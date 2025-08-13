@@ -21,7 +21,7 @@ class LinkArch(ABC):
             length: fiber length in kilometers.
             alpha: fiber loss in dB/km.
             eta_s: source efficiency between 0 and 1.
-            eta_d: detector efficienccy between 0 and 1
+            eta_d: detector efficiency between 0 and 1
         """
         pass
 
@@ -37,9 +37,10 @@ class LinkArch(ABC):
             tau_0: local operation delay.
 
         Returns:
-            [0]: when should k-th attempt succeed.
-            [1]: EPR creation time before successful attempt.
-            [2]: primary node notification time after successful attempt.
+            [0]: EPR creation time.
+            [1]: notification time to primary node.
+            [2]: notification time to secondary node.
+            Every value is a duration, in seconds, since RESERVE_QUBIT_OK arrives at primary node.
         """
         pass
 
@@ -61,13 +62,13 @@ class LinkArchDimBk(LinkArch):
     def delays(self, k: int, *, reset_time: float, tau_l: float, tau_0: float) -> tuple[float, float, float]:
         tau = 2 * (tau_l + tau_0)
         attempt_duration = max(tau, reset_time)
-        return k * attempt_duration - tau_l, tau_0 + tau_l, tau_l
+        return k * attempt_duration - 2 * tau_l - tau_0, k * attempt_duration, k * attempt_duration
 
 
 class LinkArchDimBkSeq(LinkArchDimBk):
     """
     Detection-in-Midpoint link architecture with Barrett-Kok protocol,
-    with reservation logic from SeQUeNCe simulator.
+    with reservation logic as implemented by SeQUeNCe simulator.
     """
 
     def __init__(self, name="DIM-BK-SeQUeNCe"):
@@ -77,7 +78,11 @@ class LinkArchDimBkSeq(LinkArchDimBk):
     def delays(self, k: int, *, reset_time: float, tau_l: float, tau_0: float) -> tuple[float, float, float]:
         tau = tau_l + tau_0
         attempt_duration = max(5 * tau, reset_time)
-        return (k - 1) * attempt_duration + 5 * tau - tau_l, tau_0 + 3 * tau_l, tau_l
+        return (
+            (k - 1) * attempt_duration + tau_l + 4 * tau_0,
+            (k - 1) * attempt_duration + 5 * tau,
+            (k - 1) * attempt_duration + 5 * tau,
+        )
 
 
 class LinkArchSr(LinkArch):
@@ -96,7 +101,7 @@ class LinkArchSr(LinkArch):
     def delays(self, k: int, *, reset_time: float, tau_l: float, tau_0: float) -> tuple[float, float, float]:
         tau = 2 * (tau_l + tau_0)
         attempt_duration = max(tau, reset_time)
-        return k * attempt_duration - tau_l, tau_l, 0
+        return k * attempt_duration - 2 * tau_l, k * attempt_duration - tau_l, k * attempt_duration
 
 
 class LinkArchSim(LinkArch):
@@ -116,4 +121,4 @@ class LinkArchSim(LinkArch):
     def delays(self, k: int, *, reset_time: float, tau_l: float, tau_0: float) -> tuple[float, float, float]:
         tau = tau_l + tau_0
         attempt_duration = max(tau, reset_time)
-        return k * attempt_duration - tau_l, 0, tau_l
+        return k * attempt_duration - tau_l, k * attempt_duration, k * attempt_duration

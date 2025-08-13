@@ -329,17 +329,16 @@ class LinkLayer(Application):
         k = np.random.geometric(p)  # k-th attempt will succeed
 
         tau_l = qchannel.delay_model.calculate()  # time to send photon/message one way
-        t_success, delay_c, delay_n = qchannel.link_arch.delays(
+        d_epr_creation, d_notify_primary, d_notify_secondary = qchannel.link_arch.delays(
             k,
             reset_time=self.reset_time,
             tau_l=tau_l,
             tau_0=self.tau_0,
         )
-        # TODO remove the truncation and "1e-6"
-        # TODO change LinkArch to return these values directly
-        t_epr_creation = simulator.time(sec=t_success) - delay_c
-        t_notify_primary = simulator.time(sec=t_success) + (delay_n + 1e-6)
-        t_notify_secondary = simulator.time(sec=t_success) + tau_l
+        t_epr_creation = simulator.tc + d_epr_creation
+        # TODO investigate why some procedures crash without adding 1 time slot
+        t_notify_primary = simulator.tc + d_notify_primary + simulator.time(time_slot=1)
+        t_notify_secondary = simulator.tc + d_notify_secondary
 
         epr = WernerStateEntanglement(fidelity=self.init_fidelity, name=uuid.uuid4().hex)
         epr.src = self.own
@@ -347,15 +346,15 @@ class LinkLayer(Application):
         epr.attempts = k
         epr.key = qubit.active
         epr.path_id = qubit.path_id
-        epr.creation_time = simulator.tc + t_epr_creation
+        epr.creation_time = t_epr_creation
 
         log.debug(
             f"{self.own}: prepare EPR {epr.name} key={epr.key} dst={epr.dst} attempts={k} "
-            f"delays={t_epr_creation},{t_notify_primary},{t_notify_secondary}"
+            f"times={t_epr_creation},{t_notify_primary},{t_notify_secondary}"
         )
 
-        simulator.add_event(LinkArchSuccessEvent(self.own, epr, t=simulator.tc + t_notify_primary, by=self))
-        simulator.add_event(LinkArchSuccessEvent(next_hop, epr, t=simulator.tc + t_notify_secondary, by=self))
+        simulator.add_event(LinkArchSuccessEvent(self.own, epr, t=t_notify_primary, by=self))
+        simulator.add_event(LinkArchSuccessEvent(next_hop, epr, t=t_notify_secondary, by=self))
 
     def handle_success_entangle(self, event: LinkArchSuccessEvent):
         if self.own.timing_mode == TimingModeEnum.SYNC and self.sync_current_phase != SignalTypeEnum.EXTERNAL:
