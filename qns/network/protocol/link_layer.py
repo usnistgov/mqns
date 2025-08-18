@@ -337,8 +337,7 @@ class LinkLayer(Application):
             tau_0=self.tau_0,
         )
         t_epr_creation = simulator.tc + d_epr_creation
-        # TODO investigate why some procedures crash without adding 1 time slot
-        t_notify_primary = simulator.tc + d_notify_primary + simulator.time(time_slot=1)
+        t_notify_primary = simulator.tc + d_notify_primary
         t_notify_secondary = simulator.tc + d_notify_secondary
 
         epr = WernerStateEntanglement(fidelity=self.init_fidelity, name=uuid.uuid4().hex)

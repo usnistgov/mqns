@@ -183,6 +183,13 @@ class ProactiveForwarder(Application):
         self.add_handler(self.RecvClassicPacketHandler, RecvClassicPacket)
         self.add_handler(self.qubit_is_entangled, QubitEntangledEvent)
 
+        self.waiting_su: dict[int, tuple[SwapUpdateMsg, FIBEntry]] = {}
+        """
+        SwapUpdates received prior to QubitEntangledEvent.
+        Key: MemoryQubit addr.
+        Value: SwapUpdateMsg and FIBEntry.
+        """
+
         self.parallel_swappings: dict[
             str, tuple[WernerStateEntanglement, WernerStateEntanglement, WernerStateEntanglement]
         ] = {}
@@ -386,8 +393,8 @@ class ProactiveForwarder(Application):
             # available for every elementary EPR:
             possible_path_ids = self.qchannel_paths_map[qubit.qchannel.name]
 
-            # Statistical multiplexing
             if self.statistical_mux:
+                # Statistical multiplexing
                 log.debug(f"{self.own}: Statistical mux enabled")
                 _, epr = self.memory.get(address=qubit.addr, must=True)
                 assert isinstance(epr, WernerStateEntanglement)
@@ -397,24 +404,27 @@ class ProactiveForwarder(Application):
                     self.own.get_qchannel(event.neighbor)  # ensure qchannel exists
                     qubit.state = QubitState.PURIF
                     self.qubit_is_purif(qubit)
-                return
+            else:
+                # Dynamic EPR effectation (not statistical mux)
+                # TODO: if paths have different swap policies
+                #       -> consider only paths for which this qubit may be eligible ??
+                # Default is to affect EPR to paths randomly
+                log.debug(f"{self.own}: Dynamic EPR affectation enabled")
+                _, epr = self.memory.get(address=qubit.addr, must=True)
+                assert isinstance(epr, WernerStateEntanglement)
+                if epr.tmp_path_ids is None:  # whatever neighbor is first
+                    fib_entries = [self.fib.get_entry(pid, must=True) for pid in possible_path_ids]
+                    path_id = self.path_select_fn(fib_entries)
+                    epr.tmp_path_ids = [path_id]
 
-            # Dynamic EPR effectation (not statistical mux)
-            # TODO: if paths have different swap policies
-            #       -> consider only paths for which this qubit may be eligible ??
-            # Default is to affect EPR to paths randomly
-            log.debug(f"{self.own}: Dynamic EPR affectation enabled")
-            _, epr = self.memory.get(address=qubit.addr, must=True)
-            assert isinstance(epr, WernerStateEntanglement)
-            if epr.tmp_path_ids is None:  # whatever neighbor is first
-                fib_entries = [self.fib.get_entry(pid, must=True) for pid in possible_path_ids]
-                path_id = self.path_select_fn(fib_entries)
-                epr.tmp_path_ids = [path_id]
+                fib_entry = self.fib.get_entry(epr.tmp_path_ids[0], must=True)
+                self.own.get_qchannel(event.neighbor)  # ensure qchannel exists
+                qubit.state = QubitState.PURIF
+                self.qubit_is_purif(qubit, fib_entry, event.neighbor)
 
-            fib_entry = self.fib.get_entry(epr.tmp_path_ids[0], must=True)
-            self.own.get_qchannel(event.neighbor)  # ensure qchannel exists
-            qubit.state = QubitState.PURIF
-            self.qubit_is_purif(qubit, fib_entry, event.neighbor)
+        su_args = self.waiting_su.pop(qubit.addr, None)
+        if su_args:
+            self.handle_swap_update(*su_args)
 
     def qubit_is_purif(self, qubit: MemoryQubit, fib_entry: FIBEntry | None = None, partner: QNode | None = None):
         """
@@ -971,6 +981,11 @@ class ProactiveForwarder(Application):
         qubit_pair = self.memory.get(key=epr_name)
         if qubit_pair is not None:
             qubit, _ = qubit_pair
+            if qubit.state == QubitState.ENTANGLED0:
+                if new_epr_name is not None and new_epr is not None:
+                    self.remote_swapped_eprs[new_epr_name] = new_epr
+                self.waiting_su[qubit.addr] = (msg, fib_entry)
+                return
             self.parallel_swappings.pop(epr_name, None)
             self._su_sequential(msg, fib_entry, qubit, new_epr, maybe_purif=(own_rank > sender_rank))
         elif own_rank == sender_rank and epr_name in self.parallel_swappings:
