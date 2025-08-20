@@ -54,7 +54,6 @@ class MuxScheme(ABC):
     @abstractmethod
     def swapping_succeeded(
         self,
-        path_ids: list[int] | None,
         prev_epr: WernerStateEntanglement,
         next_epr: WernerStateEntanglement,
         new_epr: WernerStateEntanglement,

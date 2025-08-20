@@ -50,9 +50,9 @@ class MuxSchemeDynamicEpr(MuxSchemeDynamicBase, MuxSchemeFibBase):
         if epr.tmp_path_ids is None:  # whatever neighbor is first
             fib_entries = [self.fib.get_entry(pid, must=True) for pid in possible_path_ids]
             path_id = self.path_select_fn(fib_entries)
-            epr.tmp_path_ids = [path_id]
+            epr.tmp_path_ids = frozenset([path_id])
 
-        fib_entry = self.fib.get_entry(epr.tmp_path_ids[0], must=True)
+        fib_entry = self.fib.get_entry(next(epr.tmp_path_ids.__iter__()), must=True)
         self.own.get_qchannel(neighbor)  # ensure qchannel exists
         qubit.state = QubitState.PURIF
         self.fw.qubit_is_purif(qubit, fib_entry, neighbor)
@@ -60,7 +60,6 @@ class MuxSchemeDynamicEpr(MuxSchemeDynamicBase, MuxSchemeFibBase):
     @override
     def swapping_succeeded(
         self,
-        path_ids: list[int] | None,
         prev_epr: WernerStateEntanglement,
         next_epr: WernerStateEntanglement,
         new_epr: WernerStateEntanglement,
@@ -68,8 +67,7 @@ class MuxSchemeDynamicEpr(MuxSchemeDynamicBase, MuxSchemeFibBase):
         assert prev_epr.tmp_path_ids is not None
         assert next_epr.tmp_path_ids is not None
         assert prev_epr.tmp_path_ids == next_epr.tmp_path_ids
-        _ = path_ids
-        new_epr.tmp_path_ids = list(prev_epr.tmp_path_ids)
+        new_epr.tmp_path_ids = prev_epr.tmp_path_ids
 
     @override
     def su_parallel_avoid_conflict(self, my_new_epr: WernerStateEntanglement, su_path_id: int) -> bool:
@@ -85,4 +83,4 @@ class MuxSchemeDynamicEpr(MuxSchemeDynamicBase, MuxSchemeFibBase):
         assert new_epr.tmp_path_ids is not None
         assert other_epr.tmp_path_ids is not None
         assert new_epr.tmp_path_ids == other_epr.tmp_path_ids
-        merged_epr.tmp_path_ids = list(new_epr.tmp_path_ids)
+        merged_epr.tmp_path_ids = new_epr.tmp_path_ids

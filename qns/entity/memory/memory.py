@@ -26,6 +26,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
+from collections.abc import Iterable
 from typing import TYPE_CHECKING, Literal, TypedDict, overload
 
 from qns.entity.entity import Entity
@@ -293,8 +294,7 @@ class QuantumMemory(Entity):
         """
 
         if self.is_full():
-            assert isinstance(self.node, QNode)
-            log.debug(f"{self.node.name}: Memory full!")
+            log.debug(f"{self.node}: Memory full!")
             return None
 
         idx = -1
@@ -462,7 +462,7 @@ class QuantumMemory(Entity):
         exc_direction: PathDirection | None = None,
         inc_qchannels: list[str] | None = None,
         path_id: list[int] | None = None,
-        tmp_path_id: list[int] | None = None,
+        tmp_path_id: Iterable[int] | None = None,
     ) -> list[tuple[MemoryQubit, QuantumModel]]:
         """Search for memory qubits that are eligible for use.
 
@@ -472,20 +472,19 @@ class QuantumMemory(Entity):
             - (Optionally) are not associated with the specified quantum channel (`qchannel`).
 
         Args:
-            exc_qchannel (Optional[str]): The name of the quantum channel to exclude.
-            If None, no exclusion is applied.
-            inc_qchannels (list[sr], optional): List of qchannel names the qubits should be assigned to.
-            exc_direction (Optional[PathDirection]): Qubit path direction to exclude.
-            If None, no exclusion is applied.
-            path_id (Optional[list[int]]): The list of path IDs the qubit must be allocated to.
-            If None, any path ID is accepted.
-            tmp_path_id (list[int], optional): List of identifiers for the paths to match against epr.tmp_path_id
-            in dynamic qubit allocation or statistical multiplexing.
+            exc_qchannel: The name of the quantum channel to exclude.
+                          If None, no exclusion is applied.
+            inc_qchannels: List of qchannel names the qubits should be assigned to.
+            exc_direction: Qubit path direction to exclude.
+                           If None, no exclusion is applied.
+            path_id: The list of path IDs the qubit must be allocated to.
+                     If None, any path ID is accepted.
+            tmp_path_id: List of identifiers for the paths to match against epr.tmp_path_id
+                         in dynamic qubit allocation or statistical multiplexing.
 
         Returns:
-            List[Tuple[MemoryQubit, QuantumModel]]:
-                A list of tuples containing eligible memory qubits and their associated `QuantumModel` instances.
-                The list is empty if no matching qubits are found.
+            A list of tuples containing eligible memory qubits and their associated `QuantumModel` instances.
+            The list is empty if no matching qubits are found.
         """
         qubits = []
         for qubit, data in self._storage:
@@ -502,9 +501,7 @@ class QuantumMemory(Entity):
             if inc_qchannels is not None and (qubit.qchannel is None or qubit.qchannel.name not in inc_qchannels):
                 continue
             if tmp_path_id is not None and (
-                not isinstance(data, BaseEntanglement)
-                or data.tmp_path_ids is None
-                or len(set(tmp_path_id) & set(data.tmp_path_ids)) == 0
+                not isinstance(data, BaseEntanglement) or data.tmp_path_ids is None or data.tmp_path_ids.isdisjoint(tmp_path_id)
             ):
                 continue
             qubits.append((qubit, data))

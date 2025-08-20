@@ -16,7 +16,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from collections import defaultdict
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from copy import deepcopy
 from typing import Any, cast
 
@@ -632,28 +632,26 @@ class ProactiveForwarder(Application):
         exc_direction: PathDirection | None = None,
         inc_qchannels: list[str] | None = None,
         path_id: list[int] | None = None,
-        tmp_path_id: list[int] | None = None,
+        tmp_path_id: Iterable[int] | None = None,
     ) -> MemoryQubit | None:
-        """Searches for an eligible qubit in memory that matches the specified path ID and
+        """
+        Searches for an eligible qubit in memory that matches the specified path ID and
         is located on a different qchannel than the excluded one. This is used to
         find a swap candidate during entanglement forwarding. Currently returns the first
         matching result found.
 
-        Parameters
-        ----------
-            exc_qchannel (str): Name of the quantum channel to exclude from the search.
-            exc_direction (PathDirection): Qubit direction to exclude to avoid loops.
-            inc_qchannels (list[sr], optional): List of qchannel names the qubits should be assigned to.
-            This is used with statistical mux when no qubit-path allocation is set.
-            path_id (list[int], optional): List of identifiers for the paths to match against
-            qubit.path_id in static qubit-path allocation.
-            A list of path IDs is used to support multiple non-isolated paths serving the same request.
-            tmp_path_id (list[int], optional): List of identifiers for the paths to match agains epr.tmp_path_ids
-            in dynamic qubit allocation or statistical multiplexing.
+        Args:
+            exc_qchannel: Name of the quantum channel to exclude from the search.
+            exc_direction: Qubit direction to exclude to avoid loops.
+            inc_qchannels: List of qchannel names the qubits should be assigned to.
+                           This is used with statistical mux when no qubit-path allocation is set.
+            path_id: List of identifiers for the paths to match against qubit.path_id in static qubit-path allocation.
+                     A list of path IDs is used to support multiple non-isolated paths serving the same request.
+            tmp_path_id: List of identifiers for the paths to match agains epr.tmp_path_ids
+                         in dynamic qubit allocation or statistical multiplexing.
 
-        Returns
-        -------
-            Optional[MemoryQubit]: A single eligible memory qubit, if found; otherwise, None.
+        Returns:
+            A single eligible memory qubit, if found; otherwise, None.
 
         """
         qubits = self.memory.search_eligible_qubits(
@@ -676,7 +674,6 @@ class ProactiveForwarder(Application):
         mq1: MemoryQubit,
         fib_entry0: FIBEntry,
         fib_entry1: FIBEntry,
-        path_ids: list[int] | None = None,
     ):
         """
         Perform swapping between two qubits at an intermediate node.
@@ -749,7 +746,7 @@ class ProactiveForwarder(Application):
             new_epr.dst = next_partner
 
             # for dynamic EPR affectation and statistical mux
-            self.mux.swapping_succeeded(path_ids, prev_epr, next_epr, new_epr)
+            self.mux.swapping_succeeded(prev_epr, next_epr, new_epr)
 
             # another node just swapped on a shared EPR and changed its src/dst
             if prev_partner.name not in prev_route or next_partner.name not in next_route:

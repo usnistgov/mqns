@@ -46,7 +46,7 @@ class MuxSchemeFibBase(MuxScheme):
             res = self.fw._select_eligible_qubit(exc_qchannel=qubit.qchannel.name, tmp_path_id=possible_path_ids)
 
         if res:  # do swapping
-            self.fw.do_swapping(qubit, res, fib_entry, fib_entry, None)
+            self.fw.do_swapping(qubit, res, fib_entry, fib_entry)
 
 
 class MuxSchemeBufferSpace(MuxSchemeFibBase):
@@ -68,14 +68,12 @@ class MuxSchemeBufferSpace(MuxSchemeFibBase):
     @override
     def swapping_succeeded(
         self,
-        path_ids: list[int] | None,
         prev_epr: WernerStateEntanglement,
         next_epr: WernerStateEntanglement,
         new_epr: WernerStateEntanglement,
     ) -> None:
         assert prev_epr.tmp_path_ids is None
         assert next_epr.tmp_path_ids is None
-        _ = path_ids
         _ = new_epr
 
     @override
