@@ -36,16 +36,17 @@ class NetworkLayer(Application):
     def install(self, node: Node, simulator: Simulator):
         super().install(node, simulator)
         self.own = self.get_node(node_type=QNode)
+        self.memory = self.own.get_memory()
 
     def handle_entangle(self, event: QubitEntangledEvent):
-        _, epr = self.own.get_memory().read(address=event.qubit.addr, must=True, destructive=False)
+        _, epr = self.memory.read(event.qubit.addr, must=True, destructive=False)
         assert isinstance(epr, BaseEntanglement)
         assert epr.creation_time is not None
         self.entangle.append((event.t.sec, epr.creation_time.sec))
 
         if not isinstance(self.release_after, float):
             return
-        self.own.get_memory().read(address=event.qubit.addr)
+        self.memory.read(event.qubit.addr)
         event.qubit.state = QubitState.RELEASE
         self.simulator.add_event(QubitReleasedEvent(self.own, event.qubit, t=event.t + self.release_after, by=self))
         self.release_after = None

@@ -324,11 +324,7 @@ class ProactiveForwarder(Application):
         if n_qubits == 0:  # 0 means use all qubits assigned to this qchannel
             n_qubits = len(self.memory.get_channel_qubits(qchannel.name))
 
-        qubits = [
-            self.memory.allocate(path_id=path_id, ch_name=qchannel.name, path_direction=path_direction) for _ in range(n_qubits)
-        ]
-        if -1 in qubits:
-            raise RuntimeError(f"{self.own}: insufficient memory qubits toward {neighbor} for path {path_id}")
+        qubits = self.memory.allocate(path_id, path_direction, ch_name=qchannel.name, n=n_qubits)
         return neighbor, qubits
 
     def qubit_is_entangled(self, event: QubitEntangledEvent):
@@ -470,8 +466,8 @@ class ProactiveForwarder(Application):
         simulator = self.simulator
 
         # read qubits to set fidelity at this time
-        _, epr0 = self.memory.read(address=mq0.addr, destructive=False, must=True)
-        _, epr1 = self.memory.read(address=mq1.addr, must=True)
+        _, epr0 = self.memory.read(mq0.addr, destructive=False, must=True)
+        _, epr1 = self.memory.read(mq1.addr, must=True)
         assert isinstance(epr0, WernerStateEntanglement)
         assert isinstance(epr1, WernerStateEntanglement)
 
@@ -511,8 +507,8 @@ class ProactiveForwarder(Application):
 
         # mq0 is the "kept" memory whose fidelity would be increased if purification succeeds
         # mq1 is the "measured" memory that is consumed during purification
-        mq0, epr0 = self.memory.read(key=msg["epr"], destructive=False, must=True)
-        mq1, epr1 = self.memory.read(key=msg["measure_epr"], must=True)
+        mq0, epr0 = self.memory.read(msg["epr"], destructive=False, must=True)
+        mq1, epr1 = self.memory.read(msg["measure_epr"], must=True)
         # TODO: handle the exception case when an EPR is decohered and not found in memory
         assert isinstance(epr0, WernerStateEntanglement)
         assert isinstance(epr1, WernerStateEntanglement)
@@ -543,7 +539,7 @@ class ProactiveForwarder(Application):
             self.qubit_is_purif(mq0, fib_entry, primary)
         else:
             # in case of purification failure, release mq0
-            self.memory.read(address=mq0.addr)  # destructive reading
+            self.memory.read(mq0.addr)  # destructive reading
             mq0.state = QubitState.RELEASE
             simulator.add_event(QubitReleasedEvent(self.own, mq0, t=simulator.tc, by=self))
 
@@ -575,7 +571,7 @@ class ProactiveForwarder(Application):
         """
         simulator = self.simulator
 
-        qubit, epr = self.memory.get(key=msg["epr"], must=True)
+        qubit, epr = self.memory.get(msg["epr"], must=True)
         # TODO: handle the exception case when an EPR is decohered and not found in memory
         assert isinstance(epr, WernerStateEntanglement)
 
@@ -586,7 +582,7 @@ class ProactiveForwarder(Application):
         )
 
         if not result:  # purif failed
-            self.memory.read(address=qubit.addr)  # destructive reading
+            self.memory.read(qubit.addr)  # destructive reading
             qubit.state = QubitState.RELEASE
             simulator.add_event(QubitReleasedEvent(self.own, qubit, t=simulator.tc, by=self))
             return
@@ -700,7 +696,7 @@ class ProactiveForwarder(Application):
         next_fib_entry: FIBEntry | None = None
 
         for addr in (mq0.addr, mq1.addr):
-            qubit, epr = self.memory.read(address=addr, must=True)
+            qubit, epr = self.memory.read(addr, must=True)
             assert isinstance(epr, WernerStateEntanglement)
             if epr.dst == self.own:
                 prev_partner, prev_qubit, prev_epr = epr.src, qubit, epr
@@ -810,7 +806,7 @@ class ProactiveForwarder(Application):
         new_epr = None if new_epr_name is None else self.remote_swapped_eprs.pop(new_epr_name)
 
         epr_name = msg["epr"]
-        qubit_pair = self.memory.get(key=epr_name)
+        qubit_pair = self.memory.get(epr_name)
         if qubit_pair is not None:
             qubit, _ = qubit_pair
             if qubit.state == QubitState.ENTANGLED0:
@@ -850,7 +846,7 @@ class ProactiveForwarder(Application):
         ):
             if new_epr:
                 log.debug(f"{self.own}: NEW EPR {new_epr} decohered during SU transmissions")
-            self.memory.read(address=qubit.addr)  # destructive reading
+            self.memory.read(qubit.addr)  # destructive reading
             qubit.state = QubitState.RELEASE
             # Inform LinkLayer that the memory qubit has been released.
             simulator.add_event(QubitReleasedEvent(self.own, qubit, t=simulator.tc, by=self))
@@ -980,7 +976,7 @@ class ProactiveForwarder(Application):
         """
         simulator = self.simulator
 
-        _, qm = self.memory.read(address=qubit.addr, must=True)
+        _, qm = self.memory.read(qubit.addr, must=True)
         assert isinstance(qm, WernerStateEntanglement)
         assert qm.src is not None
         assert qm.dst is not None

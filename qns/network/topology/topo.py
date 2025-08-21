@@ -101,9 +101,9 @@ class Topology:
             nl (List[QNode]): a list of quantum nodes
 
         """
-        for idx, n in enumerate(nl):
-            m = QuantumMemory(f"m{idx}", **self.memory_args)
-            n.set_memory(m)
+        for node in nl:
+            memory = QuantumMemory(f"{node.name}.memory", **self.memory_args)
+            node.set_memory(memory)
 
     def add_cchannels(
         self, *, classic_topo: ClassicTopology = ClassicTopology.Empty, nl: list[QNode] = [], ll: list[QuantumChannel] = []

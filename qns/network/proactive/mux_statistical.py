@@ -60,7 +60,7 @@ class MuxSchemeStatistical(MuxSchemeDynamicBase):
     @override
     def qubit_is_entangled(self, qubit: MemoryQubit, neighbor: QNode) -> None:
         possible_path_ids = self._qubit_is_entangled_0(qubit)
-        _, epr = self.memory.get(address=qubit.addr, must=True)
+        _, epr = self.memory.get(qubit.addr, must=True)
         assert isinstance(epr, WernerStateEntanglement)
         log.debug(f"{self.own}: qubit {qubit}, set possible path IDs = {possible_path_ids}")
         epr.tmp_path_ids = frozenset(possible_path_ids)  # to coordinate decisions along the path
@@ -82,7 +82,7 @@ class MuxSchemeStatistical(MuxSchemeDynamicBase):
         # look for another eligible qubit
 
         # find qchannels whose qubits may be used with this qubit
-        _, epr0 = self.memory.get(address=qubit.addr, must=True)
+        _, epr0 = self.memory.get(qubit.addr, must=True)
         assert isinstance(epr0, WernerStateEntanglement)
         assert epr0.tmp_path_ids is not None
         # use path_ids to look for acceptable qchannels for swapping, excluding the qubit's qchannel
@@ -100,7 +100,7 @@ class MuxSchemeStatistical(MuxSchemeDynamicBase):
         if not res:
             return
 
-        _, epr1 = self.memory.get(address=res.addr, must=True)
+        _, epr1 = self.memory.get(res.addr, must=True)
         assert isinstance(epr1, WernerStateEntanglement)
         path_ids = _intersect_tmp_path_ids(epr0, epr1)
         fib_entry = self.fib.get_entry(random.choice(list(path_ids)), must=True)  # no need to coordinate across the path

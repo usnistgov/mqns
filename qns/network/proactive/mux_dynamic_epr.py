@@ -45,7 +45,7 @@ class MuxSchemeDynamicEpr(MuxSchemeDynamicBase, MuxSchemeFibBase):
         possible_path_ids = self._qubit_is_entangled_0(qubit)
         # TODO: if paths have different swap policies
         #       -> consider only paths for which this qubit may be eligible ??
-        _, epr = self.memory.get(address=qubit.addr, must=True)
+        _, epr = self.memory.get(qubit.addr, must=True)
         assert isinstance(epr, WernerStateEntanglement)
         if epr.tmp_path_ids is None:  # whatever neighbor is first
             fib_entries = [self.fib.get_entry(pid, must=True) for pid in possible_path_ids]

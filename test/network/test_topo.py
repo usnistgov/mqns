@@ -233,17 +233,17 @@ def test_custom_topo_basic():
     qBC = net.get_qchannel("q_B,C")
 
     assert mA.capacity == 2
-    assert mA.get(address=0, must=True)[0].qchannel == qAB
-    assert mA.get(address=1, must=True)[0].qchannel == qAB
+    assert mA.get(0, must=True)[0].qchannel == qAB
+    assert mA.get(1, must=True)[0].qchannel == qAB
     assert mB.capacity == 4
-    assert mB.get(address=0, must=True)[0].qchannel == qAB
-    assert mB.get(address=1, must=True)[0].qchannel == qBC
-    assert mB.get(address=2, must=True)[0].qchannel == qBC
-    assert mB.get(address=3, must=True)[0].qchannel == qBC
+    assert mB.get(0, must=True)[0].qchannel == qAB
+    assert mB.get(1, must=True)[0].qchannel == qBC
+    assert mB.get(2, must=True)[0].qchannel == qBC
+    assert mB.get(3, must=True)[0].qchannel == qBC
     assert mC.capacity == 3
-    assert mC.get(address=0, must=True)[0].qchannel == qBC
-    assert mC.get(address=1, must=True)[0].qchannel == qBC
-    assert mC.get(address=2, must=True)[0].qchannel == qBC
+    assert mC.get(0, must=True)[0].qchannel == qBC
+    assert mC.get(1, must=True)[0].qchannel == qBC
+    assert mC.get(2, must=True)[0].qchannel == qBC
 
     assert net.controller is not None
 
@@ -261,5 +261,5 @@ def test_custom_topo_low_memory():
             "cchannels": [],
         }
     )
-    with pytest.raises(RuntimeError, match="insufficient qubits"):
+    with pytest.raises(OverflowError, match="insufficient qubits"):
         _ = QuantumNetwork(topo=topo)

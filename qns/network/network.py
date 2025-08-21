@@ -253,14 +253,14 @@ class QuantumNetwork:
             store_error_model_args: the arguments for store_error_model
 
         """
-        for idx, n in enumerate(self.nodes):
-            m = QuantumMemory(
-                name=f"m{idx}",
+        for node in self.nodes:
+            memory = QuantumMemory(
+                name=f"{node.name}.memory",
                 capacity=capacity,
                 decoherence_rate=decoherence_rate,
                 store_error_model_args=store_error_model_args,
             )
-            n.set_memory(m)
+            node.set_memory(memory)
 
     def build_route(self):
         """Build static route tables for each nodes"""

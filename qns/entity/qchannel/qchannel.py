@@ -72,14 +72,12 @@ class QuantumChannel(BaseChannel[QNode]):
                       where every node connected to the qchannel must appear in the dict.
 
         Raises:
-            RuntimeError - insufficient qubits.
+            OverflowError - insufficient qubits.
         """
         for node in self.node_list:
             memory = node.get_memory()
             cap = capacity if isinstance(capacity, int) else capacity[node.name]
-            for _ in range(cap):
-                if memory.assign(self) == -1:
-                    raise RuntimeError(f"insufficient qubits in {node} to assign to {self}")
+            memory.assign(self, cap)
 
     def send(self, qubit: QuantumModel, next_hop: QNode):
         """Send a qubit to the next_hop

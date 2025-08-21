@@ -5,6 +5,7 @@ from qns.entity.memory import (
     MemoryReadResponseEvent,
     MemoryWriteRequestEvent,
     MemoryWriteResponseEvent,
+    PathDirection,
     QuantumMemory,
     QubitState,
 )
@@ -17,6 +18,7 @@ from qns.simulator import Simulator
 
 def test_write_and_read_with_path_and_key():
     mem = QuantumMemory("mem", capacity=2, decoherence_rate=1)
+    mem.assign(QuantumChannel("qc"), mem.capacity)
     node = QNode("n1")
     node.set_memory(mem)
 
@@ -30,8 +32,9 @@ def test_write_and_read_with_path_and_key():
     key = "n1_peer_0_0"
 
     # First allocate memory with path ID
-    addr = mem.allocate(path_id=0)
-    assert addr != -1
+    addrs = mem.allocate(0, PathDirection.LEFT, ch_name="qc")
+    assert len(addrs) == 1
+    addr = addrs[0]
     mem._storage[addr][0].active = key
 
     # Now write with path_id and key
@@ -47,14 +50,14 @@ def test_write_and_read_with_path_and_key():
     assert mem.write(epr2, path_id=0, key=key) is None
 
     # Should be able to read it
-    epr1Read = mem.read(key="epr1")  # destructive reading
+    epr1Read = mem.read("epr1")  # destructive reading
     assert epr1Read is not None
     qubit, data = epr1Read
     assert isinstance(data, BaseEntanglement)
     assert data.name == "epr1"
     assert mem._usage == 0
 
-    assert pytest.raises(ValueError, lambda: mem.read(address=qubit.addr, must=True))
+    assert pytest.raises(ValueError, lambda: mem.read(qubit.addr, must=True))
 
 
 def test_channel_qubit_assignment_and_search():
@@ -66,8 +69,8 @@ def test_channel_qubit_assignment_and_search():
     node.install(sim)
 
     ch = QuantumChannel("qch", length=10)
-    addr = mem.assign(ch)
-    assert addr != -1
+    addrs = mem.assign(ch)
+    assert len(addrs) == 1
 
     # Assigned qubit should now be returned by get_channel_qubits
     qubits = mem.get_channel_qubits("qch")
@@ -106,6 +109,7 @@ def test_decoherence_event_removes_qubit():
 
 def test_memory_clear_and_deallocate():
     mem = QuantumMemory("mem", capacity=2, decoherence_rate=1)
+    mem.assign(QuantumChannel("qc"), mem.capacity)
     node = QNode("n4")
     node.set_memory(mem)
 
@@ -124,24 +128,28 @@ def test_memory_clear_and_deallocate():
     assert not mem.is_full()
 
     # Test deallocate
-    idx = mem.allocate(path_id=7)
-    assert idx != -1
-    assert mem.deallocate(idx)
-    assert not mem.deallocate(999)  # invalid
+    addrs = mem.allocate(7, PathDirection.LEFT, ch_name="qc")
+    assert len(addrs) == 1
+    addr = addrs[0]
+    mem.deallocate(addr)
+    with pytest.raises(IndexError):
+        mem.deallocate(999)  # invalid
 
 
 def test_qubit_reservation_behavior():
     mem = QuantumMemory("mem", capacity=2, decoherence_rate=1)
+    mem.assign(QuantumChannel("qc"), mem.capacity)
     node = QNode("n5")
     node.set_memory(mem)
 
     sim = Simulator(0, 5)
     node.install(sim)
 
-    idx1 = mem.allocate(path_id=42)
-    assert idx1 != -1
-    q1 = mem._storage[idx1][0]
-    q1.active = "n5_n6_42_" + str(idx1)
+    addrs = mem.allocate(42, PathDirection.LEFT, ch_name="qc")
+    assert len(addrs) == 1
+    addr1 = addrs[0]
+    q1 = mem._storage[addr1][0]
+    q1.active = "n5_n6_42_" + str(addr1)
 
     epr = WernerStateEntanglement(name="eprX")
     epr.creation_time = sim.tc
@@ -151,7 +159,7 @@ def test_qubit_reservation_behavior():
     # Must match on both path_id and key
     result = mem.write(epr, path_id=42, key=q1.active)
     assert result is not None
-    assert result.addr == idx1
+    assert result.addr == addr1
 
 
 def test_memory_sync_qubit():
@@ -164,12 +172,12 @@ def test_memory_sync_qubit():
     n1.install(s)
 
     assert m.write(q1)
-    assert m.read(key="test_qubit") is not None
+    assert m.read("test_qubit") is not None
 
-    assert m.get(key="nonexistent") is None
-    assert m.read(key="nonexistent") is None
-    assert pytest.raises(IndexError, lambda: m.get(key="nonexistent", must=True))
-    assert pytest.raises(IndexError, lambda: m.read(key="nonexistent", must=True))
+    assert m.get("nonexistent") is None
+    assert m.read("nonexistent") is None
+    assert pytest.raises(IndexError, lambda: m.get("nonexistent", must=True))
+    assert pytest.raises(IndexError, lambda: m.read("nonexistent", must=True))
 
 
 def test_memory_sync_qubit_limited():
@@ -189,14 +197,14 @@ def test_memory_sync_qubit_limited():
     assert not m.write(q)
     assert m.is_full()
 
-    q = m.read(key="q4")
+    q = m.read("q4")
     assert q is not None
     assert m.count == 4
     assert not m.is_full()
     q = Qubit(name="q6")
     assert m.write(q)
     assert m.is_full()
-    assert m._search(key="q6") == 3
+    assert m.get("q6", must=True)[0].addr == 3
 
 
 def test_memory_async_qubit():
