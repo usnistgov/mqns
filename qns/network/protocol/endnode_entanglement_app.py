@@ -30,10 +30,10 @@ from typing import Dict, Optional
 from qns.entity.cchannel.cchannel import ClassicChannel, ClassicPacket, RecvClassicPacket
 from qns.entity.node.app import Application
 from qns.entity.node.controller import Controller
-from qns.entity.node.node import QNode
+from qns.entity.node.qnode import QNode
 from qns.network import QuantumNetwork
-from qns.network.protocol.proactive_forwarder import ProactiveForwarder
-from qns.network.protocol.proactive_routing_controller import ProactiveRoutingControllerApp
+from qns.network.proactive.controller import ProactiveRoutingController
+from qns.network.proactive.forwarder import ProactiveForwarder
 from qns.simulator.event import Event, func_to_event
 from qns.simulator.simulator import Simulator
 from qns.simulator.ts import Time
@@ -73,7 +73,7 @@ class EndNodeEntanglementApp(Application):  # application to request entanglemen
         self.send_count = 0
 
         self.add_handler(self.RecvClassicPacketHandler, RecvClassicPacket, [Controller])
-        self.add_handler(self.RecvClassicPacketHandler, RecvClassicPacket, [ProactiveRoutingControllerApp])
+        self.add_handler(self.RecvClassicPacketHandler, RecvClassicPacket, [ProactiveRoutingController])
 
     def install(self, node: QNode, simulator: Simulator):
         super().install(node, simulator)
