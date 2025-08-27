@@ -77,12 +77,9 @@ class MuxSchemeDynamicBase(MuxScheme):
 
     def _qubit_is_entangled_0(self, qubit: MemoryQubit) -> list[int]:
         assert qubit.path_id is None
-        if qubit.qchannel is None:
-            raise Exception(f"{self.own}: No qubit-qchannel assignment. Not supported.")
-        try:
-            possible_path_ids = self.qchannel_paths_map[qubit.qchannel.name]
-        except KeyError:
-            raise Exception(f"{self.own}: qchannel {qubit.qchannel.name} not mapped to any path.")
+        assert qubit.qchannel is not None, f"{self.own}: No qubit-qchannel assignment. Not supported."
+        possible_path_ids = self.qchannel_paths_map.get(qubit.qchannel.name, None)
+        assert possible_path_ids, f"{self.own}: qchannel {qubit.qchannel.name} not mapped to any path."
         return possible_path_ids
 
 
@@ -104,14 +101,19 @@ class MuxSchemeStatistical(MuxSchemeDynamicBase):
 
     @override
     def qubit_is_entangled(self, qubit: MemoryQubit, neighbor: QNode) -> None:
-        possible_path_ids = self._qubit_is_entangled_0(qubit)
+        possible_path_ids = frozenset(self._qubit_is_entangled_0(qubit))
         _, epr = self.memory.get(qubit.addr, must=True)
         assert isinstance(epr, WernerStateEntanglement)
-        log.debug(f"{self.own}: qubit {qubit}, set possible path IDs = {possible_path_ids}")
-        epr.tmp_path_ids = frozenset(possible_path_ids)  # to coordinate decisions along the path
+
+        log.debug(f"{self.own}: qubit {qubit} has tmp_path_ids {possible_path_ids}")
+        if epr.tmp_path_ids is None:
+            epr.tmp_path_ids = possible_path_ids
+        else:
+            # Assuming both primary and secondary nodes in an elementary EPR have the same path instructions,
+            # both nodes should have the same qchannel_paths_map and thus derive the same tmp_path_ids.
+            assert epr.tmp_path_ids == possible_path_ids
 
         if _can_enter_purif(self.own.name, neighbor.name):
-            self.own.get_qchannel(neighbor)  # ensure qchannel exists
             qubit.state = QubitState.PURIF
 
             # purif scheme is empty, as checked in validate_path_instructions

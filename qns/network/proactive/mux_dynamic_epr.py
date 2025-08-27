@@ -7,6 +7,7 @@ from qns.models.epr import WernerStateEntanglement
 from qns.network.proactive.fib import FIBEntry
 from qns.network.proactive.mux_buffer_space import MuxSchemeFibBase
 from qns.network.proactive.mux_statistical import MuxSchemeDynamicBase, has_intersect_tmp_path_ids
+from qns.utils import log
 
 try:
     from typing import override
@@ -14,20 +15,20 @@ except ImportError:
     from typing_extensions import override
 
 
-def random_path_selector(fibs: list[FIBEntry]) -> int:
+def random_path_selector(fibs: list[FIBEntry]) -> FIBEntry:
     """
     Path selection strategy: random allocation.
     """
-    return random.choice(fibs).path_id
+    return random.choice(fibs)
 
 
-def select_weighted_by_swaps(fibs: list[FIBEntry]) -> int:
+def select_weighted_by_swaps(fibs: list[FIBEntry]) -> FIBEntry:
     """
     Path selection strategy: swap-weighted allocation.
     """
     # Lower swaps = higher weight
     weights = [1.0 / (1 + len(e.swap)) for e in fibs]
-    return random.choices(fibs, weights=weights, k=1)[0].path_id
+    return random.choices(fibs, weights=weights, k=1)[0]
 
 
 class MuxSchemeDynamicEpr(MuxSchemeDynamicBase, MuxSchemeFibBase):
@@ -35,7 +36,7 @@ class MuxSchemeDynamicEpr(MuxSchemeDynamicBase, MuxSchemeFibBase):
         self,
         name="dynamic EPR affection",
         *,
-        path_select_fn: Callable[[list[FIBEntry]], int] = random_path_selector,
+        path_select_fn: Callable[[list[FIBEntry]], FIBEntry] = random_path_selector,
     ):
         super().__init__(name)
         self.path_select_fn = path_select_fn
@@ -47,13 +48,21 @@ class MuxSchemeDynamicEpr(MuxSchemeDynamicBase, MuxSchemeFibBase):
         #       -> consider only paths for which this qubit may be eligible ??
         _, epr = self.memory.get(qubit.addr, must=True)
         assert isinstance(epr, WernerStateEntanglement)
-        if epr.tmp_path_ids is None:  # whatever neighbor is first
-            fib_entries = [self.fib.get(pid) for pid in possible_path_ids]
-            path_id = self.path_select_fn(fib_entries)
-            epr.tmp_path_ids = frozenset([path_id])
 
-        fib_entry = self.fib.get(next(epr.tmp_path_ids.__iter__()))
-        self.own.get_qchannel(neighbor)  # ensure qchannel exists
+        if epr.tmp_path_ids is None:
+            # In principle, a random path_id is chosen for each elementary EPR during EPR generation.
+            # The necessary information could be carried in the reservation message.
+            # For ease of implementation, this choice is made at either primary or secondary node,
+            # whichever receives the EPR notification earlier.
+            fib_entries = [self.fib.get(pid) for pid in possible_path_ids]
+            fib_entry = self.path_select_fn(fib_entries)
+            epr.tmp_path_ids = frozenset([fib_entry.path_id])
+        else:
+            assert len(epr.tmp_path_ids) == 1
+            fib_entry = self.fib.get(next(epr.tmp_path_ids.__iter__()))
+
+        log.debug(f"{self.own}: qubit {qubit} has selected path_id {fib_entry.path_id}")
+
         qubit.state = QubitState.PURIF
         self.fw.qubit_is_purif(qubit, fib_entry, neighbor)
 

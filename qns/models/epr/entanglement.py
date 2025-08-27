@@ -70,7 +70,6 @@ class BaseEntanglement(Generic[EntanglementT]):
         self.key: str | None = None
         """to store the EPR in the right negotiated qubit at the dst node"""
         self.attempts: int | None = None
-        self.path_id: int | None = None
         self.tmp_path_ids: frozenset[int] | None = None
         """Possible path IDs, used by MuxSchemeStatistical and MuxSchemeDynamicEpr."""
 

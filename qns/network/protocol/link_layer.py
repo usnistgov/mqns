@@ -352,7 +352,6 @@ class LinkLayer(Application):
         epr.dst = next_hop
         epr.attempts = k
         epr.key = qubit.active
-        epr.path_id = qubit.path_id
         epr.creation_time = t_epr_creation
 
         log.debug(
@@ -378,7 +377,7 @@ class LinkLayer(Application):
         log.debug(f"{self.own}: got half-EPR {epr.name} key={epr.key} {'dst' if is_primary else 'src'}={neighbor}")
         assert epr.decoherence_time is None or epr.decoherence_time > self.simulator.tc
 
-        qubit = self.memory.write(epr, path_id=epr.path_id, key=epr.key)
+        qubit = self.memory.write(epr, key=epr.key)
         if qubit is None:
             raise Exception(f"{self.own}: Failed to store EPR {epr.name}")
 
