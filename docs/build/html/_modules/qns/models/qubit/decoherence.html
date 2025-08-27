@@ -1,0 +1,276 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>qns.models.qubit.decoherence &mdash; MQNS 0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=2709fde1"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            MQNS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../reference/modules.html">qns</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">MQNS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">qns.models.qubit.decoherence</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for qns.models.qubit.decoherence</h1><div class="highlight"><pre>
+<span></span><span class="c1">#    SimQN: a discrete-event simulator for the quantum networks</span>
+<span class="c1">#    Copyright (C) 2021-2022 Lutong Chen, Jian Li, Kaiping Xue</span>
+<span class="c1">#    University of Science and Technology of China, USTC.</span>
+<span class="c1">#</span>
+<span class="c1">#    This program is free software: you can redistribute it and/or modify</span>
+<span class="c1">#    it under the terms of the GNU General Public License as published by</span>
+<span class="c1">#    the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c1">#    (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1">#    This program is distributed in the hope that it will be useful,</span>
+<span class="c1">#    but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1">#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1">#    GNU General Public License for more details.</span>
+<span class="c1">#</span>
+<span class="c1">#    You should have received a copy of the GNU General Public License</span>
+<span class="c1">#    along with this program. If not, see &lt;https://www.gnu.org/licenses/&gt;.</span>
+
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.models.qubit.const</span><span class="w"> </span><span class="kn">import</span> <span class="n">QUBIT_STATE_0</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.models.qubit.gate</span><span class="w"> </span><span class="kn">import</span> <span class="n">I</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="n">Z</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.models.qubit.qubit</span><span class="w"> </span><span class="kn">import</span> <span class="n">QState</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.utils.rnd</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_rand</span>
+
+
+<div class="viewcode-block" id="PrefectError">
+<a class="viewcode-back" href="../../../../reference/qns.models.qubit.html#qns.models.qubit.decoherence.PrefectError">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">PrefectError</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">p</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The default error model for this qubit.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        p (float): the error possibility</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">pass</span></div>
+
+
+
+<div class="viewcode-block" id="DephaseError">
+<a class="viewcode-back" href="../../../../reference/qns.models.qubit.html#qns.models.qubit.decoherence.DephaseError">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">DephaseError</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">p</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The dephase error model.</span>
+<span class="sd">    A random Z gate will be operate on the qubit with possibility p.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        p (float): the error possibility</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">p</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">p</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Error decoherence rate, should be in [0, 1]&quot;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">stochastic_operate</span><span class="p">([</span><span class="n">I</span><span class="p">,</span> <span class="n">Z</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span> <span class="o">-</span> <span class="n">p</span><span class="p">,</span> <span class="n">p</span><span class="p">])</span></div>
+
+
+
+<div class="viewcode-block" id="DepolarError">
+<a class="viewcode-back" href="../../../../reference/qns.models.qubit.html#qns.models.qubit.decoherence.DepolarError">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">DepolarError</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">p</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The depolarizing error model.</span>
+
+<span class="sd">    One of the random Pauli gate will be operate on the qubit with possibility p :</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        p (float): the error possibility</span>
+<span class="sd">        kwargs: other parameters</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">p</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">p</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Error decoherence rate, should be in [0, 1]&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="mi">1</span> <span class="o">-</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">p</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stochastic_operate</span><span class="p">([</span><span class="n">I</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="n">Z</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span> <span class="o">-</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">p</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">p</span><span class="p">])</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stochastic_operate</span><span class="p">([</span><span class="n">X</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="n">Z</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span> <span class="o">/</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span> <span class="o">/</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span> <span class="o">/</span> <span class="mi">3</span><span class="p">])</span></div>
+
+
+
+<div class="viewcode-block" id="BitFlipError">
+<a class="viewcode-back" href="../../../../reference/qns.models.qubit.html#qns.models.qubit.decoherence.BitFlipError">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">BitFlipError</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">p</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The bit flip error model.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        p (float): the error possibility, [0, 1]</span>
+<span class="sd">        kwargs: other parameters</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">p</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">p</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Error decoherence rate, should be in [0, 1]&quot;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">stochastic_operate</span><span class="p">([</span><span class="n">I</span><span class="p">,</span> <span class="n">X</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span> <span class="o">-</span> <span class="n">p</span><span class="p">,</span> <span class="n">p</span><span class="p">])</span></div>
+
+
+
+<div class="viewcode-block" id="DissipationError">
+<a class="viewcode-back" href="../../../../reference/qns.models.qubit.html#qns.models.qubit.decoherence.DissipationError">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">DissipationError</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">p</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The dissipation error model.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        p (float): the error possibility, [0, 1]</span>
+<span class="sd">        kwargs: other parameters</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">p</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">p</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Error decoherence rate, should be in [0, 1]&quot;</span><span class="p">)</span>
+    <span class="n">real_p</span> <span class="o">=</span> <span class="n">get_rand</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">real_p</span> <span class="o">&lt;</span> <span class="n">p</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">measure</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">QState</span><span class="p">([</span><span class="bp">self</span><span class="p">],</span> <span class="n">state</span><span class="o">=</span><span class="n">QUBIT_STATE_0</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="ErrorWithTime">
+<a class="viewcode-back" href="../../../../reference/qns.models.qubit.html#qns.models.qubit.decoherence.ErrorWithTime">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">ErrorWithTime</span><span class="p">(</span><span class="n">ErrorModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate the error. The error possibility is 1-e^{-decoherence_rate * t}&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">GeneratedErrorWithTime</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">decoherence_rate</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The error model with time for this qubit. The error possibility is 1-e^{-decoherence_rate * t}.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            t (float): the during time in second.</span>
+<span class="sd">            decoherence_rate (float): the decoherence rate.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">decoherence_rate</span> <span class="o">*</span> <span class="n">t</span><span class="p">)</span>
+        <span class="n">ErrorModel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">GeneratedErrorWithTime</span></div>
+
+
+
+<div class="viewcode-block" id="ErrorWithLength">
+<a class="viewcode-back" href="../../../../reference/qns.models.qubit.html#qns.models.qubit.decoherence.ErrorWithLength">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">ErrorWithLength</span><span class="p">(</span><span class="n">ErrorModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate the error. The error possibility is 1-e^{-decoherence_rate * length}&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">GeneratedErrorWithLength</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">length</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">decoherence_rate</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The error model with length for this qubit. The error possibility is 1-e^{-decoherence_rate * length}.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            length (float): the transmission length in meter.</span>
+<span class="sd">            decoherence_rate (float): the decoherence rate.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">decoherence_rate</span> <span class="o">*</span> <span class="n">length</span><span class="p">)</span>
+        <span class="n">ErrorModel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">GeneratedErrorWithLength</span></div>
+
+
+
+<span class="n">PrefectStorageErrorModel</span> <span class="o">=</span> <span class="n">ErrorWithTime</span><span class="p">(</span><span class="n">PrefectError</span><span class="p">)</span>
+<span class="n">PrefectTransferErrorModel</span> <span class="o">=</span> <span class="n">ErrorWithLength</span><span class="p">(</span><span class="n">PrefectError</span><span class="p">)</span>
+<span class="n">PrefectOperateErrorModel</span> <span class="o">=</span> <span class="n">PrefectError</span>
+<span class="n">PrefectMeasureErrorModel</span> <span class="o">=</span> <span class="n">PrefectError</span>
+
+<span class="n">DephaseStorageErrorModel</span> <span class="o">=</span> <span class="n">ErrorWithTime</span><span class="p">(</span><span class="n">DephaseError</span><span class="p">)</span>
+<span class="n">DephaseTransferErrorModel</span> <span class="o">=</span> <span class="n">ErrorWithLength</span><span class="p">(</span><span class="n">DephaseError</span><span class="p">)</span>
+<span class="n">DephaseOperateErrorModel</span> <span class="o">=</span> <span class="n">DephaseError</span>
+<span class="n">DephaseMeasureErrorModel</span> <span class="o">=</span> <span class="n">DephaseError</span>
+
+<span class="n">DepolarStorageErrorModel</span> <span class="o">=</span> <span class="n">ErrorWithTime</span><span class="p">(</span><span class="n">DepolarError</span><span class="p">)</span>
+<span class="n">DepolarTransferErrorModel</span> <span class="o">=</span> <span class="n">ErrorWithLength</span><span class="p">(</span><span class="n">DepolarError</span><span class="p">)</span>
+<span class="n">DepolarOperateErrorModel</span> <span class="o">=</span> <span class="n">DepolarError</span>
+<span class="n">DepolarMeasureErrorModel</span> <span class="o">=</span> <span class="n">DepolarError</span>
+
+<span class="n">BitFlipStorageErrorModel</span> <span class="o">=</span> <span class="n">ErrorWithTime</span><span class="p">(</span><span class="n">BitFlipError</span><span class="p">)</span>
+<span class="n">BitFilpTransferErrorModel</span> <span class="o">=</span> <span class="n">ErrorWithLength</span><span class="p">(</span><span class="n">BitFlipError</span><span class="p">)</span>
+<span class="n">BitFlipOperateErrorModel</span> <span class="o">=</span> <span class="n">BitFlipError</span>
+<span class="n">BitFlipMeasureErrorModel</span> <span class="o">=</span> <span class="n">BitFlipError</span>
+
+<span class="n">DissipationStorageErrorModel</span> <span class="o">=</span> <span class="n">ErrorWithTime</span><span class="p">(</span><span class="n">DissipationError</span><span class="p">)</span>
+<span class="n">DissipationTransferErrorModel</span> <span class="o">=</span> <span class="n">ErrorWithLength</span><span class="p">(</span><span class="n">DissipationError</span><span class="p">)</span>
+<span class="n">DissipationOperateErrorModel</span> <span class="o">=</span> <span class="n">DissipationError</span>
+<span class="n">DissipationMeasureErrorModel</span> <span class="o">=</span> <span class="n">DissipationError</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Amar Abane.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

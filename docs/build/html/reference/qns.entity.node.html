@@ -1,0 +1,792 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>qns.entity.node package &mdash; MQNS 0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=2709fde1"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="qns.entity.operator package" href="qns.entity.operator.html" />
+    <link rel="prev" title="qns.entity.monitor package" href="qns.entity.monitor.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            MQNS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../intro.html">Introduction</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">qns</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="qns.html">qns package</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="qns.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="qns.entity.html">qns.entity package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.html">qns.models package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.network.html">qns.network package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.simulator.html">qns.simulator package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.utils.html">qns.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="qns.html#module-qns">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">MQNS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">qns</a></li>
+          <li class="breadcrumb-item"><a href="qns.html">qns package</a></li>
+          <li class="breadcrumb-item"><a href="qns.entity.html">qns.entity package</a></li>
+      <li class="breadcrumb-item active">qns.entity.node package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/reference/qns.entity.node.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="qns-entity-node-package">
+<h1>qns.entity.node package<a class="headerlink" href="#qns-entity-node-package" title="Link to this heading"></a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+</section>
+<section id="module-qns.entity.node.app">
+<span id="qns-entity-node-app-module"></span><h2>qns.entity.node.app module<a class="headerlink" href="#module-qns.entity.node.app" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.entity.node.app.Application">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.entity.node.app.</span></span><span class="sig-name descname"><span class="pre">Application</span></span><a class="reference internal" href="../_modules/qns/entity/node/app.html#Application"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.app.Application" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Application can be deployed on the quantum nodes.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.app.Application.add_handler">
+<span class="sig-name descname"><span class="pre">add_handler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">handler</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Callable" title="(in Python v3.13)"><span class="pre">Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.entity.node.app.EventT" title="qns.entity.node.app.EventT"><span class="pre">EventT</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><span class="pre">bool</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">EventTypeList</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.13)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.entity.node.app.EventT" title="qns.entity.node.app.EventT"><span class="pre">EventT</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ByList</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">[]</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/node/app.html#Application.add_handler"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.app.Application.add_handler" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">add_handler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">handler</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Callable" title="(in Python v3.13)"><span class="pre">Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.entity.node.app.EventT" title="qns.entity.node.app.EventT"><span class="pre">EventT</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><span class="pre">bool</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">EventTypeList</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.13)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.entity.node.app.EventT" title="qns.entity.node.app.EventT"><span class="pre">EventT</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ByList</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">[]</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p>Add a handler function to the dispatcher.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>handler</strong> – The handler to process the event.
+It is an object method that accepts the event.</p></li>
+<li><p><strong>EventTypeList</strong> – a list of Event Class Type. An empty list meaning to match all events.</p></li>
+<li><p><strong>ByList</strong> – a list of Entities, QNodes or Applications, that generates this event.
+An empty list meaning to match all entities.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.app.Application.get_node">
+<span class="sig-name descname"><span class="pre">get_node</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="qns.entity.html#qns.entity.Node" title="qns.entity.Node"><span class="pre">Node</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/node/app.html#Application.get_node"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.app.Application.get_node" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_node</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">node_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.13)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'NodeT'</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#qns.entity.node.node.NodeT" title="qns.entity.node.node.NodeT"><span class="pre">NodeT</span></a></span></span></dt>
+<dd><p>Get the node that runs this application</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>the quantum node</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.app.Application.handle">
+<span class="sig-name descname"><span class="pre">handle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.simulator.html#qns.simulator.event.Event" title="qns.simulator.event.Event"><span class="pre">Event</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><span class="pre">bool</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/node/app.html#Application.handle"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.app.Application.handle" title="Link to this definition"></a></dt>
+<dd><p>Process the event on the node.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>event</strong> (<a class="reference internal" href="qns.simulator.html#qns.simulator.event.Event" title="qns.simulator.event.Event"><em>Event</em></a>) – the event</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>if skip is True, further applications will not handle this event</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>skip (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)">bool</a>, None)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.app.Application.handle_sync_signal">
+<span class="sig-name descname"><span class="pre">handle_sync_signal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.network.html#qns.network.network.SignalTypeEnum" title="qns.network.network.SignalTypeEnum"><span class="pre">SignalTypeEnum</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/node/app.html#Application.handle_sync_signal"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.app.Application.handle_sync_signal" title="Link to this definition"></a></dt>
+<dd><p>Invoked after receiving a sync signal.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.app.Application.install">
+<span class="sig-name descname"><span class="pre">install</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.entity.html#qns.entity.Node" title="qns.entity.Node"><span class="pre">Node</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">simulator</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.simulator.html#qns.simulator.simulator.Simulator" title="qns.simulator.simulator.Simulator"><span class="pre">Simulator</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/node/app.html#Application.install"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.app.Application.install" title="Link to this definition"></a></dt>
+<dd><p>Install initial events for this Node. Called from Node.install()</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>node</strong> (<a class="reference internal" href="qns.entity.html#qns.entity.Node" title="qns.entity.Node"><em>Node</em></a>) – the node that will run this application</p></li>
+<li><p><strong>simulator</strong> (<a class="reference internal" href="qns.simulator.html#qns.simulator.simulator.Simulator" title="qns.simulator.simulator.Simulator"><em>Simulator</em></a>) – the simulator</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="qns.entity.node.app.Application.simulator">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">simulator</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="qns.simulator.html#qns.simulator.simulator.Simulator" title="qns.simulator.simulator.Simulator"><span class="pre">Simulator</span></a></em><a class="headerlink" href="#qns.entity.node.app.Application.simulator" title="Link to this definition"></a></dt>
+<dd><p>Get the simulator</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>the simulator</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="qns.entity.node.app.Application.sync_current_phase">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">sync_current_phase</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="qns.network.html#qns.network.network.SignalTypeEnum" title="qns.network.network.SignalTypeEnum"><span class="pre">SignalTypeEnum</span></a></em><a class="headerlink" href="#qns.entity.node.app.Application.sync_current_phase" title="Link to this definition"></a></dt>
+<dd><p>Phase set from last sync signal, only relevant with SYNC timing mode.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.entity.node.app.EventT">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.entity.node.app.</span></span><span class="sig-name descname"><span class="pre">EventT</span></span><a class="headerlink" href="#qns.entity.node.app.EventT" title="Link to this definition"></a></dt>
+<dd><p>Represents an event type.</p>
+<p>alias of TypeVar(‘EventT’, bound=<a class="reference internal" href="qns.simulator.html#qns.simulator.event.Event" title="qns.simulator.event.Event"><code class="xref py py-class docutils literal notranslate"><span class="pre">Event</span></code></a>)</p>
+</dd></dl>
+
+</section>
+<section id="module-qns.entity.node.controller">
+<span id="qns-entity-node-controller-module"></span><h2>qns.entity.node.controller module<a class="headerlink" href="#module-qns.entity.node.controller" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.entity.node.controller.Controller">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.entity.node.controller.</span></span><span class="sig-name descname"><span class="pre">Controller</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">apps</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.entity.node.app.Application" title="qns.entity.node.app.Application"><span class="pre">Application</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/node/controller.html#Controller"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.controller.Controller" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#qns.entity.node.node.Node" title="qns.entity.node.node.Node"><code class="xref py py-class docutils literal notranslate"><span class="pre">Node</span></code></a></p>
+<p>Controller computes routing and swapping instructions for quantum routers</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.controller.Controller.install">
+<span class="sig-name descname"><span class="pre">install</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">simulator</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.simulator.html#qns.simulator.simulator.Simulator" title="qns.simulator.simulator.Simulator"><span class="pre">Simulator</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/node/controller.html#Controller.install"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.controller.Controller.install" title="Link to this definition"></a></dt>
+<dd><p>Called from Network.install()</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-qns.entity.node.node">
+<span id="qns-entity-node-node-module"></span><h2>qns.entity.node.node module<a class="headerlink" href="#module-qns.entity.node.node" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.entity.node.node.Node">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.entity.node.node.</span></span><span class="sig-name descname"><span class="pre">Node</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">apps</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.entity.node.app.Application" title="qns.entity.node.app.Application"><span class="pre">Application</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/node/node.html#Node"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.node.Node" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="qns.entity.html#qns.entity.entity.Entity" title="qns.entity.entity.Entity"><code class="xref py py-class docutils literal notranslate"><span class="pre">Entity</span></code></a></p>
+<p>Node is a generic node in the quantum network</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.node.Node.add_apps">
+<span class="sig-name descname"><span class="pre">add_apps</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">app</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#qns.entity.node.app.Application" title="qns.entity.node.app.Application"><span class="pre">Application</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/node/node.html#Node.add_apps"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.node.Node.add_apps" title="Link to this definition"></a></dt>
+<dd><p>Insert an Application into the app list.
+Called from Topology.build() -&gt; Topology._add_apps()</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>app</strong> (<a class="reference internal" href="qns.entity.html#qns.entity.Application" title="qns.entity.Application"><em>Application</em></a>) – the inserting application.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.node.Node.add_cchannel">
+<span class="sig-name descname"><span class="pre">add_cchannel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cchannel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.entity.html#qns.entity.ClassicChannel" title="qns.entity.ClassicChannel"><span class="pre">ClassicChannel</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/node/node.html#Node.add_cchannel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.node.Node.add_cchannel" title="Link to this definition"></a></dt>
+<dd><p>Add a classic channel in this Node</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>cchannel</strong> (<a class="reference internal" href="qns.entity.html#qns.entity.ClassicChannel" title="qns.entity.ClassicChannel"><em>ClassicChannel</em></a>) – the classic channel</p>
+</dd>
+</dl>
+<p>This function is available prior to calling .install().</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.node.Node.add_network">
+<span class="sig-name descname"><span class="pre">add_network</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">network</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.network.html#qns.network.network.QuantumNetwork" title="qns.network.network.QuantumNetwork"><span class="pre">QuantumNetwork</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/node/node.html#Node.add_network"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.node.Node.add_network" title="Link to this definition"></a></dt>
+<dd><p>Add a network object to this node.
+Called from Network.__init__()</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>network</strong> (<em>qns.network.network.Network</em>) – the network object</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.node.node.Node.apps">
+<span class="sig-name descname"><span class="pre">apps</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.html#qns.entity.Application" title="qns.entity.Application"><span class="pre">Application</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#qns.entity.node.node.Node.apps" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.node.node.Node.cchannels">
+<span class="sig-name descname"><span class="pre">cchannels</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'ClassicChannel'</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#qns.entity.node.node.Node.cchannels" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.node.Node.get_app">
+<span class="sig-name descname"><span class="pre">get_app</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">app_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.13)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><span class="pre">ApplicationT</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ApplicationT</span></span></span><a class="reference internal" href="../_modules/qns/entity/node/node.html#Node.get_app"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.node.Node.get_app" title="Link to this definition"></a></dt>
+<dd><p>Retrieve an application of given type.
+There must be exactly one instance of this application.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>app_type</strong> – the class of app_type</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#IndexError" title="(in Python v3.13)"><strong>IndexError</strong></a> – </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.node.Node.get_apps">
+<span class="sig-name descname"><span class="pre">get_apps</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">app_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.13)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><span class="pre">ApplicationT</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><span class="pre">ApplicationT</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/qns/entity/node/node.html#Node.get_apps"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.node.Node.get_apps" title="Link to this definition"></a></dt>
+<dd><p>Retrieve applications of given type.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>app_type</strong> – the class of app_type</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.node.Node.get_cchannel">
+<span class="sig-name descname"><span class="pre">get_cchannel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dst</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#qns.entity.node.node.Node" title="qns.entity.node.node.Node"><span class="pre">Node</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="qns.entity.html#qns.entity.ClassicChannel" title="qns.entity.ClassicChannel"><span class="pre">ClassicChannel</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/node/node.html#Node.get_cchannel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.node.Node.get_cchannel" title="Link to this definition"></a></dt>
+<dd><p>Get the classic channel that connects to the <cite>dst</cite></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>dst</strong> (<a class="reference internal" href="#qns.entity.node.node.Node" title="qns.entity.node.node.Node"><em>Node</em></a>) – the destination</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>IndexError - channel does not exist</strong> – </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.node.Node.handle">
+<span class="sig-name descname"><span class="pre">handle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.simulator.html#qns.simulator.event.Event" title="qns.simulator.event.Event"><span class="pre">Event</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/node/node.html#Node.handle"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.node.Node.handle" title="Link to this definition"></a></dt>
+<dd><p>Dispatch an <cite>Event</cite> that happens on this Node.
+This event is passed to every application in apps list in order.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>event</strong> (<a class="reference internal" href="qns.simulator.html#qns.simulator.event.Event" title="qns.simulator.event.Event"><em>Event</em></a>) – the event that happens on this Node</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.node.Node.handle_sync_signal">
+<span class="sig-name descname"><span class="pre">handle_sync_signal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.network.html#qns.network.network.SignalTypeEnum" title="qns.network.network.SignalTypeEnum"><span class="pre">SignalTypeEnum</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/node/node.html#Node.handle_sync_signal"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.node.Node.handle_sync_signal" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.node.Node.install">
+<span class="sig-name descname"><span class="pre">install</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">simulator</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.simulator.html#qns.simulator.simulator.Simulator" title="qns.simulator.simulator.Simulator"><span class="pre">Simulator</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/node/node.html#Node.install"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.node.Node.install" title="Link to this definition"></a></dt>
+<dd><p>Called from Network.install()</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="qns.entity.node.node.Node.network">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">network</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="qns.network.html#qns.network.network.QuantumNetwork" title="qns.network.network.QuantumNetwork"><span class="pre">QuantumNetwork</span></a></em><a class="headerlink" href="#qns.entity.node.node.Node.network" title="Link to this definition"></a></dt>
+<dd><p>Return the QuantumNetwork that this node belongs to.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>IndexError - network does not exist</strong> – </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.node.node.Node.sync_current_phase">
+<span class="sig-name descname"><span class="pre">sync_current_phase</span></span><a class="headerlink" href="#qns.entity.node.node.Node.sync_current_phase" title="Link to this definition"></a></dt>
+<dd><p>Phase set from last sync signal, only relevant with SYNC timing mode.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.node.node.Node.timing_mode">
+<span class="sig-name descname"><span class="pre">timing_mode</span></span><a class="headerlink" href="#qns.entity.node.node.Node.timing_mode" title="Link to this definition"></a></dt>
+<dd><p>Network timing mode.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.entity.node.node.NodeT">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.entity.node.node.</span></span><span class="sig-name descname"><span class="pre">NodeT</span></span><a class="headerlink" href="#qns.entity.node.node.NodeT" title="Link to this definition"></a></dt>
+<dd><p>Type argument for Node or its subclass.</p>
+<p>alias of TypeVar(‘NodeT’, bound=<a class="reference internal" href="#qns.entity.node.node.Node" title="qns.entity.node.node.Node"><code class="xref py py-class docutils literal notranslate"><span class="pre">Node</span></code></a>)</p>
+</dd></dl>
+
+</section>
+<section id="module-qns.entity.node.qnode">
+<span id="qns-entity-node-qnode-module"></span><h2>qns.entity.node.qnode module<a class="headerlink" href="#module-qns.entity.node.qnode" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.entity.node.qnode.QNode">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.entity.node.qnode.</span></span><span class="sig-name descname"><span class="pre">QNode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">apps</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.entity.node.app.Application" title="qns.entity.node.app.Application"><span class="pre">Application</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/node/qnode.html#QNode"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.qnode.QNode" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#qns.entity.node.node.Node" title="qns.entity.node.node.Node"><code class="xref py py-class docutils literal notranslate"><span class="pre">Node</span></code></a></p>
+<p>QNode is a quantum node in the quantum network. Inherits Node and add quantum elements.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.qnode.QNode.add_operator">
+<span class="sig-name descname"><span class="pre">add_operator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">operator</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.entity.html#qns.entity.QuantumOperator" title="qns.entity.QuantumOperator"><span class="pre">QuantumOperator</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/node/qnode.html#QNode.add_operator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.qnode.QNode.add_operator" title="Link to this definition"></a></dt>
+<dd><p>Add a quantum operator in this node</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>operator</strong> (<a class="reference internal" href="qns.entity.html#qns.entity.QuantumOperator" title="qns.entity.QuantumOperator"><em>QuantumOperator</em></a>) – the quantum operator</p>
+</dd>
+</dl>
+<p>This function is available prior to calling .install().</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.qnode.QNode.add_qchannel">
+<span class="sig-name descname"><span class="pre">add_qchannel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">qchannel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.entity.html#qns.entity.QuantumChannel" title="qns.entity.QuantumChannel"><span class="pre">QuantumChannel</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/node/qnode.html#QNode.add_qchannel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.qnode.QNode.add_qchannel" title="Link to this definition"></a></dt>
+<dd><p>Add a quantum channel in this QNode</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>qchannel</strong> (<a class="reference internal" href="qns.entity.html#qns.entity.QuantumChannel" title="qns.entity.QuantumChannel"><em>QuantumChannel</em></a>) – the quantum channel</p>
+</dd>
+</dl>
+<p>This function is available prior to calling .install().</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.qnode.QNode.get_memory">
+<span class="sig-name descname"><span class="pre">get_memory</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="qns.entity.html#qns.entity.QuantumMemory" title="qns.entity.QuantumMemory"><span class="pre">QuantumMemory</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/node/qnode.html#QNode.get_memory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.qnode.QNode.get_memory" title="Link to this definition"></a></dt>
+<dd><p>Get the memory</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>IndexError - memory does not exist</strong> – </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.qnode.QNode.get_qchannel">
+<span class="sig-name descname"><span class="pre">get_qchannel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dst</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#qns.entity.node.qnode.QNode" title="qns.entity.node.qnode.QNode"><span class="pre">QNode</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="qns.entity.html#qns.entity.QuantumChannel" title="qns.entity.QuantumChannel"><span class="pre">QuantumChannel</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/node/qnode.html#QNode.get_qchannel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.qnode.QNode.get_qchannel" title="Link to this definition"></a></dt>
+<dd><p>Get the quantum channel that connects to the <cite>dst</cite></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>dst</strong> (<a class="reference internal" href="#qns.entity.node.qnode.QNode" title="qns.entity.node.qnode.QNode"><em>QNode</em></a>) – the destination</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>IndexError - channel does not exist</strong> – </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.qnode.QNode.install">
+<span class="sig-name descname"><span class="pre">install</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">simulator</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.simulator.html#qns.simulator.simulator.Simulator" title="qns.simulator.simulator.Simulator"><span class="pre">Simulator</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/node/qnode.html#QNode.install"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.qnode.QNode.install" title="Link to this definition"></a></dt>
+<dd><p>Called from Network.install()</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.qnode.QNode.set_memory">
+<span class="sig-name descname"><span class="pre">set_memory</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">memory</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.entity.html#qns.entity.QuantumMemory" title="qns.entity.QuantumMemory"><span class="pre">QuantumMemory</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/node/qnode.html#QNode.set_memory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.qnode.QNode.set_memory" title="Link to this definition"></a></dt>
+<dd><p>Add a quantum memory in this QNode</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>memory</strong> (<em>Memory</em>) – the quantum memory</p>
+</dd>
+</dl>
+<p>This function is available prior to calling .install().</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-qns.entity.node">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-qns.entity.node" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.entity.node.Application">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.entity.node.</span></span><span class="sig-name descname"><span class="pre">Application</span></span><a class="reference internal" href="../_modules/qns/entity/node/app.html#Application"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.Application" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Application can be deployed on the quantum nodes.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.Application.add_handler">
+<span class="sig-name descname"><span class="pre">add_handler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">handler</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Callable" title="(in Python v3.13)"><span class="pre">Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.entity.node.app.EventT" title="qns.entity.node.app.EventT"><span class="pre">EventT</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><span class="pre">bool</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">EventTypeList</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.13)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.entity.node.app.EventT" title="qns.entity.node.app.EventT"><span class="pre">EventT</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.13)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.entity.node.app.EventT" title="qns.entity.node.app.EventT"><span class="pre">EventT</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ByList</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">[]</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/node/app.html#Application.add_handler"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.Application.add_handler" title="Link to this definition"></a></dt>
+<dd><p>Add a handler function to the dispatcher.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>handler</strong> – The handler to process the event.
+It is an object method that accepts the event.</p></li>
+<li><p><strong>EventTypeList</strong> – a list of Event Class Type. An empty list meaning to match all events.</p></li>
+<li><p><strong>ByList</strong> – a list of Entities, QNodes or Applications, that generates this event.
+An empty list meaning to match all entities.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.Application.get_node">
+<span class="sig-name descname"><span class="pre">get_node</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">node_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.13)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.entity.node.node.NodeT" title="qns.entity.node.node.NodeT"><span class="pre">NodeT</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#qns.entity.node.node.NodeT" title="qns.entity.node.node.NodeT"><span class="pre">NodeT</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/node/app.html#Application.get_node"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.Application.get_node" title="Link to this definition"></a></dt>
+<dd><p>Get the node that runs this application</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>the quantum node</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.Application.handle">
+<span class="sig-name descname"><span class="pre">handle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.simulator.html#qns.simulator.event.Event" title="qns.simulator.event.Event"><span class="pre">Event</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><span class="pre">bool</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/node/app.html#Application.handle"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.Application.handle" title="Link to this definition"></a></dt>
+<dd><p>Process the event on the node.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>event</strong> (<a class="reference internal" href="qns.simulator.html#qns.simulator.event.Event" title="qns.simulator.event.Event"><em>Event</em></a>) – the event</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>if skip is True, further applications will not handle this event</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>skip (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)">bool</a>, None)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.Application.handle_sync_signal">
+<span class="sig-name descname"><span class="pre">handle_sync_signal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.network.html#qns.network.network.SignalTypeEnum" title="qns.network.network.SignalTypeEnum"><span class="pre">SignalTypeEnum</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/node/app.html#Application.handle_sync_signal"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.Application.handle_sync_signal" title="Link to this definition"></a></dt>
+<dd><p>Invoked after receiving a sync signal.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.Application.install">
+<span class="sig-name descname"><span class="pre">install</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#qns.entity.node.Node" title="qns.entity.node.Node"><span class="pre">Node</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">simulator</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.simulator.html#qns.simulator.simulator.Simulator" title="qns.simulator.simulator.Simulator"><span class="pre">Simulator</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/node/app.html#Application.install"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.Application.install" title="Link to this definition"></a></dt>
+<dd><p>Install initial events for this Node. Called from Node.install()</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>node</strong> (<a class="reference internal" href="#qns.entity.node.Node" title="qns.entity.node.Node"><em>Node</em></a>) – the node that will run this application</p></li>
+<li><p><strong>simulator</strong> (<a class="reference internal" href="qns.simulator.html#qns.simulator.simulator.Simulator" title="qns.simulator.simulator.Simulator"><em>Simulator</em></a>) – the simulator</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="qns.entity.node.Application.simulator">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">simulator</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="qns.simulator.html#qns.simulator.simulator.Simulator" title="qns.simulator.simulator.Simulator"><span class="pre">Simulator</span></a></em><a class="headerlink" href="#qns.entity.node.Application.simulator" title="Link to this definition"></a></dt>
+<dd><p>Get the simulator</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>the simulator</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="qns.entity.node.Application.sync_current_phase">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">sync_current_phase</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="qns.network.html#qns.network.network.SignalTypeEnum" title="qns.network.network.SignalTypeEnum"><span class="pre">SignalTypeEnum</span></a></em><a class="headerlink" href="#qns.entity.node.Application.sync_current_phase" title="Link to this definition"></a></dt>
+<dd><p>Phase set from last sync signal, only relevant with SYNC timing mode.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.entity.node.Controller">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.entity.node.</span></span><span class="sig-name descname"><span class="pre">Controller</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">apps</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.entity.node.app.Application" title="qns.entity.node.app.Application"><span class="pre">Application</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/node/controller.html#Controller"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.Controller" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#qns.entity.node.node.Node" title="qns.entity.node.node.Node"><code class="xref py py-class docutils literal notranslate"><span class="pre">Node</span></code></a></p>
+<p>Controller computes routing and swapping instructions for quantum routers</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.Controller.install">
+<span class="sig-name descname"><span class="pre">install</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">simulator</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.simulator.html#qns.simulator.simulator.Simulator" title="qns.simulator.simulator.Simulator"><span class="pre">Simulator</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/node/controller.html#Controller.install"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.Controller.install" title="Link to this definition"></a></dt>
+<dd><p>Called from Network.install()</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.entity.node.Node">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.entity.node.</span></span><span class="sig-name descname"><span class="pre">Node</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">apps</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.entity.node.app.Application" title="qns.entity.node.app.Application"><span class="pre">Application</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/node/node.html#Node"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.Node" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="qns.entity.html#qns.entity.entity.Entity" title="qns.entity.entity.Entity"><code class="xref py py-class docutils literal notranslate"><span class="pre">Entity</span></code></a></p>
+<p>Node is a generic node in the quantum network</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.Node.add_apps">
+<span class="sig-name descname"><span class="pre">add_apps</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">app</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#qns.entity.node.app.Application" title="qns.entity.node.app.Application"><span class="pre">Application</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/node/node.html#Node.add_apps"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.Node.add_apps" title="Link to this definition"></a></dt>
+<dd><p>Insert an Application into the app list.
+Called from Topology.build() -&gt; Topology._add_apps()</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>app</strong> (<a class="reference internal" href="#qns.entity.node.Application" title="qns.entity.node.Application"><em>Application</em></a>) – the inserting application.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.Node.add_cchannel">
+<span class="sig-name descname"><span class="pre">add_cchannel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cchannel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.entity.html#qns.entity.ClassicChannel" title="qns.entity.ClassicChannel"><span class="pre">ClassicChannel</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/node/node.html#Node.add_cchannel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.Node.add_cchannel" title="Link to this definition"></a></dt>
+<dd><p>Add a classic channel in this Node</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>cchannel</strong> (<a class="reference internal" href="qns.entity.html#qns.entity.ClassicChannel" title="qns.entity.ClassicChannel"><em>ClassicChannel</em></a>) – the classic channel</p>
+</dd>
+</dl>
+<p>This function is available prior to calling .install().</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.Node.add_network">
+<span class="sig-name descname"><span class="pre">add_network</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">network</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.network.html#qns.network.network.QuantumNetwork" title="qns.network.network.QuantumNetwork"><span class="pre">QuantumNetwork</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/node/node.html#Node.add_network"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.Node.add_network" title="Link to this definition"></a></dt>
+<dd><p>Add a network object to this node.
+Called from Network.__init__()</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>network</strong> (<em>qns.network.network.Network</em>) – the network object</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.node.Node.apps">
+<span class="sig-name descname"><span class="pre">apps</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.entity.node.Application" title="qns.entity.node.Application"><span class="pre">Application</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#qns.entity.node.Node.apps" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.node.Node.cchannels">
+<span class="sig-name descname"><span class="pre">cchannels</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'ClassicChannel'</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#qns.entity.node.Node.cchannels" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.Node.get_app">
+<span class="sig-name descname"><span class="pre">get_app</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">app_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.13)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><span class="pre">ApplicationT</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ApplicationT</span></span></span><a class="reference internal" href="../_modules/qns/entity/node/node.html#Node.get_app"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.Node.get_app" title="Link to this definition"></a></dt>
+<dd><p>Retrieve an application of given type.
+There must be exactly one instance of this application.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>app_type</strong> – the class of app_type</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#IndexError" title="(in Python v3.13)"><strong>IndexError</strong></a> – </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.Node.get_apps">
+<span class="sig-name descname"><span class="pre">get_apps</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">app_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.13)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><span class="pre">ApplicationT</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><span class="pre">ApplicationT</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/qns/entity/node/node.html#Node.get_apps"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.Node.get_apps" title="Link to this definition"></a></dt>
+<dd><p>Retrieve applications of given type.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>app_type</strong> – the class of app_type</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.Node.get_cchannel">
+<span class="sig-name descname"><span class="pre">get_cchannel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dst</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#qns.entity.node.Node" title="qns.entity.node.Node"><span class="pre">Node</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="qns.entity.html#qns.entity.ClassicChannel" title="qns.entity.ClassicChannel"><span class="pre">ClassicChannel</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/node/node.html#Node.get_cchannel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.Node.get_cchannel" title="Link to this definition"></a></dt>
+<dd><p>Get the classic channel that connects to the <cite>dst</cite></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>dst</strong> (<a class="reference internal" href="#qns.entity.node.Node" title="qns.entity.node.Node"><em>Node</em></a>) – the destination</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>IndexError - channel does not exist</strong> – </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.Node.handle">
+<span class="sig-name descname"><span class="pre">handle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.simulator.html#qns.simulator.event.Event" title="qns.simulator.event.Event"><span class="pre">Event</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/node/node.html#Node.handle"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.Node.handle" title="Link to this definition"></a></dt>
+<dd><p>Dispatch an <cite>Event</cite> that happens on this Node.
+This event is passed to every application in apps list in order.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>event</strong> (<a class="reference internal" href="qns.simulator.html#qns.simulator.event.Event" title="qns.simulator.event.Event"><em>Event</em></a>) – the event that happens on this Node</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.Node.handle_sync_signal">
+<span class="sig-name descname"><span class="pre">handle_sync_signal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.network.html#qns.network.network.SignalTypeEnum" title="qns.network.network.SignalTypeEnum"><span class="pre">SignalTypeEnum</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/node/node.html#Node.handle_sync_signal"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.Node.handle_sync_signal" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.Node.install">
+<span class="sig-name descname"><span class="pre">install</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">simulator</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.simulator.html#qns.simulator.simulator.Simulator" title="qns.simulator.simulator.Simulator"><span class="pre">Simulator</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/node/node.html#Node.install"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.Node.install" title="Link to this definition"></a></dt>
+<dd><p>Called from Network.install()</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="qns.entity.node.Node.network">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">network</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="qns.network.html#qns.network.network.QuantumNetwork" title="qns.network.network.QuantumNetwork"><span class="pre">QuantumNetwork</span></a></em><a class="headerlink" href="#qns.entity.node.Node.network" title="Link to this definition"></a></dt>
+<dd><p>Return the QuantumNetwork that this node belongs to.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>IndexError - network does not exist</strong> – </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.node.Node.sync_current_phase">
+<span class="sig-name descname"><span class="pre">sync_current_phase</span></span><a class="headerlink" href="#qns.entity.node.Node.sync_current_phase" title="Link to this definition"></a></dt>
+<dd><p>Phase set from last sync signal, only relevant with SYNC timing mode.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.node.Node.timing_mode">
+<span class="sig-name descname"><span class="pre">timing_mode</span></span><a class="headerlink" href="#qns.entity.node.Node.timing_mode" title="Link to this definition"></a></dt>
+<dd><p>Network timing mode.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.entity.node.QNode">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.entity.node.</span></span><span class="sig-name descname"><span class="pre">QNode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">apps</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.entity.node.app.Application" title="qns.entity.node.app.Application"><span class="pre">Application</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/node/qnode.html#QNode"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.QNode" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#qns.entity.node.node.Node" title="qns.entity.node.node.Node"><code class="xref py py-class docutils literal notranslate"><span class="pre">Node</span></code></a></p>
+<p>QNode is a quantum node in the quantum network. Inherits Node and add quantum elements.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.QNode.add_operator">
+<span class="sig-name descname"><span class="pre">add_operator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">operator</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.entity.html#qns.entity.QuantumOperator" title="qns.entity.QuantumOperator"><span class="pre">QuantumOperator</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/node/qnode.html#QNode.add_operator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.QNode.add_operator" title="Link to this definition"></a></dt>
+<dd><p>Add a quantum operator in this node</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>operator</strong> (<a class="reference internal" href="qns.entity.html#qns.entity.QuantumOperator" title="qns.entity.QuantumOperator"><em>QuantumOperator</em></a>) – the quantum operator</p>
+</dd>
+</dl>
+<p>This function is available prior to calling .install().</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.QNode.add_qchannel">
+<span class="sig-name descname"><span class="pre">add_qchannel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">qchannel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.entity.html#qns.entity.QuantumChannel" title="qns.entity.QuantumChannel"><span class="pre">QuantumChannel</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/node/qnode.html#QNode.add_qchannel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.QNode.add_qchannel" title="Link to this definition"></a></dt>
+<dd><p>Add a quantum channel in this QNode</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>qchannel</strong> (<a class="reference internal" href="qns.entity.html#qns.entity.QuantumChannel" title="qns.entity.QuantumChannel"><em>QuantumChannel</em></a>) – the quantum channel</p>
+</dd>
+</dl>
+<p>This function is available prior to calling .install().</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.QNode.get_memory">
+<span class="sig-name descname"><span class="pre">get_memory</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="qns.entity.html#qns.entity.QuantumMemory" title="qns.entity.QuantumMemory"><span class="pre">QuantumMemory</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/node/qnode.html#QNode.get_memory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.QNode.get_memory" title="Link to this definition"></a></dt>
+<dd><p>Get the memory</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>IndexError - memory does not exist</strong> – </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.QNode.get_qchannel">
+<span class="sig-name descname"><span class="pre">get_qchannel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dst</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#qns.entity.node.QNode" title="qns.entity.node.QNode"><span class="pre">QNode</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="qns.entity.html#qns.entity.QuantumChannel" title="qns.entity.QuantumChannel"><span class="pre">QuantumChannel</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/node/qnode.html#QNode.get_qchannel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.QNode.get_qchannel" title="Link to this definition"></a></dt>
+<dd><p>Get the quantum channel that connects to the <cite>dst</cite></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>dst</strong> (<a class="reference internal" href="#qns.entity.node.QNode" title="qns.entity.node.QNode"><em>QNode</em></a>) – the destination</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>IndexError - channel does not exist</strong> – </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.QNode.install">
+<span class="sig-name descname"><span class="pre">install</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">simulator</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.simulator.html#qns.simulator.simulator.Simulator" title="qns.simulator.simulator.Simulator"><span class="pre">Simulator</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/node/qnode.html#QNode.install"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.QNode.install" title="Link to this definition"></a></dt>
+<dd><p>Called from Network.install()</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.node.QNode.set_memory">
+<span class="sig-name descname"><span class="pre">set_memory</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">memory</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.entity.html#qns.entity.QuantumMemory" title="qns.entity.QuantumMemory"><span class="pre">QuantumMemory</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/node/qnode.html#QNode.set_memory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.node.QNode.set_memory" title="Link to this definition"></a></dt>
+<dd><p>Add a quantum memory in this QNode</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>memory</strong> (<em>Memory</em>) – the quantum memory</p>
+</dd>
+</dl>
+<p>This function is available prior to calling .install().</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="qns.entity.monitor.html" class="btn btn-neutral float-left" title="qns.entity.monitor package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="qns.entity.operator.html" class="btn btn-neutral float-right" title="qns.entity.operator package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Amar Abane.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

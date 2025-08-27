@@ -1,0 +1,171 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>qns.network.proactive.message &mdash; MQNS 0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=2709fde1"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            MQNS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../reference/modules.html">qns</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">MQNS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">qns.network.proactive.message</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for qns.network.proactive.message</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">TypedDict</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">NotRequired</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">typing_extensions</span><span class="w"> </span><span class="kn">import</span> <span class="n">NotRequired</span>
+
+
+<span class="n">MultiplexingMode</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;B&quot;</span><span class="p">,</span> <span class="s2">&quot;S&quot;</span><span class="p">]</span>
+<span class="n">MultiplexingVector</span> <span class="o">=</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span>
+
+
+<div class="viewcode-block" id="InstallPathInstructions">
+<a class="viewcode-back" href="../../../../reference/qns.network.proactive.html#qns.network.proactive.message.InstallPathInstructions">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">InstallPathInstructions</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+    <span class="n">req_id</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">route</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">swap</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
+    <span class="n">mux</span><span class="p">:</span> <span class="n">MultiplexingMode</span>
+    <span class="n">m_v</span><span class="p">:</span> <span class="n">NotRequired</span><span class="p">[</span><span class="n">MultiplexingVector</span><span class="p">]</span>
+    <span class="n">purif</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="InstallPathMsg">
+<a class="viewcode-back" href="../../../../reference/qns.network.proactive.html#qns.network.proactive.message.InstallPathMsg">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">InstallPathMsg</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+    <span class="n">cmd</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;install_path&quot;</span><span class="p">]</span>
+    <span class="n">path_id</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">instructions</span><span class="p">:</span> <span class="n">InstallPathInstructions</span></div>
+
+
+
+<div class="viewcode-block" id="PurifMsgBase">
+<a class="viewcode-back" href="../../../../reference/qns.network.proactive.html#qns.network.proactive.message.PurifMsgBase">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PurifMsgBase</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+    <span class="n">path_id</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">purif_node</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">partner</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">epr</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">measure_epr</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="nb">round</span><span class="p">:</span> <span class="nb">int</span></div>
+
+
+
+<div class="viewcode-block" id="PurifSolicitMsg">
+<a class="viewcode-back" href="../../../../reference/qns.network.proactive.html#qns.network.proactive.message.PurifSolicitMsg">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PurifSolicitMsg</span><span class="p">(</span><span class="n">PurifMsgBase</span><span class="p">):</span>
+    <span class="n">cmd</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;PURIF_SOLICIT&quot;</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="PurifResponseMsg">
+<a class="viewcode-back" href="../../../../reference/qns.network.proactive.html#qns.network.proactive.message.PurifResponseMsg">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PurifResponseMsg</span><span class="p">(</span><span class="n">PurifMsgBase</span><span class="p">):</span>
+    <span class="n">cmd</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;PURIF_RESPONSE&quot;</span><span class="p">]</span>
+    <span class="n">result</span><span class="p">:</span> <span class="nb">bool</span></div>
+
+
+
+<div class="viewcode-block" id="SwapUpdateMsg">
+<a class="viewcode-back" href="../../../../reference/qns.network.proactive.html#qns.network.proactive.message.SwapUpdateMsg">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SwapUpdateMsg</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+    <span class="n">cmd</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;SWAP_UPDATE&quot;</span><span class="p">]</span>
+    <span class="n">path_id</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">swapping_node</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">partner</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">epr</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">new_epr</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>  <span class="c1"># None means swapping failed</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Amar Abane.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

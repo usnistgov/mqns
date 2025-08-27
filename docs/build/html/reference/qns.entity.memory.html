@@ -1,0 +1,1123 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>qns.entity.memory package &mdash; MQNS 0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=2709fde1"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="qns.entity.monitor package" href="qns.entity.monitor.html" />
+    <link rel="prev" title="qns.entity.cchannel package" href="qns.entity.cchannel.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            MQNS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../intro.html">Introduction</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">qns</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="qns.html">qns package</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="qns.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="qns.entity.html">qns.entity package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.html">qns.models package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.network.html">qns.network package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.simulator.html">qns.simulator package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.utils.html">qns.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="qns.html#module-qns">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">MQNS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">qns</a></li>
+          <li class="breadcrumb-item"><a href="qns.html">qns package</a></li>
+          <li class="breadcrumb-item"><a href="qns.entity.html">qns.entity package</a></li>
+      <li class="breadcrumb-item active">qns.entity.memory package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/reference/qns.entity.memory.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="qns-entity-memory-package">
+<h1>qns.entity.memory package<a class="headerlink" href="#qns-entity-memory-package" title="Link to this heading"></a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+</section>
+<section id="module-qns.entity.memory.event">
+<span id="qns-entity-memory-event-module"></span><h2>qns.entity.memory.event module<a class="headerlink" href="#module-qns.entity.memory.event" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.entity.memory.event.MemoryReadRequestEvent">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.entity.memory.event.</span></span><span class="sig-name descname"><span class="pre">MemoryReadRequestEvent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">memory</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.entity.html#qns.entity.QuantumMemory" title="qns.entity.QuantumMemory"><span class="pre">QuantumMemory</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.models.core.html#qns.models.core.backend.QuantumModel" title="qns.models.core.backend.QuantumModel"><span class="pre">QuantumModel</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">t</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.simulator.html#qns.simulator.ts.Time" title="qns.simulator.ts.Time"><span class="pre">Time</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">by</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><span class="pre">Any</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/memory/event.html#MemoryReadRequestEvent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.event.MemoryReadRequestEvent" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="qns.simulator.html#qns.simulator.event.Event" title="qns.simulator.event.Event"><code class="xref py py-class docutils literal notranslate"><span class="pre">Event</span></code></a></p>
+<p><code class="docutils literal notranslate"><span class="pre">MemoryReadRequestEvent</span></code> is the event that request a memory read</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.event.MemoryReadRequestEvent.invoke">
+<span class="sig-name descname"><span class="pre">invoke</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/memory/event.html#MemoryReadRequestEvent.invoke"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.event.MemoryReadRequestEvent.invoke" title="Link to this definition"></a></dt>
+<dd><p>Invoke the event, should be implemented</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.entity.memory.event.MemoryReadResponseEvent">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.entity.memory.event.</span></span><span class="sig-name descname"><span class="pre">MemoryReadResponseEvent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.entity.node.html#qns.entity.node.qnode.QNode" title="qns.entity.node.qnode.QNode"><span class="pre">QNode</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">result</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.entity.memory.memory_qubit.MemoryQubit" title="qns.entity.memory.memory_qubit.MemoryQubit"><span class="pre">MemoryQubit</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="qns.models.core.html#qns.models.core.backend.QuantumModel" title="qns.models.core.backend.QuantumModel"><span class="pre">QuantumModel</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#qns.entity.memory.event.MemoryReadRequestEvent" title="qns.entity.memory.event.MemoryReadRequestEvent"><span class="pre">MemoryReadRequestEvent</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">t</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.simulator.html#qns.simulator.ts.Time" title="qns.simulator.ts.Time"><span class="pre">Time</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">by</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><span class="pre">Any</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/memory/event.html#MemoryReadResponseEvent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.event.MemoryReadResponseEvent" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="qns.simulator.html#qns.simulator.event.Event" title="qns.simulator.event.Event"><code class="xref py py-class docutils literal notranslate"><span class="pre">Event</span></code></a></p>
+<p><code class="docutils literal notranslate"><span class="pre">MemoryReadResponseEvent</span></code> is the event that returns the memory read result</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.event.MemoryReadResponseEvent.invoke">
+<span class="sig-name descname"><span class="pre">invoke</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/memory/event.html#MemoryReadResponseEvent.invoke"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.event.MemoryReadResponseEvent.invoke" title="Link to this definition"></a></dt>
+<dd><p>Invoke the event, should be implemented</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.entity.memory.event.MemoryWriteRequestEvent">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.entity.memory.event.</span></span><span class="sig-name descname"><span class="pre">MemoryWriteRequestEvent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">memory</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.entity.html#qns.entity.QuantumMemory" title="qns.entity.QuantumMemory"><span class="pre">QuantumMemory</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">qubit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.models.core.html#qns.models.core.backend.QuantumModel" title="qns.models.core.backend.QuantumModel"><span class="pre">QuantumModel</span></a></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">t</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.simulator.html#qns.simulator.ts.Time" title="qns.simulator.ts.Time"><span class="pre">Time</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">by</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><span class="pre">Any</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/memory/event.html#MemoryWriteRequestEvent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.event.MemoryWriteRequestEvent" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="qns.simulator.html#qns.simulator.event.Event" title="qns.simulator.event.Event"><code class="xref py py-class docutils literal notranslate"><span class="pre">Event</span></code></a></p>
+<p><code class="docutils literal notranslate"><span class="pre">MemoryWriteRequestEvent</span></code> is the event that request a memory write</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.event.MemoryWriteRequestEvent.invoke">
+<span class="sig-name descname"><span class="pre">invoke</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/memory/event.html#MemoryWriteRequestEvent.invoke"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.event.MemoryWriteRequestEvent.invoke" title="Link to this definition"></a></dt>
+<dd><p>Invoke the event, should be implemented</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.entity.memory.event.MemoryWriteResponseEvent">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.entity.memory.event.</span></span><span class="sig-name descname"><span class="pre">MemoryWriteResponseEvent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.entity.node.html#qns.entity.node.qnode.QNode" title="qns.entity.node.qnode.QNode"><span class="pre">QNode</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">result</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#qns.entity.memory.memory_qubit.MemoryQubit" title="qns.entity.memory.memory_qubit.MemoryQubit"><span class="pre">MemoryQubit</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#qns.entity.memory.event.MemoryWriteRequestEvent" title="qns.entity.memory.event.MemoryWriteRequestEvent"><span class="pre">MemoryWriteRequestEvent</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">t</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.simulator.html#qns.simulator.ts.Time" title="qns.simulator.ts.Time"><span class="pre">Time</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">by</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><span class="pre">Any</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/memory/event.html#MemoryWriteResponseEvent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.event.MemoryWriteResponseEvent" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="qns.simulator.html#qns.simulator.event.Event" title="qns.simulator.event.Event"><code class="xref py py-class docutils literal notranslate"><span class="pre">Event</span></code></a></p>
+<p><code class="docutils literal notranslate"><span class="pre">MemoryWriteResponseEvent</span></code> is the event that returns the memory write result</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.event.MemoryWriteResponseEvent.invoke">
+<span class="sig-name descname"><span class="pre">invoke</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/memory/event.html#MemoryWriteResponseEvent.invoke"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.event.MemoryWriteResponseEvent.invoke" title="Link to this definition"></a></dt>
+<dd><p>Invoke the event, should be implemented</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-qns.entity.memory.memory">
+<span id="qns-entity-memory-memory-module"></span><h2>qns.entity.memory.memory module<a class="headerlink" href="#module-qns.entity.memory.memory" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.entity.memory.memory.QuantumMemory">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.entity.memory.memory.</span></span><span class="sig-name descname"><span class="pre">QuantumMemory</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Unpack</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.entity.memory.memory.QuantumMemoryInitKwargs" title="qns.entity.memory.memory.QuantumMemoryInitKwargs"><span class="pre">QuantumMemoryInitKwargs</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/memory/memory.html#QuantumMemory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.memory.QuantumMemory" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="qns.entity.html#qns.entity.entity.Entity" title="qns.entity.entity.Entity"><code class="xref py py-class docutils literal notranslate"><span class="pre">Entity</span></code></a></p>
+<p>Quantum memory stores qubits or entangled pairs</p>
+<dl class="simple">
+<dt>It has two modes:</dt><dd><p>Synchronous mode, users can use the <code class="docutils literal notranslate"><span class="pre">read</span></code> and <code class="docutils literal notranslate"><span class="pre">write</span></code> function to operate the memory directly without delay
+Asynchronous mode, users can use events to operate memories asynchronously</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.memory.QuantumMemory.allocate">
+<span class="sig-name descname"><span class="pre">allocate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">path_direction</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#qns.entity.memory.memory_qubit.PathDirection" title="qns.entity.memory.memory_qubit.PathDirection"><span class="pre">PathDirection</span></a></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">ch_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/qns/entity/memory/memory.html#QuantumMemory.allocate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.memory.QuantumMemory.allocate" title="Link to this definition"></a></dt>
+<dd><p>Allocate n qubits to a given path ID.</p>
+<p>This method searches for n qubits that have not yet been allocated
+(i.e., <cite>path_id</cite> is None), assigns them the provided <cite>path_id</cite>, and returns their addresses.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path_id</strong> – The identifier of the entanglement path to which the memory qubit will be allocated.</p></li>
+<li><p><strong>ch_name</strong> – The name of the quantum channel to which the memory qubit is assigned.</p></li>
+<li><p><strong>path_direction</strong> – The end of the path to which the qubit allocated qubit points.
+This is typically either the source or the destination of the path (LEFT/RIGHT).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of qubit addresses.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>OverflowError - insufficient unallocated qubits.</strong> – </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.memory.QuantumMemory.assign">
+<span class="sig-name descname"><span class="pre">assign</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ch</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.entity.html#qns.entity.QuantumChannel" title="qns.entity.QuantumChannel"><span class="pre">QuantumChannel</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/qns/entity/memory/memory.html#QuantumMemory.assign"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.memory.QuantumMemory.assign" title="Link to this definition"></a></dt>
+<dd><p>Assign n qubits to a particular quantum channel.</p>
+<p>This is only used at topology creation time.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List of qubit addresses.</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>OverflowError - insufficient unassigned qubits.</strong> – </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.memory.QuantumMemory.capacity">
+<span class="sig-name descname"><span class="pre">capacity</span></span><a class="headerlink" href="#qns.entity.memory.memory.QuantumMemory.capacity" title="Link to this definition"></a></dt>
+<dd><p>Memory capacity, i.e. how many qubits can be stored.
+Each qubit would have an address in <cite>[0, capacity)</cite>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.memory.QuantumMemory.clear">
+<span class="sig-name descname"><span class="pre">clear</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/memory/memory.html#QuantumMemory.clear"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.memory.QuantumMemory.clear" title="Link to this definition"></a></dt>
+<dd><p>Clear all qubits in the memory.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="qns.entity.memory.memory.QuantumMemory.count">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">count</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></em><a class="headerlink" href="#qns.entity.memory.memory.QuantumMemory.count" title="Link to this definition"></a></dt>
+<dd><p>Return the quantity of stored qubits.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.memory.QuantumMemory.deallocate">
+<span class="sig-name descname"><span class="pre">deallocate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">addrs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/memory/memory.html#QuantumMemory.deallocate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.memory.QuantumMemory.deallocate" title="Link to this definition"></a></dt>
+<dd><p>Deallocate one or more qubits from any assigned path.</p>
+<p>This method finds the memory qubit with the given address and clears its
+path assignment (i.e., resets its <cite>path_id</cite> to None). It does not modify the
+quantum state or remove the qubit from memory.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.memory.QuantumMemory.decohere_qubit">
+<span class="sig-name descname"><span class="pre">decohere_qubit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">qubit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#qns.entity.memory.memory_qubit.MemoryQubit" title="qns.entity.memory.memory_qubit.MemoryQubit"><span class="pre">MemoryQubit</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">qm</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.models.core.html#qns.models.core.backend.QuantumModel" title="qns.models.core.backend.QuantumModel"><span class="pre">QuantumModel</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/memory/memory.html#QuantumMemory.decohere_qubit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.memory.QuantumMemory.decohere_qubit" title="Link to this definition"></a></dt>
+<dd><p>Mark the <cite>BaseEntanglement</cite> quantum model associated with a qubit as decohered.
+This is invoked through decoherence event from <cite>_schedule_decohere</cite>.</p>
+<ol class="arabic">
+<li><p>Check whether the EPR pair still exists in memory via <cite>self.read(key=qm)</cite>.
+- If the qubit was already released via swap/purify, it is safely ignored.
+- If the qubit was re-entangled, it would be associated with a different quantum model</p>
+<blockquote>
+<div><p>and would not be found via <cite>self.read(key=qm)</cite>.</p>
+</div></blockquote>
+</li>
+<li><p>If the EPR is still present, set the qubit to RELEASE state, and then
+schedule a <cite>QubitDecoheredEvent</cite> to inform the link layer.</p></li>
+</ol>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>qubit</strong> – The memory qubit that has reached its decoherence time.</p></li>
+<li><p><strong>qm</strong> – The assocated quantum model, which must also be an instance of <cite>BaseEntanglement</cite>.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.memory.QuantumMemory.decoherence_delay">
+<span class="sig-name descname"><span class="pre">decoherence_delay</span></span><a class="headerlink" href="#qns.entity.memory.memory.QuantumMemory.decoherence_delay" title="Link to this definition"></a></dt>
+<dd><p>Inverse of <cite>decoherence_rate</cite>, i.e. duration between EPR creation time and decoherence time in seconds.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.memory.QuantumMemory.delay">
+<span class="sig-name descname"><span class="pre">delay</span></span><a class="headerlink" href="#qns.entity.memory.memory.QuantumMemory.delay" title="Link to this definition"></a></dt>
+<dd><p>Read/write delay, only applicable to async access.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.memory.QuantumMemory.find">
+<span class="sig-name descname"><span class="pre">find</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">predicate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Callable" title="(in Python v3.13)"><span class="pre">Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.entity.memory.memory_qubit.MemoryQubit" title="qns.entity.memory.memory_qubit.MemoryQubit"><span class="pre">MemoryQubit</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="qns.models.core.html#qns.models.core.backend.QuantumModel" title="qns.models.core.backend.QuantumModel"><span class="pre">QuantumModel</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><span class="pre">bool</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Iterator" title="(in Python v3.13)"><span class="pre">Iterator</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.entity.memory.memory_qubit.MemoryQubit" title="qns.entity.memory.memory_qubit.MemoryQubit"><span class="pre">MemoryQubit</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="qns.models.core.html#qns.models.core.backend.QuantumModel" title="qns.models.core.backend.QuantumModel"><span class="pre">QuantumModel</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/qns/entity/memory/memory.html#QuantumMemory.find"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.memory.QuantumMemory.find" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">find</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">predicate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Callable" title="(in Python v3.13)"><span class="pre">Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.entity.memory.memory_qubit.MemoryQubit" title="qns.entity.memory.memory_qubit.MemoryQubit"><span class="pre">MemoryQubit</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="qns.models.epr.html#qns.models.epr.entanglement.BaseEntanglement" title="qns.models.epr.entanglement.BaseEntanglement"><span class="pre">BaseEntanglement</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><span class="pre">bool</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">has_epr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.13)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="k"><span class="pre">True</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Iterator" title="(in Python v3.13)"><span class="pre">Iterator</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.entity.memory.memory_qubit.MemoryQubit" title="qns.entity.memory.memory_qubit.MemoryQubit"><span class="pre">MemoryQubit</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="qns.models.epr.html#qns.models.epr.entanglement.BaseEntanglement" title="qns.models.epr.entanglement.BaseEntanglement"><span class="pre">BaseEntanglement</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.memory.QuantumMemory.get">
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="qns.models.core.html#qns.models.core.backend.QuantumModel" title="qns.models.core.backend.QuantumModel"><span class="pre">QuantumModel</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">must</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.entity.memory.memory_qubit.MemoryQubit" title="qns.entity.memory.memory_qubit.MemoryQubit"><span class="pre">MemoryQubit</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="qns.models.core.html#qns.models.core.backend.QuantumModel" title="qns.models.core.backend.QuantumModel"><span class="pre">QuantumModel</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/memory/memory.html#QuantumMemory.get"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.memory.QuantumMemory.get" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="qns.models.core.html#qns.models.core.backend.QuantumModel" title="qns.models.core.backend.QuantumModel"><span class="pre">QuantumModel</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">must</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.13)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="k"><span class="pre">True</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.entity.memory.memory_qubit.MemoryQubit" title="qns.entity.memory.memory_qubit.MemoryQubit"><span class="pre">MemoryQubit</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="qns.models.core.html#qns.models.core.backend.QuantumModel" title="qns.models.core.backend.QuantumModel"><span class="pre">QuantumModel</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span></span></span></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.memory.QuantumMemory.get_channel_qubits">
+<span class="sig-name descname"><span class="pre">get_channel_qubits</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ch_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.entity.memory.memory_qubit.MemoryQubit" title="qns.entity.memory.memory_qubit.MemoryQubit"><span class="pre">MemoryQubit</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="qns.models.core.html#qns.models.core.backend.QuantumModel" title="qns.models.core.backend.QuantumModel"><span class="pre">QuantumModel</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/qns/entity/memory/memory.html#QuantumMemory.get_channel_qubits"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.memory.QuantumMemory.get_channel_qubits" title="Link to this definition"></a></dt>
+<dd><p>Retrieve all memory qubits associated with a specific quantum channel.</p>
+<p>This method returns all memory qubits that are linked to the given quantum channel name,
+regardless of their state or usage.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ch_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – The name of the quantum channel to filter qubits by.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A list of memory qubits (along with their <cite>QuantumModel</cite>)
+that are bound to the specified quantum channel.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List[Tuple[<a class="reference internal" href="#qns.entity.memory.memory_qubit.MemoryQubit" title="qns.entity.memory.memory_qubit.MemoryQubit">MemoryQubit</a>, <a class="reference internal" href="qns.models.html#qns.models.QuantumModel" title="qns.models.QuantumModel">QuantumModel</a>]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.memory.QuantumMemory.handle">
+<span class="sig-name descname"><span class="pre">handle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.simulator.html#qns.simulator.event.Event" title="qns.simulator.event.Event"><span class="pre">Event</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/memory/memory.html#QuantumMemory.handle"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.memory.QuantumMemory.handle" title="Link to this definition"></a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">handle</span></code> is called to process an receiving <code class="docutils literal notranslate"><span class="pre">Event</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>event</strong> (<a class="reference internal" href="qns.simulator.html#qns.simulator.event.Event" title="qns.simulator.event.Event"><em>qns.simulator.event.Event</em></a>) – the event that send to this entity</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.memory.QuantumMemory.is_full">
+<span class="sig-name descname"><span class="pre">is_full</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/memory/memory.html#QuantumMemory.is_full"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.memory.QuantumMemory.is_full" title="Link to this definition"></a></dt>
+<dd><p>Check whether the memory is full</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.memory.QuantumMemory.node">
+<span class="sig-name descname"><span class="pre">node</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="qns.entity.html#qns.entity.QNode" title="qns.entity.QNode"><span class="pre">QNode</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></em><a class="headerlink" href="#qns.entity.memory.memory.QuantumMemory.node" title="Link to this definition"></a></dt>
+<dd><p>QNode that owns this memory.</p>
+<p>This is assigned by <cite>QNode.set_memory()</cite>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.memory.QuantumMemory.pending_decohere_events">
+<span class="sig-name descname"><span class="pre">pending_decohere_events</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.13)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="qns.simulator.html#qns.simulator.event.Event" title="qns.simulator.event.Event"><span class="pre">Event</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#qns.entity.memory.memory.QuantumMemory.pending_decohere_events" title="Link to this definition"></a></dt>
+<dd><p>Table of pending decoherence events.
+Key is <cite>BaseEntanglement.name</cite>.
+Value is the decohere event, which should be uncanceled and unexpired.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.memory.QuantumMemory.read">
+<span class="sig-name descname"><span class="pre">read</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="qns.models.core.html#qns.models.core.backend.QuantumModel" title="qns.models.core.backend.QuantumModel"><span class="pre">QuantumModel</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">destructive</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">must</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.entity.memory.memory_qubit.MemoryQubit" title="qns.entity.memory.memory_qubit.MemoryQubit"><span class="pre">MemoryQubit</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="qns.models.core.html#qns.models.core.backend.QuantumModel" title="qns.models.core.backend.QuantumModel"><span class="pre">QuantumModel</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/memory/memory.html#QuantumMemory.read"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.memory.QuantumMemory.read" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">read</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="qns.models.core.html#qns.models.core.backend.QuantumModel" title="qns.models.core.backend.QuantumModel"><span class="pre">QuantumModel</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">destructive</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">must</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.13)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="k"><span class="pre">True</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.entity.memory.memory_qubit.MemoryQubit" title="qns.entity.memory.memory_qubit.MemoryQubit"><span class="pre">MemoryQubit</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="qns.models.core.html#qns.models.core.backend.QuantumModel" title="qns.models.core.backend.QuantumModel"><span class="pre">QuantumModel</span></a><span class="p"><span class="pre">]</span></span></span></span></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.memory.QuantumMemory.unassign">
+<span class="sig-name descname"><span class="pre">unassign</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">addrs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/memory/memory.html#QuantumMemory.unassign"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.memory.QuantumMemory.unassign" title="Link to this definition"></a></dt>
+<dd><p>Unassign one or more qubits from any quantum channel.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.memory.QuantumMemory.update">
+<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">old_qm</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_qm</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.models.core.html#qns.models.core.backend.QuantumModel" title="qns.models.core.backend.QuantumModel"><span class="pre">QuantumModel</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/memory/memory.html#QuantumMemory.update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.memory.QuantumMemory.update" title="Link to this definition"></a></dt>
+<dd><p>Update the data of a stored qubit without resetting its coherence time.</p>
+<p>This method replaces an existing quantum model in memory with a new one,
+preserving the original decoherence schedule. The old decoherence event is
+canceled and replaced with a new event for the updated model, but at the
+same decoherence time.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>old_qm</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – The name of the existing <cite>QuantumModel</cite> to be replaced.</p></li>
+<li><p><strong>new_qm</strong> (<a class="reference internal" href="qns.models.html#qns.models.QuantumModel" title="qns.models.QuantumModel"><em>QuantumModel</em></a>) – The new <cite>QuantumModel</cite> instance to store in its place.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>True if the update was successful, False if <cite>old_qm</cite> was not found</dt><dd><p>(e.g., already decohered or removed).</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)">bool</a></p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<ul class="simple">
+<li><p>If <cite>old_qm</cite> is not found in memory but a pending decoherence event still exists,</p></li>
+</ul>
+<p>that event is canceled and removed to avoid inconsistency.
+- This method does not modify the coherence time or reschedule it—only updates
+the stored quantum model while maintaining timing integrity.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.memory.QuantumMemory.write">
+<span class="sig-name descname"><span class="pre">write</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">qm</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.models.core.html#qns.models.core.backend.QuantumModel" title="qns.models.core.backend.QuantumModel"><span class="pre">QuantumModel</span></a></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">path_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">address</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#qns.entity.memory.memory_qubit.MemoryQubit" title="qns.entity.memory.memory_qubit.MemoryQubit"><span class="pre">MemoryQubit</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/memory/memory.html#QuantumMemory.write"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.memory.QuantumMemory.write" title="Link to this definition"></a></dt>
+<dd><p>Store a quantum model (e.g., a qubit or an entangled pair) in memory.</p>
+<ol class="arabic simple">
+<li><p>Find an unused memory slot that satisfies optional constraints.</p></li>
+<li><p>Store and provided quantum model.</p></li>
+<li><p>Schedule a decoherence event based on the memory’s decoherence rate.</p></li>
+</ol>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>qm</strong> – The quantum model to store (e.g., an entangled pair).</p></li>
+<li><p><strong>path_id</strong> – Constrain by <cite>MemoryQubit.path_id</cite> field (set by <cite>allocate</cite>).</p></li>
+<li><p><strong>address</strong> – Constrain by qubit address.</p></li>
+<li><p><strong>key</strong> – Constrain by <cite>MemoryQubit.active</cite> field (set in <cite>LinkLayer</cite> reservation).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Qubit where the quantum model was stored, or None if no storage available.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.entity.memory.memory.QuantumMemoryInitKwargs">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.entity.memory.memory.</span></span><span class="sig-name descname"><span class="pre">QuantumMemoryInitKwargs</span></span><a class="reference internal" href="../_modules/qns/entity/memory/memory.html#QuantumMemoryInitKwargs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.memory.QuantumMemoryInitKwargs" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.TypedDict" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">TypedDict</span></code></a></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.memory.QuantumMemoryInitKwargs.capacity">
+<span class="sig-name descname"><span class="pre">capacity</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></em><a class="headerlink" href="#qns.entity.memory.memory.QuantumMemoryInitKwargs.capacity" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.memory.QuantumMemoryInitKwargs.decoherence_rate">
+<span class="sig-name descname"><span class="pre">decoherence_rate</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><span class="pre">float</span></a></em><a class="headerlink" href="#qns.entity.memory.memory.QuantumMemoryInitKwargs.decoherence_rate" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.memory.QuantumMemoryInitKwargs.delay">
+<span class="sig-name descname"><span class="pre">delay</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="qns.models.delay.html#qns.models.delay.delay.DelayModel" title="qns.models.delay.delay.DelayModel"><span class="pre">DelayModel</span></a></em><a class="headerlink" href="#qns.entity.memory.memory.QuantumMemoryInitKwargs.delay" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.memory.QuantumMemoryInitKwargs.store_error_model_args">
+<span class="sig-name descname"><span class="pre">store_error_model_args</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.13)"><span class="pre">dict</span></a></em><a class="headerlink" href="#qns.entity.memory.memory.QuantumMemoryInitKwargs.store_error_model_args" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-qns.entity.memory.memory_qubit">
+<span id="qns-entity-memory-memory-qubit-module"></span><h2>qns.entity.memory.memory_qubit module<a class="headerlink" href="#module-qns.entity.memory.memory_qubit" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.entity.memory.memory_qubit.MemoryQubit">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.entity.memory.memory_qubit.</span></span><span class="sig-name descname"><span class="pre">MemoryQubit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">addr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/memory/memory_qubit.html#MemoryQubit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.memory_qubit.MemoryQubit" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>An addressable qubit in memory, with a lifecycle.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.memory_qubit.MemoryQubit.active">
+<span class="sig-name descname"><span class="pre">active</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></em><a class="headerlink" href="#qns.entity.memory.memory_qubit.MemoryQubit.active" title="Link to this definition"></a></dt>
+<dd><p>Reservation key if qubit is reserved for entanglement, None otherwise</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.memory_qubit.MemoryQubit.addr">
+<span class="sig-name descname"><span class="pre">addr</span></span><a class="headerlink" href="#qns.entity.memory.memory_qubit.MemoryQubit.addr" title="Link to this definition"></a></dt>
+<dd><p>Address index in QuantumMemory.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.memory_qubit.MemoryQubit.allocate">
+<span class="sig-name descname"><span class="pre">allocate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">path_direction</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#qns.entity.memory.memory_qubit.PathDirection" title="qns.entity.memory.memory_qubit.PathDirection"><span class="pre">PathDirection</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/memory/memory_qubit.html#MemoryQubit.allocate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.memory_qubit.MemoryQubit.allocate" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.memory_qubit.MemoryQubit.assign">
+<span class="sig-name descname"><span class="pre">assign</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ch</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.entity.html#qns.entity.QuantumChannel" title="qns.entity.QuantumChannel"><span class="pre">QuantumChannel</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/memory/memory_qubit.html#MemoryQubit.assign"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.memory_qubit.MemoryQubit.assign" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.memory_qubit.MemoryQubit.deallocate">
+<span class="sig-name descname"><span class="pre">deallocate</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/memory/memory_qubit.html#MemoryQubit.deallocate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.memory_qubit.MemoryQubit.deallocate" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.memory_qubit.MemoryQubit.path_direction">
+<span class="sig-name descname"><span class="pre">path_direction</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#qns.entity.memory.memory_qubit.PathDirection" title="qns.entity.memory.memory_qubit.PathDirection"><span class="pre">PathDirection</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></em><a class="headerlink" href="#qns.entity.memory.memory_qubit.MemoryQubit.path_direction" title="Link to this definition"></a></dt>
+<dd><p>Optional end of the path to which the allocated qubit points to (weak solution to avoid loops)</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.memory_qubit.MemoryQubit.path_id">
+<span class="sig-name descname"><span class="pre">path_id</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></em><a class="headerlink" href="#qns.entity.memory.memory_qubit.MemoryQubit.path_id" title="Link to this definition"></a></dt>
+<dd><p>Optional path ID to which qubit is allocated</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.memory_qubit.MemoryQubit.purif_rounds">
+<span class="sig-name descname"><span class="pre">purif_rounds</span></span><a class="headerlink" href="#qns.entity.memory.memory_qubit.MemoryQubit.purif_rounds" title="Link to this definition"></a></dt>
+<dd><p>Number of purification rounds currently completed by the EPR stored on this qubit</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.memory_qubit.MemoryQubit.qchannel">
+<span class="sig-name descname"><span class="pre">qchannel</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="qns.entity.html#qns.entity.QuantumChannel" title="qns.entity.QuantumChannel"><span class="pre">QuantumChannel</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></em><a class="headerlink" href="#qns.entity.memory.memory_qubit.MemoryQubit.qchannel" title="Link to this definition"></a></dt>
+<dd><p>qchannel to which qubit is assigned to (currently only at topology creation time)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.memory_qubit.MemoryQubit.reset_state">
+<span class="sig-name descname"><span class="pre">reset_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/memory/memory_qubit.html#MemoryQubit.reset_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.memory_qubit.MemoryQubit.reset_state" title="Link to this definition"></a></dt>
+<dd><p>Reset state to RAW and clear associated fields.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="qns.entity.memory.memory_qubit.MemoryQubit.state">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">state</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#qns.entity.memory.memory_qubit.QubitState" title="qns.entity.memory.memory_qubit.QubitState"><span class="pre">QubitState</span></a></em><a class="headerlink" href="#qns.entity.memory.memory_qubit.MemoryQubit.state" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.memory_qubit.MemoryQubit.unassign">
+<span class="sig-name descname"><span class="pre">unassign</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/memory/memory_qubit.html#MemoryQubit.unassign"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.memory_qubit.MemoryQubit.unassign" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.entity.memory.memory_qubit.PathDirection">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.entity.memory.memory_qubit.</span></span><span class="sig-name descname"><span class="pre">PathDirection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/memory/memory_qubit.html#PathDirection"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.memory_qubit.PathDirection" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/enum.html#enum.Enum" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></a></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.memory_qubit.PathDirection.LEFT">
+<span class="sig-name descname"><span class="pre">LEFT</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#qns.entity.memory.memory_qubit.PathDirection.LEFT" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.memory_qubit.PathDirection.RIGHT">
+<span class="sig-name descname"><span class="pre">RIGHT</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#qns.entity.memory.memory_qubit.PathDirection.RIGHT" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.entity.memory.memory_qubit.QubitState">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.entity.memory.memory_qubit.</span></span><span class="sig-name descname"><span class="pre">QubitState</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/memory/memory_qubit.html#QubitState"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.memory_qubit.QubitState" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/enum.html#enum.Enum" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></a></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.memory_qubit.QubitState.ACTIVE">
+<span class="sig-name descname"><span class="pre">ACTIVE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#qns.entity.memory.memory_qubit.QubitState.ACTIVE" title="Link to this definition"></a></dt>
+<dd><p>The link layer has started a reservation on the qubit as the primary node.
+<cite>qubit.active</cite> contains the reservation key.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.memory_qubit.QubitState.ELIGIBLE">
+<span class="sig-name descname"><span class="pre">ELIGIBLE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">8</span></em><a class="headerlink" href="#qns.entity.memory.memory_qubit.QubitState.ELIGIBLE" title="Link to this definition"></a></dt>
+<dd><p>Qubit has completed the required rounds of purification and ready for swapping or end-to-end consumption.</p>
+<p>This state is set on the qubit only if own node has a swapping rank no less than the other node in the entanglement.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.memory_qubit.QubitState.ENTANGLED0">
+<span class="sig-name descname"><span class="pre">ENTANGLED0</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">4</span></em><a class="headerlink" href="#qns.entity.memory.memory_qubit.QubitState.ENTANGLED0" title="Link to this definition"></a></dt>
+<dd><p>Qubit is half of an elementary entanglement delivered from link layer.
+<cite>QubitEntangledEvent</cite> has not been processed by forwarder.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.memory_qubit.QubitState.ENTANGLED1">
+<span class="sig-name descname"><span class="pre">ENTANGLED1</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">5</span></em><a class="headerlink" href="#qns.entity.memory.memory_qubit.QubitState.ENTANGLED1" title="Link to this definition"></a></dt>
+<dd><p>Qubit is half of an elementary entanglement delivered from link layer.
+<cite>QubitEntangledEvent</cite> has been processed by forwarder.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.memory_qubit.QubitState.PENDING">
+<span class="sig-name descname"><span class="pre">PENDING</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">7</span></em><a class="headerlink" href="#qns.entity.memory.memory_qubit.QubitState.PENDING" title="Link to this definition"></a></dt>
+<dd><p>The forwarder has initiated purification of the qubit with its partner on a segment.
+<cite>qubit.qubit_rounds</cite> indicates how many purification rounds have been completed, excluding the current round.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.memory_qubit.QubitState.PURIF">
+<span class="sig-name descname"><span class="pre">PURIF</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">6</span></em><a class="headerlink" href="#qns.entity.memory.memory_qubit.QubitState.PURIF" title="Link to this definition"></a></dt>
+<dd><p>Qubit is used by forwarder for zero or more rounds of purification.
+<cite>qubit.qubit_rounds</cite> indicates how many purification rounds have been completed.</p>
+<p>This state is set on the qubit at both primary and secondary node of a purification segment,
+but only the primary node is permitted to initiate purification.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.memory_qubit.QubitState.RAW">
+<span class="sig-name descname"><span class="pre">RAW</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#qns.entity.memory.memory_qubit.QubitState.RAW" title="Link to this definition"></a></dt>
+<dd><p>Qubit is unused.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.memory_qubit.QubitState.RELEASE">
+<span class="sig-name descname"><span class="pre">RELEASE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">9</span></em><a class="headerlink" href="#qns.entity.memory.memory_qubit.QubitState.RELEASE" title="Link to this definition"></a></dt>
+<dd><p>Qubit is not used by the forwarder.
+The link layer may generate a new elementary entanglement into this qubit.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.memory_qubit.QubitState.RESERVED">
+<span class="sig-name descname"><span class="pre">RESERVED</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">3</span></em><a class="headerlink" href="#qns.entity.memory.memory_qubit.QubitState.RESERVED" title="Link to this definition"></a></dt>
+<dd><p>Qubit is part of a reservation in link layer and a remote qubit has been found.
+<cite>qubit.active</cite> contains the reservation key.</p>
+<p>This state is set on the qubit at both primary and secondary node of the reservation.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-qns.entity.memory">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-qns.entity.memory" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.entity.memory.MemoryQubit">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.entity.memory.</span></span><span class="sig-name descname"><span class="pre">MemoryQubit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">addr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/memory/memory_qubit.html#MemoryQubit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.MemoryQubit" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>An addressable qubit in memory, with a lifecycle.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.MemoryQubit.active">
+<span class="sig-name descname"><span class="pre">active</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></em><a class="headerlink" href="#qns.entity.memory.MemoryQubit.active" title="Link to this definition"></a></dt>
+<dd><p>Reservation key if qubit is reserved for entanglement, None otherwise</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.MemoryQubit.addr">
+<span class="sig-name descname"><span class="pre">addr</span></span><a class="headerlink" href="#qns.entity.memory.MemoryQubit.addr" title="Link to this definition"></a></dt>
+<dd><p>Address index in QuantumMemory.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.MemoryQubit.allocate">
+<span class="sig-name descname"><span class="pre">allocate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">path_direction</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#qns.entity.memory.memory_qubit.PathDirection" title="qns.entity.memory.memory_qubit.PathDirection"><span class="pre">PathDirection</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/memory/memory_qubit.html#MemoryQubit.allocate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.MemoryQubit.allocate" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.MemoryQubit.assign">
+<span class="sig-name descname"><span class="pre">assign</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ch</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.entity.html#qns.entity.QuantumChannel" title="qns.entity.QuantumChannel"><span class="pre">QuantumChannel</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/memory/memory_qubit.html#MemoryQubit.assign"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.MemoryQubit.assign" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.MemoryQubit.deallocate">
+<span class="sig-name descname"><span class="pre">deallocate</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/memory/memory_qubit.html#MemoryQubit.deallocate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.MemoryQubit.deallocate" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.MemoryQubit.path_direction">
+<span class="sig-name descname"><span class="pre">path_direction</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#qns.entity.memory.PathDirection" title="qns.entity.memory.PathDirection"><span class="pre">PathDirection</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></em><a class="headerlink" href="#qns.entity.memory.MemoryQubit.path_direction" title="Link to this definition"></a></dt>
+<dd><p>Optional end of the path to which the allocated qubit points to (weak solution to avoid loops)</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.MemoryQubit.path_id">
+<span class="sig-name descname"><span class="pre">path_id</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></em><a class="headerlink" href="#qns.entity.memory.MemoryQubit.path_id" title="Link to this definition"></a></dt>
+<dd><p>Optional path ID to which qubit is allocated</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.MemoryQubit.purif_rounds">
+<span class="sig-name descname"><span class="pre">purif_rounds</span></span><a class="headerlink" href="#qns.entity.memory.MemoryQubit.purif_rounds" title="Link to this definition"></a></dt>
+<dd><p>Number of purification rounds currently completed by the EPR stored on this qubit</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.MemoryQubit.qchannel">
+<span class="sig-name descname"><span class="pre">qchannel</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="qns.entity.html#qns.entity.QuantumChannel" title="qns.entity.QuantumChannel"><span class="pre">QuantumChannel</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></em><a class="headerlink" href="#qns.entity.memory.MemoryQubit.qchannel" title="Link to this definition"></a></dt>
+<dd><p>qchannel to which qubit is assigned to (currently only at topology creation time)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.MemoryQubit.reset_state">
+<span class="sig-name descname"><span class="pre">reset_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/memory/memory_qubit.html#MemoryQubit.reset_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.MemoryQubit.reset_state" title="Link to this definition"></a></dt>
+<dd><p>Reset state to RAW and clear associated fields.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="qns.entity.memory.MemoryQubit.state">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">state</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#qns.entity.memory.memory_qubit.QubitState" title="qns.entity.memory.memory_qubit.QubitState"><span class="pre">QubitState</span></a></em><a class="headerlink" href="#qns.entity.memory.MemoryQubit.state" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.MemoryQubit.unassign">
+<span class="sig-name descname"><span class="pre">unassign</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/memory/memory_qubit.html#MemoryQubit.unassign"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.MemoryQubit.unassign" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.entity.memory.MemoryReadRequestEvent">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.entity.memory.</span></span><span class="sig-name descname"><span class="pre">MemoryReadRequestEvent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">memory</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#qns.entity.memory.QuantumMemory" title="qns.entity.memory.QuantumMemory"><span class="pre">QuantumMemory</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.models.core.html#qns.models.core.backend.QuantumModel" title="qns.models.core.backend.QuantumModel"><span class="pre">QuantumModel</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">t</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.simulator.html#qns.simulator.ts.Time" title="qns.simulator.ts.Time"><span class="pre">Time</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">by</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><span class="pre">Any</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/memory/event.html#MemoryReadRequestEvent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.MemoryReadRequestEvent" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="qns.simulator.html#qns.simulator.event.Event" title="qns.simulator.event.Event"><code class="xref py py-class docutils literal notranslate"><span class="pre">Event</span></code></a></p>
+<p><code class="docutils literal notranslate"><span class="pre">MemoryReadRequestEvent</span></code> is the event that request a memory read</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.MemoryReadRequestEvent.invoke">
+<span class="sig-name descname"><span class="pre">invoke</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/memory/event.html#MemoryReadRequestEvent.invoke"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.MemoryReadRequestEvent.invoke" title="Link to this definition"></a></dt>
+<dd><p>Invoke the event, should be implemented</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.entity.memory.MemoryReadResponseEvent">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.entity.memory.</span></span><span class="sig-name descname"><span class="pre">MemoryReadResponseEvent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.entity.node.html#qns.entity.node.qnode.QNode" title="qns.entity.node.qnode.QNode"><span class="pre">QNode</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">result</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.entity.memory.memory_qubit.MemoryQubit" title="qns.entity.memory.memory_qubit.MemoryQubit"><span class="pre">MemoryQubit</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="qns.models.core.html#qns.models.core.backend.QuantumModel" title="qns.models.core.backend.QuantumModel"><span class="pre">QuantumModel</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#qns.entity.memory.event.MemoryReadRequestEvent" title="qns.entity.memory.event.MemoryReadRequestEvent"><span class="pre">MemoryReadRequestEvent</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">t</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.simulator.html#qns.simulator.ts.Time" title="qns.simulator.ts.Time"><span class="pre">Time</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">by</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><span class="pre">Any</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/memory/event.html#MemoryReadResponseEvent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.MemoryReadResponseEvent" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="qns.simulator.html#qns.simulator.event.Event" title="qns.simulator.event.Event"><code class="xref py py-class docutils literal notranslate"><span class="pre">Event</span></code></a></p>
+<p><code class="docutils literal notranslate"><span class="pre">MemoryReadResponseEvent</span></code> is the event that returns the memory read result</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.MemoryReadResponseEvent.invoke">
+<span class="sig-name descname"><span class="pre">invoke</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/memory/event.html#MemoryReadResponseEvent.invoke"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.MemoryReadResponseEvent.invoke" title="Link to this definition"></a></dt>
+<dd><p>Invoke the event, should be implemented</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.entity.memory.MemoryWriteRequestEvent">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.entity.memory.</span></span><span class="sig-name descname"><span class="pre">MemoryWriteRequestEvent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">memory</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#qns.entity.memory.QuantumMemory" title="qns.entity.memory.QuantumMemory"><span class="pre">QuantumMemory</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">qubit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.models.core.html#qns.models.core.backend.QuantumModel" title="qns.models.core.backend.QuantumModel"><span class="pre">QuantumModel</span></a></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">t</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.simulator.html#qns.simulator.ts.Time" title="qns.simulator.ts.Time"><span class="pre">Time</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">by</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><span class="pre">Any</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/memory/event.html#MemoryWriteRequestEvent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.MemoryWriteRequestEvent" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="qns.simulator.html#qns.simulator.event.Event" title="qns.simulator.event.Event"><code class="xref py py-class docutils literal notranslate"><span class="pre">Event</span></code></a></p>
+<p><code class="docutils literal notranslate"><span class="pre">MemoryWriteRequestEvent</span></code> is the event that request a memory write</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.MemoryWriteRequestEvent.invoke">
+<span class="sig-name descname"><span class="pre">invoke</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/memory/event.html#MemoryWriteRequestEvent.invoke"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.MemoryWriteRequestEvent.invoke" title="Link to this definition"></a></dt>
+<dd><p>Invoke the event, should be implemented</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.entity.memory.MemoryWriteResponseEvent">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.entity.memory.</span></span><span class="sig-name descname"><span class="pre">MemoryWriteResponseEvent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.entity.node.html#qns.entity.node.qnode.QNode" title="qns.entity.node.qnode.QNode"><span class="pre">QNode</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">result</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#qns.entity.memory.memory_qubit.MemoryQubit" title="qns.entity.memory.memory_qubit.MemoryQubit"><span class="pre">MemoryQubit</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#qns.entity.memory.event.MemoryWriteRequestEvent" title="qns.entity.memory.event.MemoryWriteRequestEvent"><span class="pre">MemoryWriteRequestEvent</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">t</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.simulator.html#qns.simulator.ts.Time" title="qns.simulator.ts.Time"><span class="pre">Time</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">by</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><span class="pre">Any</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/memory/event.html#MemoryWriteResponseEvent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.MemoryWriteResponseEvent" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="qns.simulator.html#qns.simulator.event.Event" title="qns.simulator.event.Event"><code class="xref py py-class docutils literal notranslate"><span class="pre">Event</span></code></a></p>
+<p><code class="docutils literal notranslate"><span class="pre">MemoryWriteResponseEvent</span></code> is the event that returns the memory write result</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.MemoryWriteResponseEvent.invoke">
+<span class="sig-name descname"><span class="pre">invoke</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/memory/event.html#MemoryWriteResponseEvent.invoke"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.MemoryWriteResponseEvent.invoke" title="Link to this definition"></a></dt>
+<dd><p>Invoke the event, should be implemented</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.entity.memory.PathDirection">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.entity.memory.</span></span><span class="sig-name descname"><span class="pre">PathDirection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/memory/memory_qubit.html#PathDirection"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.PathDirection" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/enum.html#enum.Enum" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></a></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.PathDirection.LEFT">
+<span class="sig-name descname"><span class="pre">LEFT</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#qns.entity.memory.PathDirection.LEFT" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.PathDirection.RIGHT">
+<span class="sig-name descname"><span class="pre">RIGHT</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#qns.entity.memory.PathDirection.RIGHT" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.entity.memory.QuantumMemory">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.entity.memory.</span></span><span class="sig-name descname"><span class="pre">QuantumMemory</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Unpack</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.entity.memory.memory.QuantumMemoryInitKwargs" title="qns.entity.memory.memory.QuantumMemoryInitKwargs"><span class="pre">QuantumMemoryInitKwargs</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/memory/memory.html#QuantumMemory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.QuantumMemory" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="qns.entity.html#qns.entity.entity.Entity" title="qns.entity.entity.Entity"><code class="xref py py-class docutils literal notranslate"><span class="pre">Entity</span></code></a></p>
+<p>Quantum memory stores qubits or entangled pairs</p>
+<dl class="simple">
+<dt>It has two modes:</dt><dd><p>Synchronous mode, users can use the <code class="docutils literal notranslate"><span class="pre">read</span></code> and <code class="docutils literal notranslate"><span class="pre">write</span></code> function to operate the memory directly without delay
+Asynchronous mode, users can use events to operate memories asynchronously</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.QuantumMemory.allocate">
+<span class="sig-name descname"><span class="pre">allocate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">path_direction</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#qns.entity.memory.memory_qubit.PathDirection" title="qns.entity.memory.memory_qubit.PathDirection"><span class="pre">PathDirection</span></a></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">ch_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/qns/entity/memory/memory.html#QuantumMemory.allocate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.QuantumMemory.allocate" title="Link to this definition"></a></dt>
+<dd><p>Allocate n qubits to a given path ID.</p>
+<p>This method searches for n qubits that have not yet been allocated
+(i.e., <cite>path_id</cite> is None), assigns them the provided <cite>path_id</cite>, and returns their addresses.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path_id</strong> – The identifier of the entanglement path to which the memory qubit will be allocated.</p></li>
+<li><p><strong>ch_name</strong> – The name of the quantum channel to which the memory qubit is assigned.</p></li>
+<li><p><strong>path_direction</strong> – The end of the path to which the qubit allocated qubit points.
+This is typically either the source or the destination of the path (LEFT/RIGHT).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of qubit addresses.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>OverflowError - insufficient unallocated qubits.</strong> – </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.QuantumMemory.assign">
+<span class="sig-name descname"><span class="pre">assign</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ch</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.entity.html#qns.entity.QuantumChannel" title="qns.entity.QuantumChannel"><span class="pre">QuantumChannel</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/qns/entity/memory/memory.html#QuantumMemory.assign"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.QuantumMemory.assign" title="Link to this definition"></a></dt>
+<dd><p>Assign n qubits to a particular quantum channel.</p>
+<p>This is only used at topology creation time.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List of qubit addresses.</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>OverflowError - insufficient unassigned qubits.</strong> – </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.QuantumMemory.capacity">
+<span class="sig-name descname"><span class="pre">capacity</span></span><a class="headerlink" href="#qns.entity.memory.QuantumMemory.capacity" title="Link to this definition"></a></dt>
+<dd><p>Memory capacity, i.e. how many qubits can be stored.
+Each qubit would have an address in <cite>[0, capacity)</cite>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.QuantumMemory.clear">
+<span class="sig-name descname"><span class="pre">clear</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/memory/memory.html#QuantumMemory.clear"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.QuantumMemory.clear" title="Link to this definition"></a></dt>
+<dd><p>Clear all qubits in the memory.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="qns.entity.memory.QuantumMemory.count">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">count</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></em><a class="headerlink" href="#qns.entity.memory.QuantumMemory.count" title="Link to this definition"></a></dt>
+<dd><p>Return the quantity of stored qubits.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.QuantumMemory.deallocate">
+<span class="sig-name descname"><span class="pre">deallocate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">addrs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/memory/memory.html#QuantumMemory.deallocate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.QuantumMemory.deallocate" title="Link to this definition"></a></dt>
+<dd><p>Deallocate one or more qubits from any assigned path.</p>
+<p>This method finds the memory qubit with the given address and clears its
+path assignment (i.e., resets its <cite>path_id</cite> to None). It does not modify the
+quantum state or remove the qubit from memory.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.QuantumMemory.decohere_qubit">
+<span class="sig-name descname"><span class="pre">decohere_qubit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">qubit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#qns.entity.memory.memory_qubit.MemoryQubit" title="qns.entity.memory.memory_qubit.MemoryQubit"><span class="pre">MemoryQubit</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">qm</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.models.core.html#qns.models.core.backend.QuantumModel" title="qns.models.core.backend.QuantumModel"><span class="pre">QuantumModel</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/memory/memory.html#QuantumMemory.decohere_qubit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.QuantumMemory.decohere_qubit" title="Link to this definition"></a></dt>
+<dd><p>Mark the <cite>BaseEntanglement</cite> quantum model associated with a qubit as decohered.
+This is invoked through decoherence event from <cite>_schedule_decohere</cite>.</p>
+<ol class="arabic">
+<li><p>Check whether the EPR pair still exists in memory via <cite>self.read(key=qm)</cite>.
+- If the qubit was already released via swap/purify, it is safely ignored.
+- If the qubit was re-entangled, it would be associated with a different quantum model</p>
+<blockquote>
+<div><p>and would not be found via <cite>self.read(key=qm)</cite>.</p>
+</div></blockquote>
+</li>
+<li><p>If the EPR is still present, set the qubit to RELEASE state, and then
+schedule a <cite>QubitDecoheredEvent</cite> to inform the link layer.</p></li>
+</ol>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>qubit</strong> – The memory qubit that has reached its decoherence time.</p></li>
+<li><p><strong>qm</strong> – The assocated quantum model, which must also be an instance of <cite>BaseEntanglement</cite>.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.QuantumMemory.decoherence_delay">
+<span class="sig-name descname"><span class="pre">decoherence_delay</span></span><a class="headerlink" href="#qns.entity.memory.QuantumMemory.decoherence_delay" title="Link to this definition"></a></dt>
+<dd><p>Inverse of <cite>decoherence_rate</cite>, i.e. duration between EPR creation time and decoherence time in seconds.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.QuantumMemory.delay">
+<span class="sig-name descname"><span class="pre">delay</span></span><a class="headerlink" href="#qns.entity.memory.QuantumMemory.delay" title="Link to this definition"></a></dt>
+<dd><p>Read/write delay, only applicable to async access.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.QuantumMemory.find">
+<span class="sig-name descname"><span class="pre">find</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">predicate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Callable" title="(in Python v3.13)"><span class="pre">Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.entity.memory.memory_qubit.MemoryQubit" title="qns.entity.memory.memory_qubit.MemoryQubit"><span class="pre">MemoryQubit</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><span class="pre">bool</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">has_epr</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Iterator" title="(in Python v3.13)"><span class="pre">Iterator</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/qns/entity/memory/memory.html#QuantumMemory.find"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.QuantumMemory.find" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.QuantumMemory.get">
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="qns.models.core.html#qns.models.core.backend.QuantumModel" title="qns.models.core.backend.QuantumModel"><span class="pre">QuantumModel</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">must</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><span class="pre">bool</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.entity.memory.memory_qubit.MemoryQubit" title="qns.entity.memory.memory_qubit.MemoryQubit"><span class="pre">MemoryQubit</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="qns.models.core.html#qns.models.core.backend.QuantumModel" title="qns.models.core.backend.QuantumModel"><span class="pre">QuantumModel</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/memory/memory.html#QuantumMemory.get"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.QuantumMemory.get" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.QuantumMemory.get_channel_qubits">
+<span class="sig-name descname"><span class="pre">get_channel_qubits</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ch_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.entity.memory.memory_qubit.MemoryQubit" title="qns.entity.memory.memory_qubit.MemoryQubit"><span class="pre">MemoryQubit</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="qns.models.core.html#qns.models.core.backend.QuantumModel" title="qns.models.core.backend.QuantumModel"><span class="pre">QuantumModel</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/qns/entity/memory/memory.html#QuantumMemory.get_channel_qubits"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.QuantumMemory.get_channel_qubits" title="Link to this definition"></a></dt>
+<dd><p>Retrieve all memory qubits associated with a specific quantum channel.</p>
+<p>This method returns all memory qubits that are linked to the given quantum channel name,
+regardless of their state or usage.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ch_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – The name of the quantum channel to filter qubits by.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A list of memory qubits (along with their <cite>QuantumModel</cite>)
+that are bound to the specified quantum channel.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List[Tuple[<a class="reference internal" href="#qns.entity.memory.MemoryQubit" title="qns.entity.memory.MemoryQubit">MemoryQubit</a>, <a class="reference internal" href="qns.models.html#qns.models.QuantumModel" title="qns.models.QuantumModel">QuantumModel</a>]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.QuantumMemory.handle">
+<span class="sig-name descname"><span class="pre">handle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.simulator.html#qns.simulator.event.Event" title="qns.simulator.event.Event"><span class="pre">Event</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/memory/memory.html#QuantumMemory.handle"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.QuantumMemory.handle" title="Link to this definition"></a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">handle</span></code> is called to process an receiving <code class="docutils literal notranslate"><span class="pre">Event</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>event</strong> (<a class="reference internal" href="qns.simulator.html#qns.simulator.event.Event" title="qns.simulator.event.Event"><em>qns.simulator.event.Event</em></a>) – the event that send to this entity</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.QuantumMemory.is_full">
+<span class="sig-name descname"><span class="pre">is_full</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/memory/memory.html#QuantumMemory.is_full"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.QuantumMemory.is_full" title="Link to this definition"></a></dt>
+<dd><p>Check whether the memory is full</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.QuantumMemory.node">
+<span class="sig-name descname"><span class="pre">node</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="qns.entity.html#qns.entity.QNode" title="qns.entity.QNode"><span class="pre">QNode</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></em><a class="headerlink" href="#qns.entity.memory.QuantumMemory.node" title="Link to this definition"></a></dt>
+<dd><p>QNode that owns this memory.</p>
+<p>This is assigned by <cite>QNode.set_memory()</cite>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.QuantumMemory.pending_decohere_events">
+<span class="sig-name descname"><span class="pre">pending_decohere_events</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.13)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="qns.simulator.html#qns.simulator.event.Event" title="qns.simulator.event.Event"><span class="pre">Event</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#qns.entity.memory.QuantumMemory.pending_decohere_events" title="Link to this definition"></a></dt>
+<dd><p>Table of pending decoherence events.
+Key is <cite>BaseEntanglement.name</cite>.
+Value is the decohere event, which should be uncanceled and unexpired.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.QuantumMemory.read">
+<span class="sig-name descname"><span class="pre">read</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="qns.models.core.html#qns.models.core.backend.QuantumModel" title="qns.models.core.backend.QuantumModel"><span class="pre">QuantumModel</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">destructive</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">must</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><span class="pre">bool</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.entity.memory.memory_qubit.MemoryQubit" title="qns.entity.memory.memory_qubit.MemoryQubit"><span class="pre">MemoryQubit</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="qns.models.core.html#qns.models.core.backend.QuantumModel" title="qns.models.core.backend.QuantumModel"><span class="pre">QuantumModel</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/memory/memory.html#QuantumMemory.read"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.QuantumMemory.read" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.QuantumMemory.unassign">
+<span class="sig-name descname"><span class="pre">unassign</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">addrs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/memory/memory.html#QuantumMemory.unassign"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.QuantumMemory.unassign" title="Link to this definition"></a></dt>
+<dd><p>Unassign one or more qubits from any quantum channel.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.QuantumMemory.update">
+<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">old_qm</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_qm</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.models.core.html#qns.models.core.backend.QuantumModel" title="qns.models.core.backend.QuantumModel"><span class="pre">QuantumModel</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/memory/memory.html#QuantumMemory.update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.QuantumMemory.update" title="Link to this definition"></a></dt>
+<dd><p>Update the data of a stored qubit without resetting its coherence time.</p>
+<p>This method replaces an existing quantum model in memory with a new one,
+preserving the original decoherence schedule. The old decoherence event is
+canceled and replaced with a new event for the updated model, but at the
+same decoherence time.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>old_qm</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – The name of the existing <cite>QuantumModel</cite> to be replaced.</p></li>
+<li><p><strong>new_qm</strong> (<a class="reference internal" href="qns.models.html#qns.models.QuantumModel" title="qns.models.QuantumModel"><em>QuantumModel</em></a>) – The new <cite>QuantumModel</cite> instance to store in its place.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>True if the update was successful, False if <cite>old_qm</cite> was not found</dt><dd><p>(e.g., already decohered or removed).</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)">bool</a></p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<ul class="simple">
+<li><p>If <cite>old_qm</cite> is not found in memory but a pending decoherence event still exists,</p></li>
+</ul>
+<p>that event is canceled and removed to avoid inconsistency.
+- This method does not modify the coherence time or reschedule it—only updates
+the stored quantum model while maintaining timing integrity.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.entity.memory.QuantumMemory.write">
+<span class="sig-name descname"><span class="pre">write</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">qm</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="qns.models.core.html#qns.models.core.backend.QuantumModel" title="qns.models.core.backend.QuantumModel"><span class="pre">QuantumModel</span></a></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">path_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">address</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#qns.entity.memory.memory_qubit.MemoryQubit" title="qns.entity.memory.memory_qubit.MemoryQubit"><span class="pre">MemoryQubit</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/qns/entity/memory/memory.html#QuantumMemory.write"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.QuantumMemory.write" title="Link to this definition"></a></dt>
+<dd><p>Store a quantum model (e.g., a qubit or an entangled pair) in memory.</p>
+<ol class="arabic simple">
+<li><p>Find an unused memory slot that satisfies optional constraints.</p></li>
+<li><p>Store and provided quantum model.</p></li>
+<li><p>Schedule a decoherence event based on the memory’s decoherence rate.</p></li>
+</ol>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>qm</strong> – The quantum model to store (e.g., an entangled pair).</p></li>
+<li><p><strong>path_id</strong> – Constrain by <cite>MemoryQubit.path_id</cite> field (set by <cite>allocate</cite>).</p></li>
+<li><p><strong>address</strong> – Constrain by qubit address.</p></li>
+<li><p><strong>key</strong> – Constrain by <cite>MemoryQubit.active</cite> field (set in <cite>LinkLayer</cite> reservation).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Qubit where the quantum model was stored, or None if no storage available.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.entity.memory.QuantumMemoryInitKwargs">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.entity.memory.</span></span><span class="sig-name descname"><span class="pre">QuantumMemoryInitKwargs</span></span><a class="reference internal" href="../_modules/qns/entity/memory/memory.html#QuantumMemoryInitKwargs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.QuantumMemoryInitKwargs" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.TypedDict" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">TypedDict</span></code></a></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.QuantumMemoryInitKwargs.capacity">
+<span class="sig-name descname"><span class="pre">capacity</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></em><a class="headerlink" href="#qns.entity.memory.QuantumMemoryInitKwargs.capacity" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.QuantumMemoryInitKwargs.decoherence_rate">
+<span class="sig-name descname"><span class="pre">decoherence_rate</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><span class="pre">float</span></a></em><a class="headerlink" href="#qns.entity.memory.QuantumMemoryInitKwargs.decoherence_rate" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.QuantumMemoryInitKwargs.delay">
+<span class="sig-name descname"><span class="pre">delay</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="qns.models.delay.html#qns.models.delay.delay.DelayModel" title="qns.models.delay.delay.DelayModel"><span class="pre">DelayModel</span></a></em><a class="headerlink" href="#qns.entity.memory.QuantumMemoryInitKwargs.delay" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.QuantumMemoryInitKwargs.store_error_model_args">
+<span class="sig-name descname"><span class="pre">store_error_model_args</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.13)"><span class="pre">dict</span></a></em><a class="headerlink" href="#qns.entity.memory.QuantumMemoryInitKwargs.store_error_model_args" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.entity.memory.QubitState">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.entity.memory.</span></span><span class="sig-name descname"><span class="pre">QubitState</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/entity/memory/memory_qubit.html#QubitState"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.entity.memory.QubitState" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/enum.html#enum.Enum" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></a></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.QubitState.ACTIVE">
+<span class="sig-name descname"><span class="pre">ACTIVE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#qns.entity.memory.QubitState.ACTIVE" title="Link to this definition"></a></dt>
+<dd><p>The link layer has started a reservation on the qubit as the primary node.
+<cite>qubit.active</cite> contains the reservation key.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.QubitState.ELIGIBLE">
+<span class="sig-name descname"><span class="pre">ELIGIBLE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">8</span></em><a class="headerlink" href="#qns.entity.memory.QubitState.ELIGIBLE" title="Link to this definition"></a></dt>
+<dd><p>Qubit has completed the required rounds of purification and ready for swapping or end-to-end consumption.</p>
+<p>This state is set on the qubit only if own node has a swapping rank no less than the other node in the entanglement.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.QubitState.ENTANGLED0">
+<span class="sig-name descname"><span class="pre">ENTANGLED0</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">4</span></em><a class="headerlink" href="#qns.entity.memory.QubitState.ENTANGLED0" title="Link to this definition"></a></dt>
+<dd><p>Qubit is half of an elementary entanglement delivered from link layer.
+<cite>QubitEntangledEvent</cite> has not been processed by forwarder.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.QubitState.ENTANGLED1">
+<span class="sig-name descname"><span class="pre">ENTANGLED1</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">5</span></em><a class="headerlink" href="#qns.entity.memory.QubitState.ENTANGLED1" title="Link to this definition"></a></dt>
+<dd><p>Qubit is half of an elementary entanglement delivered from link layer.
+<cite>QubitEntangledEvent</cite> has been processed by forwarder.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.QubitState.PENDING">
+<span class="sig-name descname"><span class="pre">PENDING</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">7</span></em><a class="headerlink" href="#qns.entity.memory.QubitState.PENDING" title="Link to this definition"></a></dt>
+<dd><p>The forwarder has initiated purification of the qubit with its partner on a segment.
+<cite>qubit.qubit_rounds</cite> indicates how many purification rounds have been completed, excluding the current round.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.QubitState.PURIF">
+<span class="sig-name descname"><span class="pre">PURIF</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">6</span></em><a class="headerlink" href="#qns.entity.memory.QubitState.PURIF" title="Link to this definition"></a></dt>
+<dd><p>Qubit is used by forwarder for zero or more rounds of purification.
+<cite>qubit.qubit_rounds</cite> indicates how many purification rounds have been completed.</p>
+<p>This state is set on the qubit at both primary and secondary node of a purification segment,
+but only the primary node is permitted to initiate purification.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.QubitState.RAW">
+<span class="sig-name descname"><span class="pre">RAW</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#qns.entity.memory.QubitState.RAW" title="Link to this definition"></a></dt>
+<dd><p>Qubit is unused.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.QubitState.RELEASE">
+<span class="sig-name descname"><span class="pre">RELEASE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">9</span></em><a class="headerlink" href="#qns.entity.memory.QubitState.RELEASE" title="Link to this definition"></a></dt>
+<dd><p>Qubit is not used by the forwarder.
+The link layer may generate a new elementary entanglement into this qubit.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.entity.memory.QubitState.RESERVED">
+<span class="sig-name descname"><span class="pre">RESERVED</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">3</span></em><a class="headerlink" href="#qns.entity.memory.QubitState.RESERVED" title="Link to this definition"></a></dt>
+<dd><p>Qubit is part of a reservation in link layer and a remote qubit has been found.
+<cite>qubit.active</cite> contains the reservation key.</p>
+<p>This state is set on the qubit at both primary and secondary node of the reservation.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="qns.entity.cchannel.html" class="btn btn-neutral float-left" title="qns.entity.cchannel package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="qns.entity.monitor.html" class="btn btn-neutral float-right" title="qns.entity.monitor package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Amar Abane.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

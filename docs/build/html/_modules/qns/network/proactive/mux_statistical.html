@@ -1,0 +1,321 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>qns.network.proactive.mux_statistical &mdash; MQNS 0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=2709fde1"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            MQNS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../reference/modules.html">qns</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">MQNS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">qns.network.proactive.mux_statistical</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for qns.network.proactive.mux_statistical</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">random</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">defaultdict</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Set</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.entity.memory</span><span class="w"> </span><span class="kn">import</span> <span class="n">MemoryQubit</span><span class="p">,</span> <span class="n">PathDirection</span><span class="p">,</span> <span class="n">QubitState</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.entity.node</span><span class="w"> </span><span class="kn">import</span> <span class="n">QNode</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.entity.qchannel</span><span class="w"> </span><span class="kn">import</span> <span class="n">QuantumChannel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.models.epr</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseEntanglement</span><span class="p">,</span> <span class="n">WernerStateEntanglement</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.network.proactive.fib</span><span class="w"> </span><span class="kn">import</span> <span class="n">FIBEntry</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.network.proactive.message</span><span class="w"> </span><span class="kn">import</span> <span class="n">InstallPathInstructions</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.network.proactive.mux</span><span class="w"> </span><span class="kn">import</span> <span class="n">MuxScheme</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">log</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">override</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">typing_extensions</span><span class="w"> </span><span class="kn">import</span> <span class="n">override</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_can_enter_purif</span><span class="p">(</span><span class="n">own_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">partner_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Evaluate if a qubit is eligible for purification, in statistical_mux only with limited support.</span>
+
+<span class="sd">    - Any entangled qubit at intermediate node is always eligible.</span>
+<span class="sd">    - Entangled qubit at end-node is eligible only if entangled with another end-node.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="p">(</span><span class="n">own_name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;R&quot;</span><span class="p">))</span>
+        <span class="ow">or</span> <span class="p">(</span><span class="n">own_name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;S&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">partner_name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;D&quot;</span><span class="p">))</span>
+        <span class="ow">or</span> <span class="p">(</span><span class="n">own_name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;D&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">partner_name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;S&quot;</span><span class="p">))</span>
+    <span class="p">)</span>
+
+
+<div class="viewcode-block" id="has_intersect_tmp_path_ids">
+<a class="viewcode-back" href="../../../../reference/qns.network.proactive.html#qns.network.proactive.mux_statistical.has_intersect_tmp_path_ids">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">has_intersect_tmp_path_ids</span><span class="p">(</span><span class="n">epr0</span><span class="p">:</span> <span class="n">Set</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">epr1</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Determine whether at least one path_id overlaps between tmp_path_ids sets in two EPRs.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">epr0</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">epr1</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">epr0</span><span class="o">.</span><span class="n">isdisjoint</span><span class="p">(</span><span class="n">epr1</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="intersect_tmp_path_ids">
+<a class="viewcode-back" href="../../../../reference/qns.network.proactive.html#qns.network.proactive.mux_statistical.intersect_tmp_path_ids">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">intersect_tmp_path_ids</span><span class="p">(</span><span class="n">epr0</span><span class="p">:</span> <span class="n">BaseEntanglement</span><span class="p">,</span> <span class="n">epr1</span><span class="p">:</span> <span class="n">BaseEntanglement</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">frozenset</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Find overlapping path_ids between tmp_path_ids sets in two EPRs.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">assert</span> <span class="n">epr0</span><span class="o">.</span><span class="n">tmp_path_ids</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+    <span class="k">assert</span> <span class="n">epr1</span><span class="o">.</span><span class="n">tmp_path_ids</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+    <span class="n">path_ids</span> <span class="o">=</span> <span class="n">epr0</span><span class="o">.</span><span class="n">tmp_path_ids</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="n">epr1</span><span class="o">.</span><span class="n">tmp_path_ids</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">path_ids</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cannot select path ID from </span><span class="si">{</span><span class="n">epr0</span><span class="o">.</span><span class="n">tmp_path_ids</span><span class="si">}</span><span class="s2"> and </span><span class="si">{</span><span class="n">epr1</span><span class="o">.</span><span class="n">tmp_path_ids</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">path_ids</span></div>
+
+
+
+<div class="viewcode-block" id="MuxSchemeDynamicBase">
+<a class="viewcode-back" href="../../../../reference/qns.network.proactive.html#qns.network.proactive.mux_statistical.MuxSchemeDynamicBase">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">MuxSchemeDynamicBase</span><span class="p">(</span><span class="n">MuxScheme</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">qchannel_paths_map</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]](</span><span class="k">lambda</span><span class="p">:</span> <span class="p">[])</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;stores path-qchannel relationship&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="MuxSchemeDynamicBase.validate_path_instructions">
+<a class="viewcode-back" href="../../../../reference/qns.network.proactive.html#qns.network.proactive.mux_statistical.MuxSchemeDynamicBase.validate_path_instructions">[docs]</a>
+    <span class="nd">@override</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">validate_path_instructions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instructions</span><span class="p">:</span> <span class="n">InstallPathInstructions</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="n">instructions</span><span class="p">[</span><span class="s2">&quot;mux&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;S&quot;</span>
+        <span class="k">assert</span> <span class="s2">&quot;m_v&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">instructions</span></div>
+
+
+<div class="viewcode-block" id="MuxSchemeDynamicBase.install_path_neighbor">
+<a class="viewcode-back" href="../../../../reference/qns.network.proactive.html#qns.network.proactive.mux_statistical.MuxSchemeDynamicBase.install_path_neighbor">[docs]</a>
+    <span class="nd">@override</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">install_path_neighbor</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">instructions</span><span class="p">:</span> <span class="n">InstallPathInstructions</span><span class="p">,</span>
+        <span class="n">fib_entry</span><span class="p">:</span> <span class="n">FIBEntry</span><span class="p">,</span>
+        <span class="n">direction</span><span class="p">:</span> <span class="n">PathDirection</span><span class="p">,</span>
+        <span class="n">neighbor</span><span class="p">:</span> <span class="n">QNode</span><span class="p">,</span>
+        <span class="n">qchannel</span><span class="p">:</span> <span class="n">QuantumChannel</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">_</span> <span class="o">=</span> <span class="n">instructions</span>
+        <span class="n">_</span> <span class="o">=</span> <span class="n">direction</span>
+        <span class="n">_</span> <span class="o">=</span> <span class="n">neighbor</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">qchannel_paths_map</span><span class="p">[</span><span class="n">qchannel</span><span class="o">.</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fib_entry</span><span class="o">.</span><span class="n">path_id</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_qubit_is_entangled_0</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">qubit</span><span class="p">:</span> <span class="n">MemoryQubit</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+        <span class="k">assert</span> <span class="n">qubit</span><span class="o">.</span><span class="n">path_id</span> <span class="ow">is</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">qubit</span><span class="o">.</span><span class="n">qchannel</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="si">}</span><span class="s2">: No qubit-qchannel assignment. Not supported.&quot;</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">possible_path_ids</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">qchannel_paths_map</span><span class="p">[</span><span class="n">qubit</span><span class="o">.</span><span class="n">qchannel</span><span class="o">.</span><span class="n">name</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="si">}</span><span class="s2">: qchannel </span><span class="si">{</span><span class="n">qubit</span><span class="o">.</span><span class="n">qchannel</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> not mapped to any path.&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">possible_path_ids</span></div>
+
+
+
+<div class="viewcode-block" id="MuxSchemeStatistical">
+<a class="viewcode-back" href="../../../../reference/qns.network.proactive.html#qns.network.proactive.mux_statistical.MuxSchemeStatistical">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">MuxSchemeStatistical</span><span class="p">(</span><span class="n">MuxSchemeDynamicBase</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;statistical multiplexing&quot;</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+
+<div class="viewcode-block" id="MuxSchemeStatistical.validate_path_instructions">
+<a class="viewcode-back" href="../../../../reference/qns.network.proactive.html#qns.network.proactive.mux_statistical.MuxSchemeStatistical.validate_path_instructions">[docs]</a>
+    <span class="nd">@override</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">validate_path_instructions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instructions</span><span class="p">:</span> <span class="n">InstallPathInstructions</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">validate_path_instructions</span><span class="p">(</span><span class="n">instructions</span><span class="p">)</span>
+
+        <span class="c1"># swap sequence must be [1, 0, 0, .., 0, 0, 1]</span>
+        <span class="n">s0</span><span class="p">,</span> <span class="o">*</span><span class="n">s1</span><span class="p">,</span> <span class="n">s2</span> <span class="o">=</span> <span class="n">instructions</span><span class="p">[</span><span class="s2">&quot;swap&quot;</span><span class="p">]</span>
+        <span class="k">assert</span> <span class="n">s0</span> <span class="o">==</span> <span class="mi">1</span> <span class="o">==</span> <span class="n">s2</span>
+        <span class="k">assert</span> <span class="nb">all</span><span class="p">([</span><span class="n">s</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">s1</span><span class="p">])</span>
+
+        <span class="c1"># purif scheme must be empty / zeros</span>
+        <span class="k">assert</span> <span class="nb">all</span><span class="p">([</span><span class="n">r</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">instructions</span><span class="p">[</span><span class="s2">&quot;purif&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">()])</span></div>
+
+
+<div class="viewcode-block" id="MuxSchemeStatistical.qubit_is_entangled">
+<a class="viewcode-back" href="../../../../reference/qns.network.proactive.html#qns.network.proactive.mux_statistical.MuxSchemeStatistical.qubit_is_entangled">[docs]</a>
+    <span class="nd">@override</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">qubit_is_entangled</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">qubit</span><span class="p">:</span> <span class="n">MemoryQubit</span><span class="p">,</span> <span class="n">neighbor</span><span class="p">:</span> <span class="n">QNode</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">possible_path_ids</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_qubit_is_entangled_0</span><span class="p">(</span><span class="n">qubit</span><span class="p">)</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">epr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">qubit</span><span class="o">.</span><span class="n">addr</span><span class="p">,</span> <span class="n">must</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">epr</span><span class="p">,</span> <span class="n">WernerStateEntanglement</span><span class="p">)</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="si">}</span><span class="s2">: qubit </span><span class="si">{</span><span class="n">qubit</span><span class="si">}</span><span class="s2">, set possible path IDs = </span><span class="si">{</span><span class="n">possible_path_ids</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">epr</span><span class="o">.</span><span class="n">tmp_path_ids</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span><span class="n">possible_path_ids</span><span class="p">)</span>  <span class="c1"># to coordinate decisions along the path</span>
+
+        <span class="k">if</span> <span class="n">_can_enter_purif</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">neighbor</span><span class="o">.</span><span class="n">name</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="o">.</span><span class="n">get_qchannel</span><span class="p">(</span><span class="n">neighbor</span><span class="p">)</span>  <span class="c1"># ensure qchannel exists</span>
+            <span class="n">qubit</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">QubitState</span><span class="o">.</span><span class="n">PURIF</span>
+
+            <span class="c1"># purif scheme is empty, as checked in validate_path_instructions</span>
+            <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="si">}</span><span class="s2">: no FIB associated to qubit -&gt; set eligible&quot;</span><span class="p">)</span>
+            <span class="n">qubit</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">QubitState</span><span class="o">.</span><span class="n">ELIGIBLE</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fw</span><span class="o">.</span><span class="n">qubit_is_eligible</span><span class="p">(</span><span class="n">qubit</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="MuxSchemeStatistical.qubit_is_eligible">
+<a class="viewcode-back" href="../../../../reference/qns.network.proactive.html#qns.network.proactive.mux_statistical.MuxSchemeStatistical.qubit_is_eligible">[docs]</a>
+    <span class="nd">@override</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">qubit_is_eligible</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">qubit</span><span class="p">:</span> <span class="n">MemoryQubit</span><span class="p">,</span> <span class="n">fib_entry</span><span class="p">:</span> <span class="n">FIBEntry</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">_</span> <span class="o">=</span> <span class="n">fib_entry</span>
+        <span class="k">assert</span> <span class="n">qubit</span><span class="o">.</span><span class="n">qchannel</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;R&quot;</span><span class="p">):</span>  <span class="c1"># this is an end node</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fw</span><span class="o">.</span><span class="n">consume_and_release</span><span class="p">(</span><span class="n">qubit</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="c1"># this is an intermediate node</span>
+        <span class="c1"># look for another eligible qubit</span>
+
+        <span class="c1"># find qchannels whose qubits may be used with this qubit</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">epr0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">qubit</span><span class="o">.</span><span class="n">addr</span><span class="p">,</span> <span class="n">must</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">epr0</span><span class="p">,</span> <span class="n">WernerStateEntanglement</span><span class="p">)</span>
+        <span class="c1"># use path_ids to look for acceptable qchannels for swapping, excluding the qubit&#39;s qchannel</span>
+        <span class="n">matched_channels</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">channel</span>
+            <span class="k">for</span> <span class="n">channel</span><span class="p">,</span> <span class="n">path_ids</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">qchannel_paths_map</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">channel</span> <span class="o">!=</span> <span class="n">qubit</span><span class="o">.</span><span class="n">qchannel</span><span class="o">.</span><span class="n">name</span> <span class="ow">and</span> <span class="n">has_intersect_tmp_path_ids</span><span class="p">(</span><span class="n">epr0</span><span class="o">.</span><span class="n">tmp_path_ids</span><span class="p">,</span> <span class="n">path_ids</span><span class="p">)</span>
+        <span class="p">}</span>
+
+        <span class="c1"># find another qubit to swap with</span>
+        <span class="n">mq1</span><span class="p">,</span> <span class="n">epr1</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">memory</span><span class="o">.</span><span class="n">find</span><span class="p">(</span>
+                <span class="k">lambda</span> <span class="n">q</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="n">q</span><span class="o">.</span><span class="n">state</span> <span class="o">==</span> <span class="n">QubitState</span><span class="o">.</span><span class="n">ELIGIBLE</span>  <span class="c1"># in ELIGIBLE state</span>
+                <span class="ow">and</span> <span class="p">(</span><span class="n">q</span><span class="o">.</span><span class="n">qchannel</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">q</span><span class="o">.</span><span class="n">qchannel</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="n">matched_channels</span><span class="p">)</span>  <span class="c1"># assigned to a matched channel</span>
+                <span class="ow">and</span> <span class="n">has_intersect_tmp_path_ids</span><span class="p">(</span><span class="n">epr0</span><span class="o">.</span><span class="n">tmp_path_ids</span><span class="p">,</span> <span class="n">v</span><span class="o">.</span><span class="n">tmp_path_ids</span><span class="p">),</span>  <span class="c1"># has overlapping tmp_path_ids</span>
+                <span class="n">has_epr</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">),</span>
+            <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="c1"># TODO selection algorithm among found qubits</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">mq1</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">epr1</span><span class="p">,</span> <span class="n">WernerStateEntanglement</span><span class="p">)</span>
+
+        <span class="n">path_ids</span> <span class="o">=</span> <span class="n">intersect_tmp_path_ids</span><span class="p">(</span><span class="n">epr0</span><span class="p">,</span> <span class="n">epr1</span><span class="p">)</span>
+        <span class="n">fib_entry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fib</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">path_ids</span><span class="p">)))</span>  <span class="c1"># no need to coordinate across the path</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fw</span><span class="o">.</span><span class="n">do_swapping</span><span class="p">(</span><span class="n">qubit</span><span class="p">,</span> <span class="n">mq1</span><span class="p">,</span> <span class="n">fib_entry</span><span class="p">,</span> <span class="n">fib_entry</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="MuxSchemeStatistical.swapping_succeeded">
+<a class="viewcode-back" href="../../../../reference/qns.network.proactive.html#qns.network.proactive.mux_statistical.MuxSchemeStatistical.swapping_succeeded">[docs]</a>
+    <span class="nd">@override</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">swapping_succeeded</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">prev_epr</span><span class="p">:</span> <span class="n">WernerStateEntanglement</span><span class="p">,</span>
+        <span class="n">next_epr</span><span class="p">:</span> <span class="n">WernerStateEntanglement</span><span class="p">,</span>
+        <span class="n">new_epr</span><span class="p">:</span> <span class="n">WernerStateEntanglement</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">new_epr</span><span class="o">.</span><span class="n">tmp_path_ids</span> <span class="o">=</span> <span class="n">intersect_tmp_path_ids</span><span class="p">(</span><span class="n">prev_epr</span><span class="p">,</span> <span class="n">next_epr</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="MuxSchemeStatistical.su_parallel_avoid_conflict">
+<a class="viewcode-back" href="../../../../reference/qns.network.proactive.html#qns.network.proactive.mux_statistical.MuxSchemeStatistical.su_parallel_avoid_conflict">[docs]</a>
+    <span class="nd">@override</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">su_parallel_avoid_conflict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">my_new_epr</span><span class="p">:</span> <span class="n">WernerStateEntanglement</span><span class="p">,</span> <span class="n">su_path_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">assert</span> <span class="n">my_new_epr</span><span class="o">.</span><span class="n">tmp_path_ids</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">su_path_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">my_new_epr</span><span class="o">.</span><span class="n">tmp_path_ids</span><span class="p">:</span>
+            <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="si">}</span><span class="s2">: Conflictual parallel swapping in statistical mux -&gt; silently ignore&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="MuxSchemeStatistical.su_parallel_succeeded">
+<a class="viewcode-back" href="../../../../reference/qns.network.proactive.html#qns.network.proactive.mux_statistical.MuxSchemeStatistical.su_parallel_succeeded">[docs]</a>
+    <span class="nd">@override</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">su_parallel_succeeded</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">merged_epr</span><span class="p">:</span> <span class="n">WernerStateEntanglement</span><span class="p">,</span> <span class="n">new_epr</span><span class="p">:</span> <span class="n">WernerStateEntanglement</span><span class="p">,</span> <span class="n">other_epr</span><span class="p">:</span> <span class="n">WernerStateEntanglement</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">merged_epr</span><span class="o">.</span><span class="n">tmp_path_ids</span> <span class="o">=</span> <span class="n">intersect_tmp_path_ids</span><span class="p">(</span><span class="n">new_epr</span><span class="p">,</span> <span class="n">other_epr</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Amar Abane.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

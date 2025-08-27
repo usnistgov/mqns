@@ -1,0 +1,543 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>qns.models package &mdash; MQNS 0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=2709fde1"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="qns.models.core package" href="qns.models.core.html" />
+    <link rel="prev" title="qns.entity.timer package" href="qns.entity.timer.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            MQNS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../intro.html">Introduction</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">qns</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="qns.html">qns package</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="qns.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="qns.entity.html">qns.entity package</a></li>
+<li class="toctree-l4 current"><a class="current reference internal" href="#">qns.models package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.network.html">qns.network package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.simulator.html">qns.simulator package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.utils.html">qns.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="qns.html#module-qns">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">MQNS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">qns</a></li>
+          <li class="breadcrumb-item"><a href="qns.html">qns package</a></li>
+      <li class="breadcrumb-item active">qns.models package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/reference/qns.models.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="qns-models-package">
+<h1>qns.models package<a class="headerlink" href="#qns-models-package" title="Link to this heading"></a></h1>
+<section id="subpackages">
+<h2>Subpackages<a class="headerlink" href="#subpackages" title="Link to this heading"></a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="qns.models.core.html">qns.models.core package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="qns.models.core.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qns.models.core.html#module-qns.models.core.backend">qns.models.core.backend module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.core.html#qns.models.core.backend.QuantumModel"><code class="docutils literal notranslate"><span class="pre">QuantumModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.core.html#qns.models.core.backend.QuantumModel.measure_error_model"><code class="docutils literal notranslate"><span class="pre">QuantumModel.measure_error_model()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.core.html#qns.models.core.backend.QuantumModel.operate_error_model"><code class="docutils literal notranslate"><span class="pre">QuantumModel.operate_error_model()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.core.html#qns.models.core.backend.QuantumModel.store_error_model"><code class="docutils literal notranslate"><span class="pre">QuantumModel.store_error_model()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.core.html#qns.models.core.backend.QuantumModel.transfer_error_model"><code class="docutils literal notranslate"><span class="pre">QuantumModel.transfer_error_model()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="qns.models.core.html#module-qns.models.core">Module contents</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.core.html#qns.models.core.QuantumModel"><code class="docutils literal notranslate"><span class="pre">QuantumModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.core.html#qns.models.core.QuantumModel.measure_error_model"><code class="docutils literal notranslate"><span class="pre">QuantumModel.measure_error_model()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.core.html#qns.models.core.QuantumModel.operate_error_model"><code class="docutils literal notranslate"><span class="pre">QuantumModel.operate_error_model()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.core.html#qns.models.core.QuantumModel.store_error_model"><code class="docutils literal notranslate"><span class="pre">QuantumModel.store_error_model()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.core.html#qns.models.core.QuantumModel.transfer_error_model"><code class="docutils literal notranslate"><span class="pre">QuantumModel.transfer_error_model()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="qns.models.delay.html">qns.models.delay package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="qns.models.delay.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qns.models.delay.html#module-qns.models.delay.constdelay">qns.models.delay.constdelay module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.delay.html#qns.models.delay.constdelay.ConstantDelayModel"><code class="docutils literal notranslate"><span class="pre">ConstantDelayModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.delay.html#qns.models.delay.constdelay.ConstantDelayModel.calculate"><code class="docutils literal notranslate"><span class="pre">ConstantDelayModel.calculate()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="qns.models.delay.html#module-qns.models.delay.delay">qns.models.delay.delay module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.delay.html#qns.models.delay.delay.DelayModel"><code class="docutils literal notranslate"><span class="pre">DelayModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.delay.html#qns.models.delay.delay.DelayModel.calculate"><code class="docutils literal notranslate"><span class="pre">DelayModel.calculate()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="qns.models.delay.html#module-qns.models.delay.input">qns.models.delay.input module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.delay.html#qns.models.delay.input.parseDelay"><code class="docutils literal notranslate"><span class="pre">parseDelay()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="qns.models.delay.html#module-qns.models.delay.normaldelay">qns.models.delay.normaldelay module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.delay.html#qns.models.delay.normaldelay.NormalDelayModel"><code class="docutils literal notranslate"><span class="pre">NormalDelayModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.delay.html#qns.models.delay.normaldelay.NormalDelayModel.calculate"><code class="docutils literal notranslate"><span class="pre">NormalDelayModel.calculate()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="qns.models.delay.html#module-qns.models.delay.uniformdelay">qns.models.delay.uniformdelay module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.delay.html#qns.models.delay.uniformdelay.UniformDelayModel"><code class="docutils literal notranslate"><span class="pre">UniformDelayModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.delay.html#qns.models.delay.uniformdelay.UniformDelayModel.calculate"><code class="docutils literal notranslate"><span class="pre">UniformDelayModel.calculate()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="qns.models.delay.html#module-qns.models.delay">Module contents</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.delay.html#qns.models.delay.ConstantDelayModel"><code class="docutils literal notranslate"><span class="pre">ConstantDelayModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.delay.html#qns.models.delay.ConstantDelayModel.calculate"><code class="docutils literal notranslate"><span class="pre">ConstantDelayModel.calculate()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.delay.html#qns.models.delay.DelayModel"><code class="docutils literal notranslate"><span class="pre">DelayModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.delay.html#qns.models.delay.DelayModel.calculate"><code class="docutils literal notranslate"><span class="pre">DelayModel.calculate()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.delay.html#qns.models.delay.NormalDelayModel"><code class="docutils literal notranslate"><span class="pre">NormalDelayModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.delay.html#qns.models.delay.NormalDelayModel.calculate"><code class="docutils literal notranslate"><span class="pre">NormalDelayModel.calculate()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.delay.html#qns.models.delay.UniformDelayModel"><code class="docutils literal notranslate"><span class="pre">UniformDelayModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.delay.html#qns.models.delay.UniformDelayModel.calculate"><code class="docutils literal notranslate"><span class="pre">UniformDelayModel.calculate()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.delay.html#qns.models.delay.parseDelay"><code class="docutils literal notranslate"><span class="pre">parseDelay()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="qns.models.epr.html">qns.models.epr package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="qns.models.epr.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qns.models.epr.html#module-qns.models.epr.bell">qns.models.epr.bell module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.bell.BellStateEntanglement"><code class="docutils literal notranslate"><span class="pre">BellStateEntanglement</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.bell.BellStateEntanglement.distillation"><code class="docutils literal notranslate"><span class="pre">BellStateEntanglement.distillation()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.bell.BellStateEntanglement.store_error_model"><code class="docutils literal notranslate"><span class="pre">BellStateEntanglement.store_error_model()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.bell.BellStateEntanglement.swapping"><code class="docutils literal notranslate"><span class="pre">BellStateEntanglement.swapping()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.bell.BellStateEntanglement.transfer_error_model"><code class="docutils literal notranslate"><span class="pre">BellStateEntanglement.transfer_error_model()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="qns.models.epr.html#module-qns.models.epr.entanglement">qns.models.epr.entanglement module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.entanglement.BaseEntanglement"><code class="docutils literal notranslate"><span class="pre">BaseEntanglement</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.entanglement.BaseEntanglement.ch_index"><code class="docutils literal notranslate"><span class="pre">BaseEntanglement.ch_index</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.entanglement.BaseEntanglement.distillation"><code class="docutils literal notranslate"><span class="pre">BaseEntanglement.distillation()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.entanglement.BaseEntanglement.dst"><code class="docutils literal notranslate"><span class="pre">BaseEntanglement.dst</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.entanglement.BaseEntanglement.key"><code class="docutils literal notranslate"><span class="pre">BaseEntanglement.key</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.entanglement.BaseEntanglement.orig_eprs"><code class="docutils literal notranslate"><span class="pre">BaseEntanglement.orig_eprs</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.entanglement.BaseEntanglement.read"><code class="docutils literal notranslate"><span class="pre">BaseEntanglement.read</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.entanglement.BaseEntanglement.set_decoherenced"><code class="docutils literal notranslate"><span class="pre">BaseEntanglement.set_decoherenced()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.entanglement.BaseEntanglement.src"><code class="docutils literal notranslate"><span class="pre">BaseEntanglement.src</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.entanglement.BaseEntanglement.swapping"><code class="docutils literal notranslate"><span class="pre">BaseEntanglement.swapping()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.entanglement.BaseEntanglement.teleportion"><code class="docutils literal notranslate"><span class="pre">BaseEntanglement.teleportion()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.entanglement.BaseEntanglement.tmp_path_ids"><code class="docutils literal notranslate"><span class="pre">BaseEntanglement.tmp_path_ids</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.entanglement.BaseEntanglement.to_qubits"><code class="docutils literal notranslate"><span class="pre">BaseEntanglement.to_qubits()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="qns.models.epr.html#module-qns.models.epr.mixed">qns.models.epr.mixed module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.mixed.MixedStateEntanglement"><code class="docutils literal notranslate"><span class="pre">MixedStateEntanglement</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.mixed.MixedStateEntanglement.a"><code class="docutils literal notranslate"><span class="pre">MixedStateEntanglement.a</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.mixed.MixedStateEntanglement.distillation"><code class="docutils literal notranslate"><span class="pre">MixedStateEntanglement.distillation()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.mixed.MixedStateEntanglement.normalized"><code class="docutils literal notranslate"><span class="pre">MixedStateEntanglement.normalized()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.mixed.MixedStateEntanglement.store_error_model"><code class="docutils literal notranslate"><span class="pre">MixedStateEntanglement.store_error_model()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.mixed.MixedStateEntanglement.swapping"><code class="docutils literal notranslate"><span class="pre">MixedStateEntanglement.swapping()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.mixed.MixedStateEntanglement.to_qubits"><code class="docutils literal notranslate"><span class="pre">MixedStateEntanglement.to_qubits()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.mixed.MixedStateEntanglement.transfer_error_model"><code class="docutils literal notranslate"><span class="pre">MixedStateEntanglement.transfer_error_model()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="qns.models.epr.html#module-qns.models.epr.werner">qns.models.epr.werner module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.werner.WernerStateEntanglement"><code class="docutils literal notranslate"><span class="pre">WernerStateEntanglement</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.werner.WernerStateEntanglement.fidelity"><code class="docutils literal notranslate"><span class="pre">WernerStateEntanglement.fidelity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.werner.WernerStateEntanglement.purify"><code class="docutils literal notranslate"><span class="pre">WernerStateEntanglement.purify()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.werner.WernerStateEntanglement.store_error_model"><code class="docutils literal notranslate"><span class="pre">WernerStateEntanglement.store_error_model()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.werner.WernerStateEntanglement.swapping"><code class="docutils literal notranslate"><span class="pre">WernerStateEntanglement.swapping()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.werner.WernerStateEntanglement.to_qubits"><code class="docutils literal notranslate"><span class="pre">WernerStateEntanglement.to_qubits()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.werner.WernerStateEntanglement.transfer_error_model"><code class="docutils literal notranslate"><span class="pre">WernerStateEntanglement.transfer_error_model()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.werner.hash"><code class="docutils literal notranslate"><span class="pre">hash()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="qns.models.epr.html#module-qns.models.epr">Module contents</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.BaseEntanglement"><code class="docutils literal notranslate"><span class="pre">BaseEntanglement</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.BaseEntanglement.attempts"><code class="docutils literal notranslate"><span class="pre">BaseEntanglement.attempts</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.BaseEntanglement.ch_index"><code class="docutils literal notranslate"><span class="pre">BaseEntanglement.ch_index</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.BaseEntanglement.creation_time"><code class="docutils literal notranslate"><span class="pre">BaseEntanglement.creation_time</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.BaseEntanglement.decoherence_time"><code class="docutils literal notranslate"><span class="pre">BaseEntanglement.decoherence_time</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.BaseEntanglement.distillation"><code class="docutils literal notranslate"><span class="pre">BaseEntanglement.distillation()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.BaseEntanglement.dst"><code class="docutils literal notranslate"><span class="pre">BaseEntanglement.dst</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.BaseEntanglement.key"><code class="docutils literal notranslate"><span class="pre">BaseEntanglement.key</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.BaseEntanglement.orig_eprs"><code class="docutils literal notranslate"><span class="pre">BaseEntanglement.orig_eprs</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.BaseEntanglement.path_id"><code class="docutils literal notranslate"><span class="pre">BaseEntanglement.path_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.BaseEntanglement.read"><code class="docutils literal notranslate"><span class="pre">BaseEntanglement.read</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.BaseEntanglement.set_decoherenced"><code class="docutils literal notranslate"><span class="pre">BaseEntanglement.set_decoherenced()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.BaseEntanglement.src"><code class="docutils literal notranslate"><span class="pre">BaseEntanglement.src</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.BaseEntanglement.swapping"><code class="docutils literal notranslate"><span class="pre">BaseEntanglement.swapping()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.BaseEntanglement.teleportion"><code class="docutils literal notranslate"><span class="pre">BaseEntanglement.teleportion()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.BaseEntanglement.tmp_path_ids"><code class="docutils literal notranslate"><span class="pre">BaseEntanglement.tmp_path_ids</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.BaseEntanglement.to_qubits"><code class="docutils literal notranslate"><span class="pre">BaseEntanglement.to_qubits()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.BellStateEntanglement"><code class="docutils literal notranslate"><span class="pre">BellStateEntanglement</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.BellStateEntanglement.distillation"><code class="docutils literal notranslate"><span class="pre">BellStateEntanglement.distillation()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.BellStateEntanglement.store_error_model"><code class="docutils literal notranslate"><span class="pre">BellStateEntanglement.store_error_model()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.BellStateEntanglement.swapping"><code class="docutils literal notranslate"><span class="pre">BellStateEntanglement.swapping()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.BellStateEntanglement.transfer_error_model"><code class="docutils literal notranslate"><span class="pre">BellStateEntanglement.transfer_error_model()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.MixedStateEntanglement"><code class="docutils literal notranslate"><span class="pre">MixedStateEntanglement</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.MixedStateEntanglement.a"><code class="docutils literal notranslate"><span class="pre">MixedStateEntanglement.a</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.MixedStateEntanglement.distillation"><code class="docutils literal notranslate"><span class="pre">MixedStateEntanglement.distillation()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.MixedStateEntanglement.normalized"><code class="docutils literal notranslate"><span class="pre">MixedStateEntanglement.normalized()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.MixedStateEntanglement.store_error_model"><code class="docutils literal notranslate"><span class="pre">MixedStateEntanglement.store_error_model()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.MixedStateEntanglement.swapping"><code class="docutils literal notranslate"><span class="pre">MixedStateEntanglement.swapping()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.MixedStateEntanglement.to_qubits"><code class="docutils literal notranslate"><span class="pre">MixedStateEntanglement.to_qubits()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.MixedStateEntanglement.transfer_error_model"><code class="docutils literal notranslate"><span class="pre">MixedStateEntanglement.transfer_error_model()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.WernerStateEntanglement"><code class="docutils literal notranslate"><span class="pre">WernerStateEntanglement</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.WernerStateEntanglement.fidelity"><code class="docutils literal notranslate"><span class="pre">WernerStateEntanglement.fidelity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.WernerStateEntanglement.purify"><code class="docutils literal notranslate"><span class="pre">WernerStateEntanglement.purify()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.WernerStateEntanglement.store_error_model"><code class="docutils literal notranslate"><span class="pre">WernerStateEntanglement.store_error_model()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.WernerStateEntanglement.swapping"><code class="docutils literal notranslate"><span class="pre">WernerStateEntanglement.swapping()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.WernerStateEntanglement.to_qubits"><code class="docutils literal notranslate"><span class="pre">WernerStateEntanglement.to_qubits()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.epr.html#qns.models.epr.WernerStateEntanglement.transfer_error_model"><code class="docutils literal notranslate"><span class="pre">WernerStateEntanglement.transfer_error_model()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="qns.models.qubit.html">qns.models.qubit package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="qns.models.qubit.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qns.models.qubit.html#module-qns.models.qubit.const">qns.models.qubit.const module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.const.OPERATOR_PHASE_SHIFT"><code class="docutils literal notranslate"><span class="pre">OPERATOR_PHASE_SHIFT()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.const.OPERATOR_RX"><code class="docutils literal notranslate"><span class="pre">OPERATOR_RX()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.const.OPERATOR_RY"><code class="docutils literal notranslate"><span class="pre">OPERATOR_RY()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.const.OPERATOR_RZ"><code class="docutils literal notranslate"><span class="pre">OPERATOR_RZ()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="qns.models.qubit.html#module-qns.models.qubit.decoherence">qns.models.qubit.decoherence module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.decoherence.BitFilpTransferErrorModel"><code class="docutils literal notranslate"><span class="pre">BitFilpTransferErrorModel()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.decoherence.BitFlipError"><code class="docutils literal notranslate"><span class="pre">BitFlipError()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.decoherence.BitFlipMeasureErrorModel"><code class="docutils literal notranslate"><span class="pre">BitFlipMeasureErrorModel()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.decoherence.BitFlipOperateErrorModel"><code class="docutils literal notranslate"><span class="pre">BitFlipOperateErrorModel()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.decoherence.BitFlipStorageErrorModel"><code class="docutils literal notranslate"><span class="pre">BitFlipStorageErrorModel()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.decoherence.DephaseError"><code class="docutils literal notranslate"><span class="pre">DephaseError()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.decoherence.DephaseMeasureErrorModel"><code class="docutils literal notranslate"><span class="pre">DephaseMeasureErrorModel()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.decoherence.DephaseOperateErrorModel"><code class="docutils literal notranslate"><span class="pre">DephaseOperateErrorModel()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.decoherence.DephaseStorageErrorModel"><code class="docutils literal notranslate"><span class="pre">DephaseStorageErrorModel()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.decoherence.DephaseTransferErrorModel"><code class="docutils literal notranslate"><span class="pre">DephaseTransferErrorModel()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.decoherence.DepolarError"><code class="docutils literal notranslate"><span class="pre">DepolarError()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.decoherence.DepolarMeasureErrorModel"><code class="docutils literal notranslate"><span class="pre">DepolarMeasureErrorModel()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.decoherence.DepolarOperateErrorModel"><code class="docutils literal notranslate"><span class="pre">DepolarOperateErrorModel()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.decoherence.DepolarStorageErrorModel"><code class="docutils literal notranslate"><span class="pre">DepolarStorageErrorModel()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.decoherence.DepolarTransferErrorModel"><code class="docutils literal notranslate"><span class="pre">DepolarTransferErrorModel()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.decoherence.DissipationError"><code class="docutils literal notranslate"><span class="pre">DissipationError()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.decoherence.DissipationMeasureErrorModel"><code class="docutils literal notranslate"><span class="pre">DissipationMeasureErrorModel()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.decoherence.DissipationOperateErrorModel"><code class="docutils literal notranslate"><span class="pre">DissipationOperateErrorModel()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.decoherence.DissipationStorageErrorModel"><code class="docutils literal notranslate"><span class="pre">DissipationStorageErrorModel()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.decoherence.DissipationTransferErrorModel"><code class="docutils literal notranslate"><span class="pre">DissipationTransferErrorModel()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.decoherence.ErrorWithLength"><code class="docutils literal notranslate"><span class="pre">ErrorWithLength()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.decoherence.ErrorWithTime"><code class="docutils literal notranslate"><span class="pre">ErrorWithTime()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.decoherence.PrefectError"><code class="docutils literal notranslate"><span class="pre">PrefectError()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.decoherence.PrefectMeasureErrorModel"><code class="docutils literal notranslate"><span class="pre">PrefectMeasureErrorModel()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.decoherence.PrefectOperateErrorModel"><code class="docutils literal notranslate"><span class="pre">PrefectOperateErrorModel()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.decoherence.PrefectStorageErrorModel"><code class="docutils literal notranslate"><span class="pre">PrefectStorageErrorModel()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.decoherence.PrefectTransferErrorModel"><code class="docutils literal notranslate"><span class="pre">PrefectTransferErrorModel()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="qns.models.qubit.html#module-qns.models.qubit.errors">qns.models.qubit.errors module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.errors.OperatorError"><code class="docutils literal notranslate"><span class="pre">OperatorError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.errors.OperatorNotMatchError"><code class="docutils literal notranslate"><span class="pre">OperatorNotMatchError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.errors.QGateOperatorNotMatchError"><code class="docutils literal notranslate"><span class="pre">QGateOperatorNotMatchError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.errors.QGateQubitNotInStateError"><code class="docutils literal notranslate"><span class="pre">QGateQubitNotInStateError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.errors.QGateStateJointError"><code class="docutils literal notranslate"><span class="pre">QGateStateJointError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.errors.QStateBaseError"><code class="docutils literal notranslate"><span class="pre">QStateBaseError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.errors.QStateQubitNotInStateError"><code class="docutils literal notranslate"><span class="pre">QStateQubitNotInStateError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.errors.QStateSizeNotMatchError"><code class="docutils literal notranslate"><span class="pre">QStateSizeNotMatchError</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="qns.models.qubit.html#module-qns.models.qubit.factory">qns.models.qubit.factory module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.factory.QubitFactory"><code class="docutils literal notranslate"><span class="pre">QubitFactory</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="qns.models.qubit.html#module-qns.models.qubit.gate">qns.models.qubit.gate module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.gate.DoubleQubitsControlledGate"><code class="docutils literal notranslate"><span class="pre">DoubleQubitsControlledGate</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.gate.DoubleQubitsRotateGate"><code class="docutils literal notranslate"><span class="pre">DoubleQubitsRotateGate</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.gate.Gate"><code class="docutils literal notranslate"><span class="pre">Gate</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.gate.SingleQubitArbitraryGate"><code class="docutils literal notranslate"><span class="pre">SingleQubitArbitraryGate</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.gate.SingleQubitGate"><code class="docutils literal notranslate"><span class="pre">SingleQubitGate</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.gate.SingleQubitRotateGate"><code class="docutils literal notranslate"><span class="pre">SingleQubitRotateGate</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.gate.SingleQubitSimpleGate"><code class="docutils literal notranslate"><span class="pre">SingleQubitSimpleGate</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.gate.SwapGate"><code class="docutils literal notranslate"><span class="pre">SwapGate</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.gate.ThreeQubitsGate"><code class="docutils literal notranslate"><span class="pre">ThreeQubitsGate</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="qns.models.qubit.html#module-qns.models.qubit.qubit">qns.models.qubit.qubit module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.qubit.QState"><code class="docutils literal notranslate"><span class="pre">QState</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.qubit.QState.equal"><code class="docutils literal notranslate"><span class="pre">QState.equal()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.qubit.QState.is_pure_state"><code class="docutils literal notranslate"><span class="pre">QState.is_pure_state()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.qubit.QState.measure"><code class="docutils literal notranslate"><span class="pre">QState.measure()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.qubit.QState.operate"><code class="docutils literal notranslate"><span class="pre">QState.operate()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.qubit.QState.state"><code class="docutils literal notranslate"><span class="pre">QState.state()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.qubit.QState.stochastic_operate"><code class="docutils literal notranslate"><span class="pre">QState.stochastic_operate()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.qubit.Qubit"><code class="docutils literal notranslate"><span class="pre">Qubit</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.qubit.Qubit.measure"><code class="docutils literal notranslate"><span class="pre">Qubit.measure()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.qubit.Qubit.measureX"><code class="docutils literal notranslate"><span class="pre">Qubit.measureX()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.qubit.Qubit.measureY"><code class="docutils literal notranslate"><span class="pre">Qubit.measureY()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.qubit.Qubit.measureZ"><code class="docutils literal notranslate"><span class="pre">Qubit.measureZ()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.qubit.Qubit.measure_error_model"><code class="docutils literal notranslate"><span class="pre">Qubit.measure_error_model()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.qubit.Qubit.operate"><code class="docutils literal notranslate"><span class="pre">Qubit.operate()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.qubit.Qubit.operate_error_model"><code class="docutils literal notranslate"><span class="pre">Qubit.operate_error_model()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.qubit.Qubit.stochastic_operate"><code class="docutils literal notranslate"><span class="pre">Qubit.stochastic_operate()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.qubit.Qubit.store_error_model"><code class="docutils literal notranslate"><span class="pre">Qubit.store_error_model()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.qubit.Qubit.transfer_error_model"><code class="docutils literal notranslate"><span class="pre">Qubit.transfer_error_model()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="qns.models.qubit.html#module-qns.models.qubit.typing">qns.models.qubit.typing module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.typing.Basis"><code class="docutils literal notranslate"><span class="pre">Basis</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.typing.MultiQubitRho"><code class="docutils literal notranslate"><span class="pre">MultiQubitRho</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.typing.MultiQubitState"><code class="docutils literal notranslate"><span class="pre">MultiQubitState</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.typing.Operator"><code class="docutils literal notranslate"><span class="pre">Operator</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.typing.Operator1"><code class="docutils literal notranslate"><span class="pre">Operator1</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.typing.Operator2"><code class="docutils literal notranslate"><span class="pre">Operator2</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.typing.QubitRho"><code class="docutils literal notranslate"><span class="pre">QubitRho</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.typing.QubitState"><code class="docutils literal notranslate"><span class="pre">QubitState</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="qns.models.qubit.html#module-qns.models.qubit.utils">qns.models.qubit.utils module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.utils.joint"><code class="docutils literal notranslate"><span class="pre">joint()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.utils.kron"><code class="docutils literal notranslate"><span class="pre">kron()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.utils.partial_trace"><code class="docutils literal notranslate"><span class="pre">partial_trace()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.utils.single_gate_expand"><code class="docutils literal notranslate"><span class="pre">single_gate_expand()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="qns.models.qubit.html#module-qns.models.qubit">Module contents</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.DephaseMeasureErrorModel"><code class="docutils literal notranslate"><span class="pre">DephaseMeasureErrorModel()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.DephaseOperateErrorModel"><code class="docutils literal notranslate"><span class="pre">DephaseOperateErrorModel()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.DephaseStorageErrorModel"><code class="docutils literal notranslate"><span class="pre">DephaseStorageErrorModel()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.DephaseTransferErrorModel"><code class="docutils literal notranslate"><span class="pre">DephaseTransferErrorModel()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.DepolarMeasureErrorModel"><code class="docutils literal notranslate"><span class="pre">DepolarMeasureErrorModel()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.DepolarOperateErrorModel"><code class="docutils literal notranslate"><span class="pre">DepolarOperateErrorModel()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.DepolarStorageErrorModel"><code class="docutils literal notranslate"><span class="pre">DepolarStorageErrorModel()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.DepolarTransferErrorModel"><code class="docutils literal notranslate"><span class="pre">DepolarTransferErrorModel()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.PrefectMeasureErrorModel"><code class="docutils literal notranslate"><span class="pre">PrefectMeasureErrorModel()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.PrefectOperateErrorModel"><code class="docutils literal notranslate"><span class="pre">PrefectOperateErrorModel()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.PrefectStorageErrorModel"><code class="docutils literal notranslate"><span class="pre">PrefectStorageErrorModel()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.PrefectTransferErrorModel"><code class="docutils literal notranslate"><span class="pre">PrefectTransferErrorModel()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.QState"><code class="docutils literal notranslate"><span class="pre">QState</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.QState.equal"><code class="docutils literal notranslate"><span class="pre">QState.equal()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.QState.is_pure_state"><code class="docutils literal notranslate"><span class="pre">QState.is_pure_state()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.QState.measure"><code class="docutils literal notranslate"><span class="pre">QState.measure()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.QState.operate"><code class="docutils literal notranslate"><span class="pre">QState.operate()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.QState.state"><code class="docutils literal notranslate"><span class="pre">QState.state()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.QState.stochastic_operate"><code class="docutils literal notranslate"><span class="pre">QState.stochastic_operate()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.Qubit"><code class="docutils literal notranslate"><span class="pre">Qubit</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.Qubit.measure"><code class="docutils literal notranslate"><span class="pre">Qubit.measure()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.Qubit.measureX"><code class="docutils literal notranslate"><span class="pre">Qubit.measureX()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.Qubit.measureY"><code class="docutils literal notranslate"><span class="pre">Qubit.measureY()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.Qubit.measureZ"><code class="docutils literal notranslate"><span class="pre">Qubit.measureZ()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.Qubit.measure_error_model"><code class="docutils literal notranslate"><span class="pre">Qubit.measure_error_model()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.Qubit.operate"><code class="docutils literal notranslate"><span class="pre">Qubit.operate()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.Qubit.operate_error_model"><code class="docutils literal notranslate"><span class="pre">Qubit.operate_error_model()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.Qubit.stochastic_operate"><code class="docutils literal notranslate"><span class="pre">Qubit.stochastic_operate()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.Qubit.store_error_model"><code class="docutils literal notranslate"><span class="pre">Qubit.store_error_model()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.Qubit.transfer_error_model"><code class="docutils literal notranslate"><span class="pre">Qubit.transfer_error_model()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.QubitFactory"><code class="docutils literal notranslate"><span class="pre">QubitFactory</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.joint"><code class="docutils literal notranslate"><span class="pre">joint()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="qns.models.qubit.html#qns.models.qubit.single_gate_expand"><code class="docutils literal notranslate"><span class="pre">single_gate_expand()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+<section id="module-qns.models">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-qns.models" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.models.QuantumModel">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.models.</span></span><span class="sig-name descname"><span class="pre">QuantumModel</span></span><a class="reference internal" href="../_modules/qns/models/core/backend.html#QuantumModel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.models.QuantumModel" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>The interface to present the backend models, including qubit, epr and other models.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.models.QuantumModel.measure_error_model">
+<span class="sig-name descname"><span class="pre">measure_error_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">decoherence_rate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/models/core/backend.html#QuantumModel.measure_error_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.models.QuantumModel.measure_error_model" title="Link to this definition"></a></dt>
+<dd><p>The error model for measuring a qubit.
+This function will change the quantum state.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>decoherence_rate</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – the decoherency rate</p></li>
+<li><p><strong>kwargs</strong> – other parameters</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.models.QuantumModel.operate_error_model">
+<span class="sig-name descname"><span class="pre">operate_error_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">decoherence_rate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/models/core/backend.html#QuantumModel.operate_error_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.models.QuantumModel.operate_error_model" title="Link to this definition"></a></dt>
+<dd><p>The error model for operating a qubit.
+This function will change the quantum state.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>decoherence_rate</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – the decoherency rate</p></li>
+<li><p><strong>kwargs</strong> – other parameters</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.models.QuantumModel.store_error_model">
+<span class="sig-name descname"><span class="pre">store_error_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">decoherence_rate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/models/core/backend.html#QuantumModel.store_error_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.models.QuantumModel.store_error_model" title="Link to this definition"></a></dt>
+<dd><p>The error model for quantum memory.
+This function will change the quantum state or fidelity
+according to different backend models.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>t</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – the time stored in a quantum memory. The unit it second.</p></li>
+<li><p><strong>decoherence_rate</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – the decoherency rate</p></li>
+<li><p><strong>kwargs</strong> – other parameters</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.models.QuantumModel.transfer_error_model">
+<span class="sig-name descname"><span class="pre">transfer_error_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">length</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">decoherence_rate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/models/core/backend.html#QuantumModel.transfer_error_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.models.QuantumModel.transfer_error_model" title="Link to this definition"></a></dt>
+<dd><p>The error model for transmitting a qubit in quantum channel.
+This function will change the quantum state or fidelity
+according to different backend models.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>length</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – the length of the channel</p></li>
+<li><p><strong>decoherence_rate</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – the decoherency rate</p></li>
+<li><p><strong>kwargs</strong> – other parameters</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="qns.entity.timer.html" class="btn btn-neutral float-left" title="qns.entity.timer package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="qns.models.core.html" class="btn btn-neutral float-right" title="qns.models.core package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Amar Abane.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

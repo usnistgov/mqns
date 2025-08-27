@@ -1,0 +1,564 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>qns.network.protocol.link_layer &mdash; MQNS 0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=2709fde1"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            MQNS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../reference/modules.html">qns</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">MQNS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">qns.network.protocol.link_layer</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for qns.network.protocol.link_layer</h1><div class="highlight"><pre>
+<span></span><span class="c1">#    Multiverse Quantum Network Simulator: a simulator for comparative</span>
+<span class="c1">#    evaluation of quantum routing strategies</span>
+<span class="c1">#    Copyright (C) [2025] Amar Abane</span>
+<span class="c1">#</span>
+<span class="c1">#    This program is free software: you can redistribute it and/or modify</span>
+<span class="c1">#    it under the terms of the GNU General Public License as published by</span>
+<span class="c1">#    the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c1">#    (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1">#    This program is distributed in the hope that it will be useful,</span>
+<span class="c1">#    but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1">#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1">#    GNU General Public License for more details.</span>
+<span class="c1">#</span>
+<span class="c1">#    You should have received a copy of the GNU General Public License</span>
+<span class="c1">#    along with this program.  If not, see &lt;https://www.gnu.org/licenses/&gt;.</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">uuid</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">deque</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">TypedDict</span><span class="p">,</span> <span class="n">cast</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.entity.cchannel</span><span class="w"> </span><span class="kn">import</span> <span class="n">ClassicChannel</span><span class="p">,</span> <span class="n">ClassicPacket</span><span class="p">,</span> <span class="n">RecvClassicPacket</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.entity.memory</span><span class="w"> </span><span class="kn">import</span> <span class="n">MemoryQubit</span><span class="p">,</span> <span class="n">QuantumMemory</span><span class="p">,</span> <span class="n">QubitState</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.entity.node</span><span class="w"> </span><span class="kn">import</span> <span class="n">Application</span><span class="p">,</span> <span class="n">Node</span><span class="p">,</span> <span class="n">QNode</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.entity.qchannel</span><span class="w"> </span><span class="kn">import</span> <span class="n">QuantumChannel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.models.epr</span><span class="w"> </span><span class="kn">import</span> <span class="n">WernerStateEntanglement</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.network</span><span class="w"> </span><span class="kn">import</span> <span class="n">SignalTypeEnum</span><span class="p">,</span> <span class="n">TimingModeEnum</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.network.protocol.event</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">LinkArchSuccessEvent</span><span class="p">,</span>
+    <span class="n">ManageActiveChannels</span><span class="p">,</span>
+    <span class="n">QubitDecoheredEvent</span><span class="p">,</span>
+    <span class="n">QubitEntangledEvent</span><span class="p">,</span>
+    <span class="n">QubitReleasedEvent</span><span class="p">,</span>
+    <span class="n">TypeEnum</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.simulator</span><span class="w"> </span><span class="kn">import</span> <span class="n">Simulator</span><span class="p">,</span> <span class="n">func_to_event</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">log</span>
+
+
+<div class="viewcode-block" id="ReserveMsg">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.proactive.ReserveMsg">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ReserveMsg</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+    <span class="n">cmd</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;RESERVE_QUBIT&quot;</span><span class="p">,</span> <span class="s2">&quot;RESERVE_QUBIT_OK&quot;</span><span class="p">]</span>
+    <span class="n">path_id</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span>
+    <span class="n">key</span><span class="p">:</span> <span class="nb">str</span></div>
+
+
+
+<div class="viewcode-block" id="ReservationRequest">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.proactive.ReservationRequest">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ReservationRequest</span><span class="p">:</span>
+    <span class="n">key</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">path_id</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span>
+    <span class="n">cchannel</span><span class="p">:</span> <span class="n">ClassicChannel</span>
+    <span class="n">from_node</span><span class="p">:</span> <span class="n">QNode</span>
+    <span class="n">qchannel</span><span class="p">:</span> <span class="n">QuantumChannel</span></div>
+
+
+
+<div class="viewcode-block" id="LinkLayer">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.proactive.LinkLayer">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">LinkLayer</span><span class="p">(</span><span class="n">Application</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Network function for creating elementary entanglements over qchannels.</span>
+<span class="sd">    It equips a QNode and is activated from the forwarding function (e.g., ProactiveForwarder).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">attempt_rate</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e6</span><span class="p">,</span>
+        <span class="n">alpha_db_per_km</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.2</span><span class="p">,</span>
+        <span class="n">eta_s</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">eta_d</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">frequency</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">80e6</span><span class="p">,</span>
+        <span class="n">tau_0</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
+        <span class="n">init_fidelity</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.99</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;This constructor sets up the entanglement generation layer of a quantum node with key hardware parameters.</span>
+<span class="sd">        It also initializes data structures for managing quantum channels, entanglement attempts,</span>
+<span class="sd">        and synchronization.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            attempt_rate: max entanglement attempts per second (default: 1e6).</span>
+<span class="sd">            alpha_db_per_km: fiber attenuation loss in dB/km (default: 0.2).</span>
+<span class="sd">            eta_s: source efficiency (default: 1.0).</span>
+<span class="sd">            eta_d: detector efficiency (default: 1.0).</span>
+<span class="sd">            frequency: entanglement source frequency in Hz (default: 80e6).</span>
+<span class="sd">            tau_0: local operation delay in seconds for emitting and absorbing photon (default: 0.0).</span>
+<span class="sd">            init_fidelity: fidelity of generated entangled pairs (default: 0.99).</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">attempt_interval</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">attempt_rate</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Minimum interval spaced out between attempts.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alpha_db_per_km</span> <span class="o">=</span> <span class="n">alpha_db_per_km</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Fiber attenuation loss in dB/km.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eta_s</span> <span class="o">=</span> <span class="n">eta_s</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Source efficiency between 0 and 1.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eta_d</span> <span class="o">=</span> <span class="n">eta_d</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Detector efficiency between 0 and 1.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reset_time</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">frequency</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Minimum time between two consecutive photon excitations/absorptions.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tau_0</span> <span class="o">=</span> <span class="n">tau_0</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Local operation delay in seconds.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">init_fidelity</span> <span class="o">=</span> <span class="n">init_fidelity</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Fidelity of generated entangled pairs.&quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="p">:</span> <span class="n">QNode</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Quantum node that owns this LinkLayer.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">memory</span><span class="p">:</span> <span class="n">QuantumMemory</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Quantum memory of the node.&quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">active_channels</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">QuantumChannel</span><span class="p">,</span> <span class="n">QNode</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Table of active quantum channels and paths.</span>
+<span class="sd">        Key is qchannel name and optional path_id.</span>
+<span class="sd">        Value is the qchannel and remote QNode.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pending_init_reservation</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">QuantumChannel</span><span class="p">,</span> <span class="n">QNode</span><span class="p">,</span> <span class="n">MemoryQubit</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Table of pending reservations for which RESERVE_QUBIT is sent but RESERVE_QUBIT_OK has not arrived.</span>
+<span class="sd">        Key is reservation key.</span>
+<span class="sd">        Value is the qchannel, next hop QNode, local qubit.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fifo_reservation_req</span> <span class="o">=</span> <span class="n">deque</span><span class="p">[</span><span class="n">ReservationRequest</span><span class="p">]()</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        FIFO queue of reservation requests awaiting for memory qubits.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">etg_count</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Counter of generated entanglements.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">decoh_count</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Counter of decohered qubits never swapped.&quot;&quot;&quot;</span>
+
+        <span class="c1"># event handlers</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_handler</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">RecvClassicPacketHandler</span><span class="p">,</span> <span class="n">RecvClassicPacket</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_handler</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">handle_manage_active_channels</span><span class="p">,</span> <span class="n">ManageActiveChannels</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_handler</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">handle_success_entangle</span><span class="p">,</span> <span class="n">LinkArchSuccessEvent</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_handler</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">handle_decoh_rel</span><span class="p">,</span> <span class="p">[</span><span class="n">QubitDecoheredEvent</span><span class="p">,</span> <span class="n">QubitReleasedEvent</span><span class="p">])</span>
+
+<div class="viewcode-block" id="LinkLayer.install">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.proactive.LinkLayer.install">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">install</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">Node</span><span class="p">,</span> <span class="n">simulator</span><span class="p">:</span> <span class="n">Simulator</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">install</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">simulator</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">own</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_node</span><span class="p">(</span><span class="n">node_type</span><span class="o">=</span><span class="n">QNode</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">memory</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="o">.</span><span class="n">get_memory</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="LinkLayer.handle_sync_signal">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.proactive.LinkLayer.handle_sync_signal">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">handle_sync_signal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">signal_type</span><span class="p">:</span> <span class="n">SignalTypeEnum</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Handles timing synchronization signals for SYNC mode (not very reliable at this time).&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">signal_type</span> <span class="o">==</span> <span class="n">SignalTypeEnum</span><span class="o">.</span><span class="n">EXTERNAL</span><span class="p">:</span>
+            <span class="c1"># clear all qubits and retry all active_channels until INTERNAL signal</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">memory</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+            <span class="k">for</span> <span class="p">(</span><span class="n">_</span><span class="p">,</span> <span class="n">path_id</span><span class="p">),</span> <span class="p">(</span><span class="n">qchannel</span><span class="p">,</span> <span class="n">next_hop</span><span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_channels</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">run_active_channel</span><span class="p">(</span><span class="n">qchannel</span><span class="p">,</span> <span class="n">next_hop</span><span class="p">,</span> <span class="n">path_id</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="LinkLayer.RecvClassicPacketHandler">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.proactive.LinkLayer.RecvClassicPacketHandler">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">RecvClassicPacketHandler</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">:</span> <span class="n">RecvClassicPacket</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">packet</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">&quot;cmd&quot;</span> <span class="ow">in</span> <span class="n">msg</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="k">match</span> <span class="n">msg</span><span class="p">[</span><span class="s2">&quot;cmd&quot;</span><span class="p">]:</span>
+            <span class="k">case</span> <span class="s2">&quot;RESERVE_QUBIT&quot;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">handle_reserve_req</span><span class="p">(</span><span class="n">cast</span><span class="p">(</span><span class="n">ReserveMsg</span><span class="p">,</span> <span class="n">msg</span><span class="p">),</span> <span class="n">event</span><span class="o">.</span><span class="n">cchannel</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">True</span>
+            <span class="k">case</span> <span class="s2">&quot;RESERVE_QUBIT_OK&quot;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">handle_reserve_res</span><span class="p">(</span><span class="n">cast</span><span class="p">(</span><span class="n">ReserveMsg</span><span class="p">,</span> <span class="n">msg</span><span class="p">))</span>
+                <span class="k">return</span> <span class="kc">True</span>
+            <span class="k">case</span><span class="w"> </span><span class="k">_</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="LinkLayer.handle_manage_active_channels">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.proactive.LinkLayer.handle_manage_active_channels">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">handle_manage_active_channels</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">:</span> <span class="n">ManageActiveChannels</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Handle ManageActiveChannels event from forwarder.&quot;&quot;&quot;</span>
+        <span class="n">qchannel</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="o">.</span><span class="n">get_qchannel</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">neighbor</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="n">TypeEnum</span><span class="o">.</span><span class="n">ADD</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_active_channel</span><span class="p">(</span><span class="n">qchannel</span><span class="p">,</span> <span class="n">event</span><span class="o">.</span><span class="n">neighbor</span><span class="p">,</span> <span class="n">event</span><span class="o">.</span><span class="n">path_id</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">remove_active_channel</span><span class="p">(</span><span class="n">qchannel</span><span class="p">,</span> <span class="n">event</span><span class="o">.</span><span class="n">neighbor</span><span class="p">,</span> <span class="n">event</span><span class="o">.</span><span class="n">path_id</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="LinkLayer.add_active_channel">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.proactive.LinkLayer.add_active_channel">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_active_channel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">qchannel</span><span class="p">:</span> <span class="n">QuantumChannel</span><span class="p">,</span> <span class="n">neighbor</span><span class="p">:</span> <span class="n">QNode</span><span class="p">,</span> <span class="n">path_id</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="p">(</span><span class="n">qchannel</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">path_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_channels</span><span class="p">:</span>  <span class="c1"># ignore duplicate add</span>
+            <span class="k">return</span>
+
+        <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="si">}</span><span class="s2">: add qchannel </span><span class="si">{</span><span class="n">qchannel</span><span class="si">}</span><span class="s2"> with </span><span class="si">{</span><span class="n">neighbor</span><span class="si">}</span><span class="s2"> on path </span><span class="si">{</span><span class="n">path_id</span><span class="si">}</span><span class="s2">, link arch </span><span class="si">{</span><span class="n">qchannel</span><span class="o">.</span><span class="n">link_arch</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">active_channels</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">qchannel</span><span class="p">,</span> <span class="n">neighbor</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="o">.</span><span class="n">timing_mode</span> <span class="o">==</span> <span class="n">TimingModeEnum</span><span class="o">.</span><span class="n">ASYNC</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">run_active_channel</span><span class="p">(</span><span class="n">qchannel</span><span class="p">,</span> <span class="n">neighbor</span><span class="p">,</span> <span class="n">path_id</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="LinkLayer.remove_active_channel">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.proactive.LinkLayer.remove_active_channel">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">remove_active_channel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">qchannel</span><span class="p">:</span> <span class="n">QuantumChannel</span><span class="p">,</span> <span class="n">neighbor</span><span class="p">:</span> <span class="n">QNode</span><span class="p">,</span> <span class="n">path_id</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="si">}</span><span class="s2">: remove qchannel </span><span class="si">{</span><span class="n">qchannel</span><span class="si">}</span><span class="s2"> with </span><span class="si">{</span><span class="n">neighbor</span><span class="si">}</span><span class="s2"> on path </span><span class="si">{</span><span class="n">path_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">active_channels</span><span class="o">.</span><span class="n">pop</span><span class="p">((</span><span class="n">qchannel</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">path_id</span><span class="p">),</span> <span class="kc">None</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="LinkLayer.run_active_channel">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.proactive.LinkLayer.run_active_channel">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">run_active_channel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">qchannel</span><span class="p">:</span> <span class="n">QuantumChannel</span><span class="p">,</span> <span class="n">next_hop</span><span class="p">:</span> <span class="n">QNode</span><span class="p">,</span> <span class="n">path_id</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Start EPR generation over the given quantum channel and the specified next-hop.</span>
+<span class="sd">        It performs qubit reservation, and for each available qubit, an EPR creation event is scheduled</span>
+<span class="sd">        with a staggered delay based on EPR generation sampling.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            qchannel: The quantum channel over which entanglement is to be attempted.</span>
+<span class="sd">            next_hop: The neighboring node with which to initiate the negotiation.</span>
+<span class="sd">            path_id: The path_id to restrict attempts to path-allocated qubits only.</span>
+<span class="sd">                    Needed in multipath where a channel may be activated while not all qubits have been allocated to paths.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            Exception: If a qubit assigned to the channel is unexpectedly already associated</span>
+<span class="sd">                   with a `QuantumModel`, indicating a logic error or memory mismanagement.</span>
+
+<span class="sd">        Notes:</span>
+<span class="sd">            - Qubits assigned to memory are retrieved using the channel&#39;s name.</span>
+<span class="sd">            - Qubit reservations are spaced out in time using a fixed `attempt_rate`.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">simulator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">simulator</span>
+        <span class="n">qubits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory</span><span class="o">.</span><span class="n">get_channel_qubits</span><span class="p">(</span><span class="n">ch_name</span><span class="o">=</span><span class="n">qchannel</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">qchannel</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> has assigned qubits: </span><span class="si">{</span><span class="n">qubits</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">qb</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">qubits</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">qb</span><span class="o">.</span><span class="n">path_id</span> <span class="o">!=</span> <span class="n">path_id</span> <span class="ow">or</span> <span class="n">qb</span><span class="o">.</span><span class="n">state</span> <span class="o">!=</span> <span class="n">QubitState</span><span class="o">.</span><span class="n">RAW</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">assert</span> <span class="n">qb</span><span class="o">.</span><span class="n">active</span> <span class="ow">is</span> <span class="kc">None</span>
+            <span class="k">assert</span> <span class="n">data</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="si">}</span><span class="s2">: qubit </span><span class="si">{</span><span class="n">qb</span><span class="si">}</span><span class="s2"> has data </span><span class="si">{</span><span class="n">data</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="n">simulator</span><span class="o">.</span><span class="n">add_event</span><span class="p">(</span>
+                <span class="n">func_to_event</span><span class="p">(</span><span class="n">simulator</span><span class="o">.</span><span class="n">tc</span> <span class="o">+</span> <span class="n">i</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">attempt_interval</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_reservation</span><span class="p">,</span> <span class="n">next_hop</span><span class="p">,</span> <span class="n">qchannel</span><span class="p">,</span> <span class="n">qb</span><span class="p">,</span> <span class="n">by</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+            <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="LinkLayer.start_reservation">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.proactive.LinkLayer.start_reservation">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">start_reservation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">next_hop</span><span class="p">:</span> <span class="n">QNode</span><span class="p">,</span> <span class="n">qchannel</span><span class="p">:</span> <span class="n">QuantumChannel</span><span class="p">,</span> <span class="n">qubit</span><span class="p">:</span> <span class="n">MemoryQubit</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Start the exchange with neighbor node for reserving a qubit for entanglement</span>
+<span class="sd">        generation over a specified quantum channel. It performs the following steps:</span>
+
+<span class="sd">        1. Construct a random reservation `key`.</span>
+<span class="sd">        2. Mark the qubit as active using the reservation key.</span>
+<span class="sd">        3. Store reservation metadata in `pending_init_reservation`.</span>
+<span class="sd">        4. Send a classical message to the next hop to request qubit reservation.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            next_hop: The neighboring node with which the reservation is to be made.</span>
+<span class="sd">            qchannel: The quantum channel used for entanglement.</span>
+<span class="sd">            qubit: The memory qubit to reserve.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            Exception: If a reservation has already been initiated for the same key,</span>
+<span class="sd">                   or if no classical channel to the destination node is found.</span>
+
+<span class="sd">        Notes:</span>
+<span class="sd">            - The `key` uniquely identifies the reservation context.</span>
+<span class="sd">            Key format: &lt;node1&gt;_&lt;node2&gt;_[&lt;path_id&gt;]_&lt;local_qubit_addr&gt;</span>
+<span class="sd">            - The reservation is communicated via a classical message using the `RESERVE_QUBIT` command.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">key</span> <span class="o">=</span> <span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()</span><span class="o">.</span><span class="n">hex</span>
+        <span class="k">assert</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">pending_init_reservation</span>
+        <span class="n">qubit</span><span class="o">.</span><span class="n">state</span><span class="p">,</span> <span class="n">qubit</span><span class="o">.</span><span class="n">active</span> <span class="o">=</span> <span class="n">QubitState</span><span class="o">.</span><span class="n">ACTIVE</span><span class="p">,</span> <span class="n">key</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pending_init_reservation</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">qchannel</span><span class="p">,</span> <span class="n">next_hop</span><span class="p">,</span> <span class="n">qubit</span><span class="p">)</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="si">}</span><span class="s2">: start reservation key=</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2"> dst=</span><span class="si">{</span><span class="n">next_hop</span><span class="si">}</span><span class="s2"> addr=</span><span class="si">{</span><span class="n">qubit</span><span class="o">.</span><span class="n">addr</span><span class="si">}</span><span class="s2"> path=</span><span class="si">{</span><span class="n">qubit</span><span class="o">.</span><span class="n">path_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">msg</span><span class="p">:</span> <span class="n">ReserveMsg</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;cmd&quot;</span><span class="p">:</span> <span class="s2">&quot;RESERVE_QUBIT&quot;</span><span class="p">,</span> <span class="s2">&quot;path_id&quot;</span><span class="p">:</span> <span class="n">qubit</span><span class="o">.</span><span class="n">path_id</span><span class="p">,</span> <span class="s2">&quot;key&quot;</span><span class="p">:</span> <span class="n">key</span><span class="p">}</span>
+        <span class="n">cchannel</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="o">.</span><span class="n">get_cchannel</span><span class="p">(</span><span class="n">next_hop</span><span class="p">)</span>
+        <span class="n">cchannel</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">ClassicPacket</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">src</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="n">next_hop</span><span class="p">),</span> <span class="n">next_hop</span><span class="o">=</span><span class="n">next_hop</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="LinkLayer.handle_reserve_req">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.proactive.LinkLayer.handle_reserve_req">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">handle_reserve_req</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">:</span> <span class="n">ReserveMsg</span><span class="p">,</span> <span class="n">cchannel</span><span class="p">:</span> <span class="n">ClassicChannel</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Handle `RESERVE_QUBIT` control message sent by the initiating node to request a memory qubit reservation.</span>
+<span class="sd">        1. If an available memory qubit is found, it is reserved (marked active using the given key).</span>
+<span class="sd">        2. A `RESERVE_QUBIT_OK` response is sent back to confirm the reservation.</span>
+<span class="sd">        3. If no available qubit is found, the request is enqueued for future retry (FIFO).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">from_node</span> <span class="o">=</span> <span class="n">cchannel</span><span class="o">.</span><span class="n">find_peer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">from_node</span><span class="p">,</span> <span class="n">QNode</span><span class="p">)</span>
+        <span class="n">qchannel</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="o">.</span><span class="n">get_qchannel</span><span class="p">(</span><span class="n">from_node</span><span class="p">)</span>
+        <span class="n">req</span> <span class="o">=</span> <span class="n">ReservationRequest</span><span class="p">(</span><span class="n">msg</span><span class="p">[</span><span class="s2">&quot;key&quot;</span><span class="p">],</span> <span class="n">msg</span><span class="p">[</span><span class="s2">&quot;path_id&quot;</span><span class="p">],</span> <span class="n">cchannel</span><span class="p">,</span> <span class="n">from_node</span><span class="p">,</span> <span class="n">qchannel</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">try_accept_reservation</span><span class="p">(</span><span class="n">req</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fifo_reservation_req</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">req</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="LinkLayer.try_accept_reservation">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.proactive.LinkLayer.try_accept_reservation">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">try_accept_reservation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">req</span><span class="p">:</span> <span class="n">ReservationRequest</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Accept a reservation if a qubit is available.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            True if the reservation is accepted and `RESERVE_QUBIT_OK` is sent.</span>
+<span class="sd">            False if the reservation is not accepted.</span>
+
+<span class="sd">        Notes: Caller is responsible for managing `fifo_reservation_req` queue.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">qubit</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">memory</span><span class="o">.</span><span class="n">find</span><span class="p">(</span>
+                <span class="k">lambda</span> <span class="n">q</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="n">v</span> <span class="ow">is</span> <span class="kc">None</span>  <span class="c1"># currently unoccupied</span>
+                <span class="ow">and</span> <span class="ow">not</span> <span class="n">q</span><span class="o">.</span><span class="n">active</span>  <span class="c1"># not part of an active reservation</span>
+                <span class="ow">and</span> <span class="n">q</span><span class="o">.</span><span class="n">qchannel</span> <span class="o">==</span> <span class="n">req</span><span class="o">.</span><span class="n">qchannel</span>  <span class="c1"># assigned to the quantum channel</span>
+                <span class="ow">and</span> <span class="n">q</span><span class="o">.</span><span class="n">path_id</span> <span class="o">==</span> <span class="n">req</span><span class="o">.</span><span class="n">path_id</span>  <span class="c1"># allocated to the path_id, if MuxScheme uses path_id</span>
+            <span class="p">),</span>
+            <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">qubit</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="si">}</span><span class="s2">: accept reservation key=</span><span class="si">{</span><span class="n">req</span><span class="o">.</span><span class="n">key</span><span class="si">}</span><span class="s2"> src=</span><span class="si">{</span><span class="n">req</span><span class="o">.</span><span class="n">from_node</span><span class="si">}</span><span class="s2"> addr=</span><span class="si">{</span><span class="n">qubit</span><span class="o">.</span><span class="n">addr</span><span class="si">}</span><span class="s2"> path=</span><span class="si">{</span><span class="n">qubit</span><span class="o">.</span><span class="n">path_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">qubit</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">QubitState</span><span class="o">.</span><span class="n">ACTIVE</span>  <span class="c1"># cannot go directly from RAW to RESERVED</span>
+        <span class="n">qubit</span><span class="o">.</span><span class="n">state</span><span class="p">,</span> <span class="n">qubit</span><span class="o">.</span><span class="n">active</span> <span class="o">=</span> <span class="n">QubitState</span><span class="o">.</span><span class="n">RESERVED</span><span class="p">,</span> <span class="n">req</span><span class="o">.</span><span class="n">key</span>
+        <span class="n">msg</span><span class="p">:</span> <span class="n">ReserveMsg</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;cmd&quot;</span><span class="p">:</span> <span class="s2">&quot;RESERVE_QUBIT_OK&quot;</span><span class="p">,</span> <span class="s2">&quot;path_id&quot;</span><span class="p">:</span> <span class="n">req</span><span class="o">.</span><span class="n">path_id</span><span class="p">,</span> <span class="s2">&quot;key&quot;</span><span class="p">:</span> <span class="n">req</span><span class="o">.</span><span class="n">key</span><span class="p">}</span>
+        <span class="n">req</span><span class="o">.</span><span class="n">cchannel</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">ClassicPacket</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">src</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="n">req</span><span class="o">.</span><span class="n">from_node</span><span class="p">),</span> <span class="n">next_hop</span><span class="o">=</span><span class="n">req</span><span class="o">.</span><span class="n">from_node</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="LinkLayer.handle_reserve_res">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.proactive.LinkLayer.handle_reserve_res">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">handle_reserve_res</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">:</span> <span class="n">ReserveMsg</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Handle `RESERVE_QUBIT_OK` control messages received as a response to a reservation request.</span>
+<span class="sd">        1. Trigger the entanglement generation process using the reserved memory qubit.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">msg</span><span class="p">[</span><span class="s2">&quot;key&quot;</span><span class="p">]</span>
+        <span class="p">(</span><span class="n">qchannel</span><span class="p">,</span> <span class="n">next_hop</span><span class="p">,</span> <span class="n">qubit</span><span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pending_init_reservation</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">qubit</span><span class="o">.</span><span class="n">active</span> <span class="o">==</span> <span class="n">key</span>
+        <span class="n">qubit</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">QubitState</span><span class="o">.</span><span class="n">RESERVED</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">generate_entanglement</span><span class="p">(</span><span class="n">qchannel</span><span class="o">=</span><span class="n">qchannel</span><span class="p">,</span> <span class="n">next_hop</span><span class="o">=</span><span class="n">next_hop</span><span class="p">,</span> <span class="n">qubit</span><span class="o">=</span><span class="n">qubit</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="LinkLayer.generate_entanglement">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.proactive.LinkLayer.generate_entanglement">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_entanglement</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">qchannel</span><span class="p">:</span> <span class="n">QuantumChannel</span><span class="p">,</span> <span class="n">next_hop</span><span class="p">:</span> <span class="n">QNode</span><span class="p">,</span> <span class="n">qubit</span><span class="p">:</span> <span class="n">MemoryQubit</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Schedule a successful entanglement attempt using skip-ahead sampling.</span>
+<span class="sd">        `LinkArchSuccessEvent`s are scheduled to handle the result of this attempt.</span>
+
+<span class="sd">        It performs the following checks and steps:</span>
+<span class="sd">            - Ensures the memory&#39;s decoherence time is sufficient for the channel length.</span>
+<span class="sd">            - Computes the time of the next successful attempt and number of skipped trials.</span>
+<span class="sd">            - Schedules a successful entanglement event at the computed time.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            qchannel (QuantumChannel): The quantum channel over which entanglement is to be generated.</span>
+<span class="sd">            next_hop (QNode): The neighboring node with which the entanglement is attempted.</span>
+<span class="sd">            address (int): The address of the memory qubit used for this attempt.</span>
+<span class="sd">            key (str): A unique identifier for this entanglement reservation/attempt.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">simulator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">simulator</span>
+
+        <span class="c1"># Calculate the time until the successful attempt.</span>
+        <span class="c1"># Then, the last tau of the the successful attempt is simulated by sending the EPR</span>
+        <span class="c1"># from primary node to secondary node.</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">qchannel</span><span class="o">.</span><span class="n">link_arch</span><span class="o">.</span><span class="n">success_prob</span><span class="p">(</span>
+            <span class="n">length</span><span class="o">=</span><span class="n">qchannel</span><span class="o">.</span><span class="n">length</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha_db_per_km</span><span class="p">,</span> <span class="n">eta_s</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">eta_s</span><span class="p">,</span> <span class="n">eta_d</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">eta_d</span>
+        <span class="p">)</span>
+        <span class="n">k</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">geometric</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>  <span class="c1"># k-th attempt will succeed</span>
+
+        <span class="n">tau_l</span> <span class="o">=</span> <span class="n">qchannel</span><span class="o">.</span><span class="n">delay_model</span><span class="o">.</span><span class="n">calculate</span><span class="p">()</span>  <span class="c1"># time to send photon/message one way</span>
+        <span class="n">d_epr_creation</span><span class="p">,</span> <span class="n">d_notify_primary</span><span class="p">,</span> <span class="n">d_notify_secondary</span> <span class="o">=</span> <span class="n">qchannel</span><span class="o">.</span><span class="n">link_arch</span><span class="o">.</span><span class="n">delays</span><span class="p">(</span>
+            <span class="n">k</span><span class="p">,</span>
+            <span class="n">reset_time</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">reset_time</span><span class="p">,</span>
+            <span class="n">tau_l</span><span class="o">=</span><span class="n">tau_l</span><span class="p">,</span>
+            <span class="n">tau_0</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tau_0</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">t_epr_creation</span> <span class="o">=</span> <span class="n">simulator</span><span class="o">.</span><span class="n">tc</span> <span class="o">+</span> <span class="n">d_epr_creation</span>
+        <span class="n">t_notify_primary</span> <span class="o">=</span> <span class="n">simulator</span><span class="o">.</span><span class="n">tc</span> <span class="o">+</span> <span class="n">d_notify_primary</span>
+        <span class="n">t_notify_secondary</span> <span class="o">=</span> <span class="n">simulator</span><span class="o">.</span><span class="n">tc</span> <span class="o">+</span> <span class="n">d_notify_secondary</span>
+
+        <span class="n">epr</span> <span class="o">=</span> <span class="n">WernerStateEntanglement</span><span class="p">(</span><span class="n">fidelity</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">init_fidelity</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()</span><span class="o">.</span><span class="n">hex</span><span class="p">)</span>
+        <span class="n">epr</span><span class="o">.</span><span class="n">src</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">own</span>
+        <span class="n">epr</span><span class="o">.</span><span class="n">dst</span> <span class="o">=</span> <span class="n">next_hop</span>
+        <span class="n">epr</span><span class="o">.</span><span class="n">attempts</span> <span class="o">=</span> <span class="n">k</span>
+        <span class="n">epr</span><span class="o">.</span><span class="n">key</span> <span class="o">=</span> <span class="n">qubit</span><span class="o">.</span><span class="n">active</span>
+        <span class="n">epr</span><span class="o">.</span><span class="n">path_id</span> <span class="o">=</span> <span class="n">qubit</span><span class="o">.</span><span class="n">path_id</span>
+        <span class="n">epr</span><span class="o">.</span><span class="n">creation_time</span> <span class="o">=</span> <span class="n">t_epr_creation</span>
+
+        <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="si">}</span><span class="s2">: prepare EPR </span><span class="si">{</span><span class="n">epr</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> key=</span><span class="si">{</span><span class="n">epr</span><span class="o">.</span><span class="n">key</span><span class="si">}</span><span class="s2"> dst=</span><span class="si">{</span><span class="n">epr</span><span class="o">.</span><span class="n">dst</span><span class="si">}</span><span class="s2"> attempts=</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2"> &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;times=</span><span class="si">{</span><span class="n">t_epr_creation</span><span class="si">}</span><span class="s2">,</span><span class="si">{</span><span class="n">t_notify_primary</span><span class="si">}</span><span class="s2">,</span><span class="si">{</span><span class="n">t_notify_secondary</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+        <span class="n">simulator</span><span class="o">.</span><span class="n">add_event</span><span class="p">(</span><span class="n">LinkArchSuccessEvent</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="p">,</span> <span class="n">epr</span><span class="p">,</span> <span class="n">t</span><span class="o">=</span><span class="n">t_notify_primary</span><span class="p">,</span> <span class="n">by</span><span class="o">=</span><span class="bp">self</span><span class="p">))</span>
+        <span class="n">simulator</span><span class="o">.</span><span class="n">add_event</span><span class="p">(</span><span class="n">LinkArchSuccessEvent</span><span class="p">(</span><span class="n">next_hop</span><span class="p">,</span> <span class="n">epr</span><span class="p">,</span> <span class="n">t</span><span class="o">=</span><span class="n">t_notify_secondary</span><span class="p">,</span> <span class="n">by</span><span class="o">=</span><span class="bp">self</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="LinkLayer.handle_success_entangle">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.proactive.LinkLayer.handle_success_entangle">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">handle_success_entangle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">:</span> <span class="n">LinkArchSuccessEvent</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="o">.</span><span class="n">timing_mode</span> <span class="o">==</span> <span class="n">TimingModeEnum</span><span class="o">.</span><span class="n">SYNC</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">sync_current_phase</span> <span class="o">!=</span> <span class="n">SignalTypeEnum</span><span class="o">.</span><span class="n">EXTERNAL</span><span class="p">:</span>
+            <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="si">}</span><span class="s2">: EXT phase is over -&gt; stop attempts&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="n">simulator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">simulator</span>
+        <span class="n">epr</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">epr</span>
+        <span class="n">neighbor</span><span class="p">,</span> <span class="n">is_primary</span> <span class="o">=</span> <span class="p">(</span><span class="n">epr</span><span class="o">.</span><span class="n">dst</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span> <span class="k">if</span> <span class="n">epr</span><span class="o">.</span><span class="n">src</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">own</span> <span class="k">else</span> <span class="p">(</span><span class="n">epr</span><span class="o">.</span><span class="n">src</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">neighbor</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">is_primary</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">etg_count</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="si">}</span><span class="s2">: got half-EPR </span><span class="si">{</span><span class="n">epr</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> key=</span><span class="si">{</span><span class="n">epr</span><span class="o">.</span><span class="n">key</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;dst&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">is_primary</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;src&#39;</span><span class="si">}</span><span class="s2">=</span><span class="si">{</span><span class="n">neighbor</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">epr</span><span class="o">.</span><span class="n">decoherence_time</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">epr</span><span class="o">.</span><span class="n">decoherence_time</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">tc</span>
+
+        <span class="n">qubit</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">epr</span><span class="p">,</span> <span class="n">path_id</span><span class="o">=</span><span class="n">epr</span><span class="o">.</span><span class="n">path_id</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">epr</span><span class="o">.</span><span class="n">key</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">qubit</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="si">}</span><span class="s2">: Failed to store EPR </span><span class="si">{</span><span class="n">epr</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">qubit</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">QubitState</span><span class="o">.</span><span class="n">ENTANGLED0</span>
+        <span class="n">simulator</span><span class="o">.</span><span class="n">add_event</span><span class="p">(</span><span class="n">QubitEntangledEvent</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="p">,</span> <span class="n">neighbor</span><span class="p">,</span> <span class="n">qubit</span><span class="p">,</span> <span class="n">t</span><span class="o">=</span><span class="n">simulator</span><span class="o">.</span><span class="n">tc</span><span class="p">,</span> <span class="n">by</span><span class="o">=</span><span class="bp">self</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="LinkLayer.handle_decoh_rel">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.proactive.LinkLayer.handle_decoh_rel">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">handle_decoh_rel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">:</span> <span class="n">QubitDecoheredEvent</span> <span class="o">|</span> <span class="n">QubitReleasedEvent</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="n">qubit</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">qubit</span>
+        <span class="n">is_decoh</span> <span class="o">=</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">QubitDecoheredEvent</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">is_decoh</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">decoh_count</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="si">}</span><span class="s2">: qubit decohered addr=</span><span class="si">{</span><span class="n">qubit</span><span class="o">.</span><span class="n">addr</span><span class="si">}</span><span class="s2"> old-key=</span><span class="si">{</span><span class="n">qubit</span><span class="o">.</span><span class="n">active</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="si">}</span><span class="s2">: qubit released addr=</span><span class="si">{</span><span class="n">qubit</span><span class="o">.</span><span class="n">addr</span><span class="si">}</span><span class="s2"> old-key=</span><span class="si">{</span><span class="n">qubit</span><span class="o">.</span><span class="n">active</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">qubit</span><span class="o">.</span><span class="n">state</span><span class="p">,</span> <span class="n">qubit</span><span class="o">.</span><span class="n">active</span> <span class="o">=</span> <span class="n">QubitState</span><span class="o">.</span><span class="n">RAW</span><span class="p">,</span> <span class="kc">None</span>
+
+        <span class="k">assert</span> <span class="n">qubit</span><span class="o">.</span><span class="n">qchannel</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="n">ac</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_channels</span><span class="o">.</span><span class="n">get</span><span class="p">((</span><span class="n">qubit</span><span class="o">.</span><span class="n">qchannel</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">qubit</span><span class="o">.</span><span class="n">path_id</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">ac</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># this node is not the EPR initiator</span>
+            <span class="c1"># Check deferred reservation requests and attempt to fulfill the reservation.</span>
+            <span class="c1"># Only the first (oldest) request in the FIFO is processed per call.</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fifo_reservation_req</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">try_accept_reservation</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fifo_reservation_req</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">fifo_reservation_req</span><span class="o">.</span><span class="n">popleft</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>  <span class="c1"># this node is the EPR initiator</span>
+            <span class="n">qchannel</span><span class="p">,</span> <span class="n">next_hop</span> <span class="o">=</span> <span class="n">ac</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="o">.</span><span class="n">timing_mode</span> <span class="o">==</span> <span class="n">TimingModeEnum</span><span class="o">.</span><span class="n">ASYNC</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">start_reservation</span><span class="p">(</span><span class="n">next_hop</span><span class="p">,</span> <span class="n">qchannel</span><span class="p">,</span> <span class="n">qubit</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">is_decoh</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="o">.</span><span class="n">timing_mode</span> <span class="o">==</span> <span class="n">TimingModeEnum</span><span class="o">.</span><span class="n">SYNC</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="si">}</span><span class="s2">: UNEXPECTED -&gt; (t_ext + t_int) too short&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Amar Abane.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

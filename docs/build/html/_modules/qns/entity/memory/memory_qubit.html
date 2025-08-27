@@ -1,0 +1,283 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>qns.entity.memory.memory_qubit &mdash; MQNS 0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=2709fde1"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            MQNS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../reference/modules.html">qns</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">MQNS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">qns.entity.memory.memory_qubit</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for qns.entity.memory.memory_qubit</h1><div class="highlight"><pre>
+<span></span><span class="c1">#    Multiverse Quantum Network Simulator: a simulator for comparative</span>
+<span class="c1">#    evaluation of quantum routing strategies</span>
+<span class="c1">#    Copyright (C) [2025] Amar Abane</span>
+<span class="c1">#</span>
+<span class="c1">#    This program is free software: you can redistribute it and/or modify</span>
+<span class="c1">#    it under the terms of the GNU General Public License as published by</span>
+<span class="c1">#    the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c1">#    (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1">#    This program is distributed in the hope that it will be useful,</span>
+<span class="c1">#    but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1">#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1">#    GNU General Public License for more details.</span>
+<span class="c1">#</span>
+<span class="c1">#    You should have received a copy of the GNU General Public License</span>
+<span class="c1">#    along with this program.  If not, see &lt;https://www.gnu.org/licenses/&gt;.</span>
+
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">enum</span><span class="w"> </span><span class="kn">import</span> <span class="n">Enum</span><span class="p">,</span> <span class="n">auto</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">qns.entity.qchannel</span><span class="w"> </span><span class="kn">import</span> <span class="n">QuantumChannel</span>
+
+
+<div class="viewcode-block" id="QubitState">
+<a class="viewcode-back" href="../../../../reference/qns.entity.memory.html#qns.entity.memory.memory_qubit.QubitState">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">QubitState</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+    <span class="n">RAW</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Qubit is unused.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">ACTIVE</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The link layer has started a reservation on the qubit as the primary node.</span>
+<span class="sd">    `qubit.active` contains the reservation key.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">RESERVED</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Qubit is part of a reservation in link layer and a remote qubit has been found.</span>
+<span class="sd">    `qubit.active` contains the reservation key.</span>
+
+<span class="sd">    This state is set on the qubit at both primary and secondary node of the reservation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">ENTANGLED0</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Qubit is half of an elementary entanglement delivered from link layer.</span>
+<span class="sd">    `QubitEntangledEvent` has not been processed by forwarder.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">ENTANGLED1</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Qubit is half of an elementary entanglement delivered from link layer.</span>
+<span class="sd">    `QubitEntangledEvent` has been processed by forwarder.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">PURIF</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Qubit is used by forwarder for zero or more rounds of purification.</span>
+<span class="sd">    `qubit.qubit_rounds` indicates how many purification rounds have been completed.</span>
+
+<span class="sd">    This state is set on the qubit at both primary and secondary node of a purification segment,</span>
+<span class="sd">    but only the primary node is permitted to initiate purification.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">PENDING</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The forwarder has initiated purification of the qubit with its partner on a segment.</span>
+<span class="sd">    `qubit.qubit_rounds` indicates how many purification rounds have been completed, excluding the current round.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">ELIGIBLE</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Qubit has completed the required rounds of purification and ready for swapping or end-to-end consumption.</span>
+
+<span class="sd">    This state is set on the qubit only if own node has a swapping rank no less than the other node in the entanglement.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">RELEASE</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Qubit is not used by the forwarder.</span>
+<span class="sd">    The link layer may generate a new elementary entanglement into this qubit.</span>
+<span class="sd">    &quot;&quot;&quot;</span></div>
+
+
+
+<span class="n">ALLOWED_STATE_TRANSITIONS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="n">QubitState</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">QubitState</span><span class="p">,</span> <span class="o">...</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">QubitState</span><span class="o">.</span><span class="n">RAW</span><span class="p">:</span> <span class="p">(</span><span class="n">QubitState</span><span class="o">.</span><span class="n">ACTIVE</span><span class="p">,),</span>
+    <span class="n">QubitState</span><span class="o">.</span><span class="n">ACTIVE</span><span class="p">:</span> <span class="p">(</span><span class="n">QubitState</span><span class="o">.</span><span class="n">RESERVED</span><span class="p">,),</span>
+    <span class="n">QubitState</span><span class="o">.</span><span class="n">RESERVED</span><span class="p">:</span> <span class="p">(</span><span class="n">QubitState</span><span class="o">.</span><span class="n">ENTANGLED0</span><span class="p">,),</span>
+    <span class="n">QubitState</span><span class="o">.</span><span class="n">ENTANGLED0</span><span class="p">:</span> <span class="p">(</span><span class="n">QubitState</span><span class="o">.</span><span class="n">RELEASE</span><span class="p">,</span> <span class="n">QubitState</span><span class="o">.</span><span class="n">ENTANGLED1</span><span class="p">),</span>
+    <span class="n">QubitState</span><span class="o">.</span><span class="n">ENTANGLED1</span><span class="p">:</span> <span class="p">(</span><span class="n">QubitState</span><span class="o">.</span><span class="n">RELEASE</span><span class="p">,</span> <span class="n">QubitState</span><span class="o">.</span><span class="n">PURIF</span><span class="p">),</span>
+    <span class="n">QubitState</span><span class="o">.</span><span class="n">PURIF</span><span class="p">:</span> <span class="p">(</span><span class="n">QubitState</span><span class="o">.</span><span class="n">RELEASE</span><span class="p">,</span> <span class="n">QubitState</span><span class="o">.</span><span class="n">PENDING</span><span class="p">,</span> <span class="n">QubitState</span><span class="o">.</span><span class="n">ELIGIBLE</span><span class="p">),</span>
+    <span class="n">QubitState</span><span class="o">.</span><span class="n">PENDING</span><span class="p">:</span> <span class="p">(</span><span class="n">QubitState</span><span class="o">.</span><span class="n">RELEASE</span><span class="p">,</span> <span class="n">QubitState</span><span class="o">.</span><span class="n">PURIF</span><span class="p">),</span>
+    <span class="n">QubitState</span><span class="o">.</span><span class="n">ELIGIBLE</span><span class="p">:</span> <span class="p">(</span><span class="n">QubitState</span><span class="o">.</span><span class="n">RELEASE</span><span class="p">,),</span>
+    <span class="n">QubitState</span><span class="o">.</span><span class="n">RELEASE</span><span class="p">:</span> <span class="p">(</span><span class="n">QubitState</span><span class="o">.</span><span class="n">RAW</span><span class="p">,),</span>
+<span class="p">}</span>
+
+
+<div class="viewcode-block" id="PathDirection">
+<a class="viewcode-back" href="../../../../reference/qns.entity.memory.html#qns.entity.memory.memory_qubit.PathDirection">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PathDirection</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+    <span class="n">LEFT</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">RIGHT</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="MemoryQubit">
+<a class="viewcode-back" href="../../../../reference/qns.entity.memory.html#qns.entity.memory.memory_qubit.MemoryQubit">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">MemoryQubit</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;An addressable qubit in memory, with a lifecycle.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">addr</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Args:</span>
+<span class="sd">        addr (int): address of this qubit in memory</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addr</span> <span class="o">=</span> <span class="n">addr</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Address index in QuantumMemory.&quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">qchannel</span><span class="p">:</span> <span class="s2">&quot;QuantumChannel|None&quot;</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;qchannel to which qubit is assigned to (currently only at topology creation time)&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">path_id</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Optional path ID to which qubit is allocated&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">path_direction</span><span class="p">:</span> <span class="n">PathDirection</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Optional end of the path to which the allocated qubit points to (weak solution to avoid loops)&quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="n">QubitState</span><span class="o">.</span><span class="n">RAW</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;state of the qubit according to the FSM&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">active</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reservation key if qubit is reserved for entanglement, None otherwise&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">purif_rounds</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Number of purification rounds currently completed by the EPR stored on this qubit&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="MemoryQubit.assign">
+<a class="viewcode-back" href="../../../../reference/qns.entity.memory.html#qns.entity.memory.memory_qubit.MemoryQubit.assign">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">assign</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ch</span><span class="p">:</span> <span class="s2">&quot;QuantumChannel&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">qchannel</span> <span class="o">=</span> <span class="n">ch</span></div>
+
+
+<div class="viewcode-block" id="MemoryQubit.unassign">
+<a class="viewcode-back" href="../../../../reference/qns.entity.memory.html#qns.entity.memory.memory_qubit.MemoryQubit.unassign">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">unassign</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">qchannel</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="MemoryQubit.allocate">
+<a class="viewcode-back" href="../../../../reference/qns.entity.memory.html#qns.entity.memory.memory_qubit.MemoryQubit.allocate">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">allocate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">path_direction</span><span class="p">:</span> <span class="n">PathDirection</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">path_id</span> <span class="o">=</span> <span class="n">path_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">path_direction</span> <span class="o">=</span> <span class="n">path_direction</span></div>
+
+
+<div class="viewcode-block" id="MemoryQubit.deallocate">
+<a class="viewcode-back" href="../../../../reference/qns.entity.memory.html#qns.entity.memory.memory_qubit.MemoryQubit.deallocate">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">deallocate</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">path_id</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">path_direction</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">state</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QubitState</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span>
+
+    <span class="nd">@state</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">QubitState</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ALLOWED_STATE_TRANSITIONS</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;MemoryQubit: unexpected state transition from &lt;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="si">}</span><span class="s2">&gt; to &lt;</span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">&gt;; </span><span class="si">{</span><span class="bp">self</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="n">value</span>
+
+<div class="viewcode-block" id="MemoryQubit.reset_state">
+<a class="viewcode-back" href="../../../../reference/qns.entity.memory.html#qns.entity.memory.memory_qubit.MemoryQubit.reset_state">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">reset_state</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reset state to RAW and clear associated fields.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="n">QubitState</span><span class="o">.</span><span class="n">RAW</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">active</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">purif_rounds</span> <span class="o">=</span> <span class="mi">0</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&lt;memory qubit </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">addr</span><span class="si">}</span><span class="s2">, ch=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">qchannel</span><span class="si">}</span><span class="s2">, path_id=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">path_id</span><span class="si">}</span><span class="s2">, &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;active=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">active</span><span class="si">}</span><span class="s2">, purif_rounds=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">purif_rounds</span><span class="si">}</span><span class="s2">, state=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="si">}</span><span class="s2">&gt;&quot;</span>
+        <span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Amar Abane.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

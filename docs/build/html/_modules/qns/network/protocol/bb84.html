@@ -1,0 +1,958 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>qns.network.protocol.bb84 &mdash; MQNS 0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=2709fde1"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            MQNS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../reference/modules.html">qns</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">MQNS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">qns.network.protocol.bb84</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for qns.network.protocol.bb84</h1><div class="highlight"><pre>
+<span></span><span class="c1">#    SimQN: a discrete-event simulator for the quantum networks</span>
+<span class="c1">#    Copyright (C) 2021-2022 Lutong Chen, Jian Li, Kaiping Xue</span>
+<span class="c1">#    University of Science and Technology of China, USTC.</span>
+<span class="c1">#</span>
+<span class="c1">#    This program is free software: you can redistribute it and/or modify</span>
+<span class="c1">#    it under the terms of the GNU General Public License as published by</span>
+<span class="c1">#    the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c1">#    (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1">#    This program is distributed in the hope that it will be useful,</span>
+<span class="c1">#    but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1">#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1">#    GNU General Public License for more details.</span>
+<span class="c1">#</span>
+<span class="c1">#    You should have received a copy of the GNU General Public License</span>
+<span class="c1">#    along with this program.  If not, see &lt;https://www.gnu.org/licenses/&gt;.</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">hashlib</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">random</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.entity.cchannel</span><span class="w"> </span><span class="kn">import</span> <span class="n">ClassicChannel</span><span class="p">,</span> <span class="n">ClassicPacket</span><span class="p">,</span> <span class="n">RecvClassicPacket</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.entity.node</span><span class="w"> </span><span class="kn">import</span> <span class="n">Application</span><span class="p">,</span> <span class="n">Node</span><span class="p">,</span> <span class="n">QNode</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.entity.qchannel</span><span class="w"> </span><span class="kn">import</span> <span class="n">QuantumChannel</span><span class="p">,</span> <span class="n">RecvQubitPacket</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.models.qubit</span><span class="w"> </span><span class="kn">import</span> <span class="n">Qubit</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.models.qubit.const</span><span class="w"> </span><span class="kn">import</span> <span class="n">BASIS_X</span><span class="p">,</span> <span class="n">BASIS_Z</span><span class="p">,</span> <span class="n">QUBIT_STATE_0</span><span class="p">,</span> <span class="n">QUBIT_STATE_1</span><span class="p">,</span> <span class="n">QUBIT_STATE_N</span><span class="p">,</span> <span class="n">QUBIT_STATE_P</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.simulator</span><span class="w"> </span><span class="kn">import</span> <span class="n">Simulator</span><span class="p">,</span> <span class="n">func_to_event</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.utils.rnd</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_choice</span><span class="p">,</span> <span class="n">get_rand</span>
+
+
+<div class="viewcode-block" id="QubitWithError">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.protocol.bb84.QubitWithError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">QubitWithError</span><span class="p">(</span><span class="n">Qubit</span><span class="p">):</span>
+<div class="viewcode-block" id="QubitWithError.transfer_error_model">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.protocol.bb84.QubitWithError.transfer_error_model">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">transfer_error_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">length</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">decoherence_rate</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">lkm</span> <span class="o">=</span> <span class="n">length</span> <span class="o">/</span> <span class="mi">1000</span>
+        <span class="n">standand_lkm</span> <span class="o">=</span> <span class="mf">50.0</span>
+        <span class="n">theta</span> <span class="o">=</span> <span class="n">get_rand</span><span class="p">()</span> <span class="o">*</span> <span class="n">lkm</span> <span class="o">/</span> <span class="n">standand_lkm</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mi">4</span>
+        <span class="n">operation</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">theta</span><span class="p">),</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">theta</span><span class="p">)],</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">theta</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">theta</span><span class="p">)]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">complex128</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">operate</span><span class="p">(</span><span class="n">operator</span><span class="o">=</span><span class="n">operation</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="BB84SendApp">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.protocol.bb84.BB84SendApp">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">BB84SendApp</span><span class="p">(</span><span class="n">Application</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">dest</span><span class="p">:</span> <span class="n">QNode</span><span class="p">,</span>
+        <span class="n">qchannel</span><span class="p">:</span> <span class="n">QuantumChannel</span><span class="p">,</span>
+        <span class="n">cchannel</span><span class="p">:</span> <span class="n">ClassicChannel</span><span class="p">,</span>
+        <span class="n">send_rate</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
+        <span class="n">min_length_for_post_processing</span><span class="o">=</span><span class="mi">5000</span><span class="p">,</span>
+        <span class="n">proportion_for_estimating_error</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span>
+        <span class="n">max_cascade_round</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+        <span class="n">cascade_alpha</span><span class="o">=</span><span class="mf">0.73</span><span class="p">,</span>
+        <span class="n">cascade_beita</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="n">init_lower_cascade_key_block_size</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+        <span class="n">init_upper_cascade_key_block_size</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+        <span class="n">security</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Args:</span>
+<span class="sd">        dest: QNode.</span>
+<span class="sd">        qchannel: QuantumChannel.</span>
+<span class="sd">        cchannel: ClassicChannel.</span>
+<span class="sd">        send_rate: the sending rate of qubit.</span>
+<span class="sd">        min_length_for_post_processing: threshold to trigger post-processing.</span>
+<span class="sd">        proportion_for_estimating_error: what proportion of bits are used for error estimating.</span>
+<span class="sd">        max_cascade_round: how many rounds of cascade need to be executed.</span>
+<span class="sd">        cascade_alpha: init_cascade_size = cascade_alpha / error_rate.</span>
+<span class="sd">        cascade_beita: next_cascade_size = init_cascade_size * 2.</span>
+<span class="sd">        init_lower_cascade_key_block_size: lower bound of init_cascade_size.</span>
+<span class="sd">        init_upper_cascade_key_block_size: upper bound of init_cascade_size.</span>
+<span class="sd">        security: parameter for privacy amplification.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dest</span> <span class="o">=</span> <span class="n">dest</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">qchannel</span> <span class="o">=</span> <span class="n">qchannel</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cchannel</span> <span class="o">=</span> <span class="n">cchannel</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">send_rate</span> <span class="o">=</span> <span class="n">send_rate</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">qubit_list</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">basis_list</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">measure_list</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">succ_key_pool</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fail_number</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c1"># variable used in cascade and error estimate</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">min_length_for_post_processing</span> <span class="o">=</span> <span class="n">min_length_for_post_processing</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">proportion_for_estimating_error</span> <span class="o">=</span> <span class="n">proportion_for_estimating_error</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_cascade_round</span> <span class="o">=</span> <span class="n">max_cascade_round</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cascade_alpha</span> <span class="o">=</span> <span class="n">cascade_alpha</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cascade_beita</span> <span class="o">=</span> <span class="n">cascade_beita</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">init_lower_cascade_key_block_size</span> <span class="o">=</span> <span class="n">init_lower_cascade_key_block_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">init_upper_cascade_key_block_size</span> <span class="o">=</span> <span class="n">init_upper_cascade_key_block_size</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">using_post_processing</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cur_error_rate</span> <span class="o">=</span> <span class="mf">1e-6</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cur_cascade_round</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cur_cascade_key_block_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_lower_cascade_key_block_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cascade_key</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># variable used in privacy amplification</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">security</span> <span class="o">=</span> <span class="n">security</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">bit_leak</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">successful_key</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_handler</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">handleClassicPacket</span><span class="p">,</span> <span class="n">RecvClassicPacket</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">cchannel</span><span class="p">])</span>
+
+<div class="viewcode-block" id="BB84SendApp.install">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.protocol.bb84.BB84SendApp.install">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">install</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">Node</span><span class="p">,</span> <span class="n">simulator</span><span class="p">:</span> <span class="n">Simulator</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">QNode</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">install</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">simulator</span><span class="p">)</span>
+
+        <span class="n">time_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">time_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">simulator</span><span class="o">.</span><span class="n">ts</span><span class="p">)</span>
+
+        <span class="n">t</span> <span class="o">=</span> <span class="n">simulator</span><span class="o">.</span><span class="n">ts</span>
+        <span class="n">event</span> <span class="o">=</span> <span class="n">func_to_event</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_qubit</span><span class="p">,</span> <span class="n">by</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">simulator</span><span class="o">.</span><span class="n">add_event</span><span class="p">(</span><span class="n">event</span><span class="p">)</span></div>
+
+        <span class="c1"># while t &lt;= simulator.te:</span>
+        <span class="c1">#     time_list.append(t)</span>
+        <span class="c1">#     t = t + simulator.time(sec = 1 / self.send_rate)</span>
+
+        <span class="c1">#     event = func_to_event(t, self.send_qubit)</span>
+        <span class="c1">#     self._simulator.add_event(event)</span>
+
+<div class="viewcode-block" id="BB84SendApp.handleClassicPacket">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.protocol.bb84.BB84SendApp.handleClassicPacket">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">handleClassicPacket</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">:</span> <span class="n">RecvClassicPacket</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">check_basis</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+            <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">recv_error_estimate_packet</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+            <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">recv_cascade_ask_packet</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+            <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">recv_check_error_ask_packet</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+            <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">recv_privacy_amplification_ask_packet</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="BB84SendApp.check_basis">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.protocol.bb84.BB84SendApp.check_basis">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">check_basis</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">:</span> <span class="n">RecvClassicPacket</span><span class="p">):</span>
+        <span class="n">packet</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">packet</span>
+        <span class="n">msg</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="n">packet</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+        <span class="n">packet_class</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;packet_class&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">packet_class</span> <span class="o">!=</span> <span class="s2">&quot;check_basis&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="nb">id</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">)</span>
+        <span class="n">basis_dest</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;basis&quot;</span><span class="p">)</span>
+
+        <span class="c1"># qubit = self.qubit_list[id]</span>
+        <span class="n">basis_src</span> <span class="o">=</span> <span class="s2">&quot;Z&quot;</span> <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">basis_list</span><span class="p">[</span><span class="nb">id</span><span class="p">]</span> <span class="o">==</span> <span class="n">BASIS_Z</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span> <span class="k">else</span> <span class="s2">&quot;X&quot;</span>
+
+        <span class="k">if</span> <span class="n">basis_dest</span> <span class="o">==</span> <span class="n">basis_src</span><span class="p">:</span>
+            <span class="c1"># log.info(f&quot;[{self._simulator.current_time}] src check {id} basis succ&quot;)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">succ_key_pool</span><span class="p">[</span><span class="nb">id</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">measure_list</span><span class="p">[</span><span class="nb">id</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># log.info(f&quot;[{self._simulator.current_time}] src check {id} basis fail&quot;)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fail_number</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="n">packet</span> <span class="o">=</span> <span class="n">ClassicPacket</span><span class="p">(</span>
+            <span class="n">msg</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;packet_class&quot;</span><span class="p">:</span> <span class="s2">&quot;check_basis&quot;</span><span class="p">,</span> <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="nb">id</span><span class="p">,</span> <span class="s2">&quot;basis&quot;</span><span class="p">:</span> <span class="n">basis_src</span><span class="p">,</span> <span class="s2">&quot;ret&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">measure_list</span><span class="p">[</span><span class="nb">id</span><span class="p">]},</span>
+            <span class="n">src</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_node</span><span class="p">,</span>
+            <span class="n">dest</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dest</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cchannel</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">packet</span><span class="p">,</span> <span class="n">next_hop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dest</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="BB84SendApp.send_qubit">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.protocol.bb84.BB84SendApp.send_qubit">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">send_qubit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">simulator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">simulator</span>
+
+        <span class="c1"># randomly generate a qubit</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="n">get_choice</span><span class="p">([</span><span class="n">QUBIT_STATE_0</span><span class="p">,</span> <span class="n">QUBIT_STATE_1</span><span class="p">,</span> <span class="n">QUBIT_STATE_P</span><span class="p">,</span> <span class="n">QUBIT_STATE_N</span><span class="p">])</span>
+        <span class="n">qubit</span> <span class="o">=</span> <span class="n">QubitWithError</span><span class="p">(</span><span class="n">state</span><span class="o">=</span><span class="n">state</span><span class="p">)</span>
+        <span class="n">basis</span> <span class="o">=</span> <span class="n">BASIS_Z</span> <span class="k">if</span> <span class="p">(</span><span class="n">state</span> <span class="o">==</span> <span class="n">QUBIT_STATE_0</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span> <span class="ow">or</span> <span class="p">(</span><span class="n">state</span> <span class="o">==</span> <span class="n">QUBIT_STATE_1</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span> <span class="k">else</span> <span class="n">BASIS_X</span>
+        <span class="c1"># basis_msg = &quot;Z&quot; if (basis == BASIS_Z).all() else &quot;X&quot;</span>
+
+        <span class="n">ret</span> <span class="o">=</span> <span class="mi">0</span> <span class="k">if</span> <span class="p">(</span><span class="n">state</span> <span class="o">==</span> <span class="n">QUBIT_STATE_0</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span> <span class="ow">or</span> <span class="p">(</span><span class="n">state</span> <span class="o">==</span> <span class="n">QUBIT_STATE_P</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span> <span class="k">else</span> <span class="mi">1</span>
+
+        <span class="n">qubit</span><span class="o">.</span><span class="n">id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">count</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">qubit_list</span><span class="p">[</span><span class="n">qubit</span><span class="o">.</span><span class="n">id</span><span class="p">]</span> <span class="o">=</span> <span class="n">qubit</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">basis_list</span><span class="p">[</span><span class="n">qubit</span><span class="o">.</span><span class="n">id</span><span class="p">]</span> <span class="o">=</span> <span class="n">basis</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">measure_list</span><span class="p">[</span><span class="n">qubit</span><span class="o">.</span><span class="n">id</span><span class="p">]</span> <span class="o">=</span> <span class="n">ret</span>
+
+        <span class="c1"># log.info(f&quot;[{self._simulator.current_time}] send qubit {qubit.id},\</span>
+        <span class="c1">#  basis: {basis_msg} , ret: {ret}&quot;)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">qchannel</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">qubit</span><span class="o">=</span><span class="n">qubit</span><span class="p">,</span> <span class="n">next_hop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dest</span><span class="p">)</span>
+
+        <span class="n">t</span> <span class="o">=</span> <span class="n">simulator</span><span class="o">.</span><span class="n">tc</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_rate</span>
+        <span class="n">event</span> <span class="o">=</span> <span class="n">func_to_event</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_qubit</span><span class="p">,</span> <span class="n">by</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">simulator</span><span class="o">.</span><span class="n">add_event</span><span class="p">(</span><span class="n">event</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="BB84SendApp.recv_error_estimate_packet">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.protocol.bb84.BB84SendApp.recv_error_estimate_packet">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">recv_error_estimate_packet</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">:</span> <span class="n">RecvClassicPacket</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;BB84SendApp recv error estimate packet,and send error_estimate_reply packet.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            event:the error estimate packet.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">packet</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">packet</span>
+        <span class="n">msg</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="n">packet</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+        <span class="n">packet_class</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;packet_class&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">packet_class</span> <span class="o">!=</span> <span class="s2">&quot;error_estimate&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">using_post_processing</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cur_error_rate</span> <span class="o">=</span> <span class="mf">1e-6</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cur_cascade_round</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cur_cascade_key_block_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_lower_cascade_key_block_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cascade_key</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bit_leak</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c1"># get some recvapp error estimate info</span>
+        <span class="n">recv_app_bit_for_estimate</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;bit_for_estimate&quot;</span><span class="p">)</span>
+        <span class="n">recv_app_bit_index_for_estimate</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;bit_index_for_estimate&quot;</span><span class="p">)</span>
+        <span class="n">recv_app_bit_index_for_cascade</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;bit_index_for_cascade&quot;</span><span class="p">)</span>
+        <span class="n">keys</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">succ_key_pool</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+        <span class="n">error_in_estimate</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">real_bit_length_for_estimate</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">real_bit_index_for_cascade</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># get cascade_key and count errors</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
+            <span class="n">item_temp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">succ_key_pool</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">recv_app_bit_index_for_estimate</span><span class="p">:</span>
+                <span class="c1"># find a bit to estimate error</span>
+                <span class="n">bit_index</span> <span class="o">=</span> <span class="n">recv_app_bit_index_for_estimate</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">item_temp</span> <span class="o">==</span> <span class="n">recv_app_bit_for_estimate</span><span class="p">[</span><span class="n">bit_index</span><span class="p">]:</span>
+                    <span class="n">real_bit_length_for_estimate</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">real_bit_length_for_estimate</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="n">error_in_estimate</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">elif</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">recv_app_bit_index_for_cascade</span><span class="p">:</span>
+                <span class="c1"># find a bit for cascade</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cascade_key</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item_temp</span><span class="p">)</span>
+                <span class="n">real_bit_index_for_cascade</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+
+        <span class="c1"># error estimate and set key block size in round1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cur_error_rate</span> <span class="o">=</span> <span class="n">error_in_estimate</span> <span class="o">/</span> <span class="n">real_bit_length_for_estimate</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cur_error_rate</span> <span class="o">&lt;=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cascade_alpha</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_upper_cascade_key_block_size</span><span class="p">):</span>
+            <span class="c1"># error rate is smaller than threshold</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cur_cascade_key_block_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_upper_cascade_key_block_size</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">cur_error_rate</span> <span class="o">&gt;=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cascade_alpha</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_lower_cascade_key_block_size</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cur_cascade_key_block_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_lower_cascade_key_block_size</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cur_cascade_key_block_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cascade_alpha</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">cur_error_rate</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">cur_cascade_round</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="c1"># send error_estimate_reply packet</span>
+        <span class="n">packet</span> <span class="o">=</span> <span class="n">ClassicPacket</span><span class="p">(</span>
+            <span class="n">msg</span><span class="o">=</span><span class="p">{</span>
+                <span class="s2">&quot;packet_class&quot;</span><span class="p">:</span> <span class="s2">&quot;error_estimate_reply&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;error_rate&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">cur_error_rate</span><span class="p">,</span>
+                <span class="s2">&quot;real_bit_index_for_cascade&quot;</span><span class="p">:</span> <span class="n">real_bit_index_for_cascade</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="n">src</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_node</span><span class="p">,</span>
+            <span class="n">dest</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dest</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cchannel</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">packet</span><span class="p">,</span> <span class="n">next_hop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dest</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="BB84SendApp.recv_cascade_ask_packet">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.protocol.bb84.BB84SendApp.recv_cascade_ask_packet">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">recv_cascade_ask_packet</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">:</span> <span class="n">RecvClassicPacket</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;BB84SendApp recv cascade_ask packet,calculate the parity value of the corresponding block,</span>
+<span class="sd">        and send cascade_reply packet.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            event:the cascade_ask packet.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">packet</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">packet</span>
+        <span class="n">msg</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="n">packet</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+        <span class="n">packet_class</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;packet_class&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">packet_class</span> <span class="o">!=</span> <span class="s2">&quot;cascade_ask&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># get cascade_ask info</span>
+        <span class="n">parity_request</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;parity_request&quot;</span><span class="p">)</span>
+        <span class="n">round_change_flag</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;round_change_flag&quot;</span><span class="p">)</span>
+        <span class="n">shuffle_index</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;shuffle_index&quot;</span><span class="p">)</span>
+
+        <span class="c1"># cascade round change and shuffle cascade keys</span>
+        <span class="k">if</span> <span class="n">round_change_flag</span> <span class="ow">is</span> <span class="kc">True</span> <span class="ow">and</span> <span class="n">shuffle_index</span> <span class="o">!=</span> <span class="p">[]:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cur_cascade_key_block_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cur_cascade_key_block_size</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">cascade_beita</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cur_cascade_round</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cascade_key</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">cascade_key</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">shuffle_index</span><span class="p">]</span>
+
+        <span class="n">parity_answer</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">key_interval</span> <span class="ow">in</span> <span class="n">parity_request</span><span class="p">:</span>
+            <span class="n">temp_parity</span> <span class="o">=</span> <span class="n">cascade_parity</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cascade_key</span><span class="p">[</span><span class="n">key_interval</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="p">:</span> <span class="n">key_interval</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">])</span>
+            <span class="n">parity_answer</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">temp_parity</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">bit_leak</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">parity_answer</span><span class="p">)</span>
+
+        <span class="c1"># send cascade_reply packet</span>
+        <span class="n">packet</span> <span class="o">=</span> <span class="n">ClassicPacket</span><span class="p">(</span>
+            <span class="n">msg</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;packet_class&quot;</span><span class="p">:</span> <span class="s2">&quot;cascade_reply&quot;</span><span class="p">,</span> <span class="s2">&quot;parity_answer&quot;</span><span class="p">:</span> <span class="n">parity_answer</span><span class="p">},</span> <span class="n">src</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_node</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dest</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cchannel</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">packet</span><span class="p">,</span> <span class="n">next_hop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dest</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="BB84SendApp.recv_check_error_ask_packet">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.protocol.bb84.BB84SendApp.recv_check_error_ask_packet">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">recv_check_error_ask_packet</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">:</span> <span class="n">RecvClassicPacket</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;BB84SendApp recv check_error_ask packet,check error,and send check_error_reply packet.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            event:the check_error_ask packet.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">packet</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">packet</span>
+        <span class="n">msg</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="n">packet</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+        <span class="n">packet_class</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;packet_class&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">packet_class</span> <span class="o">!=</span> <span class="s2">&quot;check_error_ask&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="n">recv_hash_key</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hash_key&quot;</span><span class="p">)</span>
+        <span class="n">hash_key</span> <span class="o">=</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha512</span><span class="p">(</span><span class="nb">bytearray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cascade_key</span><span class="p">))</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">hash_key</span> <span class="o">!=</span> <span class="n">recv_hash_key</span><span class="p">:</span>
+            <span class="c1"># cascade fail</span>
+            <span class="n">pa_flag</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">packet</span> <span class="o">=</span> <span class="n">ClassicPacket</span><span class="p">(</span>
+                <span class="n">msg</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;packet_class&quot;</span><span class="p">:</span> <span class="s2">&quot;check_error_reply&quot;</span><span class="p">,</span> <span class="s2">&quot;pa_flag&quot;</span><span class="p">:</span> <span class="n">pa_flag</span><span class="p">},</span> <span class="n">src</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_node</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dest</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># cascade succeed</span>
+            <span class="n">pa_flag</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">packet</span> <span class="o">=</span> <span class="n">ClassicPacket</span><span class="p">(</span>
+                <span class="n">msg</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;packet_class&quot;</span><span class="p">:</span> <span class="s2">&quot;check_error_reply&quot;</span><span class="p">,</span> <span class="s2">&quot;pa_flag&quot;</span><span class="p">:</span> <span class="n">pa_flag</span><span class="p">},</span> <span class="n">src</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_node</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dest</span>
+            <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cchannel</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">packet</span><span class="p">,</span> <span class="n">next_hop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dest</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="BB84SendApp.recv_privacy_amplification_ask_packet">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.protocol.bb84.BB84SendApp.recv_privacy_amplification_ask_packet">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">recv_privacy_amplification_ask_packet</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">:</span> <span class="n">RecvClassicPacket</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;BB84SendApp recv privacy_amplification_ask packet,perform privacy amplification.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            event:the privacy_amplification_ask packet.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">packet</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">packet</span>
+        <span class="n">msg</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="n">packet</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+        <span class="n">packet_class</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;packet_class&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">packet_class</span> <span class="o">!=</span> <span class="s2">&quot;privacy_amplification_ask&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="n">pa_flag</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pa_flag&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">pa_flag</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="c1"># Alice&#39;s privacy amplification operation</span>
+            <span class="n">first_row</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;first_row&quot;</span><span class="p">)</span>
+            <span class="n">first_col</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;first_col&quot;</span><span class="p">)</span>
+            <span class="n">matrix_row</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">first_row</span><span class="p">)</span>
+            <span class="n">matrix_col</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">first_col</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+            <span class="n">toeplitz_matrix</span> <span class="o">=</span> <span class="n">pa_generate_toeplitz_matrix</span><span class="p">(</span><span class="n">matrix_row</span><span class="p">,</span> <span class="n">matrix_col</span><span class="p">,</span> <span class="n">first_row</span><span class="p">,</span> <span class="n">first_col</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">successful_key</span> <span class="o">+=</span> <span class="nb">list</span><span class="p">(</span><span class="n">pa_randomize_key</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cascade_key</span><span class="p">,</span> <span class="n">toeplitz_matrix</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">using_post_processing</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="c1"># validation output</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="BB84RecvApp">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.protocol.bb84.BB84RecvApp">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">BB84RecvApp</span><span class="p">(</span><span class="n">Application</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">src</span><span class="p">:</span> <span class="n">QNode</span><span class="p">,</span>
+        <span class="n">qchannel</span><span class="p">:</span> <span class="n">QuantumChannel</span><span class="p">,</span>
+        <span class="n">cchannel</span><span class="p">:</span> <span class="n">ClassicChannel</span><span class="p">,</span>
+        <span class="n">min_length_for_post_processing</span><span class="o">=</span><span class="mi">5000</span><span class="p">,</span>
+        <span class="n">proportion_for_estimating_error</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span>
+        <span class="n">max_cascade_round</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+        <span class="n">cascade_alpha</span><span class="o">=</span><span class="mf">0.73</span><span class="p">,</span>
+        <span class="n">cascade_beita</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="n">init_lower_cascade_key_block_size</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+        <span class="n">init_upper_cascade_key_block_size</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+        <span class="n">security</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Args:</span>
+<span class="sd">        src: QNode.</span>
+<span class="sd">        qchannel: QuantumChannel.</span>
+<span class="sd">        cchannel: ClassicChannel.</span>
+<span class="sd">        send_rate: the sending rate of qubit.</span>
+<span class="sd">        min_length_for_post_processing: threshold to trigger post-processing.</span>
+<span class="sd">        proportion_for_estimating_error: what proportion of bits are used for error estimating.</span>
+<span class="sd">        max_cascade_round: how many rounds of cascade need to be executed.</span>
+<span class="sd">        cascade_alpha: init_cascade_size = cascade_alpha / error_rate.</span>
+<span class="sd">        cascade_beita: next_cascade_size = init_cascade_size * 2.</span>
+<span class="sd">        init_lower_cascade_key_block_size: lower bound of init_cascade_size.</span>
+<span class="sd">        init_upper_cascade_key_block_size: upper bound of init_cascade_size.</span>
+<span class="sd">        security: parameter for privacy amplification.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">src</span> <span class="o">=</span> <span class="n">src</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">qchannel</span> <span class="o">=</span> <span class="n">qchannel</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cchannel</span> <span class="o">=</span> <span class="n">cchannel</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">qubit_list</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">basis_list</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">measure_list</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">succ_key_pool</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fail_number</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c1"># variable used in cascade and error estimate</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">min_length_for_post_processing</span> <span class="o">=</span> <span class="n">min_length_for_post_processing</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">proportion_for_estimating_error</span> <span class="o">=</span> <span class="n">proportion_for_estimating_error</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_cascade_round</span> <span class="o">=</span> <span class="n">max_cascade_round</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cascade_alpha</span> <span class="o">=</span> <span class="n">cascade_alpha</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cascade_beita</span> <span class="o">=</span> <span class="n">cascade_beita</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">init_lower_cascade_key_block_size</span> <span class="o">=</span> <span class="n">init_lower_cascade_key_block_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">init_upper_cascade_key_block_size</span> <span class="o">=</span> <span class="n">init_upper_cascade_key_block_size</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">using_post_processing</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cur_error_rate</span> <span class="o">=</span> <span class="mf">1e-6</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cur_cascade_round</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cur_cascade_key_block_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_lower_cascade_key_block_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">post_processing_key</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cascade_key</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cascade_binary_set</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># variable used in privacy amplification</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">security</span> <span class="o">=</span> <span class="n">security</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">bit_leak</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">successful_key</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_handler</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">handleQuantumPacket</span><span class="p">,</span> <span class="n">RecvQubitPacket</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">qchannel</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_handler</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">handleClassicPacket</span><span class="p">,</span> <span class="n">RecvClassicPacket</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">cchannel</span><span class="p">])</span>
+
+<div class="viewcode-block" id="BB84RecvApp.handleQuantumPacket">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.protocol.bb84.BB84RecvApp.handleQuantumPacket">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">handleQuantumPacket</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">:</span> <span class="n">RecvQubitPacket</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="n">event</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="BB84RecvApp.handleClassicPacket">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.protocol.bb84.BB84RecvApp.handleClassicPacket">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">handleClassicPacket</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">:</span> <span class="n">RecvClassicPacket</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">check_basis</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+            <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">recv_error_estimate_reply_packet</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+            <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">recv_cascade_reply_packet</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+            <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">recv_check_error_reply_packet</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="BB84RecvApp.check_basis">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.protocol.bb84.BB84RecvApp.check_basis">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">check_basis</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">:</span> <span class="n">RecvClassicPacket</span><span class="p">):</span>
+        <span class="n">packet</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">packet</span>
+        <span class="n">msg</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="n">packet</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+        <span class="n">packet_class</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;packet_class&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">packet_class</span> <span class="o">!=</span> <span class="s2">&quot;check_basis&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="nb">id</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">)</span>
+        <span class="n">basis_src</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;basis&quot;</span><span class="p">)</span>
+
+        <span class="c1"># qubit = self.qubit_list[id]</span>
+        <span class="n">basis_dest</span> <span class="o">=</span> <span class="s2">&quot;Z&quot;</span> <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">basis_list</span><span class="p">[</span><span class="nb">id</span><span class="p">]</span> <span class="o">==</span> <span class="n">BASIS_Z</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span> <span class="k">else</span> <span class="s2">&quot;X&quot;</span>
+
+        <span class="n">ret_dest</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">measure_list</span><span class="p">[</span><span class="nb">id</span><span class="p">]</span>
+        <span class="n">ret_src</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ret&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">basis_dest</span> <span class="o">==</span> <span class="n">basis_src</span> <span class="ow">and</span> <span class="n">ret_dest</span> <span class="o">==</span> <span class="n">ret_src</span><span class="p">:</span>
+            <span class="c1"># log.info(f&quot;[{self._simulator.current_time}] dest check {id} basis succ&quot;)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">succ_key_pool</span><span class="p">[</span><span class="nb">id</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">measure_list</span><span class="p">[</span><span class="nb">id</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># log.info(f&quot;[{self._simulator.current_time}] dest check {id} basis fail&quot;)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fail_number</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">using_post_processing</span> <span class="ow">is</span> <span class="kc">False</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">succ_key_pool</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_length_for_post_processing</span><span class="p">:</span>
+            <span class="c1"># enough raw key to start cascade</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">send_error_estimate_packet</span><span class="p">()</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="BB84RecvApp.recv">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.protocol.bb84.BB84RecvApp.recv">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">recv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">:</span> <span class="n">RecvQubitPacket</span><span class="p">):</span>
+        <span class="n">qubit</span><span class="p">:</span> <span class="n">Qubit</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">qubit</span>
+        <span class="c1"># randomly choose X,Z basis</span>
+        <span class="n">basis</span> <span class="o">=</span> <span class="n">get_choice</span><span class="p">([</span><span class="n">BASIS_Z</span><span class="p">,</span> <span class="n">BASIS_X</span><span class="p">])</span>
+        <span class="n">basis_msg</span> <span class="o">=</span> <span class="s2">&quot;Z&quot;</span> <span class="k">if</span> <span class="p">(</span><span class="n">basis</span> <span class="o">==</span> <span class="n">BASIS_Z</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span> <span class="k">else</span> <span class="s2">&quot;X&quot;</span>
+        <span class="n">ret</span> <span class="o">=</span> <span class="n">qubit</span><span class="o">.</span><span class="n">measureZ</span><span class="p">()</span> <span class="k">if</span> <span class="p">(</span><span class="n">basis</span> <span class="o">==</span> <span class="n">BASIS_Z</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span> <span class="k">else</span> <span class="n">qubit</span><span class="o">.</span><span class="n">measureX</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">qubit_list</span><span class="p">[</span><span class="n">qubit</span><span class="o">.</span><span class="n">id</span><span class="p">]</span> <span class="o">=</span> <span class="n">qubit</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">basis_list</span><span class="p">[</span><span class="n">qubit</span><span class="o">.</span><span class="n">id</span><span class="p">]</span> <span class="o">=</span> <span class="n">basis</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">measure_list</span><span class="p">[</span><span class="n">qubit</span><span class="o">.</span><span class="n">id</span><span class="p">]</span> <span class="o">=</span> <span class="n">ret</span>
+
+        <span class="c1"># log.info(f&quot;[{self._simulator.current_time}] recv qubit {qubit.id}, \</span>
+        <span class="c1"># basis: {basis_msg}, ret: {ret}&quot;)</span>
+        <span class="n">packet</span> <span class="o">=</span> <span class="n">ClassicPacket</span><span class="p">(</span>
+            <span class="n">msg</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;packet_class&quot;</span><span class="p">:</span> <span class="s2">&quot;check_basis&quot;</span><span class="p">,</span> <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">qubit</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s2">&quot;basis&quot;</span><span class="p">:</span> <span class="n">basis_msg</span><span class="p">},</span> <span class="n">src</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_node</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">src</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cchannel</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">packet</span><span class="p">,</span> <span class="n">next_hop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">src</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="BB84RecvApp.send_error_estimate_packet">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.protocol.bb84.BB84RecvApp.send_error_estimate_packet">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">send_error_estimate_packet</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;BB84Recvapp send error estimate ask packet.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">using_post_processing</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cur_cascade_round</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cur_error_rate</span> <span class="o">=</span> <span class="mf">1e-6</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cur_cascade_key_block_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_lower_cascade_key_block_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cascade_key</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">post_processing_key</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cascade_binary_set</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bit_leak</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c1"># info to send</span>
+        <span class="n">bit_for_estimate</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># []</span>
+        <span class="n">bits_len_for_cascade</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">succ_key_pool</span><span class="p">)</span>
+        <span class="n">keys</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">succ_key_pool</span><span class="o">.</span><span class="n">keys</span><span class="p">())[</span><span class="mi">0</span><span class="p">:</span><span class="n">bits_len_for_cascade</span><span class="p">]</span>
+
+        <span class="c1"># remove uesd raw key and update cascade_key &amp;&amp; bit_for_estimate</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
+            <span class="n">item_temp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">succ_key_pool</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">proportion_for_estimating_error</span><span class="p">:</span>
+                <span class="n">bit_for_estimate</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">item_temp</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">post_processing_key</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">item_temp</span>
+
+        <span class="c1"># send error_estimate packet</span>
+        <span class="n">packet</span> <span class="o">=</span> <span class="n">ClassicPacket</span><span class="p">(</span>
+            <span class="n">msg</span><span class="o">=</span><span class="p">{</span>
+                <span class="s2">&quot;packet_class&quot;</span><span class="p">:</span> <span class="s2">&quot;error_estimate&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;bit_index_for_estimate&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">bit_for_estimate</span><span class="o">.</span><span class="n">keys</span><span class="p">()),</span>
+                <span class="s2">&quot;bit_for_estimate&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">bit_for_estimate</span><span class="o">.</span><span class="n">values</span><span class="p">()),</span>
+                <span class="s2">&quot;bit_index_for_cascade&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">post_processing_key</span><span class="o">.</span><span class="n">keys</span><span class="p">()),</span>
+            <span class="p">},</span>
+            <span class="n">src</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_node</span><span class="p">,</span>
+            <span class="n">dest</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">src</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cchannel</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">packet</span><span class="p">,</span> <span class="n">next_hop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">src</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="BB84RecvApp.recv_error_estimate_reply_packet">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.protocol.bb84.BB84RecvApp.recv_error_estimate_reply_packet">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">recv_error_estimate_reply_packet</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">:</span> <span class="n">RecvClassicPacket</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;BB84RecvApp recv error_estimate_reply packet,perform the first round of cascade,send cascade_ask packet.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            event:the error_estimate_reply packet.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">packet</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">packet</span>
+        <span class="n">msg</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="n">packet</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+        <span class="n">packet_class</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;packet_class&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">packet_class</span> <span class="o">!=</span> <span class="s2">&quot;error_estimate_reply&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># get error estimate info and set block size in round1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cur_error_rate</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;error_rate&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cur_error_rate</span> <span class="o">&lt;=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cascade_alpha</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_upper_cascade_key_block_size</span><span class="p">):</span>
+            <span class="c1"># error rate is smaller than threshold</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cur_cascade_key_block_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_upper_cascade_key_block_size</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">cur_error_rate</span> <span class="o">&gt;=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cascade_alpha</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_lower_cascade_key_block_size</span><span class="p">):</span>
+            <span class="c1"># error rate is bigger than threshold</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cur_cascade_key_block_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_lower_cascade_key_block_size</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cur_cascade_key_block_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cascade_alpha</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">cur_error_rate</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">cur_cascade_round</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="c1"># remain real_bit_for_cascade</span>
+        <span class="n">real_bit_index_for_cascade</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;real_bit_index_for_cascade&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">post_processing_key</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+            <span class="n">item_temp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">post_processing_key</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">real_bit_index_for_cascade</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cascade_key</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item_temp</span><span class="p">)</span>
+
+        <span class="c1"># start cascade round1,divide into top blocks of size self.keysize</span>
+        <span class="n">count_temp</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">last_index</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cascade_key</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="k">while</span> <span class="n">count_temp</span> <span class="o">&lt;=</span> <span class="n">last_index</span><span class="p">:</span>
+            <span class="n">end</span> <span class="o">=</span> <span class="n">count_temp</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">cur_cascade_key_block_size</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="n">end</span> <span class="o">&lt;=</span> <span class="n">last_index</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cascade_binary_set</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">count_temp</span><span class="p">,</span> <span class="n">end</span><span class="p">))</span>
+                <span class="n">count_temp</span> <span class="o">=</span> <span class="n">end</span> <span class="o">+</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">end</span> <span class="o">=</span> <span class="n">last_index</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cascade_binary_set</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">count_temp</span><span class="p">,</span> <span class="n">end</span><span class="p">))</span>
+                <span class="k">break</span>
+
+        <span class="c1"># send cascade_ask packet</span>
+        <span class="n">packet</span> <span class="o">=</span> <span class="n">ClassicPacket</span><span class="p">(</span>
+            <span class="n">msg</span><span class="o">=</span><span class="p">{</span>
+                <span class="s2">&quot;packet_class&quot;</span><span class="p">:</span> <span class="s2">&quot;cascade_ask&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;parity_request&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">cascade_binary_set</span><span class="p">,</span>
+                <span class="s2">&quot;round_change_flag&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                <span class="s2">&quot;shuffle_index&quot;</span><span class="p">:</span> <span class="p">[],</span>
+            <span class="p">},</span>
+            <span class="n">src</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_node</span><span class="p">,</span>
+            <span class="n">dest</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">src</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cchannel</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">packet</span><span class="p">,</span> <span class="n">next_hop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">src</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="BB84RecvApp.recv_cascade_reply_packet">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.protocol.bb84.BB84RecvApp.recv_cascade_reply_packet">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">recv_cascade_reply_packet</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">:</span> <span class="n">RecvClassicPacket</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;BB84RecvApp recv cascade_reply packet,perform next round of cascade,and send cascade_ask packet.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            event:the cascade_reply packet.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">packet</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">packet</span>
+        <span class="n">msg</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="n">packet</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+        <span class="n">packet_class</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;packet_class&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">packet_class</span> <span class="o">!=</span> <span class="s2">&quot;cascade_reply&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># get cascade_reply info</span>
+        <span class="n">parity_answer</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;parity_answer&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bit_leak</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">parity_answer</span><span class="p">)</span>
+
+        <span class="c1"># update cascade binary set</span>
+        <span class="n">count_temp</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="c1"># traverse all the blocks need to compare parity</span>
+        <span class="n">copy_cascade_binary_set</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cascade_binary_set</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">key_interval</span> <span class="ow">in</span> <span class="n">copy_cascade_binary_set</span><span class="p">:</span>
+            <span class="n">temp_parity</span> <span class="o">=</span> <span class="n">cascade_parity</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cascade_key</span><span class="p">[</span><span class="n">key_interval</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="p">:</span> <span class="n">key_interval</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">temp_parity</span> <span class="o">==</span> <span class="n">parity_answer</span><span class="p">[</span><span class="n">count_temp</span><span class="p">]:</span>
+                <span class="c1"># this block have even errors,can not correct in this round</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cascade_binary_set</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">key_interval</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">key_interval</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">key_interval</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+                <span class="c1"># binary alg</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cascade_binary_set</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">key_interval</span><span class="p">)</span>
+                <span class="n">left_temp</span><span class="p">,</span> <span class="n">right_temp</span> <span class="o">=</span> <span class="n">cascade_binary_divide</span><span class="p">(</span><span class="n">key_interval</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">key_interval</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cascade_binary_set</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">left_temp</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cascade_binary_set</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">right_temp</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># find the odd error</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cascade_binary_set</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">key_interval</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cascade_key</span><span class="p">[</span><span class="n">key_interval</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">=</span> <span class="n">parity_answer</span><span class="p">[</span><span class="n">count_temp</span><span class="p">]</span>
+
+            <span class="n">count_temp</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="n">round_change_flag</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">check_error_flag</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">shuffle_index</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cascade_binary_set</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cur_cascade_round</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_cascade_round</span><span class="p">:</span>
+                <span class="c1"># update round info</span>
+                <span class="n">check_error_flag</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="c1"># check error</span>
+                <span class="n">hash_key</span> <span class="o">=</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha512</span><span class="p">(</span><span class="nb">bytearray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cascade_key</span><span class="p">))</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># update round info</span>
+                <span class="n">round_change_flag</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cur_cascade_round</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cur_cascade_key_block_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cur_cascade_key_block_size</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">cascade_beita</span><span class="p">)</span>
+                <span class="c1"># need shuffle</span>
+                <span class="n">shuffle_index</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cascade_key</span><span class="p">))]</span>
+                <span class="n">shuffle_index</span> <span class="o">=</span> <span class="n">cascade_key_shuffle</span><span class="p">(</span><span class="n">shuffle_index</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cascade_key</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">cascade_key</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">shuffle_index</span><span class="p">]</span>
+                <span class="c1"># divide into top blocks of size self.keysize</span>
+                <span class="n">count_temp</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="n">last_index</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cascade_key</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+                <span class="k">while</span> <span class="n">count_temp</span> <span class="o">&lt;=</span> <span class="n">last_index</span><span class="p">:</span>
+                    <span class="n">end</span> <span class="o">=</span> <span class="n">count_temp</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">cur_cascade_key_block_size</span> <span class="o">-</span> <span class="mi">1</span>
+                    <span class="k">if</span> <span class="n">end</span> <span class="o">&lt;=</span> <span class="n">last_index</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">cascade_binary_set</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">count_temp</span><span class="p">,</span> <span class="n">end</span><span class="p">))</span>
+                        <span class="n">count_temp</span> <span class="o">=</span> <span class="n">end</span> <span class="o">+</span> <span class="mi">1</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">end</span> <span class="o">=</span> <span class="n">last_index</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">cascade_binary_set</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">count_temp</span><span class="p">,</span> <span class="n">end</span><span class="p">))</span>
+                        <span class="k">break</span>
+
+        <span class="c1"># send cascade_ask packet,distinguish whether privacy amplification is required</span>
+        <span class="k">if</span> <span class="n">check_error_flag</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+            <span class="n">packet</span> <span class="o">=</span> <span class="n">ClassicPacket</span><span class="p">(</span>
+                <span class="n">msg</span><span class="o">=</span><span class="p">{</span>
+                    <span class="s2">&quot;packet_class&quot;</span><span class="p">:</span> <span class="s2">&quot;cascade_ask&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;parity_request&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">cascade_binary_set</span><span class="p">,</span>
+                    <span class="s2">&quot;round_change_flag&quot;</span><span class="p">:</span> <span class="n">round_change_flag</span><span class="p">,</span>
+                    <span class="s2">&quot;shuffle_index&quot;</span><span class="p">:</span> <span class="n">shuffle_index</span><span class="p">,</span>
+                <span class="p">},</span>
+                <span class="n">src</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_node</span><span class="p">,</span>
+                <span class="n">dest</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">src</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># check error</span>
+            <span class="n">packet</span> <span class="o">=</span> <span class="n">ClassicPacket</span><span class="p">(</span><span class="n">msg</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;packet_class&quot;</span><span class="p">:</span> <span class="s2">&quot;check_error_ask&quot;</span><span class="p">,</span> <span class="s2">&quot;hash_key&quot;</span><span class="p">:</span> <span class="n">hash_key</span><span class="p">},</span> <span class="n">src</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_node</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">src</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cchannel</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">packet</span><span class="p">,</span> <span class="n">next_hop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">src</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="BB84RecvApp.recv_check_error_reply_packet">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.protocol.bb84.BB84RecvApp.recv_check_error_reply_packet">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">recv_check_error_reply_packet</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">:</span> <span class="n">RecvClassicPacket</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;BB84RecvApp recv check_error_reply packet,perform privacy amplification,and send privacy_amplification_ask packet.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            event:the check_error_reply packet.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">packet</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">packet</span>
+        <span class="n">msg</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="n">packet</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+        <span class="n">packet_class</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;packet_class&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">packet_class</span> <span class="o">!=</span> <span class="s2">&quot;check_error_reply&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="n">pa_flag</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pa_flag&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">pa_flag</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="c1"># check error succeed,Bob&#39;s privacy amplification operation</span>
+            <span class="n">matrix_row</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cascade_key</span><span class="p">)</span>
+            <span class="n">matrix_col</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">security</span><span class="p">)</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cascade_key</span><span class="p">)</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">bit_leak</span>
+            <span class="n">first_row</span> <span class="o">=</span> <span class="p">[</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">matrix_row</span><span class="p">)]</span>
+            <span class="n">first_col</span> <span class="o">=</span> <span class="p">[</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">matrix_col</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)]</span>
+            <span class="n">toeplitz_matrix</span> <span class="o">=</span> <span class="n">pa_generate_toeplitz_matrix</span><span class="p">(</span><span class="n">matrix_row</span><span class="p">,</span> <span class="n">matrix_col</span><span class="p">,</span> <span class="n">first_row</span><span class="p">,</span> <span class="n">first_col</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">successful_key</span> <span class="o">+=</span> <span class="nb">list</span><span class="p">(</span><span class="n">pa_randomize_key</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cascade_key</span><span class="p">,</span> <span class="n">toeplitz_matrix</span><span class="p">))</span>
+            <span class="n">packet</span> <span class="o">=</span> <span class="n">ClassicPacket</span><span class="p">(</span>
+                <span class="n">msg</span><span class="o">=</span><span class="p">{</span>
+                    <span class="s2">&quot;packet_class&quot;</span><span class="p">:</span> <span class="s2">&quot;privacy_amplification_ask&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;pa_flag&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                    <span class="s2">&quot;first_row&quot;</span><span class="p">:</span> <span class="n">first_row</span><span class="p">,</span>
+                    <span class="s2">&quot;first_col&quot;</span><span class="p">:</span> <span class="n">first_col</span><span class="p">,</span>
+                <span class="p">},</span>
+                <span class="n">src</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_node</span><span class="p">,</span>
+                <span class="n">dest</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">src</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">using_post_processing</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># check error fail,drop</span>
+            <span class="n">first_row</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">first_col</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">packet</span> <span class="o">=</span> <span class="n">ClassicPacket</span><span class="p">(</span>
+                <span class="n">msg</span><span class="o">=</span><span class="p">{</span>
+                    <span class="s2">&quot;packet_class&quot;</span><span class="p">:</span> <span class="s2">&quot;privacy_amplification_ask&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;pa_flag&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                    <span class="s2">&quot;first_row&quot;</span><span class="p">:</span> <span class="n">first_row</span><span class="p">,</span>
+                    <span class="s2">&quot;first_col&quot;</span><span class="p">:</span> <span class="n">first_col</span><span class="p">,</span>
+                <span class="p">},</span>
+                <span class="n">src</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_node</span><span class="p">,</span>
+                <span class="n">dest</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">src</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">using_post_processing</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cchannel</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">packet</span><span class="p">,</span> <span class="n">next_hop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">src</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="cascade_parity">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.protocol.bb84.cascade_parity">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">cascade_parity</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="nb">list</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate key block parity.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        target:target key block.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">count</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">count</span> <span class="o">%</span> <span class="mi">2</span></div>
+
+
+
+<div class="viewcode-block" id="cascade_binary_divide">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.protocol.bb84.cascade_binary_divide">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">cascade_binary_divide</span><span class="p">(</span><span class="n">begin</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">end</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Evenly divided the key block.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        begin: key block begin index.</span>
+<span class="sd">        end: key block end index.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nb">len</span> <span class="o">=</span> <span class="n">end</span> <span class="o">-</span> <span class="n">begin</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="k">if</span> <span class="nb">len</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">middle</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">len</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="n">begin</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">middle</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">len</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="n">begin</span> <span class="o">-</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">begin</span><span class="p">,</span> <span class="n">middle</span><span class="p">),</span> <span class="p">(</span><span class="n">middle</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">end</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="cascade_key_shuffle">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.protocol.bb84.cascade_key_shuffle">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">cascade_key_shuffle</span><span class="p">(</span><span class="n">index</span><span class="p">:</span> <span class="nb">list</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Shuffle the index.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        index: the index list.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">shuffle</span><span class="p">(</span><span class="n">index</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">index</span></div>
+
+
+
+<div class="viewcode-block" id="pa_generate_toeplitz_matrix">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.protocol.bb84.pa_generate_toeplitz_matrix">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">pa_generate_toeplitz_matrix</span><span class="p">(</span><span class="n">N</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">M</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">first_row</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> <span class="n">first_col</span><span class="p">:</span> <span class="nb">list</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate a Toeplitz matrix of size N x M using two given list of binary values.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        N:col num of the Toeplitz matrix.</span>
+<span class="sd">        M:row num of the Toeplitz matrix.</span>
+<span class="sd">        first_row:first row of the Toeplitz matrix.</span>
+<span class="sd">        first_col:first col of the Toeplitz matrix.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">N</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">N</span><span class="p">)</span>
+    <span class="n">M</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">M</span><span class="p">)</span>
+    <span class="n">toeplitz_matrix</span> <span class="o">=</span> <span class="p">[[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">N</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">M</span><span class="p">)]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N</span><span class="p">):</span>
+        <span class="n">toeplitz_matrix</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">first_row</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">M</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="n">toeplitz_matrix</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">first_col</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">M</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">N</span><span class="p">):</span>
+            <span class="n">toeplitz_matrix</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">toeplitz_matrix</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">][</span><span class="n">j</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">toeplitz_matrix</span></div>
+
+
+
+<div class="viewcode-block" id="pa_randomize_key">
+<a class="viewcode-back" href="../../../../reference/qns.network.protocol.html#qns.network.protocol.bb84.pa_randomize_key">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">pa_randomize_key</span><span class="p">(</span><span class="n">original_key</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> <span class="n">toeplitz_matrix</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Process the original key through the toeplitz matrix.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        original_key: the original key.</span>
+<span class="sd">        toeplitz_matrix: the toeplitz matrix.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">toeplitz_matrix</span><span class="p">,</span> <span class="n">original_key</span><span class="p">)</span> <span class="o">%</span> <span class="mi">2</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Amar Abane.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

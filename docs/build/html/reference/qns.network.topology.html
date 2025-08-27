@@ -1,0 +1,734 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>qns.network.topology package &mdash; MQNS 0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=2709fde1"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="qns.simulator package" href="qns.simulator.html" />
+    <link rel="prev" title="qns.network.route package" href="qns.network.route.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            MQNS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../intro.html">Introduction</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">qns</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="qns.html">qns package</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="qns.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="qns.entity.html">qns.entity package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.models.html">qns.models package</a></li>
+<li class="toctree-l4 current"><a class="reference internal" href="qns.network.html">qns.network package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.simulator.html">qns.simulator package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="qns.utils.html">qns.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="qns.html#module-qns">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">MQNS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">qns</a></li>
+          <li class="breadcrumb-item"><a href="qns.html">qns package</a></li>
+          <li class="breadcrumb-item"><a href="qns.network.html">qns.network package</a></li>
+      <li class="breadcrumb-item active">qns.network.topology package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/reference/qns.network.topology.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="qns-network-topology-package">
+<h1>qns.network.topology package<a class="headerlink" href="#qns-network-topology-package" title="Link to this heading"></a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+</section>
+<section id="module-qns.network.topology.basictopo">
+<span id="qns-network-topology-basictopo-module"></span><h2>qns.network.topology.basictopo module<a class="headerlink" href="#module-qns.network.topology.basictopo" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.network.topology.basictopo.BasicTopology">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.network.topology.basictopo.</span></span><span class="sig-name descname"><span class="pre">BasicTopology</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nodes_number</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Unpack" title="(in Python v3.13)"><span class="pre">Unpack</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.network.topology.topo.TopologyInitKwargs" title="qns.network.topology.topo.TopologyInitKwargs"><span class="pre">TopologyInitKwargs</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/network/topology/basictopo.html#BasicTopology"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.basictopo.BasicTopology" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#qns.network.topology.topo.Topology" title="qns.network.topology.topo.Topology"><code class="xref py py-class docutils literal notranslate"><span class="pre">Topology</span></code></a></p>
+<p>BasicTopology includes <cite>nodes_number</cite> Qnodes. None of them are connected with each other</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.network.topology.basictopo.BasicTopology.build">
+<span class="sig-name descname"><span class="pre">build</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.node.html#qns.entity.node.qnode.QNode" title="qns.entity.node.qnode.QNode"><span class="pre">QNode</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.qchannel.html#qns.entity.qchannel.qchannel.QuantumChannel" title="qns.entity.qchannel.qchannel.QuantumChannel"><span class="pre">QuantumChannel</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/qns/network/topology/basictopo.html#BasicTopology.build"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.basictopo.BasicTopology.build" title="Link to this definition"></a></dt>
+<dd><p>Build the special topology</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>the list of QNodes and the list of QuantumChannel</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-qns.network.topology.customtopo">
+<span id="qns-network-topology-customtopo-module"></span><h2>qns.network.topology.customtopo module<a class="headerlink" href="#module-qns.network.topology.customtopo" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.network.topology.customtopo.CustomTopology">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.network.topology.customtopo.</span></span><span class="sig-name descname"><span class="pre">CustomTopology</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">topo</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#qns.network.topology.customtopo.Topo" title="qns.network.topology.customtopo.Topo"><span class="pre">Topo</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/network/topology/customtopo.html#CustomTopology"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.customtopo.CustomTopology" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#qns.network.topology.topo.Topology" title="qns.network.topology.topo.Topology"><code class="xref py py-class docutils literal notranslate"><span class="pre">Topology</span></code></a></p>
+<p>CustomTopology builds a topology from a JSON-like dict structure.</p>
+<p>Nodes and channels are individually specified and can have heterogeneous parameters.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.network.topology.customtopo.CustomTopology.add_cchannels">
+<span class="sig-name descname"><span class="pre">add_cchannels</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/network/topology/customtopo.html#CustomTopology.add_cchannels"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.customtopo.CustomTopology.add_cchannels" title="Link to this definition"></a></dt>
+<dd><p>Build classic network topology</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>classic_topo</strong> (<a class="reference internal" href="#qns.network.topology.topo.ClassicTopology" title="qns.network.topology.topo.ClassicTopology"><em>ClassicTopology</em></a>) – Classic topology,
+ClassicTopology.Empty -&gt; no connection
+ClassicTopology.All -&gt; every nodes are connected directly
+ClassicTopology.Follow -&gt; follow the quantum topology</p></li>
+<li><p><strong>nl</strong> (<em>List</em><em>[</em><em>qns.entity.node.node.QNode</em><em>]</em>) – a list of quantum nodes</p></li>
+<li><p><strong>ll</strong> (<em>List</em><em>[</em><a class="reference internal" href="qns.entity.qchannel.html#qns.entity.qchannel.qchannel.QuantumChannel" title="qns.entity.qchannel.qchannel.QuantumChannel"><em>qns.entity.qchannel.qchannel.QuantumChannel</em></a><em>]</em>) – a list of quantum channels</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.network.topology.customtopo.CustomTopology.build">
+<span class="sig-name descname"><span class="pre">build</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.node.html#qns.entity.node.qnode.QNode" title="qns.entity.node.qnode.QNode"><span class="pre">QNode</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.qchannel.html#qns.entity.qchannel.qchannel.QuantumChannel" title="qns.entity.qchannel.qchannel.QuantumChannel"><span class="pre">QuantumChannel</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/qns/network/topology/customtopo.html#CustomTopology.build"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.customtopo.CustomTopology.build" title="Link to this definition"></a></dt>
+<dd><p>Build the special topology</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>the list of QNodes and the list of QuantumChannel</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.network.topology.customtopo.Topo">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.network.topology.customtopo.</span></span><span class="sig-name descname"><span class="pre">Topo</span></span><a class="reference internal" href="../_modules/qns/network/topology/customtopo.html#Topo"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.customtopo.Topo" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.TypedDict" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">TypedDict</span></code></a></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.network.topology.customtopo.Topo.cchannels">
+<span class="sig-name descname"><span class="pre">cchannels</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.network.topology.customtopo.TopoCChannel" title="qns.network.topology.customtopo.TopoCChannel"><span class="pre">TopoCChannel</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#qns.network.topology.customtopo.Topo.cchannels" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.network.topology.customtopo.Topo.controller">
+<span class="sig-name descname"><span class="pre">controller</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.NotRequired" title="(in Python v3.13)"><span class="pre">NotRequired</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.network.topology.customtopo.TopoController" title="qns.network.topology.customtopo.TopoController"><span class="pre">TopoController</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#qns.network.topology.customtopo.Topo.controller" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.network.topology.customtopo.Topo.qchannels">
+<span class="sig-name descname"><span class="pre">qchannels</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.network.topology.customtopo.TopoQChannel" title="qns.network.topology.customtopo.TopoQChannel"><span class="pre">TopoQChannel</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#qns.network.topology.customtopo.Topo.qchannels" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.network.topology.customtopo.Topo.qnodes">
+<span class="sig-name descname"><span class="pre">qnodes</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.network.topology.customtopo.TopoQNode" title="qns.network.topology.customtopo.TopoQNode"><span class="pre">TopoQNode</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#qns.network.topology.customtopo.Topo.qnodes" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.network.topology.customtopo.TopoCChannel">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.network.topology.customtopo.</span></span><span class="sig-name descname"><span class="pre">TopoCChannel</span></span><a class="reference internal" href="../_modules/qns/network/topology/customtopo.html#TopoCChannel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.customtopo.TopoCChannel" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.TypedDict" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">TypedDict</span></code></a></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.network.topology.customtopo.TopoCChannel.node1">
+<span class="sig-name descname"><span class="pre">node1</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></em><a class="headerlink" href="#qns.network.topology.customtopo.TopoCChannel.node1" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.network.topology.customtopo.TopoCChannel.node2">
+<span class="sig-name descname"><span class="pre">node2</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></em><a class="headerlink" href="#qns.network.topology.customtopo.TopoCChannel.node2" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.network.topology.customtopo.TopoCChannel.parameters">
+<span class="sig-name descname"><span class="pre">parameters</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="qns.entity.cchannel.html#qns.entity.cchannel.cchannel.ClassicChannelInitKwargs" title="qns.entity.cchannel.cchannel.ClassicChannelInitKwargs"><span class="pre">ClassicChannelInitKwargs</span></a></em><a class="headerlink" href="#qns.network.topology.customtopo.TopoCChannel.parameters" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.network.topology.customtopo.TopoController">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.network.topology.customtopo.</span></span><span class="sig-name descname"><span class="pre">TopoController</span></span><a class="reference internal" href="../_modules/qns/network/topology/customtopo.html#TopoController"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.customtopo.TopoController" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.TypedDict" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">TypedDict</span></code></a></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.network.topology.customtopo.TopoController.apps">
+<span class="sig-name descname"><span class="pre">apps</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.node.html#qns.entity.node.app.Application" title="qns.entity.node.app.Application"><span class="pre">Application</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#qns.network.topology.customtopo.TopoController.apps" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.network.topology.customtopo.TopoController.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></em><a class="headerlink" href="#qns.network.topology.customtopo.TopoController.name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.network.topology.customtopo.TopoQChannel">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.network.topology.customtopo.</span></span><span class="sig-name descname"><span class="pre">TopoQChannel</span></span><a class="reference internal" href="../_modules/qns/network/topology/customtopo.html#TopoQChannel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.customtopo.TopoQChannel" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.TypedDict" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">TypedDict</span></code></a></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.network.topology.customtopo.TopoQChannel.capacity">
+<span class="sig-name descname"><span class="pre">capacity</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.NotRequired" title="(in Python v3.13)"><span class="pre">NotRequired</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#qns.network.topology.customtopo.TopoQChannel.capacity" title="Link to this definition"></a></dt>
+<dd><p>quantity of memory qubits assigned to this qchannel at each node, defaults to 1</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.network.topology.customtopo.TopoQChannel.capacity1">
+<span class="sig-name descname"><span class="pre">capacity1</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.NotRequired" title="(in Python v3.13)"><span class="pre">NotRequired</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#qns.network.topology.customtopo.TopoQChannel.capacity1" title="Link to this definition"></a></dt>
+<dd><p>quantity of memory qubits assigned to this qchannel at node1, defaults to <cite>capacity</cite></p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.network.topology.customtopo.TopoQChannel.capacity2">
+<span class="sig-name descname"><span class="pre">capacity2</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.NotRequired" title="(in Python v3.13)"><span class="pre">NotRequired</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#qns.network.topology.customtopo.TopoQChannel.capacity2" title="Link to this definition"></a></dt>
+<dd><p>quantity of memory qubits assigned to this qchannel at node2, defaults to <cite>capacity</cite></p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.network.topology.customtopo.TopoQChannel.node1">
+<span class="sig-name descname"><span class="pre">node1</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></em><a class="headerlink" href="#qns.network.topology.customtopo.TopoQChannel.node1" title="Link to this definition"></a></dt>
+<dd><p>first node name</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.network.topology.customtopo.TopoQChannel.node2">
+<span class="sig-name descname"><span class="pre">node2</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></em><a class="headerlink" href="#qns.network.topology.customtopo.TopoQChannel.node2" title="Link to this definition"></a></dt>
+<dd><p>second node name</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.network.topology.customtopo.TopoQChannel.parameters">
+<span class="sig-name descname"><span class="pre">parameters</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="qns.entity.qchannel.html#qns.entity.qchannel.qchannel.QuantumChannelInitKwargs" title="qns.entity.qchannel.qchannel.QuantumChannelInitKwargs"><span class="pre">QuantumChannelInitKwargs</span></a></em><a class="headerlink" href="#qns.network.topology.customtopo.TopoQChannel.parameters" title="Link to this definition"></a></dt>
+<dd><p>qchannel constructor arguments</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.network.topology.customtopo.TopoQNode">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.network.topology.customtopo.</span></span><span class="sig-name descname"><span class="pre">TopoQNode</span></span><a class="reference internal" href="../_modules/qns/network/topology/customtopo.html#TopoQNode"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.customtopo.TopoQNode" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.TypedDict" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">TypedDict</span></code></a></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.network.topology.customtopo.TopoQNode.apps">
+<span class="sig-name descname"><span class="pre">apps</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.node.html#qns.entity.node.app.Application" title="qns.entity.node.app.Application"><span class="pre">Application</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#qns.network.topology.customtopo.TopoQNode.apps" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.network.topology.customtopo.TopoQNode.memory">
+<span class="sig-name descname"><span class="pre">memory</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="qns.entity.memory.html#qns.entity.memory.memory.QuantumMemoryInitKwargs" title="qns.entity.memory.memory.QuantumMemoryInitKwargs"><span class="pre">QuantumMemoryInitKwargs</span></a></em><a class="headerlink" href="#qns.network.topology.customtopo.TopoQNode.memory" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.network.topology.customtopo.TopoQNode.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></em><a class="headerlink" href="#qns.network.topology.customtopo.TopoQNode.name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-qns.network.topology.gridtopo">
+<span id="qns-network-topology-gridtopo-module"></span><h2>qns.network.topology.gridtopo module<a class="headerlink" href="#module-qns.network.topology.gridtopo" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.network.topology.gridtopo.GridTopology">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.network.topology.gridtopo.</span></span><span class="sig-name descname"><span class="pre">GridTopology</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shape</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Unpack" title="(in Python v3.13)"><span class="pre">Unpack</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.network.topology.topo.TopologyInitKwargs" title="qns.network.topology.topo.TopologyInitKwargs"><span class="pre">TopologyInitKwargs</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/network/topology/gridtopo.html#GridTopology"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.gridtopo.GridTopology" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#qns.network.topology.topo.Topology" title="qns.network.topology.topo.Topology"><code class="xref py py-class docutils literal notranslate"><span class="pre">Topology</span></code></a></p>
+<p>GridTopology builds a grid topology with a rectangle shape.
+If <cite>shape</cite> is a tuple, it specifies how many rows and columns are in the topology.
+If <cite>shape</cite> is an integer, it specifies total number of nodes and must be a perfect square number.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.network.topology.gridtopo.GridTopology.build">
+<span class="sig-name descname"><span class="pre">build</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.node.html#qns.entity.node.qnode.QNode" title="qns.entity.node.qnode.QNode"><span class="pre">QNode</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.qchannel.html#qns.entity.qchannel.qchannel.QuantumChannel" title="qns.entity.qchannel.qchannel.QuantumChannel"><span class="pre">QuantumChannel</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/qns/network/topology/gridtopo.html#GridTopology.build"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.gridtopo.GridTopology.build" title="Link to this definition"></a></dt>
+<dd><p>Build the special topology</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>the list of QNodes and the list of QuantumChannel</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-qns.network.topology.lineartopo">
+<span id="qns-network-topology-lineartopo-module"></span><h2>qns.network.topology.lineartopo module<a class="headerlink" href="#module-qns.network.topology.lineartopo" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.network.topology.lineartopo.LinearTopology">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.network.topology.lineartopo.</span></span><span class="sig-name descname"><span class="pre">LinearTopology</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nodes_number</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Unpack" title="(in Python v3.13)"><span class="pre">Unpack</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.network.topology.topo.TopologyInitKwargs" title="qns.network.topology.topo.TopologyInitKwargs"><span class="pre">TopologyInitKwargs</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/network/topology/lineartopo.html#LinearTopology"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.lineartopo.LinearTopology" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#qns.network.topology.gridtopo.GridTopology" title="qns.network.topology.gridtopo.GridTopology"><code class="xref py py-class docutils literal notranslate"><span class="pre">GridTopology</span></code></a></p>
+<p>LinearTopology creates a linear topology with <cite>nodes_number</cite> nodes.</p>
+</dd></dl>
+
+</section>
+<section id="module-qns.network.topology.randomtopo">
+<span id="qns-network-topology-randomtopo-module"></span><h2>qns.network.topology.randomtopo module<a class="headerlink" href="#module-qns.network.topology.randomtopo" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.network.topology.randomtopo.RandomTopology">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.network.topology.randomtopo.</span></span><span class="sig-name descname"><span class="pre">RandomTopology</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nodes_number</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">lines_number</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Unpack" title="(in Python v3.13)"><span class="pre">Unpack</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.network.topology.topo.TopologyInitKwargs" title="qns.network.topology.topo.TopologyInitKwargs"><span class="pre">TopologyInitKwargs</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/network/topology/randomtopo.html#RandomTopology"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.randomtopo.RandomTopology" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#qns.network.topology.topo.Topology" title="qns.network.topology.topo.Topology"><code class="xref py py-class docutils literal notranslate"><span class="pre">Topology</span></code></a></p>
+<p>RandomTopology includes <cite>nodes_number</cite> Qnodes. The topology is randomly generated.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.network.topology.randomtopo.RandomTopology.build">
+<span class="sig-name descname"><span class="pre">build</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.node.html#qns.entity.node.qnode.QNode" title="qns.entity.node.qnode.QNode"><span class="pre">QNode</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.qchannel.html#qns.entity.qchannel.qchannel.QuantumChannel" title="qns.entity.qchannel.qchannel.QuantumChannel"><span class="pre">QuantumChannel</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/qns/network/topology/randomtopo.html#RandomTopology.build"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.randomtopo.RandomTopology.build" title="Link to this definition"></a></dt>
+<dd><p>Build the special topology</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>the list of QNodes and the list of QuantumChannel</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-qns.network.topology.topo">
+<span id="qns-network-topology-topo-module"></span><h2>qns.network.topology.topo module<a class="headerlink" href="#module-qns.network.topology.topo" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.network.topology.topo.ClassicTopology">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.network.topology.topo.</span></span><span class="sig-name descname"><span class="pre">ClassicTopology</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/network/topology/topo.html#ClassicTopology"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.topo.ClassicTopology" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/enum.html#enum.Enum" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></a></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.network.topology.topo.ClassicTopology.All">
+<span class="sig-name descname"><span class="pre">All</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#qns.network.topology.topo.ClassicTopology.All" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.network.topology.topo.ClassicTopology.Empty">
+<span class="sig-name descname"><span class="pre">Empty</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#qns.network.topology.topo.ClassicTopology.Empty" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.network.topology.topo.ClassicTopology.Follow">
+<span class="sig-name descname"><span class="pre">Follow</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">3</span></em><a class="headerlink" href="#qns.network.topology.topo.ClassicTopology.Follow" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.network.topology.topo.Topology">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.network.topology.topo.</span></span><span class="sig-name descname"><span class="pre">Topology</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nodes_number</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Unpack" title="(in Python v3.13)"><span class="pre">Unpack</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.network.topology.topo.TopologyInitKwargs" title="qns.network.topology.topo.TopologyInitKwargs"><span class="pre">TopologyInitKwargs</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/network/topology/topo.html#Topology"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.topo.Topology" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Topology is a factory for QuantumNetwork</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.network.topology.topo.Topology.add_cchannels">
+<span class="sig-name descname"><span class="pre">add_cchannels</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">classic_topo</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#qns.network.topology.topo.ClassicTopology" title="qns.network.topology.topo.ClassicTopology"><span class="pre">ClassicTopology</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">ClassicTopology.Empty</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nl</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.node.html#qns.entity.node.qnode.QNode" title="qns.entity.node.qnode.QNode"><span class="pre">QNode</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ll</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.qchannel.html#qns.entity.qchannel.qchannel.QuantumChannel" title="qns.entity.qchannel.qchannel.QuantumChannel"><span class="pre">QuantumChannel</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">[]</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.cchannel.html#qns.entity.cchannel.cchannel.ClassicChannel" title="qns.entity.cchannel.cchannel.ClassicChannel"><span class="pre">ClassicChannel</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/qns/network/topology/topo.html#Topology.add_cchannels"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.topo.Topology.add_cchannels" title="Link to this definition"></a></dt>
+<dd><p>Build classic network topology</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>classic_topo</strong> (<a class="reference internal" href="#qns.network.topology.topo.ClassicTopology" title="qns.network.topology.topo.ClassicTopology"><em>ClassicTopology</em></a>) – Classic topology,
+ClassicTopology.Empty -&gt; no connection
+ClassicTopology.All -&gt; every nodes are connected directly
+ClassicTopology.Follow -&gt; follow the quantum topology</p></li>
+<li><p><strong>nl</strong> (<em>List</em><em>[</em><em>qns.entity.node.node.QNode</em><em>]</em>) – a list of quantum nodes</p></li>
+<li><p><strong>ll</strong> (<em>List</em><em>[</em><a class="reference internal" href="qns.entity.qchannel.html#qns.entity.qchannel.qchannel.QuantumChannel" title="qns.entity.qchannel.qchannel.QuantumChannel"><em>qns.entity.qchannel.qchannel.QuantumChannel</em></a><em>]</em>) – a list of quantum channels</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.network.topology.topo.Topology.build">
+<span class="sig-name descname"><span class="pre">build</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.node.html#qns.entity.node.qnode.QNode" title="qns.entity.node.qnode.QNode"><span class="pre">QNode</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.qchannel.html#qns.entity.qchannel.qchannel.QuantumChannel" title="qns.entity.qchannel.qchannel.QuantumChannel"><span class="pre">QuantumChannel</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/qns/network/topology/topo.html#Topology.build"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.topo.Topology.build" title="Link to this definition"></a></dt>
+<dd><p>Build the special topology</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>the list of QNodes and the list of QuantumChannel</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.network.topology.topo.Topology.connect_controller">
+<span class="sig-name descname"><span class="pre">connect_controller</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nl</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.node.html#qns.entity.node.node.NodeT" title="qns.entity.node.node.NodeT"><span class="pre">NodeT</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Unpack" title="(in Python v3.13)"><span class="pre">Unpack</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.cchannel.html#qns.entity.cchannel.cchannel.ClassicChannelInitKwargs" title="qns.entity.cchannel.cchannel.ClassicChannelInitKwargs"><span class="pre">ClassicChannelInitKwargs</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.cchannel.html#qns.entity.cchannel.cchannel.ClassicChannel" title="qns.entity.cchannel.cchannel.ClassicChannel"><span class="pre">ClassicChannel</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/qns/network/topology/topo.html#Topology.connect_controller"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.topo.Topology.connect_controller" title="Link to this definition"></a></dt>
+<dd><p>Create a cchannel from the controller to each node.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>nl</strong> – list of non-controller nodes.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of classical channels.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>RuntimeError - controller does not exist.</strong> – </p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>If the controller is part of a network, newly created cchannels are automatically added to the network.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.network.topology.topo.TopologyInitKwargs">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.network.topology.topo.</span></span><span class="sig-name descname"><span class="pre">TopologyInitKwargs</span></span><a class="reference internal" href="../_modules/qns/network/topology/topo.html#TopologyInitKwargs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.topo.TopologyInitKwargs" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.TypedDict" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">TypedDict</span></code></a></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.network.topology.topo.TopologyInitKwargs.cchannel_args">
+<span class="sig-name descname"><span class="pre">cchannel_args</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="qns.entity.cchannel.html#qns.entity.cchannel.cchannel.ClassicChannelInitKwargs" title="qns.entity.cchannel.cchannel.ClassicChannelInitKwargs"><span class="pre">ClassicChannelInitKwargs</span></a></em><a class="headerlink" href="#qns.network.topology.topo.TopologyInitKwargs.cchannel_args" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.network.topology.topo.TopologyInitKwargs.memory_args">
+<span class="sig-name descname"><span class="pre">memory_args</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="qns.entity.memory.html#qns.entity.memory.memory.QuantumMemoryInitKwargs" title="qns.entity.memory.memory.QuantumMemoryInitKwargs"><span class="pre">QuantumMemoryInitKwargs</span></a></em><a class="headerlink" href="#qns.network.topology.topo.TopologyInitKwargs.memory_args" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.network.topology.topo.TopologyInitKwargs.nodes_apps">
+<span class="sig-name descname"><span class="pre">nodes_apps</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.node.html#qns.entity.node.app.Application" title="qns.entity.node.app.Application"><span class="pre">Application</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#qns.network.topology.topo.TopologyInitKwargs.nodes_apps" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.network.topology.topo.TopologyInitKwargs.qchannel_args">
+<span class="sig-name descname"><span class="pre">qchannel_args</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="qns.entity.qchannel.html#qns.entity.qchannel.qchannel.QuantumChannelInitKwargs" title="qns.entity.qchannel.qchannel.QuantumChannelInitKwargs"><span class="pre">QuantumChannelInitKwargs</span></a></em><a class="headerlink" href="#qns.network.topology.topo.TopologyInitKwargs.qchannel_args" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-qns.network.topology.treetopo">
+<span id="qns-network-topology-treetopo-module"></span><h2>qns.network.topology.treetopo module<a class="headerlink" href="#module-qns.network.topology.treetopo" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.network.topology.treetopo.TreeTopology">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.network.topology.treetopo.</span></span><span class="sig-name descname"><span class="pre">TreeTopology</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nodes_number</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">children_number</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Unpack" title="(in Python v3.13)"><span class="pre">Unpack</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.network.topology.topo.TopologyInitKwargs" title="qns.network.topology.topo.TopologyInitKwargs"><span class="pre">TopologyInitKwargs</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/network/topology/treetopo.html#TreeTopology"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.treetopo.TreeTopology" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#qns.network.topology.topo.Topology" title="qns.network.topology.topo.Topology"><code class="xref py py-class docutils literal notranslate"><span class="pre">Topology</span></code></a></p>
+<p>TreeTopology includes <cite>nodes_number</cite> Qnodes.
+The topology is a tree pattern, where each parent has <cite>children_num</cite> children.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.network.topology.treetopo.TreeTopology.build">
+<span class="sig-name descname"><span class="pre">build</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.node.html#qns.entity.node.qnode.QNode" title="qns.entity.node.qnode.QNode"><span class="pre">QNode</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.qchannel.html#qns.entity.qchannel.qchannel.QuantumChannel" title="qns.entity.qchannel.qchannel.QuantumChannel"><span class="pre">QuantumChannel</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/qns/network/topology/treetopo.html#TreeTopology.build"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.treetopo.TreeTopology.build" title="Link to this definition"></a></dt>
+<dd><p>Build the special topology</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>the list of QNodes and the list of QuantumChannel</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-qns.network.topology.waxmantopo">
+<span id="qns-network-topology-waxmantopo-module"></span><h2>qns.network.topology.waxmantopo module<a class="headerlink" href="#module-qns.network.topology.waxmantopo" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.network.topology.waxmantopo.WaxmanTopology">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.network.topology.waxmantopo.</span></span><span class="sig-name descname"><span class="pre">WaxmanTopology</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nodes_number</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">beta</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Unpack" title="(in Python v3.13)"><span class="pre">Unpack</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.network.topology.topo.TopologyInitKwargs" title="qns.network.topology.topo.TopologyInitKwargs"><span class="pre">TopologyInitKwargs</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/network/topology/waxmantopo.html#WaxmanTopology"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.waxmantopo.WaxmanTopology" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#qns.network.topology.topo.Topology" title="qns.network.topology.topo.Topology"><code class="xref py py-class docutils literal notranslate"><span class="pre">Topology</span></code></a></p>
+<p>WaxmanTopology is the random topology generator using Waxman’s model.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.network.topology.waxmantopo.WaxmanTopology.build">
+<span class="sig-name descname"><span class="pre">build</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.node.html#qns.entity.node.qnode.QNode" title="qns.entity.node.qnode.QNode"><span class="pre">QNode</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.qchannel.html#qns.entity.qchannel.qchannel.QuantumChannel" title="qns.entity.qchannel.qchannel.QuantumChannel"><span class="pre">QuantumChannel</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/qns/network/topology/waxmantopo.html#WaxmanTopology.build"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.waxmantopo.WaxmanTopology.build" title="Link to this definition"></a></dt>
+<dd><p>Build the special topology</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>the list of QNodes and the list of QuantumChannel</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-qns.network.topology">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-qns.network.topology" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.network.topology.BasicTopology">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.network.topology.</span></span><span class="sig-name descname"><span class="pre">BasicTopology</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nodes_number</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Unpack" title="(in Python v3.13)"><span class="pre">Unpack</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.network.topology.topo.TopologyInitKwargs" title="qns.network.topology.topo.TopologyInitKwargs"><span class="pre">TopologyInitKwargs</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/network/topology/basictopo.html#BasicTopology"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.BasicTopology" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#qns.network.topology.topo.Topology" title="qns.network.topology.topo.Topology"><code class="xref py py-class docutils literal notranslate"><span class="pre">Topology</span></code></a></p>
+<p>BasicTopology includes <cite>nodes_number</cite> Qnodes. None of them are connected with each other</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.network.topology.BasicTopology.build">
+<span class="sig-name descname"><span class="pre">build</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.node.html#qns.entity.node.qnode.QNode" title="qns.entity.node.qnode.QNode"><span class="pre">QNode</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.qchannel.html#qns.entity.qchannel.qchannel.QuantumChannel" title="qns.entity.qchannel.qchannel.QuantumChannel"><span class="pre">QuantumChannel</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/qns/network/topology/basictopo.html#BasicTopology.build"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.BasicTopology.build" title="Link to this definition"></a></dt>
+<dd><p>Build the special topology</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>the list of QNodes and the list of QuantumChannel</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.network.topology.ClassicTopology">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.network.topology.</span></span><span class="sig-name descname"><span class="pre">ClassicTopology</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/network/topology/topo.html#ClassicTopology"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.ClassicTopology" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/enum.html#enum.Enum" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></a></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.network.topology.ClassicTopology.All">
+<span class="sig-name descname"><span class="pre">All</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#qns.network.topology.ClassicTopology.All" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.network.topology.ClassicTopology.Empty">
+<span class="sig-name descname"><span class="pre">Empty</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#qns.network.topology.ClassicTopology.Empty" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="qns.network.topology.ClassicTopology.Follow">
+<span class="sig-name descname"><span class="pre">Follow</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">3</span></em><a class="headerlink" href="#qns.network.topology.ClassicTopology.Follow" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.network.topology.CustomTopology">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.network.topology.</span></span><span class="sig-name descname"><span class="pre">CustomTopology</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">topo</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#qns.network.topology.customtopo.Topo" title="qns.network.topology.customtopo.Topo"><span class="pre">Topo</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/network/topology/customtopo.html#CustomTopology"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.CustomTopology" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#qns.network.topology.topo.Topology" title="qns.network.topology.topo.Topology"><code class="xref py py-class docutils literal notranslate"><span class="pre">Topology</span></code></a></p>
+<p>CustomTopology builds a topology from a JSON-like dict structure.</p>
+<p>Nodes and channels are individually specified and can have heterogeneous parameters.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.network.topology.CustomTopology.add_cchannels">
+<span class="sig-name descname"><span class="pre">add_cchannels</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/network/topology/customtopo.html#CustomTopology.add_cchannels"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.CustomTopology.add_cchannels" title="Link to this definition"></a></dt>
+<dd><p>Build classic network topology</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>classic_topo</strong> (<a class="reference internal" href="#qns.network.topology.ClassicTopology" title="qns.network.topology.ClassicTopology"><em>ClassicTopology</em></a>) – Classic topology,
+ClassicTopology.Empty -&gt; no connection
+ClassicTopology.All -&gt; every nodes are connected directly
+ClassicTopology.Follow -&gt; follow the quantum topology</p></li>
+<li><p><strong>nl</strong> (<em>List</em><em>[</em><em>qns.entity.node.node.QNode</em><em>]</em>) – a list of quantum nodes</p></li>
+<li><p><strong>ll</strong> (<em>List</em><em>[</em><a class="reference internal" href="qns.entity.qchannel.html#qns.entity.qchannel.qchannel.QuantumChannel" title="qns.entity.qchannel.qchannel.QuantumChannel"><em>qns.entity.qchannel.qchannel.QuantumChannel</em></a><em>]</em>) – a list of quantum channels</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.network.topology.CustomTopology.build">
+<span class="sig-name descname"><span class="pre">build</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.node.html#qns.entity.node.qnode.QNode" title="qns.entity.node.qnode.QNode"><span class="pre">QNode</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.qchannel.html#qns.entity.qchannel.qchannel.QuantumChannel" title="qns.entity.qchannel.qchannel.QuantumChannel"><span class="pre">QuantumChannel</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/qns/network/topology/customtopo.html#CustomTopology.build"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.CustomTopology.build" title="Link to this definition"></a></dt>
+<dd><p>Build the special topology</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>the list of QNodes and the list of QuantumChannel</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.network.topology.GridTopology">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.network.topology.</span></span><span class="sig-name descname"><span class="pre">GridTopology</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shape</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Unpack" title="(in Python v3.13)"><span class="pre">Unpack</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.network.topology.topo.TopologyInitKwargs" title="qns.network.topology.topo.TopologyInitKwargs"><span class="pre">TopologyInitKwargs</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/network/topology/gridtopo.html#GridTopology"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.GridTopology" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#qns.network.topology.topo.Topology" title="qns.network.topology.topo.Topology"><code class="xref py py-class docutils literal notranslate"><span class="pre">Topology</span></code></a></p>
+<p>GridTopology builds a grid topology with a rectangle shape.
+If <cite>shape</cite> is a tuple, it specifies how many rows and columns are in the topology.
+If <cite>shape</cite> is an integer, it specifies total number of nodes and must be a perfect square number.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.network.topology.GridTopology.build">
+<span class="sig-name descname"><span class="pre">build</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.node.html#qns.entity.node.qnode.QNode" title="qns.entity.node.qnode.QNode"><span class="pre">QNode</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.qchannel.html#qns.entity.qchannel.qchannel.QuantumChannel" title="qns.entity.qchannel.qchannel.QuantumChannel"><span class="pre">QuantumChannel</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/qns/network/topology/gridtopo.html#GridTopology.build"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.GridTopology.build" title="Link to this definition"></a></dt>
+<dd><p>Build the special topology</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>the list of QNodes and the list of QuantumChannel</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.network.topology.LinearTopology">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.network.topology.</span></span><span class="sig-name descname"><span class="pre">LinearTopology</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nodes_number</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Unpack" title="(in Python v3.13)"><span class="pre">Unpack</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.network.topology.topo.TopologyInitKwargs" title="qns.network.topology.topo.TopologyInitKwargs"><span class="pre">TopologyInitKwargs</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/network/topology/lineartopo.html#LinearTopology"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.LinearTopology" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#qns.network.topology.gridtopo.GridTopology" title="qns.network.topology.gridtopo.GridTopology"><code class="xref py py-class docutils literal notranslate"><span class="pre">GridTopology</span></code></a></p>
+<p>LinearTopology creates a linear topology with <cite>nodes_number</cite> nodes.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.network.topology.RandomTopology">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.network.topology.</span></span><span class="sig-name descname"><span class="pre">RandomTopology</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nodes_number</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">lines_number</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Unpack" title="(in Python v3.13)"><span class="pre">Unpack</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.network.topology.topo.TopologyInitKwargs" title="qns.network.topology.topo.TopologyInitKwargs"><span class="pre">TopologyInitKwargs</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/network/topology/randomtopo.html#RandomTopology"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.RandomTopology" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#qns.network.topology.topo.Topology" title="qns.network.topology.topo.Topology"><code class="xref py py-class docutils literal notranslate"><span class="pre">Topology</span></code></a></p>
+<p>RandomTopology includes <cite>nodes_number</cite> Qnodes. The topology is randomly generated.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.network.topology.RandomTopology.build">
+<span class="sig-name descname"><span class="pre">build</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.node.html#qns.entity.node.qnode.QNode" title="qns.entity.node.qnode.QNode"><span class="pre">QNode</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.qchannel.html#qns.entity.qchannel.qchannel.QuantumChannel" title="qns.entity.qchannel.qchannel.QuantumChannel"><span class="pre">QuantumChannel</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/qns/network/topology/randomtopo.html#RandomTopology.build"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.RandomTopology.build" title="Link to this definition"></a></dt>
+<dd><p>Build the special topology</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>the list of QNodes and the list of QuantumChannel</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.network.topology.Topology">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.network.topology.</span></span><span class="sig-name descname"><span class="pre">Topology</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nodes_number</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Unpack" title="(in Python v3.13)"><span class="pre">Unpack</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.network.topology.topo.TopologyInitKwargs" title="qns.network.topology.topo.TopologyInitKwargs"><span class="pre">TopologyInitKwargs</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/network/topology/topo.html#Topology"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.Topology" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Topology is a factory for QuantumNetwork</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.network.topology.Topology.add_cchannels">
+<span class="sig-name descname"><span class="pre">add_cchannels</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">classic_topo</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#qns.network.topology.topo.ClassicTopology" title="qns.network.topology.topo.ClassicTopology"><span class="pre">ClassicTopology</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">ClassicTopology.Empty</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nl</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.node.html#qns.entity.node.qnode.QNode" title="qns.entity.node.qnode.QNode"><span class="pre">QNode</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ll</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.qchannel.html#qns.entity.qchannel.qchannel.QuantumChannel" title="qns.entity.qchannel.qchannel.QuantumChannel"><span class="pre">QuantumChannel</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">[]</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.cchannel.html#qns.entity.cchannel.cchannel.ClassicChannel" title="qns.entity.cchannel.cchannel.ClassicChannel"><span class="pre">ClassicChannel</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/qns/network/topology/topo.html#Topology.add_cchannels"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.Topology.add_cchannels" title="Link to this definition"></a></dt>
+<dd><p>Build classic network topology</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>classic_topo</strong> (<a class="reference internal" href="#qns.network.topology.ClassicTopology" title="qns.network.topology.ClassicTopology"><em>ClassicTopology</em></a>) – Classic topology,
+ClassicTopology.Empty -&gt; no connection
+ClassicTopology.All -&gt; every nodes are connected directly
+ClassicTopology.Follow -&gt; follow the quantum topology</p></li>
+<li><p><strong>nl</strong> (<em>List</em><em>[</em><em>qns.entity.node.node.QNode</em><em>]</em>) – a list of quantum nodes</p></li>
+<li><p><strong>ll</strong> (<em>List</em><em>[</em><a class="reference internal" href="qns.entity.qchannel.html#qns.entity.qchannel.qchannel.QuantumChannel" title="qns.entity.qchannel.qchannel.QuantumChannel"><em>qns.entity.qchannel.qchannel.QuantumChannel</em></a><em>]</em>) – a list of quantum channels</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.network.topology.Topology.build">
+<span class="sig-name descname"><span class="pre">build</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.node.html#qns.entity.node.qnode.QNode" title="qns.entity.node.qnode.QNode"><span class="pre">QNode</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.qchannel.html#qns.entity.qchannel.qchannel.QuantumChannel" title="qns.entity.qchannel.qchannel.QuantumChannel"><span class="pre">QuantumChannel</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/qns/network/topology/topo.html#Topology.build"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.Topology.build" title="Link to this definition"></a></dt>
+<dd><p>Build the special topology</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>the list of QNodes and the list of QuantumChannel</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.network.topology.Topology.connect_controller">
+<span class="sig-name descname"><span class="pre">connect_controller</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nl</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.node.html#qns.entity.node.node.NodeT" title="qns.entity.node.node.NodeT"><span class="pre">NodeT</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Unpack" title="(in Python v3.13)"><span class="pre">Unpack</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.cchannel.html#qns.entity.cchannel.cchannel.ClassicChannelInitKwargs" title="qns.entity.cchannel.cchannel.ClassicChannelInitKwargs"><span class="pre">ClassicChannelInitKwargs</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.cchannel.html#qns.entity.cchannel.cchannel.ClassicChannel" title="qns.entity.cchannel.cchannel.ClassicChannel"><span class="pre">ClassicChannel</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/qns/network/topology/topo.html#Topology.connect_controller"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.Topology.connect_controller" title="Link to this definition"></a></dt>
+<dd><p>Create a cchannel from the controller to each node.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>nl</strong> – list of non-controller nodes.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of classical channels.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>RuntimeError - controller does not exist.</strong> – </p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>If the controller is part of a network, newly created cchannels are automatically added to the network.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.network.topology.TreeTopology">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.network.topology.</span></span><span class="sig-name descname"><span class="pre">TreeTopology</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nodes_number</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">children_number</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Unpack" title="(in Python v3.13)"><span class="pre">Unpack</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.network.topology.topo.TopologyInitKwargs" title="qns.network.topology.topo.TopologyInitKwargs"><span class="pre">TopologyInitKwargs</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/network/topology/treetopo.html#TreeTopology"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.TreeTopology" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#qns.network.topology.topo.Topology" title="qns.network.topology.topo.Topology"><code class="xref py py-class docutils literal notranslate"><span class="pre">Topology</span></code></a></p>
+<p>TreeTopology includes <cite>nodes_number</cite> Qnodes.
+The topology is a tree pattern, where each parent has <cite>children_num</cite> children.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.network.topology.TreeTopology.build">
+<span class="sig-name descname"><span class="pre">build</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.node.html#qns.entity.node.qnode.QNode" title="qns.entity.node.qnode.QNode"><span class="pre">QNode</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.qchannel.html#qns.entity.qchannel.qchannel.QuantumChannel" title="qns.entity.qchannel.qchannel.QuantumChannel"><span class="pre">QuantumChannel</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/qns/network/topology/treetopo.html#TreeTopology.build"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.TreeTopology.build" title="Link to this definition"></a></dt>
+<dd><p>Build the special topology</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>the list of QNodes and the list of QuantumChannel</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="qns.network.topology.WaxmanTopology">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">qns.network.topology.</span></span><span class="sig-name descname"><span class="pre">WaxmanTopology</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nodes_number</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">beta</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Unpack" title="(in Python v3.13)"><span class="pre">Unpack</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#qns.network.topology.topo.TopologyInitKwargs" title="qns.network.topology.topo.TopologyInitKwargs"><span class="pre">TopologyInitKwargs</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/qns/network/topology/waxmantopo.html#WaxmanTopology"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.WaxmanTopology" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#qns.network.topology.topo.Topology" title="qns.network.topology.topo.Topology"><code class="xref py py-class docutils literal notranslate"><span class="pre">Topology</span></code></a></p>
+<p>WaxmanTopology is the random topology generator using Waxman’s model.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="qns.network.topology.WaxmanTopology.build">
+<span class="sig-name descname"><span class="pre">build</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.node.html#qns.entity.node.qnode.QNode" title="qns.entity.node.qnode.QNode"><span class="pre">QNode</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="qns.entity.qchannel.html#qns.entity.qchannel.qchannel.QuantumChannel" title="qns.entity.qchannel.qchannel.QuantumChannel"><span class="pre">QuantumChannel</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/qns/network/topology/waxmantopo.html#WaxmanTopology.build"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#qns.network.topology.WaxmanTopology.build" title="Link to this definition"></a></dt>
+<dd><p>Build the special topology</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>the list of QNodes and the list of QuantumChannel</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="qns.network.route.html" class="btn btn-neutral float-left" title="qns.network.route package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="qns.simulator.html" class="btn btn-neutral float-right" title="qns.simulator package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Amar Abane.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

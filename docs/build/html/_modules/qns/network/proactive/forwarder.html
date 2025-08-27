@@ -1,0 +1,1017 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>qns.network.proactive.forwarder &mdash; MQNS 0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=2709fde1"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            MQNS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../reference/modules.html">qns</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">MQNS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">qns.network.proactive.forwarder</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for qns.network.proactive.forwarder</h1><div class="highlight"><pre>
+<span></span><span class="c1">#    Multiverse Quantum Network Simulator: a simulator for comparative</span>
+<span class="c1">#    evaluation of quantum routing strategies</span>
+<span class="c1">#    Copyright (C) [2025] Amar Abane</span>
+<span class="c1">#</span>
+<span class="c1">#    This program is free software: you can redistribute it and/or modify</span>
+<span class="c1">#    it under the terms of the GNU General Public License as published by</span>
+<span class="c1">#    the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c1">#    (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1">#    This program is distributed in the hope that it will be useful,</span>
+<span class="c1">#    but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1">#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1">#    GNU General Public License for more details.</span>
+<span class="c1">#</span>
+<span class="c1">#    You should have received a copy of the GNU General Public License</span>
+<span class="c1">#    along with this program.  If not, see &lt;https://www.gnu.org/licenses/&gt;.</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">copy</span><span class="w"> </span><span class="kn">import</span> <span class="n">deepcopy</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">cast</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.entity.cchannel</span><span class="w"> </span><span class="kn">import</span> <span class="n">ClassicPacket</span><span class="p">,</span> <span class="n">RecvClassicPacket</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.entity.memory</span><span class="w"> </span><span class="kn">import</span> <span class="n">MemoryQubit</span><span class="p">,</span> <span class="n">PathDirection</span><span class="p">,</span> <span class="n">QuantumMemory</span><span class="p">,</span> <span class="n">QubitState</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.entity.node</span><span class="w"> </span><span class="kn">import</span> <span class="n">Application</span><span class="p">,</span> <span class="n">Node</span><span class="p">,</span> <span class="n">QNode</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.models.epr</span><span class="w"> </span><span class="kn">import</span> <span class="n">WernerStateEntanglement</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.network</span><span class="w"> </span><span class="kn">import</span> <span class="n">QuantumNetwork</span><span class="p">,</span> <span class="n">SignalTypeEnum</span><span class="p">,</span> <span class="n">TimingModeEnum</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.network.proactive.fib</span><span class="w"> </span><span class="kn">import</span> <span class="n">FIBEntry</span><span class="p">,</span> <span class="n">ForwardingInformationBase</span><span class="p">,</span> <span class="n">find_index_and_swapping_rank</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.network.proactive.message</span><span class="w"> </span><span class="kn">import</span> <span class="n">InstallPathMsg</span><span class="p">,</span> <span class="n">PurifResponseMsg</span><span class="p">,</span> <span class="n">PurifSolicitMsg</span><span class="p">,</span> <span class="n">SwapUpdateMsg</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.network.proactive.mux</span><span class="w"> </span><span class="kn">import</span> <span class="n">MuxScheme</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.network.proactive.mux_buffer_space</span><span class="w"> </span><span class="kn">import</span> <span class="n">MuxSchemeBufferSpace</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.network.protocol.event</span><span class="w"> </span><span class="kn">import</span> <span class="n">ManageActiveChannels</span><span class="p">,</span> <span class="n">QubitEntangledEvent</span><span class="p">,</span> <span class="n">QubitReleasedEvent</span><span class="p">,</span> <span class="n">TypeEnum</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.simulator</span><span class="w"> </span><span class="kn">import</span> <span class="n">Simulator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">log</span>
+
+
+<div class="viewcode-block" id="ProactiveForwarderCounters">
+<a class="viewcode-back" href="../../../../reference/qns.network.proactive.html#qns.network.proactive.forwarder.ProactiveForwarderCounters">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ProactiveForwarderCounters</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_entg</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;how many elementary entanglements received from link layer&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_purif</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;how many entanglements completed i-th purif round (zero-based index)&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_eligible</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;how many entanglements completed all purif rounds and became eligible&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_swapped_s</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;how many swaps succeeded sequentially&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_swapped_p</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;how many swaps succeeded with parallel merging&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_consumed</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;how many entanglements were consumed (either end-to-end or in isolated links mode)&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">consumed_sum_fidelity</span> <span class="o">=</span> <span class="mf">0.0</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;sum of fidelity of consumed entanglements&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="ProactiveForwarderCounters.increment_n_purif">
+<a class="viewcode-back" href="../../../../reference/qns.network.proactive.html#qns.network.proactive.forwarder.ProactiveForwarderCounters.increment_n_purif">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">increment_n_purif</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_purif</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">i</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">n_purif</span> <span class="o">+=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_purif</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_purif</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">n_swapped</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;how many swaps succeeded&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_swapped_s</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_swapped_p</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">consumed_avg_fidelity</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;average fidelity of consumed entanglements&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="mf">0.0</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_consumed</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">consumed_sum_fidelity</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_consumed</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;entg=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_entg</span><span class="si">}</span><span class="s2"> purif=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_purif</span><span class="si">}</span><span class="s2"> eligible=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_eligible</span><span class="si">}</span><span class="s2"> &quot;</span>
+            <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;swapped=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_swapped_s</span><span class="si">}</span><span class="s2">+</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_swapped_p</span><span class="si">}</span><span class="s2"> &quot;</span>
+            <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;consumed=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_consumed</span><span class="si">}</span><span class="s2"> (F=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">consumed_avg_fidelity</span><span class="si">}</span><span class="s2">)&quot;</span>
+        <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="ProactiveForwarder">
+<a class="viewcode-back" href="../../../../reference/qns.network.proactive.html#qns.network.proactive.forwarder.ProactiveForwarder">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ProactiveForwarder</span><span class="p">(</span><span class="n">Application</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    ProactiveForwarder is the forwarder of QNodes and receives routing instructions from the controller.</span>
+<span class="sd">    It implements the forwarding phase (i.e., entanglement generation and swapping) while the centralized</span>
+<span class="sd">    routing is done at the controller.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">ps</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">mux</span><span class="p">:</span> <span class="n">MuxScheme</span> <span class="o">=</span> <span class="n">MuxSchemeBufferSpace</span><span class="p">(),</span>
+        <span class="n">isolate_paths</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;This constructor sets up a node&#39;s entanglement forwarding logic in a quantum network.</span>
+<span class="sd">        It configures the swapping success probability and preparing internal</span>
+<span class="sd">        state for managing memory, routing instructions (via FIB), synchronization,</span>
+<span class="sd">        and classical communication handling.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            ps: Probability of successful entanglement swapping (default: 1.0).</span>
+<span class="sd">            mux: Path multiplexing scheme (default: buffer-space).</span>
+<span class="sd">            isolate_paths: Whether to allow the swapping of qubits allocated to different paths</span>
+<span class="sd">            but serving the same S-D request.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">ps</span> <span class="o">=</span> <span class="n">ps</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Probability of successful entanglement swapping&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">isolate_paths</span> <span class="o">=</span> <span class="n">isolate_paths</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Whether to isolate or not paths serving the same request&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">net</span><span class="p">:</span> <span class="n">QuantumNetwork</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;quantum network instance&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="p">:</span> <span class="n">QNode</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;quantum node this Forwarder equips&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">memory</span><span class="p">:</span> <span class="n">QuantumMemory</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;quantum memory of the node&quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">fib</span> <span class="o">=</span> <span class="n">ForwardingInformationBase</span><span class="p">()</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;FIB structure&quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">waiting_qubits</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">QubitEntangledEvent</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;stores the qubits waiting for the INTERNAL phase (SYNC mode)&quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">mux</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">mux</span><span class="p">)</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Multiplexing scheme.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># event handlers</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_handler</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">RecvClassicPacketHandler</span><span class="p">,</span> <span class="n">RecvClassicPacket</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_handler</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">qubit_is_entangled</span><span class="p">,</span> <span class="n">QubitEntangledEvent</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">waiting_su</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">SwapUpdateMsg</span><span class="p">,</span> <span class="n">FIBEntry</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        SwapUpdates received prior to QubitEntangledEvent.</span>
+<span class="sd">        Key: MemoryQubit addr.</span>
+<span class="sd">        Value: SwapUpdateMsg and FIBEntry.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">parallel_swappings</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span>
+            <span class="nb">str</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">WernerStateEntanglement</span><span class="p">,</span> <span class="n">WernerStateEntanglement</span><span class="p">,</span> <span class="n">WernerStateEntanglement</span><span class="p">]</span>
+        <span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;manage potential parallel swappings&quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">remote_swapped_eprs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">WernerStateEntanglement</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        EPRs that have been swapped remotely but the SwapUpdateMsg have not arrived.</span>
+<span class="sd">        Each key is an EPR name; each value is the EPR.</span>
+
+<span class="sd">        When a remote forwarder performs a swapping in which this node is either src or dst of the new EPR,</span>
+<span class="sd">        it deposits the swapped EPR here and transmits the corresponding SwapUpdateMsg.</span>
+<span class="sd">        Upon receiving the SwapUpdateMsg, the local forwarder pops the EPR.</span>
+
+<span class="sd">        XXX Current approach assumes cchannels do not have packet loss.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">cnt</span> <span class="o">=</span> <span class="n">ProactiveForwarderCounters</span><span class="p">()</span>
+
+<div class="viewcode-block" id="ProactiveForwarder.install">
+<a class="viewcode-back" href="../../../../reference/qns.network.proactive.html#qns.network.proactive.forwarder.ProactiveForwarder.install">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">install</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">Node</span><span class="p">,</span> <span class="n">simulator</span><span class="p">:</span> <span class="n">Simulator</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;called at initialization of the node&quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">install</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">simulator</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">own</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_node</span><span class="p">(</span><span class="n">node_type</span><span class="o">=</span><span class="n">QNode</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">memory</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="o">.</span><span class="n">get_memory</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">net</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="o">.</span><span class="n">network</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mux</span><span class="o">.</span><span class="n">fw</span> <span class="o">=</span> <span class="bp">self</span></div>
+
+
+<div class="viewcode-block" id="ProactiveForwarder.handle_sync_signal">
+<a class="viewcode-back" href="../../../../reference/qns.network.proactive.html#qns.network.proactive.forwarder.ProactiveForwarder.handle_sync_signal">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">handle_sync_signal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">signal_type</span><span class="p">:</span> <span class="n">SignalTypeEnum</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Processes timing signals for SYNC mode. When receiving an INTERNAL phase start signal, all</span>
+<span class="sd">        previously queued QubitEntangledEvent instances are processed. Updates the current</span>
+<span class="sd">        synchronization phase to match the received signal type.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">            signal_type (SignalTypeEnum): The received synchronization signal.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">signal_type</span> <span class="o">==</span> <span class="n">SignalTypeEnum</span><span class="o">.</span><span class="n">EXTERNAL</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">remote_swapped_eprs</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="n">signal_type</span> <span class="o">==</span> <span class="n">SignalTypeEnum</span><span class="o">.</span><span class="n">INTERNAL</span><span class="p">:</span>
+            <span class="c1"># internal phase -&gt; time to handle all entangled qubits</span>
+            <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="si">}</span><span class="s2">: there are </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">waiting_qubits</span><span class="p">)</span><span class="si">}</span><span class="s2"> etg qubits to process&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">waiting_qubits</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">qubit_is_entangled</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">waiting_qubits</span> <span class="o">=</span> <span class="p">[]</span></div>
+
+
+    <span class="n">CLASSIC_SIGNALING_HANDLERS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Callable</span><span class="p">[[</span><span class="s2">&quot;ProactiveForwarder&quot;</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">FIBEntry</span><span class="p">],</span> <span class="kc">None</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+
+<div class="viewcode-block" id="ProactiveForwarder.RecvClassicPacketHandler">
+<a class="viewcode-back" href="../../../../reference/qns.network.proactive.html#qns.network.proactive.forwarder.ProactiveForwarder.RecvClassicPacketHandler">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">RecvClassicPacketHandler</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">:</span> <span class="n">RecvClassicPacket</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Receives a classical packet and dispatches it as control or signaling.</span>
+
+<span class="sd">        If the message is originated from a Controller, it is treated as a control message and passed to `handle_control`.</span>
+
+<span class="sd">        If the message is originated from another node type and contains a `cmd` field recognized as a signaling message:</span>
+<span class="sd">        - If the current node is the destination, it is dispatched to the corresponding signaling command handler.</span>
+<span class="sd">        - If the current node is not the destination, it is forwarded along the path.</span>
+
+<span class="sd">        Returns False for unrecognized message types, which allows the classic packet to go to the next application.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">packet</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">packet</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="n">packet</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">&quot;cmd&quot;</span> <span class="ow">in</span> <span class="n">msg</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="n">msg</span><span class="p">[</span><span class="s2">&quot;cmd&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;install_path&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_install_path</span><span class="p">(</span><span class="n">cast</span><span class="p">(</span><span class="n">InstallPathMsg</span><span class="p">,</span> <span class="n">msg</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">msg</span><span class="p">[</span><span class="s2">&quot;cmd&quot;</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">CLASSIC_SIGNALING_HANDLERS</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">msg</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">path_id</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">msg</span><span class="p">[</span><span class="s2">&quot;path_id&quot;</span><span class="p">]</span>
+        <span class="n">fib_entry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fib</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">path_id</span><span class="p">)</span>
+
+        <span class="k">assert</span> <span class="n">packet</span><span class="o">.</span><span class="n">dest</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">packet</span><span class="o">.</span><span class="n">dest</span><span class="o">.</span><span class="n">name</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>  <span class="c1"># node is not destination: forward message</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">send_msg</span><span class="p">(</span><span class="n">packet</span><span class="o">.</span><span class="n">dest</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">fib_entry</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">CLASSIC_SIGNALING_HANDLERS</span><span class="p">[</span><span class="n">msg</span><span class="p">[</span><span class="s2">&quot;cmd&quot;</span><span class="p">]](</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">fib_entry</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="ProactiveForwarder.send_msg">
+<a class="viewcode-back" href="../../../../reference/qns.network.proactive.html#qns.network.proactive.forwarder.ProactiveForwarder.send_msg">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">send_msg</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dest</span><span class="p">:</span> <span class="n">Node</span><span class="p">,</span> <span class="n">msg</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">fib_entry</span><span class="p">:</span> <span class="n">FIBEntry</span><span class="p">):</span>
+        <span class="n">dest_idx</span> <span class="o">=</span> <span class="n">fib_entry</span><span class="o">.</span><span class="n">route</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">dest</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="n">nh</span> <span class="o">=</span> <span class="n">fib_entry</span><span class="o">.</span><span class="n">route</span><span class="p">[</span><span class="n">fib_entry</span><span class="o">.</span><span class="n">own_idx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="n">dest_idx</span> <span class="o">&gt;</span> <span class="n">fib_entry</span><span class="o">.</span><span class="n">own_idx</span> <span class="k">else</span> <span class="n">fib_entry</span><span class="o">.</span><span class="n">route</span><span class="p">[</span><span class="n">fib_entry</span><span class="o">.</span><span class="n">own_idx</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="n">next_hop</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="o">.</span><span class="n">network</span><span class="o">.</span><span class="n">get_node</span><span class="p">(</span><span class="n">nh</span><span class="p">)</span>
+
+        <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: send msg to </span><span class="si">{</span><span class="n">dest</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> via </span><span class="si">{</span><span class="n">next_hop</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> | msg: </span><span class="si">{</span><span class="n">msg</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="o">.</span><span class="n">get_cchannel</span><span class="p">(</span><span class="n">next_hop</span><span class="p">)</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">ClassicPacket</span><span class="p">(</span><span class="n">msg</span><span class="o">=</span><span class="n">msg</span><span class="p">,</span> <span class="n">src</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="n">dest</span><span class="p">),</span> <span class="n">next_hop</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ProactiveForwarder.handle_install_path">
+<a class="viewcode-back" href="../../../../reference/qns.network.proactive.html#qns.network.proactive.forwarder.ProactiveForwarder.handle_install_path">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">handle_install_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">:</span> <span class="n">InstallPathMsg</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Processes an install_path message containing routing instructions from the controller.</span>
+
+<span class="sd">        Determines left/right neighbors from the route, identifies corresponding quantum channels,</span>
+<span class="sd">        and allocates qubits based on the multiplexing vector (for the buffer-space mode).</span>
+<span class="sd">        Updates the FIB with path, swapping, and purification info, and triggers EPR generation via the</span>
+<span class="sd">        link layer on the outgoing channel.</span>
+<span class="sd">        No path allocation for qubits means statistical mux is required, but this is not implemented.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">simulator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">simulator</span>
+        <span class="n">path_id</span> <span class="o">=</span> <span class="n">msg</span><span class="p">[</span><span class="s2">&quot;path_id&quot;</span><span class="p">]</span>
+        <span class="n">instructions</span> <span class="o">=</span> <span class="n">msg</span><span class="p">[</span><span class="s2">&quot;instructions&quot;</span><span class="p">]</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: routing instructions of path </span><span class="si">{</span><span class="n">path_id</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">instructions</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mux</span><span class="o">.</span><span class="n">validate_path_instructions</span><span class="p">(</span><span class="n">instructions</span><span class="p">)</span>
+
+        <span class="c1"># populate FIB</span>
+        <span class="n">route</span> <span class="o">=</span> <span class="n">instructions</span><span class="p">[</span><span class="s2">&quot;route&quot;</span><span class="p">]</span>
+        <span class="n">fib_entry</span> <span class="o">=</span> <span class="n">FIBEntry</span><span class="p">(</span>
+            <span class="n">path_id</span><span class="o">=</span><span class="n">path_id</span><span class="p">,</span>
+            <span class="n">req_id</span><span class="o">=</span><span class="n">instructions</span><span class="p">[</span><span class="s2">&quot;req_id&quot;</span><span class="p">],</span>
+            <span class="n">route</span><span class="o">=</span><span class="n">route</span><span class="p">,</span>
+            <span class="n">own_idx</span><span class="o">=</span><span class="n">route</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="o">.</span><span class="n">name</span><span class="p">),</span>
+            <span class="n">swap</span><span class="o">=</span><span class="n">instructions</span><span class="p">[</span><span class="s2">&quot;swap&quot;</span><span class="p">],</span>
+            <span class="n">purif</span><span class="o">=</span><span class="n">instructions</span><span class="p">[</span><span class="s2">&quot;purif&quot;</span><span class="p">],</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fib</span><span class="o">.</span><span class="n">insert_or_replace</span><span class="p">(</span><span class="n">fib_entry</span><span class="p">)</span>
+
+        <span class="c1"># identify left/right neighbors and allocate memory qubits to the path</span>
+        <span class="c1"># example visualization:</span>
+        <span class="c1"># route = [ S, R, D ]</span>
+        <span class="c1"># m_v = [ (4,2) , (2,4) ]</span>
+        <span class="c1"># S--(4,2)--R--(2,4)--D</span>
+        <span class="c1"># here, R should allocate 2 qubits toward S.</span>
+        <span class="n">l_neighbor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find_neighbor</span><span class="p">(</span><span class="n">fib_entry</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">l_neighbor</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mux</span><span class="o">.</span><span class="n">install_path_neighbor</span><span class="p">(</span>
+                <span class="n">instructions</span><span class="p">,</span> <span class="n">fib_entry</span><span class="p">,</span> <span class="n">PathDirection</span><span class="o">.</span><span class="n">LEFT</span><span class="p">,</span> <span class="n">l_neighbor</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="o">.</span><span class="n">get_qchannel</span><span class="p">(</span><span class="n">l_neighbor</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="n">r_neighbor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find_neighbor</span><span class="p">(</span><span class="n">fib_entry</span><span class="p">,</span> <span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">r_neighbor</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mux</span><span class="o">.</span><span class="n">install_path_neighbor</span><span class="p">(</span>
+                <span class="n">instructions</span><span class="p">,</span> <span class="n">fib_entry</span><span class="p">,</span> <span class="n">PathDirection</span><span class="o">.</span><span class="n">RIGHT</span><span class="p">,</span> <span class="n">r_neighbor</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="o">.</span><span class="n">get_qchannel</span><span class="p">(</span><span class="n">r_neighbor</span><span class="p">)</span>
+            <span class="p">)</span>
+
+        <span class="c1"># instruct LinkLayer to start generating EPRs on the qchannel toward the right neighbor</span>
+        <span class="k">if</span> <span class="n">r_neighbor</span><span class="p">:</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="n">path_id</span> <span class="k">if</span> <span class="n">instructions</span><span class="p">[</span><span class="s2">&quot;mux&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;B&quot;</span> <span class="k">else</span> <span class="kc">None</span>
+            <span class="n">simulator</span><span class="o">.</span><span class="n">add_event</span><span class="p">(</span><span class="n">ManageActiveChannels</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="p">,</span> <span class="n">r_neighbor</span><span class="p">,</span> <span class="n">TypeEnum</span><span class="o">.</span><span class="n">ADD</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">t</span><span class="o">=</span><span class="n">simulator</span><span class="o">.</span><span class="n">tc</span><span class="p">,</span> <span class="n">by</span><span class="o">=</span><span class="bp">self</span><span class="p">))</span>
+
+        <span class="c1"># TODO: remove path, type=TypeEnum.REMOVE</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_find_neighbor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fib_entry</span><span class="p">:</span> <span class="n">FIBEntry</span><span class="p">,</span> <span class="n">route_offset</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QNode</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">neigh_idx</span> <span class="o">=</span> <span class="n">fib_entry</span><span class="o">.</span><span class="n">own_idx</span> <span class="o">+</span> <span class="n">route_offset</span>
+        <span class="k">if</span> <span class="n">neigh_idx</span> <span class="ow">in</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">fib_entry</span><span class="o">.</span><span class="n">route</span><span class="p">)):</span>  <span class="c1"># no left/right neighbor if own node is the left/right end node</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">net</span><span class="o">.</span><span class="n">get_node</span><span class="p">(</span><span class="n">fib_entry</span><span class="o">.</span><span class="n">route</span><span class="p">[</span><span class="n">neigh_idx</span><span class="p">])</span>
+
+<div class="viewcode-block" id="ProactiveForwarder.qubit_is_entangled">
+<a class="viewcode-back" href="../../../../reference/qns.network.proactive.html#qns.network.proactive.forwarder.ProactiveForwarder.qubit_is_entangled">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">qubit_is_entangled</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">:</span> <span class="n">QubitEntangledEvent</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Handle a qubit entering ENTANGLED state.</span>
+<span class="sd">        QubitEntangledEvent is either delivered from simulator or dequeued from `self.waiting_qubits`.</span>
+<span class="sd">        In SYNC timing mode, events are queued if the current phase is EXTERNAL.</span>
+<span class="sd">        In ASYNC timing mode or INTERNAL sync phase, events are handled immediately.</span>
+
+<span class="sd">        Newly arrived elementary entanglements are processed based on their path allocation.</span>
+
+<span class="sd">        If the qubit is assigned a path (buffer-space multiplexing), the method checks its eligibility and,</span>
+<span class="sd">        if conditions are met, transitions it to the PURIF state and calls `purif` method.</span>
+
+<span class="sd">        If the qubit is unassigned (statistical multiplexing), it is TODO.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            event: Event containing the entangled qubit and its associated metadata (e.g., neighbor).</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="o">.</span><span class="n">timing_mode</span> <span class="o">==</span> <span class="n">TimingModeEnum</span><span class="o">.</span><span class="n">SYNC</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">sync_current_phase</span> <span class="o">==</span> <span class="n">SignalTypeEnum</span><span class="o">.</span><span class="n">EXTERNAL</span><span class="p">:</span>
+            <span class="c1"># Accept new etg while we are in EXT phase</span>
+            <span class="c1"># Assume t_coh &gt; t_ext: QubitEntangledEvent events should correspond to different qubits, no redundancy</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">waiting_qubits</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">cnt</span><span class="o">.</span><span class="n">n_entg</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="n">qubit</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">qubit</span>
+        <span class="k">assert</span> <span class="n">qubit</span><span class="o">.</span><span class="n">state</span> <span class="o">==</span> <span class="n">QubitState</span><span class="o">.</span><span class="n">ENTANGLED1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mux</span><span class="o">.</span><span class="n">qubit_is_entangled</span><span class="p">(</span><span class="n">qubit</span><span class="p">,</span> <span class="n">event</span><span class="o">.</span><span class="n">neighbor</span><span class="p">)</span>
+
+        <span class="n">su_args</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">waiting_su</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">qubit</span><span class="o">.</span><span class="n">addr</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">su_args</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">handle_swap_update</span><span class="p">(</span><span class="o">*</span><span class="n">su_args</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ProactiveForwarder.qubit_is_purif">
+<a class="viewcode-back" href="../../../../reference/qns.network.proactive.html#qns.network.proactive.forwarder.ProactiveForwarder.qubit_is_purif">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">qubit_is_purif</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">qubit</span><span class="p">:</span> <span class="n">MemoryQubit</span><span class="p">,</span> <span class="n">fib_entry</span><span class="p">:</span> <span class="n">FIBEntry</span><span class="p">,</span> <span class="n">partner</span><span class="p">:</span> <span class="n">QNode</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Handle a qubit entering PURIF state.</span>
+<span class="sd">        Determines the segment in which the qubit is entangled and number of required purification rounds from the FIB.</span>
+<span class="sd">        If the required rounds are completed, the qubit becomes eligible. Otherwise, the node evaluates</span>
+<span class="sd">        whether it is the initiator for the purification (i.e., primary). If so, it searches for an auxiliary</span>
+<span class="sd">        qubit to use, consumes the auxiliary, updates qubit states, and sends a PURIF_SOLICIT message</span>
+<span class="sd">        to the partner node.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            qubit: The memory qubit at PURIF state.</span>
+<span class="sd">            fib_entry: FIB entry containing routing and purification instructions.</span>
+<span class="sd">            partner: The node with which the qubit shares an EPR.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">qubit</span><span class="o">.</span><span class="n">state</span> <span class="o">==</span> <span class="n">QubitState</span><span class="o">.</span><span class="n">PURIF</span>
+        <span class="k">assert</span> <span class="n">qubit</span><span class="o">.</span><span class="n">qchannel</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+
+        <span class="k">assert</span> <span class="n">partner</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="n">partner_idx</span><span class="p">,</span> <span class="n">partner_rank</span> <span class="o">=</span> <span class="n">find_index_and_swapping_rank</span><span class="p">(</span><span class="n">fib_entry</span><span class="p">,</span> <span class="n">partner</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="n">own_idx</span><span class="p">,</span> <span class="n">own_rank</span> <span class="o">=</span> <span class="n">find_index_and_swapping_rank</span><span class="p">(</span><span class="n">fib_entry</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">own_rank</span> <span class="o">&gt;</span> <span class="n">partner_rank</span><span class="p">:</span>
+            <span class="c1"># swapping order disallows initiating purif / swap / consumption</span>
+            <span class="k">return</span>
+
+        <span class="n">segment_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">partner</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="n">own_idx</span> <span class="o">&lt;</span> <span class="n">partner_idx</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">partner</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">want_rounds</span> <span class="o">=</span> <span class="n">fib_entry</span><span class="o">.</span><span class="n">purif</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">segment_name</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="si">}</span><span class="s2">: segment </span><span class="si">{</span><span class="n">segment_name</span><span class="si">}</span><span class="s2"> (qubit </span><span class="si">{</span><span class="n">qubit</span><span class="o">.</span><span class="n">addr</span><span class="si">}</span><span class="s2">) has &quot;</span>
+            <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">qubit</span><span class="o">.</span><span class="n">purif_rounds</span><span class="si">}</span><span class="s2"> and needs </span><span class="si">{</span><span class="n">want_rounds</span><span class="si">}</span><span class="s2"> purif rounds&quot;</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">qubit</span><span class="o">.</span><span class="n">purif_rounds</span> <span class="o">==</span> <span class="n">want_rounds</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cnt</span><span class="o">.</span><span class="n">n_eligible</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">qubit</span><span class="o">.</span><span class="n">purif_rounds</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">qubit</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">QubitState</span><span class="o">.</span><span class="n">ELIGIBLE</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">qubit_is_eligible</span><span class="p">(</span><span class="n">qubit</span><span class="p">,</span> <span class="n">fib_entry</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">assert</span> <span class="n">qubit</span><span class="o">.</span><span class="n">purif_rounds</span> <span class="o">&lt;</span> <span class="n">want_rounds</span>
+
+        <span class="n">is_primary</span> <span class="o">=</span> <span class="p">(</span><span class="n">own_rank</span><span class="p">,</span> <span class="n">own_idx</span><span class="p">)</span> <span class="o">&lt;</span> <span class="p">(</span><span class="n">partner_rank</span><span class="p">,</span> <span class="n">partner_idx</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_primary</span><span class="p">:</span>
+            <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="si">}</span><span class="s2">: is not primary node for segment </span><span class="si">{</span><span class="n">segment_name</span><span class="si">}</span><span class="s2"> purif&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="n">mq1</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">memory</span><span class="o">.</span><span class="n">find</span><span class="p">(</span>
+                <span class="k">lambda</span> <span class="n">q</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="n">q</span><span class="o">.</span><span class="n">addr</span> <span class="o">!=</span> <span class="n">qubit</span><span class="o">.</span><span class="n">addr</span>  <span class="c1"># not the same qubit</span>
+                <span class="ow">and</span> <span class="n">q</span><span class="o">.</span><span class="n">state</span> <span class="o">==</span> <span class="n">QubitState</span><span class="o">.</span><span class="n">PURIF</span>  <span class="c1"># in PURIF state</span>
+                <span class="ow">and</span> <span class="n">q</span><span class="o">.</span><span class="n">purif_rounds</span> <span class="o">==</span> <span class="n">qubit</span><span class="o">.</span><span class="n">purif_rounds</span>  <span class="c1"># with same number of purif rounds</span>
+                <span class="ow">and</span> <span class="n">partner</span> <span class="ow">in</span> <span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">src</span><span class="p">,</span> <span class="n">v</span><span class="o">.</span><span class="n">dst</span><span class="p">)</span>  <span class="c1"># with the same partner</span>
+                <span class="ow">and</span> <span class="n">q</span><span class="o">.</span><span class="n">path_id</span> <span class="o">==</span> <span class="n">fib_entry</span><span class="o">.</span><span class="n">path_id</span><span class="p">,</span>  <span class="c1"># on the same path_id</span>
+                <span class="n">has_epr</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">),</span>
+            <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="c1"># TODO selection algorithm among found qubits</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">mq1</span><span class="p">:</span>
+            <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="si">}</span><span class="s2">: no candidate EPR for segment </span><span class="si">{</span><span class="n">segment_name</span><span class="si">}</span><span class="s2"> purif round </span><span class="si">{</span><span class="mi">1</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">qubit</span><span class="o">.</span><span class="n">purif_rounds</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_send_purif_solicit</span><span class="p">(</span><span class="n">qubit</span><span class="p">,</span> <span class="n">mq1</span><span class="p">,</span> <span class="n">fib_entry</span><span class="p">,</span> <span class="n">partner</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_send_purif_solicit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mq0</span><span class="p">:</span> <span class="n">MemoryQubit</span><span class="p">,</span> <span class="n">mq1</span><span class="p">:</span> <span class="n">MemoryQubit</span><span class="p">,</span> <span class="n">fib_entry</span><span class="p">:</span> <span class="n">FIBEntry</span><span class="p">,</span> <span class="n">partner</span><span class="p">:</span> <span class="n">QNode</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initiate purification protocol.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            mq0: first memory qubit, which would be kept if purification succeeds.</span>
+<span class="sd">            mq1: second memory qubit, which is consumed during purification.</span>
+<span class="sd">            fib_entry: FIB entry.</span>
+<span class="sd">            partner: quantum node with which entanglements are shared.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">simulator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">simulator</span>
+
+        <span class="c1"># read qubits to set fidelity at this time</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">epr0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">mq0</span><span class="o">.</span><span class="n">addr</span><span class="p">,</span> <span class="n">destructive</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">must</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">epr1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">mq1</span><span class="o">.</span><span class="n">addr</span><span class="p">,</span> <span class="n">must</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">epr0</span><span class="p">,</span> <span class="n">WernerStateEntanglement</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">epr1</span><span class="p">,</span> <span class="n">WernerStateEntanglement</span><span class="p">)</span>
+
+        <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="si">}</span><span class="s2">: request purif qubit </span><span class="si">{</span><span class="n">mq0</span><span class="o">.</span><span class="n">addr</span><span class="si">}</span><span class="s2"> (F=</span><span class="si">{</span><span class="n">epr0</span><span class="o">.</span><span class="n">fidelity</span><span class="si">}</span><span class="s2">) and &quot;</span>
+            <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">mq1</span><span class="o">.</span><span class="n">addr</span><span class="si">}</span><span class="s2"> (F=</span><span class="si">{</span><span class="n">epr1</span><span class="o">.</span><span class="n">fidelity</span><span class="si">}</span><span class="s2">) with partner </span><span class="si">{</span><span class="n">partner</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+        <span class="n">mq0</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">QubitState</span><span class="o">.</span><span class="n">PENDING</span>
+        <span class="n">mq1</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">QubitState</span><span class="o">.</span><span class="n">RELEASE</span>
+        <span class="n">simulator</span><span class="o">.</span><span class="n">add_event</span><span class="p">(</span><span class="n">QubitReleasedEvent</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="p">,</span> <span class="n">mq1</span><span class="p">,</span> <span class="n">t</span><span class="o">=</span><span class="n">simulator</span><span class="o">.</span><span class="n">tc</span><span class="p">,</span> <span class="n">by</span><span class="o">=</span><span class="bp">self</span><span class="p">))</span>
+
+        <span class="c1"># send purif_solicit to partner</span>
+        <span class="n">msg</span><span class="p">:</span> <span class="n">PurifSolicitMsg</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;cmd&quot;</span><span class="p">:</span> <span class="s2">&quot;PURIF_SOLICIT&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;path_id&quot;</span><span class="p">:</span> <span class="n">fib_entry</span><span class="o">.</span><span class="n">path_id</span><span class="p">,</span>
+            <span class="s2">&quot;purif_node&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="s2">&quot;partner&quot;</span><span class="p">:</span> <span class="n">partner</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="s2">&quot;epr&quot;</span><span class="p">:</span> <span class="n">epr0</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="s2">&quot;measure_epr&quot;</span><span class="p">:</span> <span class="n">epr1</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="s2">&quot;round&quot;</span><span class="p">:</span> <span class="n">mq0</span><span class="o">.</span><span class="n">purif_rounds</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">send_msg</span><span class="p">(</span><span class="n">partner</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">fib_entry</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ProactiveForwarder.handle_purif_solicit">
+<a class="viewcode-back" href="../../../../reference/qns.network.proactive.html#qns.network.proactive.forwarder.ProactiveForwarder.handle_purif_solicit">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">handle_purif_solicit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">:</span> <span class="n">PurifSolicitMsg</span><span class="p">,</span> <span class="n">fib_entry</span><span class="p">:</span> <span class="n">FIBEntry</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Processes a PURIF_SOLICIT message from a partner node as part of the purification protocol.</span>
+<span class="sd">        Retrieves the target and auxiliary qubits from memory, verifies their states, and attempts</span>
+<span class="sd">        purification. If successful, updates the EPR and sends a PURIF_RESPONSE with result=True;</span>
+<span class="sd">        otherwise, marks both qubits for release and replies with result=False.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            msg: Message containing purification parameters and EPR names.</span>
+<span class="sd">            fib_entry: FIB entry associated with path_id in the message.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">simulator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">simulator</span>
+
+        <span class="c1"># mq0 is the &quot;kept&quot; memory whose fidelity would be increased if purification succeeds</span>
+        <span class="c1"># mq1 is the &quot;measured&quot; memory that is consumed during purification</span>
+        <span class="n">mq0</span><span class="p">,</span> <span class="n">epr0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">msg</span><span class="p">[</span><span class="s2">&quot;epr&quot;</span><span class="p">],</span> <span class="n">destructive</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">must</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">mq1</span><span class="p">,</span> <span class="n">epr1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">msg</span><span class="p">[</span><span class="s2">&quot;measure_epr&quot;</span><span class="p">],</span> <span class="n">must</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="c1"># TODO: handle the exception case when an EPR is decohered and not found in memory</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">epr0</span><span class="p">,</span> <span class="n">WernerStateEntanglement</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">epr1</span><span class="p">,</span> <span class="n">WernerStateEntanglement</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">mq</span> <span class="ow">in</span> <span class="p">(</span><span class="n">mq0</span><span class="p">,</span> <span class="n">mq1</span><span class="p">):</span>
+            <span class="k">assert</span> <span class="n">mq</span><span class="o">.</span><span class="n">state</span> <span class="o">==</span> <span class="n">QubitState</span><span class="o">.</span><span class="n">PURIF</span>
+            <span class="k">assert</span> <span class="n">mq</span><span class="o">.</span><span class="n">purif_rounds</span> <span class="o">==</span> <span class="n">msg</span><span class="p">[</span><span class="s2">&quot;round&quot;</span><span class="p">]</span>
+
+        <span class="k">assert</span> <span class="n">msg</span><span class="p">[</span><span class="s2">&quot;partner&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="o">.</span><span class="n">name</span>
+        <span class="n">primary</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="o">.</span><span class="n">network</span><span class="o">.</span><span class="n">get_node</span><span class="p">(</span><span class="n">msg</span><span class="p">[</span><span class="s2">&quot;purif_node&quot;</span><span class="p">])</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="si">}</span><span class="s2">: perform purif qubit </span><span class="si">{</span><span class="n">mq0</span><span class="o">.</span><span class="n">addr</span><span class="si">}</span><span class="s2"> (F=</span><span class="si">{</span><span class="n">epr0</span><span class="o">.</span><span class="n">fidelity</span><span class="si">}</span><span class="s2">) and &quot;</span>
+            <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">mq1</span><span class="o">.</span><span class="n">addr</span><span class="si">}</span><span class="s2"> (F=</span><span class="si">{</span><span class="n">epr1</span><span class="o">.</span><span class="n">fidelity</span><span class="si">}</span><span class="s2">) for round </span><span class="si">{</span><span class="mi">1</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">mq0</span><span class="o">.</span><span class="n">purif_rounds</span><span class="si">}</span><span class="s2"> with primary </span><span class="si">{</span><span class="n">primary</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+        <span class="c1"># perform purification between EPRs</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">epr0</span><span class="o">.</span><span class="n">purify</span><span class="p">(</span><span class="n">epr1</span><span class="p">)</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="si">}</span><span class="s2">: purif </span><span class="si">{</span><span class="s1">&#39;succeeded&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;failed&#39;</span><span class="si">}</span><span class="s2"> on qubit </span><span class="si">{</span><span class="n">mq0</span><span class="o">.</span><span class="n">addr</span><span class="si">}</span><span class="s2"> (F=</span><span class="si">{</span><span class="n">epr0</span><span class="o">.</span><span class="n">fidelity</span><span class="si">}</span><span class="s2">) &quot;</span>
+            <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;for round </span><span class="si">{</span><span class="mi">1</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">mq0</span><span class="o">.</span><span class="n">purif_rounds</span><span class="si">}</span><span class="s2"> with primary </span><span class="si">{</span><span class="n">primary</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">result</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">memory</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">old_qm</span><span class="o">=</span><span class="n">epr0</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">new_qm</span><span class="o">=</span><span class="n">epr0</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cnt</span><span class="o">.</span><span class="n">increment_n_purif</span><span class="p">(</span><span class="n">mq0</span><span class="o">.</span><span class="n">purif_rounds</span><span class="p">)</span>
+            <span class="n">mq0</span><span class="o">.</span><span class="n">purif_rounds</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">mq0</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">QubitState</span><span class="o">.</span><span class="n">PURIF</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">qubit_is_purif</span><span class="p">(</span><span class="n">mq0</span><span class="p">,</span> <span class="n">fib_entry</span><span class="p">,</span> <span class="n">primary</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># in case of purification failure, release mq0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">memory</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">mq0</span><span class="o">.</span><span class="n">addr</span><span class="p">)</span>  <span class="c1"># destructive reading</span>
+            <span class="n">mq0</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">QubitState</span><span class="o">.</span><span class="n">RELEASE</span>
+            <span class="n">simulator</span><span class="o">.</span><span class="n">add_event</span><span class="p">(</span><span class="n">QubitReleasedEvent</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="p">,</span> <span class="n">mq0</span><span class="p">,</span> <span class="n">t</span><span class="o">=</span><span class="n">simulator</span><span class="o">.</span><span class="n">tc</span><span class="p">,</span> <span class="n">by</span><span class="o">=</span><span class="bp">self</span><span class="p">))</span>
+
+        <span class="c1"># release mq1; destructive reading is already performed</span>
+        <span class="n">mq1</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">QubitState</span><span class="o">.</span><span class="n">RELEASE</span>
+        <span class="n">simulator</span><span class="o">.</span><span class="n">add_event</span><span class="p">(</span><span class="n">QubitReleasedEvent</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="p">,</span> <span class="n">mq1</span><span class="p">,</span> <span class="n">t</span><span class="o">=</span><span class="n">simulator</span><span class="o">.</span><span class="n">tc</span><span class="p">,</span> <span class="n">by</span><span class="o">=</span><span class="bp">self</span><span class="p">))</span>
+
+        <span class="c1"># send response message</span>
+        <span class="n">resp</span><span class="p">:</span> <span class="n">PurifResponseMsg</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="o">**</span><span class="n">msg</span><span class="p">,</span>
+            <span class="s2">&quot;cmd&quot;</span><span class="p">:</span> <span class="s2">&quot;PURIF_RESPONSE&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;result&quot;</span><span class="p">:</span> <span class="n">result</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">send_msg</span><span class="p">(</span><span class="n">primary</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="n">fib_entry</span><span class="p">)</span></div>
+
+
+    <span class="n">CLASSIC_SIGNALING_HANDLERS</span><span class="p">[</span><span class="s2">&quot;PURIF_SOLICIT&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">handle_purif_solicit</span>
+
+<div class="viewcode-block" id="ProactiveForwarder.handle_purif_response">
+<a class="viewcode-back" href="../../../../reference/qns.network.proactive.html#qns.network.proactive.forwarder.ProactiveForwarder.handle_purif_response">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">handle_purif_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">:</span> <span class="n">PurifResponseMsg</span><span class="p">,</span> <span class="n">fib_entry</span><span class="p">:</span> <span class="n">FIBEntry</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Handles a PURIF_RESPONSE message indicating the outcome of a purification attempt.</span>
+<span class="sd">        If the current node is the destination and purification succeeded, the EPR is updated,</span>
+<span class="sd">        the qubit&#39;s purification round counter is incremented, and the qubit may re-enter the</span>
+<span class="sd">        purification process. If purification failed, the qubit is released.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">            msg: Response message containing the result and identifiers of the purified EPRs.</span>
+<span class="sd">            fib_entry: FIB entry associated with path_id in the message.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">simulator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">simulator</span>
+
+        <span class="n">qubit</span><span class="p">,</span> <span class="n">epr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">msg</span><span class="p">[</span><span class="s2">&quot;epr&quot;</span><span class="p">],</span> <span class="n">must</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="c1"># TODO: handle the exception case when an EPR is decohered and not found in memory</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">epr</span><span class="p">,</span> <span class="n">WernerStateEntanglement</span><span class="p">)</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="n">msg</span><span class="p">[</span><span class="s2">&quot;result&quot;</span><span class="p">]</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="si">}</span><span class="s2">: purif </span><span class="si">{</span><span class="s1">&#39;succeeded&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;failed&#39;</span><span class="si">}</span><span class="s2"> on qubit </span><span class="si">{</span><span class="n">qubit</span><span class="o">.</span><span class="n">addr</span><span class="si">}</span><span class="s2"> (F=</span><span class="si">{</span><span class="n">epr</span><span class="o">.</span><span class="n">fidelity</span><span class="si">}</span><span class="s2">) &quot;</span>
+            <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;for round </span><span class="si">{</span><span class="mi">1</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">qubit</span><span class="o">.</span><span class="n">purif_rounds</span><span class="si">}</span><span class="s2"> with partner </span><span class="si">{</span><span class="n">msg</span><span class="p">[</span><span class="s1">&#39;partner&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">result</span><span class="p">:</span>  <span class="c1"># purif failed</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">memory</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">qubit</span><span class="o">.</span><span class="n">addr</span><span class="p">)</span>  <span class="c1"># destructive reading</span>
+            <span class="n">qubit</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">QubitState</span><span class="o">.</span><span class="n">RELEASE</span>
+            <span class="n">simulator</span><span class="o">.</span><span class="n">add_event</span><span class="p">(</span><span class="n">QubitReleasedEvent</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="p">,</span> <span class="n">qubit</span><span class="p">,</span> <span class="n">t</span><span class="o">=</span><span class="n">simulator</span><span class="o">.</span><span class="n">tc</span><span class="p">,</span> <span class="n">by</span><span class="o">=</span><span class="bp">self</span><span class="p">))</span>
+            <span class="k">return</span>
+
+        <span class="c1"># purif succeeded</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">memory</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">old_qm</span><span class="o">=</span><span class="n">epr</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">new_qm</span><span class="o">=</span><span class="n">epr</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cnt</span><span class="o">.</span><span class="n">increment_n_purif</span><span class="p">(</span><span class="n">qubit</span><span class="o">.</span><span class="n">purif_rounds</span><span class="p">)</span>
+        <span class="n">qubit</span><span class="o">.</span><span class="n">purif_rounds</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">qubit</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">QubitState</span><span class="o">.</span><span class="n">PURIF</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">qubit_is_purif</span><span class="p">(</span><span class="n">qubit</span><span class="p">,</span> <span class="n">fib_entry</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="o">.</span><span class="n">network</span><span class="o">.</span><span class="n">get_node</span><span class="p">(</span><span class="n">msg</span><span class="p">[</span><span class="s2">&quot;partner&quot;</span><span class="p">]))</span></div>
+
+
+    <span class="n">CLASSIC_SIGNALING_HANDLERS</span><span class="p">[</span><span class="s2">&quot;PURIF_RESPONSE&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">handle_purif_response</span>
+
+<div class="viewcode-block" id="ProactiveForwarder.qubit_is_eligible">
+<a class="viewcode-back" href="../../../../reference/qns.network.proactive.html#qns.network.proactive.forwarder.ProactiveForwarder.qubit_is_eligible">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">qubit_is_eligible</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">qubit</span><span class="p">:</span> <span class="n">MemoryQubit</span><span class="p">,</span> <span class="n">fib_entry</span><span class="p">:</span> <span class="n">FIBEntry</span> <span class="o">|</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Handle a qubit entering ELIGIBLE state.</span>
+
+<span class="sd">        If this is an end node of the path, consume the EPR.</span>
+
+<span class="sd">        Otherwise, attempt entanglement swapping:</span>
+<span class="sd">        1. Look for a matching eligible qubit to perform swapping.</span>
+<span class="sd">        2. Generate a new EPR if successful.</span>
+<span class="sd">        3. Notify adjacent nodes with SWAP_UPDATE messages.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            qubit: The qubit that became eligible.</span>
+<span class="sd">            fib_entry: FIB entry containing path and swap sequence.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">qubit</span><span class="o">.</span><span class="n">state</span> <span class="o">==</span> <span class="n">QubitState</span><span class="o">.</span><span class="n">ELIGIBLE</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="o">.</span><span class="n">timing_mode</span> <span class="o">==</span> <span class="n">TimingModeEnum</span><span class="o">.</span><span class="n">SYNC</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">sync_current_phase</span> <span class="o">!=</span> <span class="n">SignalTypeEnum</span><span class="o">.</span><span class="n">INTERNAL</span><span class="p">:</span>
+            <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="si">}</span><span class="s2">: INT phase is over -&gt; stop swaps&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">mux</span><span class="o">.</span><span class="n">qubit_is_eligible</span><span class="p">(</span><span class="n">qubit</span><span class="p">,</span> <span class="n">fib_entry</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ProactiveForwarder.do_swapping">
+<a class="viewcode-back" href="../../../../reference/qns.network.proactive.html#qns.network.proactive.forwarder.ProactiveForwarder.do_swapping">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">do_swapping</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">mq0</span><span class="p">:</span> <span class="n">MemoryQubit</span><span class="p">,</span>
+        <span class="n">mq1</span><span class="p">:</span> <span class="n">MemoryQubit</span><span class="p">,</span>
+        <span class="n">fib_entry0</span><span class="p">:</span> <span class="n">FIBEntry</span><span class="p">,</span>
+        <span class="n">fib_entry1</span><span class="p">:</span> <span class="n">FIBEntry</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Perform swapping between two qubits at an intermediate node.</span>
+<span class="sd">        These qubits must be in ELIGIBLE state and come from different qchannels.</span>
+<span class="sd">        Partners are notified with SWAP_UPDATE messages.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">simulator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">simulator</span>
+
+        <span class="c1"># Read both qubits and remove them from memory.</span>
+        <span class="c1">#</span>
+        <span class="c1"># One of these qubits must be entangled with a partner node to the left of the current node.</span>
+        <span class="c1"># This is determined by epr.dst==self.own condition, because LinkLayer establishes elementary</span>
+        <span class="c1"># entanglements from left to right, and swapping maintains this condition.</span>
+        <span class="c1"># This qubit and related objects are assigned to prev_* variables.</span>
+        <span class="c1">#</span>
+        <span class="c1"># Likewise, the other qubit entangled with a partner node to the right is assigned to next_*.</span>
+        <span class="n">prev_partner</span><span class="p">:</span> <span class="n">QNode</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">prev_qubit</span><span class="p">:</span> <span class="n">MemoryQubit</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">prev_epr</span><span class="p">:</span> <span class="n">WernerStateEntanglement</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">prev_fib_entry</span><span class="p">:</span> <span class="n">FIBEntry</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">next_partner</span><span class="p">:</span> <span class="n">QNode</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">next_qubit</span><span class="p">:</span> <span class="n">MemoryQubit</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">next_epr</span><span class="p">:</span> <span class="n">WernerStateEntanglement</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">next_fib_entry</span><span class="p">:</span> <span class="n">FIBEntry</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">for</span> <span class="n">addr</span> <span class="ow">in</span> <span class="p">(</span><span class="n">mq0</span><span class="o">.</span><span class="n">addr</span><span class="p">,</span> <span class="n">mq1</span><span class="o">.</span><span class="n">addr</span><span class="p">):</span>
+            <span class="n">qubit</span><span class="p">,</span> <span class="n">epr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">addr</span><span class="p">,</span> <span class="n">must</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">epr</span><span class="p">,</span> <span class="n">WernerStateEntanglement</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">epr</span><span class="o">.</span><span class="n">dst</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="p">:</span>
+                <span class="n">prev_partner</span><span class="p">,</span> <span class="n">prev_qubit</span><span class="p">,</span> <span class="n">prev_epr</span> <span class="o">=</span> <span class="n">epr</span><span class="o">.</span><span class="n">src</span><span class="p">,</span> <span class="n">qubit</span><span class="p">,</span> <span class="n">epr</span>
+                <span class="n">prev_fib_entry</span> <span class="o">=</span> <span class="n">fib_entry0</span> <span class="k">if</span> <span class="n">qubit</span><span class="o">.</span><span class="n">path_id</span> <span class="o">==</span> <span class="n">fib_entry0</span><span class="o">.</span><span class="n">path_id</span> <span class="k">else</span> <span class="n">fib_entry1</span>
+            <span class="k">elif</span> <span class="n">epr</span><span class="o">.</span><span class="n">src</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="p">:</span>
+                <span class="n">next_partner</span><span class="p">,</span> <span class="n">next_qubit</span><span class="p">,</span> <span class="n">next_epr</span> <span class="o">=</span> <span class="n">epr</span><span class="o">.</span><span class="n">dst</span><span class="p">,</span> <span class="n">qubit</span><span class="p">,</span> <span class="n">epr</span>
+                <span class="n">next_fib_entry</span> <span class="o">=</span> <span class="n">fib_entry0</span> <span class="k">if</span> <span class="n">qubit</span><span class="o">.</span><span class="n">path_id</span> <span class="o">==</span> <span class="n">fib_entry0</span><span class="o">.</span><span class="n">path_id</span> <span class="k">else</span> <span class="n">fib_entry1</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unexpected: swapping EPRs </span><span class="si">{</span><span class="n">mq0</span><span class="si">}</span><span class="s2"> x </span><span class="si">{</span><span class="n">mq1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Make sure both partners are found.</span>
+        <span class="k">assert</span> <span class="n">prev_partner</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">assert</span> <span class="n">prev_qubit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">assert</span> <span class="n">prev_epr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">assert</span> <span class="n">prev_fib_entry</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">assert</span> <span class="n">next_partner</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">assert</span> <span class="n">next_qubit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">assert</span> <span class="n">next_epr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">assert</span> <span class="n">next_fib_entry</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+
+        <span class="n">prev_own_idx</span><span class="p">,</span> <span class="n">prev_own_rank</span> <span class="o">=</span> <span class="n">find_index_and_swapping_rank</span><span class="p">(</span><span class="n">prev_fib_entry</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="n">next_own_idx</span><span class="p">,</span> <span class="n">next_own_rank</span> <span class="o">=</span> <span class="n">find_index_and_swapping_rank</span><span class="p">(</span><span class="n">next_fib_entry</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+
+        <span class="n">prev_route</span> <span class="o">=</span> <span class="n">prev_fib_entry</span><span class="o">.</span><span class="n">route</span>
+        <span class="n">next_route</span> <span class="o">=</span> <span class="n">next_fib_entry</span><span class="o">.</span><span class="n">route</span>
+
+        <span class="c1"># Save ch_index metadata field onto elementary EPR.</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">prev_epr</span><span class="o">.</span><span class="n">orig_eprs</span><span class="p">:</span>
+            <span class="n">prev_epr</span><span class="o">.</span><span class="n">ch_index</span> <span class="o">=</span> <span class="n">prev_own_idx</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">next_epr</span><span class="o">.</span><span class="n">orig_eprs</span><span class="p">:</span>
+            <span class="n">next_epr</span><span class="o">.</span><span class="n">ch_index</span> <span class="o">=</span> <span class="n">next_own_idx</span>
+
+        <span class="c1"># Attempt the swap.</span>
+        <span class="n">new_epr</span> <span class="o">=</span> <span class="n">prev_epr</span><span class="o">.</span><span class="n">swapping</span><span class="p">(</span><span class="n">epr</span><span class="o">=</span><span class="n">next_epr</span><span class="p">,</span> <span class="n">ps</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ps</span><span class="p">)</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="si">}</span><span class="s2">: SWAP </span><span class="si">{</span><span class="s1">&#39;SUCC&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">new_epr</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;FAILED&#39;</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">prev_qubit</span><span class="si">}</span><span class="s2"> x </span><span class="si">{</span><span class="n">next_qubit</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">new_epr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># swapping succeeded</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cnt</span><span class="o">.</span><span class="n">n_swapped_s</span> <span class="o">+=</span> <span class="mi">1</span>
+
+            <span class="c1"># Update properties in newly generated EPR.</span>
+            <span class="n">new_epr</span><span class="o">.</span><span class="n">src</span> <span class="o">=</span> <span class="n">prev_partner</span>
+            <span class="n">new_epr</span><span class="o">.</span><span class="n">dst</span> <span class="o">=</span> <span class="n">next_partner</span>
+
+            <span class="c1"># for dynamic EPR affectation and statistical mux</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mux</span><span class="o">.</span><span class="n">swapping_succeeded</span><span class="p">(</span><span class="n">prev_epr</span><span class="p">,</span> <span class="n">next_epr</span><span class="p">,</span> <span class="n">new_epr</span><span class="p">)</span>
+
+            <span class="c1"># another node just swapped on a shared EPR and changed its src/dst</span>
+            <span class="k">if</span> <span class="n">prev_partner</span><span class="o">.</span><span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">prev_route</span> <span class="ow">or</span> <span class="n">next_partner</span><span class="o">.</span><span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">next_route</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="si">}</span><span class="s2">: Conflictual parallel swapping caused by SWAP-ASAP with non-isolated paths&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Keep records to support potential parallel swapping with prev_partner.</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">prev_p_rank</span> <span class="o">=</span> <span class="n">find_index_and_swapping_rank</span><span class="p">(</span><span class="n">prev_fib_entry</span><span class="p">,</span> <span class="n">prev_partner</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">prev_own_rank</span> <span class="o">==</span> <span class="n">prev_p_rank</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">parallel_swappings</span><span class="p">[</span><span class="n">prev_epr</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">prev_epr</span><span class="p">,</span> <span class="n">next_epr</span><span class="p">,</span> <span class="n">new_epr</span><span class="p">)</span>
+
+            <span class="c1"># Keep records to support potential parallel swapping with next_partner.</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">next_p_rank</span> <span class="o">=</span> <span class="n">find_index_and_swapping_rank</span><span class="p">(</span><span class="n">next_fib_entry</span><span class="p">,</span> <span class="n">next_partner</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">next_own_rank</span> <span class="o">==</span> <span class="n">next_p_rank</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">parallel_swappings</span><span class="p">[</span><span class="n">next_epr</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">next_epr</span><span class="p">,</span> <span class="n">prev_epr</span><span class="p">,</span> <span class="n">new_epr</span><span class="p">)</span>
+
+        <span class="c1"># Send SWAP_UPDATE to partners.</span>
+        <span class="k">for</span> <span class="n">partner</span><span class="p">,</span> <span class="n">old_epr</span><span class="p">,</span> <span class="n">new_partner</span><span class="p">,</span> <span class="n">qubit</span><span class="p">,</span> <span class="n">fib_e</span> <span class="ow">in</span> <span class="p">(</span>
+            <span class="p">(</span><span class="n">prev_partner</span><span class="p">,</span> <span class="n">prev_epr</span><span class="p">,</span> <span class="n">next_partner</span><span class="p">,</span> <span class="n">prev_qubit</span><span class="p">,</span> <span class="n">prev_fib_entry</span><span class="p">),</span>
+            <span class="p">(</span><span class="n">next_partner</span><span class="p">,</span> <span class="n">next_epr</span><span class="p">,</span> <span class="n">prev_partner</span><span class="p">,</span> <span class="n">next_qubit</span><span class="p">,</span> <span class="n">next_fib_entry</span><span class="p">),</span>
+        <span class="p">):</span>
+            <span class="k">if</span> <span class="n">new_epr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">partner</span><span class="o">.</span><span class="n">get_app</span><span class="p">(</span><span class="n">ProactiveForwarder</span><span class="p">)</span><span class="o">.</span><span class="n">remote_swapped_eprs</span><span class="p">[</span><span class="n">new_epr</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_epr</span>
+
+            <span class="n">su_msg</span><span class="p">:</span> <span class="n">SwapUpdateMsg</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;cmd&quot;</span><span class="p">:</span> <span class="s2">&quot;SWAP_UPDATE&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;path_id&quot;</span><span class="p">:</span> <span class="n">fib_entry0</span><span class="o">.</span><span class="n">path_id</span><span class="p">,</span>
+                <span class="s2">&quot;swapping_node&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                <span class="s2">&quot;partner&quot;</span><span class="p">:</span> <span class="n">new_partner</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                <span class="s2">&quot;epr&quot;</span><span class="p">:</span> <span class="n">old_epr</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                <span class="s2">&quot;new_epr&quot;</span><span class="p">:</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">new_epr</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">new_epr</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="p">}</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">send_msg</span><span class="p">(</span><span class="n">partner</span><span class="p">,</span> <span class="n">su_msg</span><span class="p">,</span> <span class="n">fib_e</span><span class="p">)</span>
+
+        <span class="c1"># Release old qubits.</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">qubit</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">((</span><span class="n">prev_qubit</span><span class="p">,</span> <span class="n">next_qubit</span><span class="p">)):</span>
+            <span class="n">qubit</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">QubitState</span><span class="o">.</span><span class="n">RELEASE</span>
+            <span class="n">simulator</span><span class="o">.</span><span class="n">add_event</span><span class="p">(</span><span class="n">QubitReleasedEvent</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="p">,</span> <span class="n">qubit</span><span class="p">,</span> <span class="n">t</span><span class="o">=</span><span class="p">(</span><span class="n">simulator</span><span class="o">.</span><span class="n">tc</span> <span class="o">+</span> <span class="n">i</span> <span class="o">*</span> <span class="mf">1e-6</span><span class="p">),</span> <span class="n">by</span><span class="o">=</span><span class="bp">self</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="ProactiveForwarder.handle_swap_update">
+<a class="viewcode-back" href="../../../../reference/qns.network.proactive.html#qns.network.proactive.forwarder.ProactiveForwarder.handle_swap_update">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">handle_swap_update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">:</span> <span class="n">SwapUpdateMsg</span><span class="p">,</span> <span class="n">fib_entry</span><span class="p">:</span> <span class="n">FIBEntry</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Processes an SWAP_UPDATE signaling message from a neighboring node, updating local</span>
+<span class="sd">        qubit state, releasing decohered pairs, or forwarding the update along the path.</span>
+<span class="sd">        Handles both sequential and parallel swap scenarios, updates quantum memory with</span>
+<span class="sd">        new EPRs when valid, and updates the qubit state.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">            msg: The SWAP_UPDATE message.</span>
+<span class="sd">            fib_entry: FIB entry associated with path_id in the message.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="o">.</span><span class="n">timing_mode</span> <span class="o">==</span> <span class="n">TimingModeEnum</span><span class="o">.</span><span class="n">SYNC</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">sync_current_phase</span> <span class="o">!=</span> <span class="n">SignalTypeEnum</span><span class="o">.</span><span class="n">INTERNAL</span><span class="p">:</span>
+            <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="si">}</span><span class="s2">: INT phase is over -&gt; stop swaps&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="n">_</span><span class="p">,</span> <span class="n">sender_rank</span> <span class="o">=</span> <span class="n">find_index_and_swapping_rank</span><span class="p">(</span><span class="n">fib_entry</span><span class="p">,</span> <span class="n">msg</span><span class="p">[</span><span class="s2">&quot;swapping_node&quot;</span><span class="p">])</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">own_rank</span> <span class="o">=</span> <span class="n">find_index_and_swapping_rank</span><span class="p">(</span><span class="n">fib_entry</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">own_rank</span> <span class="o">&lt;</span> <span class="n">sender_rank</span><span class="p">:</span>
+            <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;### </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="si">}</span><span class="s2">: VERIFY -&gt; rcvd SU from higher-rank node&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="n">new_epr_name</span> <span class="o">=</span> <span class="n">msg</span><span class="p">[</span><span class="s2">&quot;new_epr&quot;</span><span class="p">]</span>
+        <span class="n">new_epr</span> <span class="o">=</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">new_epr_name</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">remote_swapped_eprs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">new_epr_name</span><span class="p">)</span>
+
+        <span class="n">epr_name</span> <span class="o">=</span> <span class="n">msg</span><span class="p">[</span><span class="s2">&quot;epr&quot;</span><span class="p">]</span>
+        <span class="n">qubit_pair</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">epr_name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">qubit_pair</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">qubit</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">qubit_pair</span>
+            <span class="k">if</span> <span class="n">qubit</span><span class="o">.</span><span class="n">state</span> <span class="o">==</span> <span class="n">QubitState</span><span class="o">.</span><span class="n">ENTANGLED0</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">new_epr_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">new_epr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">remote_swapped_eprs</span><span class="p">[</span><span class="n">new_epr_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_epr</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">waiting_su</span><span class="p">[</span><span class="n">qubit</span><span class="o">.</span><span class="n">addr</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">fib_entry</span><span class="p">)</span>
+                <span class="k">return</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">parallel_swappings</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">epr_name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_su_sequential</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">fib_entry</span><span class="p">,</span> <span class="n">qubit</span><span class="p">,</span> <span class="n">new_epr</span><span class="p">,</span> <span class="n">maybe_purif</span><span class="o">=</span><span class="p">(</span><span class="n">own_rank</span> <span class="o">&gt;</span> <span class="n">sender_rank</span><span class="p">))</span>
+        <span class="k">elif</span> <span class="n">own_rank</span> <span class="o">==</span> <span class="n">sender_rank</span> <span class="ow">and</span> <span class="n">epr_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">parallel_swappings</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_su_parallel</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">fib_entry</span><span class="p">,</span> <span class="n">own_rank</span><span class="p">,</span> <span class="n">new_epr</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;### </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="si">}</span><span class="s2">: EPR </span><span class="si">{</span><span class="n">epr_name</span><span class="si">}</span><span class="s2"> decohered during SU transmissions&quot;</span><span class="p">)</span></div>
+
+
+    <span class="n">CLASSIC_SIGNALING_HANDLERS</span><span class="p">[</span><span class="s2">&quot;SWAP_UPDATE&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">handle_swap_update</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_su_sequential</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">msg</span><span class="p">:</span> <span class="n">SwapUpdateMsg</span><span class="p">,</span>
+        <span class="n">fib_entry</span><span class="p">:</span> <span class="n">FIBEntry</span><span class="p">,</span>
+        <span class="n">qubit</span><span class="p">:</span> <span class="n">MemoryQubit</span><span class="p">,</span>
+        <span class="n">new_epr</span><span class="p">:</span> <span class="n">WernerStateEntanglement</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">maybe_purif</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Process SWAP_UPDATE message where the local MemoryQubit still exists.</span>
+<span class="sd">        This means the swapping was performed sequentially and local MemoryQubit has not decohered.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            maybe_purif: whether the new EPR may enter PURIF state.</span>
+<span class="sd">                         Set to True if own rank is higher than sender rank.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">simulator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">simulator</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="n">new_epr</span> <span class="ow">is</span> <span class="kc">None</span>  <span class="c1"># swapping failed</span>
+            <span class="ow">or</span> <span class="p">(</span><span class="n">new_epr</span><span class="o">.</span><span class="n">decoherence_time</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">new_epr</span><span class="o">.</span><span class="n">decoherence_time</span> <span class="o">&lt;=</span> <span class="n">simulator</span><span class="o">.</span><span class="n">tc</span><span class="p">)</span>  <span class="c1"># oldest pair decohered</span>
+        <span class="p">):</span>
+            <span class="k">if</span> <span class="n">new_epr</span><span class="p">:</span>
+                <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="si">}</span><span class="s2">: NEW EPR </span><span class="si">{</span><span class="n">new_epr</span><span class="si">}</span><span class="s2"> decohered during SU transmissions&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">memory</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">qubit</span><span class="o">.</span><span class="n">addr</span><span class="p">)</span>  <span class="c1"># destructive reading</span>
+            <span class="n">qubit</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">QubitState</span><span class="o">.</span><span class="n">RELEASE</span>
+            <span class="c1"># Inform LinkLayer that the memory qubit has been released.</span>
+            <span class="n">simulator</span><span class="o">.</span><span class="n">add_event</span><span class="p">(</span><span class="n">QubitReleasedEvent</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="p">,</span> <span class="n">qubit</span><span class="p">,</span> <span class="n">t</span><span class="o">=</span><span class="n">simulator</span><span class="o">.</span><span class="n">tc</span><span class="p">,</span> <span class="n">by</span><span class="o">=</span><span class="bp">self</span><span class="p">))</span>
+            <span class="k">return</span>
+
+        <span class="c1"># Update old EPR with new EPR (fidelity and partner).</span>
+        <span class="n">updated</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">old_qm</span><span class="o">=</span><span class="n">msg</span><span class="p">[</span><span class="s2">&quot;epr&quot;</span><span class="p">],</span> <span class="n">new_qm</span><span class="o">=</span><span class="n">new_epr</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">updated</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="si">}</span><span class="s2">: EPR update failed | old=</span><span class="si">{</span><span class="n">msg</span><span class="p">[</span><span class="s1">&#39;epr&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> , new=</span><span class="si">{</span><span class="n">new_epr</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">maybe_purif</span><span class="p">:</span>
+            <span class="c1"># If own rank is higher than sender rank but lower than new partner rank,</span>
+            <span class="c1"># it is our turn to purify the qubit and progress toward swapping.</span>
+            <span class="n">qubit</span><span class="o">.</span><span class="n">purif_rounds</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">qubit</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">QubitState</span><span class="o">.</span><span class="n">PURIF</span>
+            <span class="n">partner</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="o">.</span><span class="n">network</span><span class="o">.</span><span class="n">get_node</span><span class="p">(</span><span class="n">msg</span><span class="p">[</span><span class="s2">&quot;partner&quot;</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">qubit_is_purif</span><span class="p">(</span><span class="n">qubit</span><span class="p">,</span> <span class="n">fib_entry</span><span class="p">,</span> <span class="n">partner</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_su_parallel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">:</span> <span class="n">SwapUpdateMsg</span><span class="p">,</span> <span class="n">fib_entry</span><span class="p">:</span> <span class="n">FIBEntry</span><span class="p">,</span> <span class="n">own_rank</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">new_epr</span><span class="p">:</span> <span class="n">WernerStateEntanglement</span> <span class="o">|</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Process SWAP_UPDATE message during parallel swapping.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">simulator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">simulator</span>
+        <span class="p">(</span><span class="n">shared_epr</span><span class="p">,</span> <span class="n">other_epr</span><span class="p">,</span> <span class="n">my_new_epr</span><span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parallel_swappings</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">msg</span><span class="p">[</span><span class="s2">&quot;epr&quot;</span><span class="p">])</span>
+        <span class="n">_</span> <span class="o">=</span> <span class="n">shared_epr</span>
+
+        <span class="c1"># safety in statistical mux to avoid conflictual swappings on different paths</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mux</span><span class="o">.</span><span class="n">su_parallel_avoid_conflict</span><span class="p">(</span><span class="n">my_new_epr</span><span class="p">,</span> <span class="n">msg</span><span class="p">[</span><span class="s2">&quot;path_id&quot;</span><span class="p">]):</span>
+            <span class="k">return</span>
+
+        <span class="c1"># msg[&quot;swapping_node&quot;] is the node that performed swapping and sent this message.</span>
+        <span class="c1"># Assuming swapping_node is to the right of own node, various nodes and EPRs are as follows:</span>
+        <span class="c1">#</span>
+        <span class="c1"># destination-------own--------swapping_node----partner</span>
+        <span class="c1">#      |             |~~shared_epr~~|            |</span>
+        <span class="c1">#      |~~other_epr~~|              |            |</span>
+        <span class="c1">#      |~~~~~~~~~~my_new_epr~~~~~~~~|            |</span>
+        <span class="c1">#      |             |~~~~~~~~~~new_epr~~~~~~~~~~|</span>
+        <span class="c1">#      |~~~~~~~~~~~~~~~merged_epr~~~~~~~~~~~~~~~~|</span>
+
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="n">new_epr</span> <span class="ow">is</span> <span class="kc">None</span>  <span class="c1"># swapping failed</span>
+            <span class="ow">or</span> <span class="p">(</span><span class="n">new_epr</span><span class="o">.</span><span class="n">decoherence_time</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">new_epr</span><span class="o">.</span><span class="n">decoherence_time</span> <span class="o">&lt;=</span> <span class="n">simulator</span><span class="o">.</span><span class="n">tc</span><span class="p">)</span>  <span class="c1"># oldest pair decohered</span>
+        <span class="p">):</span>
+            <span class="c1"># Determine the &quot;destination&quot;.</span>
+            <span class="k">if</span> <span class="n">other_epr</span><span class="o">.</span><span class="n">dst</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="p">:</span>  <span class="c1"># destination is to the left of own node</span>
+                <span class="n">destination</span> <span class="o">=</span> <span class="n">other_epr</span><span class="o">.</span><span class="n">src</span>
+            <span class="k">else</span><span class="p">:</span>  <span class="c1"># destination is to the right of own node</span>
+                <span class="n">destination</span> <span class="o">=</span> <span class="n">other_epr</span><span class="o">.</span><span class="n">dst</span>
+            <span class="k">assert</span> <span class="n">destination</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+
+            <span class="c1"># Inform the &quot;destination&quot; that swapping has failed.</span>
+            <span class="n">su_msg</span><span class="p">:</span> <span class="n">SwapUpdateMsg</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;cmd&quot;</span><span class="p">:</span> <span class="s2">&quot;SWAP_UPDATE&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;path_id&quot;</span><span class="p">:</span> <span class="n">msg</span><span class="p">[</span><span class="s2">&quot;path_id&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;swapping_node&quot;</span><span class="p">:</span> <span class="n">msg</span><span class="p">[</span><span class="s2">&quot;swapping_node&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;partner&quot;</span><span class="p">:</span> <span class="n">msg</span><span class="p">[</span><span class="s2">&quot;partner&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;epr&quot;</span><span class="p">:</span> <span class="n">my_new_epr</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                <span class="s2">&quot;new_epr&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="p">}</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">send_msg</span><span class="p">(</span><span class="n">destination</span><span class="p">,</span> <span class="n">su_msg</span><span class="p">,</span> <span class="n">fib_entry</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="c1"># The swapping_node successfully swapped in parallel with this node.</span>
+        <span class="c1"># Merge the two swaps (physically already happened).</span>
+        <span class="n">merged_epr</span> <span class="o">=</span> <span class="n">new_epr</span><span class="o">.</span><span class="n">swapping</span><span class="p">(</span><span class="n">epr</span><span class="o">=</span><span class="n">other_epr</span><span class="p">)</span>
+
+        <span class="c1"># Determine the &quot;destination&quot; and &quot;partner&quot;.</span>
+        <span class="k">if</span> <span class="n">other_epr</span><span class="o">.</span><span class="n">dst</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="p">:</span>  <span class="c1"># destination is to the left of own node</span>
+            <span class="k">if</span> <span class="n">merged_epr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">merged_epr</span><span class="o">.</span><span class="n">src</span> <span class="o">=</span> <span class="n">other_epr</span><span class="o">.</span><span class="n">src</span>
+                <span class="n">merged_epr</span><span class="o">.</span><span class="n">dst</span> <span class="o">=</span> <span class="n">new_epr</span><span class="o">.</span><span class="n">dst</span>
+            <span class="n">partner</span> <span class="o">=</span> <span class="n">new_epr</span><span class="o">.</span><span class="n">dst</span>
+            <span class="n">destination</span> <span class="o">=</span> <span class="n">other_epr</span><span class="o">.</span><span class="n">src</span>
+        <span class="k">else</span><span class="p">:</span>  <span class="c1"># destination is to the right of own node</span>
+            <span class="k">if</span> <span class="n">merged_epr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">merged_epr</span><span class="o">.</span><span class="n">src</span> <span class="o">=</span> <span class="n">new_epr</span><span class="o">.</span><span class="n">src</span>
+                <span class="n">merged_epr</span><span class="o">.</span><span class="n">dst</span> <span class="o">=</span> <span class="n">other_epr</span><span class="o">.</span><span class="n">dst</span>
+            <span class="n">partner</span> <span class="o">=</span> <span class="n">new_epr</span><span class="o">.</span><span class="n">src</span>
+            <span class="n">destination</span> <span class="o">=</span> <span class="n">other_epr</span><span class="o">.</span><span class="n">dst</span>
+        <span class="k">assert</span> <span class="n">partner</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">assert</span> <span class="n">partner</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">msg</span><span class="p">[</span><span class="s2">&quot;partner&quot;</span><span class="p">]</span>
+        <span class="k">assert</span> <span class="n">destination</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="n">merged_epr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cnt</span><span class="o">.</span><span class="n">n_swapped_p</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="c1"># adjust EPR paths for dynamic EPR affectation and statistical mux</span>
+        <span class="k">if</span> <span class="n">merged_epr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mux</span><span class="o">.</span><span class="n">su_parallel_succeeded</span><span class="p">(</span><span class="n">merged_epr</span><span class="p">,</span> <span class="n">new_epr</span><span class="p">,</span> <span class="n">other_epr</span><span class="p">)</span>
+
+        <span class="c1"># check EPR for non-isolated paths</span>
+        <span class="c1"># if merged_epr is not None:</span>
+        <span class="c1">#     endpoints = {merged_epr.src.name, merged_epr.dst.name}</span>
+        <span class="c1">#     if not endpoints.issubset(set(fib_entry[&quot;path_vector&quot;])):</span>
+        <span class="c1">#         if self.isolate_paths:  # isolated-paths</span>
+        <span class="c1">#             raise Exception(&quot;Unexpected conflictual parallel swapping&quot;)</span>
+        <span class="c1">#         else:</span>
+        <span class="c1">#             log.debug(</span>
+        <span class="c1">#                 f&quot;{self.own}: Ignored conflictual parallel swapping in non-isolated paths. &quot;</span>
+        <span class="c1">#                 &quot;Caused by two nodes swapping a the same EPR with two different paths.&quot;</span>
+        <span class="c1">#             )</span>
+        <span class="c1">#             return</span>
+
+        <span class="c1"># Inform the &quot;destination&quot; of the swap result and new &quot;partner&quot;.</span>
+        <span class="k">if</span> <span class="n">merged_epr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">destination</span><span class="o">.</span><span class="n">get_app</span><span class="p">(</span><span class="n">ProactiveForwarder</span><span class="p">)</span><span class="o">.</span><span class="n">remote_swapped_eprs</span><span class="p">[</span><span class="n">merged_epr</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">merged_epr</span>
+
+        <span class="n">su_msg</span><span class="p">:</span> <span class="n">SwapUpdateMsg</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;cmd&quot;</span><span class="p">:</span> <span class="s2">&quot;SWAP_UPDATE&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;path_id&quot;</span><span class="p">:</span> <span class="n">msg</span><span class="p">[</span><span class="s2">&quot;path_id&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;swapping_node&quot;</span><span class="p">:</span> <span class="n">msg</span><span class="p">[</span><span class="s2">&quot;swapping_node&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;partner&quot;</span><span class="p">:</span> <span class="n">partner</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="s2">&quot;epr&quot;</span><span class="p">:</span> <span class="n">my_new_epr</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="s2">&quot;new_epr&quot;</span><span class="p">:</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">merged_epr</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">merged_epr</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">send_msg</span><span class="p">(</span><span class="n">destination</span><span class="p">,</span> <span class="n">su_msg</span><span class="p">,</span> <span class="n">fib_entry</span><span class="p">)</span>
+
+        <span class="c1"># Update records to support potential parallel swapping with &quot;partner&quot;.</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">p_rank</span> <span class="o">=</span> <span class="n">find_index_and_swapping_rank</span><span class="p">(</span><span class="n">fib_entry</span><span class="p">,</span> <span class="n">partner</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">own_rank</span> <span class="o">==</span> <span class="n">p_rank</span> <span class="ow">and</span> <span class="n">merged_epr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">parallel_swappings</span><span class="p">[</span><span class="n">new_epr</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">new_epr</span><span class="p">,</span> <span class="n">other_epr</span><span class="p">,</span> <span class="n">merged_epr</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ProactiveForwarder.consume_and_release">
+<a class="viewcode-back" href="../../../../reference/qns.network.proactive.html#qns.network.proactive.forwarder.ProactiveForwarder.consume_and_release">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">consume_and_release</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">qubit</span><span class="p">:</span> <span class="n">MemoryQubit</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Consume an entangled qubit.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">simulator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">simulator</span>
+
+        <span class="n">_</span><span class="p">,</span> <span class="n">qm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">qubit</span><span class="o">.</span><span class="n">addr</span><span class="p">,</span> <span class="n">must</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">qm</span><span class="p">,</span> <span class="n">WernerStateEntanglement</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">qm</span><span class="o">.</span><span class="n">src</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">assert</span> <span class="n">qm</span><span class="o">.</span><span class="n">dst</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="n">qubit</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">QubitState</span><span class="o">.</span><span class="n">RELEASE</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="si">}</span><span class="s2">: consume EPR: </span><span class="si">{</span><span class="n">qm</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">qm</span><span class="o">.</span><span class="n">src</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">qm</span><span class="o">.</span><span class="n">dst</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> | F=</span><span class="si">{</span><span class="n">qm</span><span class="o">.</span><span class="n">fidelity</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">cnt</span><span class="o">.</span><span class="n">n_consumed</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cnt</span><span class="o">.</span><span class="n">consumed_sum_fidelity</span> <span class="o">+=</span> <span class="n">qm</span><span class="o">.</span><span class="n">fidelity</span>
+        <span class="n">simulator</span><span class="o">.</span><span class="n">add_event</span><span class="p">(</span><span class="n">QubitReleasedEvent</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">own</span><span class="p">,</span> <span class="n">qubit</span><span class="p">,</span> <span class="n">t</span><span class="o">=</span><span class="n">simulator</span><span class="o">.</span><span class="n">tc</span><span class="p">,</span> <span class="n">by</span><span class="o">=</span><span class="bp">self</span><span class="p">))</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Amar Abane.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

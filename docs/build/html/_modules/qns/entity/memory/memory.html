@@ -1,0 +1,662 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>qns.entity.memory.memory &mdash; MQNS 0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=2709fde1"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            MQNS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../intro.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../reference/modules.html">qns</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">MQNS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">qns.entity.memory.memory</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for qns.entity.memory.memory</h1><div class="highlight"><pre>
+<span></span><span class="c1">#    Modified by Amar Abane for Multiverse Quantum Network Simulator</span>
+<span class="c1">#    Date: 05/17/2025</span>
+<span class="c1">#    Summary of changes: Adapted logic to support dynamic approaches.</span>
+<span class="c1">#</span>
+<span class="c1">#    This file is based on a snapshot of SimQN (https://github.com/QNLab-USTC/SimQN),</span>
+<span class="c1">#    which is licensed under the GNU General Public License v3.0.</span>
+<span class="c1">#</span>
+<span class="c1">#    The original SimQN header is included below.</span>
+
+
+<span class="c1">#    SimQN: a discrete-event simulator for the quantum networks</span>
+<span class="c1">#    Copyright (C) 2021-2022 Lutong Chen, Jian Li, Kaiping Xue</span>
+<span class="c1">#    University of Science and Technology of China, USTC.</span>
+<span class="c1">#</span>
+<span class="c1">#    This program is free software: you can redistribute it and/or modify</span>
+<span class="c1">#    it under the terms of the GNU General Public License as published by</span>
+<span class="c1">#    the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c1">#    (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1">#    This program is distributed in the hope that it will be useful,</span>
+<span class="c1">#    but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1">#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1">#    GNU General Public License for more details.</span>
+<span class="c1">#</span>
+<span class="c1">#    You should have received a copy of the GNU General Public License</span>
+<span class="c1">#    along with this program.  If not, see &lt;https://www.gnu.org/licenses/&gt;.</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">itertools</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Iterator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">TypedDict</span><span class="p">,</span> <span class="n">overload</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.entity.entity</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entity</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.entity.memory.event</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">MemoryReadRequestEvent</span><span class="p">,</span>
+    <span class="n">MemoryReadResponseEvent</span><span class="p">,</span>
+    <span class="n">MemoryWriteRequestEvent</span><span class="p">,</span>
+    <span class="n">MemoryWriteResponseEvent</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.entity.memory.memory_qubit</span><span class="w"> </span><span class="kn">import</span> <span class="n">MemoryQubit</span><span class="p">,</span> <span class="n">PathDirection</span><span class="p">,</span> <span class="n">QubitState</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.entity.node</span><span class="w"> </span><span class="kn">import</span> <span class="n">QNode</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.models.core</span><span class="w"> </span><span class="kn">import</span> <span class="n">QuantumModel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.models.delay</span><span class="w"> </span><span class="kn">import</span> <span class="n">DelayInput</span><span class="p">,</span> <span class="n">parseDelay</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.models.epr</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseEntanglement</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qns.simulator</span><span class="w"> </span><span class="kn">import</span> <span class="n">Event</span><span class="p">,</span> <span class="n">func_to_event</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Unpack</span><span class="p">,</span> <span class="n">override</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">typing_extensions</span><span class="w"> </span><span class="kn">import</span> <span class="n">Unpack</span><span class="p">,</span> <span class="n">override</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">qns.entity.qchannel</span><span class="w"> </span><span class="kn">import</span> <span class="n">QuantumChannel</span>
+
+
+<div class="viewcode-block" id="QuantumMemoryInitKwargs">
+<a class="viewcode-back" href="../../../../reference/qns.entity.memory.html#qns.entity.QuantumMemoryInitKwargs">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">QuantumMemoryInitKwargs</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">,</span> <span class="n">total</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="n">capacity</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">delay</span><span class="p">:</span> <span class="n">DelayInput</span>
+    <span class="n">decoherence_rate</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">store_error_model_args</span><span class="p">:</span> <span class="nb">dict</span></div>
+
+
+
+<div class="viewcode-block" id="QuantumMemory">
+<a class="viewcode-back" href="../../../../reference/qns.entity.memory.html#qns.entity.QuantumMemory">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">QuantumMemory</span><span class="p">(</span><span class="n">Entity</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Quantum memory stores qubits or entangled pairs</span>
+
+<span class="sd">    It has two modes:</span>
+<span class="sd">        Synchronous mode, users can use the ``read`` and ``write`` function to operate the memory directly without delay</span>
+<span class="sd">        Asynchronous mode, users can use events to operate memories asynchronously</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Unpack</span><span class="p">[</span><span class="n">QuantumMemoryInitKwargs</span><span class="p">]):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Args:</span>
+<span class="sd">            name: memory name.</span>
+<span class="sd">            capacity: the capacity of this quantum memory, must be positive.</span>
+<span class="sd">            delay: async read/write delay in seconds, or a ``DelayModel``</span>
+<span class="sd">            decoherence_rate: decoherence rate passed to `QuantumModel.store_error_model()`.</span>
+<span class="sd">                              0 means the memory will never lose coherence.</span>
+<span class="sd">            store_error_model_args: parameters passed to `QuantumModel.store_error_model()`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">node</span><span class="p">:</span> <span class="n">QNode</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        QNode that owns this memory.</span>
+
+<span class="sd">        This is assigned by `QNode.set_memory()`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">capacity</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;capacity&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Memory capacity, i.e. how many qubits can be stored.</span>
+<span class="sd">        Each qubit would have an address in `[0, capacity)`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">delay</span> <span class="o">=</span> <span class="n">parseDelay</span><span class="p">(</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;delay&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Read/write delay, only applicable to async access.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">decoherence_rate</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;decoherence_rate&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">store_error_model_args</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;store_error_model_args&quot;</span><span class="p">,</span> <span class="p">{})</span>
+
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">decoherence_rate</span> <span class="o">&gt;=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">decoherence_delay</span> <span class="o">=</span> <span class="kc">None</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">decoherence_rate</span> <span class="o">==</span> <span class="mf">0.0</span> <span class="k">else</span> <span class="mi">1</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">decoherence_rate</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Inverse of `decoherence_rate`, i.e. duration between EPR creation time and decoherence time in seconds.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">capacity</span> <span class="o">&gt;=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_storage</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="n">MemoryQubit</span><span class="p">,</span> <span class="n">QuantumModel</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="p">(</span><span class="n">MemoryQubit</span><span class="p">(</span><span class="n">addr</span><span class="p">),</span> <span class="kc">None</span><span class="p">)</span> <span class="k">for</span> <span class="n">addr</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">capacity</span><span class="p">)</span>
+        <span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_usage</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">pending_decohere_events</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Event</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Table of pending decoherence events.</span>
+<span class="sd">        Key is `BaseEntanglement.name`.</span>
+<span class="sd">        Value is the decohere event, which should be uncanceled and unexpired.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="QuantumMemory.handle">
+<a class="viewcode-back" href="../../../../reference/qns.entity.memory.html#qns.entity.QuantumMemory.handle">[docs]</a>
+    <span class="nd">@override</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">handle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">:</span> <span class="n">Event</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">node</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="n">simulator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">simulator</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">MemoryReadRequestEvent</span><span class="p">):</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">key</span><span class="p">)</span>
+            <span class="n">simulator</span><span class="o">.</span><span class="n">add_event</span><span class="p">(</span>
+                <span class="n">MemoryReadResponseEvent</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">node</span><span class="p">,</span> <span class="n">result</span><span class="p">,</span> <span class="n">request</span><span class="o">=</span><span class="n">event</span><span class="p">,</span> <span class="n">t</span><span class="o">=</span><span class="n">simulator</span><span class="o">.</span><span class="n">tc</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">delay</span><span class="o">.</span><span class="n">calculate</span><span class="p">(),</span> <span class="n">by</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">MemoryWriteRequestEvent</span><span class="p">):</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">qubit</span><span class="p">)</span>
+            <span class="n">simulator</span><span class="o">.</span><span class="n">add_event</span><span class="p">(</span>
+                <span class="n">MemoryWriteResponseEvent</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">node</span><span class="p">,</span> <span class="n">result</span><span class="p">,</span> <span class="n">request</span><span class="o">=</span><span class="n">event</span><span class="p">,</span> <span class="n">t</span><span class="o">=</span><span class="n">simulator</span><span class="o">.</span><span class="n">tc</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">delay</span><span class="o">.</span><span class="n">calculate</span><span class="p">(),</span> <span class="n">by</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+            <span class="p">)</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">count</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the quantity of stored qubits.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_usage</span>
+
+<div class="viewcode-block" id="QuantumMemory.is_full">
+<a class="viewcode-back" href="../../../../reference/qns.entity.memory.html#qns.entity.QuantumMemory.is_full">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">is_full</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Check whether the memory is full</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_usage</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">capacity</span></div>
+
+
+    <span class="nd">@overload</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">find</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">predicate</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">MemoryQubit</span><span class="p">,</span> <span class="n">QuantumModel</span> <span class="o">|</span> <span class="kc">None</span><span class="p">],</span> <span class="nb">bool</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="n">MemoryQubit</span><span class="p">,</span> <span class="n">QuantumModel</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Iterable over qubits and associated data that satisfy a predicate.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span>
+
+    <span class="nd">@overload</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">find</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">predicate</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">MemoryQubit</span><span class="p">,</span> <span class="n">BaseEntanglement</span><span class="p">],</span> <span class="nb">bool</span><span class="p">],</span> <span class="o">*</span><span class="p">,</span> <span class="n">has_epr</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="kc">True</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="n">MemoryQubit</span><span class="p">,</span> <span class="n">BaseEntanglement</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Iterable over qubits and associated data that satisfy a predicate.</span>
+<span class="sd">        Only qubits with associated entanglements are considered.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span>
+
+<div class="viewcode-block" id="QuantumMemory.find">
+<a class="viewcode-back" href="../../../../reference/qns.entity.memory.html#qns.entity.QuantumMemory.find">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">find</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">predicate</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">MemoryQubit</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="nb">bool</span><span class="p">],</span> <span class="o">*</span><span class="p">,</span> <span class="n">has_epr</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">Any</span><span class="p">]:</span>
+        <span class="k">for</span> <span class="n">qubit</span><span class="p">,</span> <span class="n">qm</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_storage</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">has_epr</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">qm</span><span class="p">,</span> <span class="n">BaseEntanglement</span><span class="p">):</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">predicate</span><span class="p">(</span><span class="n">qubit</span><span class="p">,</span> <span class="n">qm</span><span class="p">):</span>
+                <span class="k">yield</span> <span class="p">(</span><span class="n">qubit</span><span class="p">,</span> <span class="n">qm</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="QuantumMemory.assign">
+<a class="viewcode-back" href="../../../../reference/qns.entity.memory.html#qns.entity.QuantumMemory.assign">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">assign</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ch</span><span class="p">:</span> <span class="s2">&quot;QuantumChannel&quot;</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Assign n qubits to a particular quantum channel.</span>
+
+<span class="sd">        This is only used at topology creation time.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of qubit addresses.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            OverflowError - insufficient unassigned qubits.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">addrs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">qubit</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">itertools</span><span class="o">.</span><span class="n">islice</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="k">lambda</span> <span class="n">q</span><span class="p">,</span> <span class="n">_</span><span class="p">:</span> <span class="n">q</span><span class="o">.</span><span class="n">qchannel</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">),</span> <span class="n">n</span><span class="p">):</span>
+            <span class="n">qubit</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">ch</span><span class="p">)</span>
+            <span class="n">addrs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">qubit</span><span class="o">.</span><span class="n">addr</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">addrs</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">OverflowError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="si">}</span><span class="s2">: insufficient qubits for assign(n=</span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">addrs</span></div>
+
+
+<div class="viewcode-block" id="QuantumMemory.unassign">
+<a class="viewcode-back" href="../../../../reference/qns.entity.memory.html#qns.entity.QuantumMemory.unassign">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">unassign</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">addrs</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Unassign one or more qubits from any quantum channel.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">addr</span> <span class="ow">in</span> <span class="n">addrs</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_storage</span><span class="p">[</span><span class="n">addr</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">unassign</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="QuantumMemory.allocate">
+<a class="viewcode-back" href="../../../../reference/qns.entity.memory.html#qns.entity.QuantumMemory.allocate">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">allocate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">path_direction</span><span class="p">:</span> <span class="n">PathDirection</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">ch_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Allocate n qubits to a given path ID.</span>
+
+<span class="sd">        This method searches for n qubits that have not yet been allocated</span>
+<span class="sd">        (i.e., `path_id` is None), assigns them the provided `path_id`, and returns their addresses.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            path_id: The identifier of the entanglement path to which the memory qubit will be allocated.</span>
+<span class="sd">            ch_name: The name of the quantum channel to which the memory qubit is assigned.</span>
+<span class="sd">            path_direction: The end of the path to which the qubit allocated qubit points.</span>
+<span class="sd">                    This is typically either the source or the destination of the path (LEFT/RIGHT).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of qubit addresses.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            OverflowError - insufficient unallocated qubits.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">addrs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">qubit</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">itertools</span><span class="o">.</span><span class="n">islice</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="k">lambda</span> <span class="n">q</span><span class="p">,</span> <span class="n">_</span><span class="p">:</span> <span class="p">(</span><span class="n">q</span><span class="o">.</span><span class="n">path_id</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="p">(</span><span class="n">q</span><span class="o">.</span><span class="n">qchannel</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">q</span><span class="o">.</span><span class="n">qchannel</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">ch_name</span><span class="p">))),</span>
+            <span class="n">n</span><span class="p">,</span>
+        <span class="p">):</span>
+            <span class="n">qubit</span><span class="o">.</span><span class="n">allocate</span><span class="p">(</span><span class="n">path_id</span><span class="p">,</span> <span class="n">path_direction</span><span class="p">)</span>
+            <span class="n">addrs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">qubit</span><span class="o">.</span><span class="n">addr</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">addrs</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">OverflowError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="si">}</span><span class="s2">: insufficient qubits for allocate(n=</span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">addrs</span></div>
+
+
+<div class="viewcode-block" id="QuantumMemory.deallocate">
+<a class="viewcode-back" href="../../../../reference/qns.entity.memory.html#qns.entity.QuantumMemory.deallocate">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">deallocate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">addrs</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Deallocate one or more qubits from any assigned path.</span>
+
+<span class="sd">        This method finds the memory qubit with the given address and clears its</span>
+<span class="sd">        path assignment (i.e., resets its `path_id` to None). It does not modify the</span>
+<span class="sd">        quantum state or remove the qubit from memory.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">addr</span> <span class="ow">in</span> <span class="n">addrs</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_storage</span><span class="p">[</span><span class="n">addr</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">deallocate</span><span class="p">()</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_find_by_key</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="n">QuantumModel</span> <span class="o">|</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">key</span> <span class="k">if</span> <span class="n">key</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">capacity</span> <span class="k">else</span> <span class="o">-</span><span class="mi">1</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">QuantumModel</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">qubit</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="k">lambda</span> <span class="n">_</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="n">v</span> <span class="o">==</span> <span class="n">key</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">qubit</span><span class="o">.</span><span class="n">addr</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">qubit</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="k">lambda</span> <span class="n">_</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">==</span> <span class="n">key</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">qubit</span><span class="o">.</span><span class="n">addr</span>
+
+        <span class="k">return</span> <span class="o">-</span><span class="mi">1</span>
+
+    <span class="nd">@overload</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="n">QuantumModel</span> <span class="o">|</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">must</span><span class="p">:</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">MemoryQubit</span><span class="p">,</span> <span class="n">QuantumModel</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Retrieve a qubit and associated quantum model without removing it.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            key: Qubit address or quantum model or EPR name.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Qubit and associated quantum model, or None if it does not exist.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span>
+
+    <span class="nd">@overload</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="n">QuantumModel</span> <span class="o">|</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">must</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="kc">True</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">MemoryQubit</span><span class="p">,</span> <span class="n">QuantumModel</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Retrieve a qubit and associated quantum model without removing it.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            key: Qubit address or quantum model or EPR name.</span>
+<span class="sd">            must: True.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Qubit and associated quantum model.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            IndexError - qubit not found.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span>
+
+<div class="viewcode-block" id="QuantumMemory.get">
+<a class="viewcode-back" href="../../../../reference/qns.entity.memory.html#qns.entity.QuantumMemory.get">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="n">QuantumModel</span> <span class="o">|</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">must</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">MemoryQubit</span><span class="p">,</span> <span class="n">QuantumModel</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find_by_key</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">idx</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_storage</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">must</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">IndexError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="si">}</span><span class="s2">: cannot find </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span></div>
+
+
+    <span class="nd">@overload</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">read</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="n">QuantumModel</span> <span class="o">|</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">destructive</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">must</span><span class="p">:</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">MemoryQubit</span><span class="p">,</span> <span class="n">QuantumModel</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Read a qubit and set fidelity on associated quantum model.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            key: Qubit address or quantum model or EPR name.</span>
+<span class="sd">            destructive: If True, remove the quantum model after reading.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Qubit and associated quantum model, or None if it does not exist.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span>
+
+    <span class="nd">@overload</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="n">QuantumModel</span> <span class="o">|</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">destructive</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">must</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="kc">True</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">MemoryQubit</span><span class="p">,</span> <span class="n">QuantumModel</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Read a qubit and set fidelity on associated quantum model.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            key: Qubit address or quantum model or EPR name.</span>
+<span class="sd">            destructive: If True, remove the quantum model after reading.</span>
+<span class="sd">            must: True.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Qubit and associated quantum model.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            IndexError - qubit not found.</span>
+<span class="sd">            ValueError - no quantum information is stored</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span>
+
+<div class="viewcode-block" id="QuantumMemory.read">
+<a class="viewcode-back" href="../../../../reference/qns.entity.memory.html#qns.entity.QuantumMemory.read">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">read</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="n">QuantumModel</span> <span class="o">|</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">destructive</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">must</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">MemoryQubit</span><span class="p">,</span> <span class="n">QuantumModel</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">addr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find_by_key</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">addr</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">must</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">IndexError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="si">}</span><span class="s2">: cannot find </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="p">(</span><span class="n">qubit</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_storage</span><span class="p">[</span><span class="n">addr</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">data</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">must</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="si">}</span><span class="s2">: no data at index </span><span class="si">{</span><span class="n">addr</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="n">destructive</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_usage</span> <span class="o">-=</span> <span class="mi">1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_storage</span><span class="p">[</span><span class="n">addr</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">qubit</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">BaseEntanglement</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_read_epr</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">destructive</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">(</span><span class="n">qubit</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_read_epr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">QuantumModel</span><span class="p">,</span> <span class="n">destructive</span><span class="p">:</span> <span class="nb">bool</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">BaseEntanglement</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">data</span><span class="o">.</span><span class="n">creation_time</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+
+        <span class="n">sec_diff</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">tc</span><span class="o">.</span><span class="n">sec</span> <span class="o">-</span> <span class="n">data</span><span class="o">.</span><span class="n">creation_time</span><span class="o">.</span><span class="n">sec</span>
+
+        <span class="c1"># set fidelity at read time</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">data</span><span class="o">.</span><span class="n">read</span><span class="p">:</span>
+            <span class="n">data</span><span class="o">.</span><span class="n">store_error_model</span><span class="p">(</span><span class="n">t</span><span class="o">=</span><span class="n">sec_diff</span><span class="p">,</span> <span class="n">decoherence_rate</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">decoherence_rate</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">store_error_model_args</span><span class="p">)</span>
+            <span class="n">data</span><span class="o">.</span><span class="n">read</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="k">if</span> <span class="n">destructive</span><span class="p">:</span>
+            <span class="c1"># cancel scheduled decoherence event</span>
+            <span class="n">event</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pending_decohere_events</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">event</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">event</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
+
+<div class="viewcode-block" id="QuantumMemory.write">
+<a class="viewcode-back" href="../../../../reference/qns.entity.memory.html#qns.entity.QuantumMemory.write">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">write</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">qm</span><span class="p">:</span> <span class="n">QuantumModel</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">path_id</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">address</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MemoryQubit</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Store a quantum model (e.g., a qubit or an entangled pair) in memory.</span>
+
+<span class="sd">        1. Find an unused memory slot that satisfies optional constraints.</span>
+<span class="sd">        2. Store and provided quantum model.</span>
+<span class="sd">        3. Schedule a decoherence event based on the memory&#39;s decoherence rate.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            qm: The quantum model to store (e.g., an entangled pair).</span>
+<span class="sd">            path_id: Constrain by `MemoryQubit.path_id` field (set by `allocate`).</span>
+<span class="sd">            address: Constrain by qubit address.</span>
+<span class="sd">            key: Constrain by `MemoryQubit.active` field (set in `LinkLayer` reservation).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Qubit where the quantum model was stored, or None if no storage available.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">qubit</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">find</span><span class="p">(</span>
+                <span class="k">lambda</span> <span class="n">q</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="n">v</span> <span class="ow">is</span> <span class="kc">None</span>
+                <span class="ow">and</span> <span class="p">(</span><span class="n">path_id</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">q</span><span class="o">.</span><span class="n">path_id</span> <span class="o">==</span> <span class="n">path_id</span><span class="p">)</span>
+                <span class="ow">and</span> <span class="p">(</span><span class="n">address</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">q</span><span class="o">.</span><span class="n">addr</span> <span class="o">==</span> <span class="n">address</span><span class="p">)</span>
+                <span class="ow">and</span> <span class="p">(</span><span class="n">key</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">key</span> <span class="o">==</span> <span class="n">q</span><span class="o">.</span><span class="n">active</span><span class="p">)</span>
+            <span class="p">),</span>
+            <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">qubit</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_storage</span><span class="p">[</span><span class="n">qubit</span><span class="o">.</span><span class="n">addr</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">qubit</span><span class="p">,</span> <span class="n">qm</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_usage</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">qm</span><span class="p">,</span> <span class="n">BaseEntanglement</span><span class="p">)</span> <span class="ow">and</span> <span class="n">qm</span><span class="o">.</span><span class="n">creation_time</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">decoherence_delay</span><span class="p">:</span>
+            <span class="n">qm</span><span class="o">.</span><span class="n">decoherence_time</span> <span class="o">=</span> <span class="n">qm</span><span class="o">.</span><span class="n">creation_time</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">decoherence_delay</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_schedule_decohere</span><span class="p">(</span><span class="n">qubit</span><span class="p">,</span> <span class="n">qm</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">qubit</span></div>
+
+
+<div class="viewcode-block" id="QuantumMemory.update">
+<a class="viewcode-back" href="../../../../reference/qns.entity.memory.html#qns.entity.QuantumMemory.update">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">old_qm</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">new_qm</span><span class="p">:</span> <span class="n">QuantumModel</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Update the data of a stored qubit without resetting its coherence time.</span>
+
+<span class="sd">        This method replaces an existing quantum model in memory with a new one,</span>
+<span class="sd">        preserving the original decoherence schedule. The old decoherence event is</span>
+<span class="sd">        canceled and replaced with a new event for the updated model, but at the</span>
+<span class="sd">        same decoherence time.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            old_qm (str): The name of the existing `QuantumModel` to be replaced.</span>
+<span class="sd">            new_qm (QuantumModel): The new `QuantumModel` instance to store in its place.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            bool: True if the update was successful, False if `old_qm` was not found</span>
+<span class="sd">                (e.g., already decohered or removed).</span>
+
+<span class="sd">        Notes:</span>
+<span class="sd">            - If `old_qm` is not found in memory but a pending decoherence event still exists,</span>
+<span class="sd">            that event is canceled and removed to avoid inconsistency.</span>
+<span class="sd">            - This method does not modify the coherence time or reschedule it—only updates</span>
+<span class="sd">            the stored quantum model while maintaining timing integrity.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">addr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find_by_key</span><span class="p">(</span><span class="n">old_qm</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">addr</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="n">old_event</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pending_decohere_events</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">old_qm</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">assert</span> <span class="n">old_event</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;decohere event not cleared for </span><span class="si">{</span><span class="n">old_qm</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="n">qubit</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_storage</span><span class="p">[</span><span class="n">addr</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_storage</span><span class="p">[</span><span class="n">addr</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">qubit</span><span class="p">,</span> <span class="n">new_qm</span><span class="p">)</span>
+
+        <span class="n">old_event</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pending_decohere_events</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">old_qm</span><span class="p">)</span>
+        <span class="n">old_event</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">new_qm</span><span class="p">,</span> <span class="n">BaseEntanglement</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_schedule_decohere</span><span class="p">(</span><span class="n">qubit</span><span class="p">,</span> <span class="n">new_qm</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="QuantumMemory.clear">
+<a class="viewcode-back" href="../../../../reference/qns.entity.memory.html#qns.entity.QuantumMemory.clear">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Clear all qubits in the memory.&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">qubit</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_storage</span><span class="p">:</span>
+            <span class="n">qubit</span><span class="o">.</span><span class="n">reset_state</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_storage</span><span class="p">[</span><span class="n">qubit</span><span class="o">.</span><span class="n">addr</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">qubit</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_usage</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">pending_decohere_events</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="n">event</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pending_decohere_events</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="QuantumMemory.get_channel_qubits">
+<a class="viewcode-back" href="../../../../reference/qns.entity.memory.html#qns.entity.QuantumMemory.get_channel_qubits">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_channel_qubits</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ch_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="n">MemoryQubit</span><span class="p">,</span> <span class="n">QuantumModel</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Retrieve all memory qubits associated with a specific quantum channel.</span>
+
+<span class="sd">        This method returns all memory qubits that are linked to the given quantum channel name,</span>
+<span class="sd">        regardless of their state or usage.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            ch_name (str): The name of the quantum channel to filter qubits by.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List[Tuple[MemoryQubit, QuantumModel]]: A list of memory qubits (along with their `QuantumModel`)</span>
+<span class="sd">            that are bound to the specified quantum channel.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="k">lambda</span> <span class="n">q</span><span class="p">,</span> <span class="n">_</span><span class="p">:</span> <span class="n">q</span><span class="o">.</span><span class="n">qchannel</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">q</span><span class="o">.</span><span class="n">qchannel</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">ch_name</span><span class="p">))</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_schedule_decohere</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">qubit</span><span class="p">:</span> <span class="n">MemoryQubit</span><span class="p">,</span> <span class="n">epr</span><span class="p">:</span> <span class="n">BaseEntanglement</span><span class="p">):</span>
+        <span class="n">simulator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">simulator</span>
+        <span class="k">assert</span> <span class="n">epr</span><span class="o">.</span><span class="n">decoherence_time</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">assert</span> <span class="n">epr</span><span class="o">.</span><span class="n">decoherence_time</span> <span class="o">&gt;=</span> <span class="n">simulator</span><span class="o">.</span><span class="n">tc</span>
+        <span class="n">event</span> <span class="o">=</span> <span class="n">func_to_event</span><span class="p">(</span><span class="n">epr</span><span class="o">.</span><span class="n">decoherence_time</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">decohere_qubit</span><span class="p">,</span> <span class="n">qubit</span><span class="p">,</span> <span class="n">epr</span><span class="p">,</span> <span class="n">by</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pending_decohere_events</span><span class="p">[</span><span class="n">epr</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">event</span>
+        <span class="n">simulator</span><span class="o">.</span><span class="n">add_event</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+
+<div class="viewcode-block" id="QuantumMemory.decohere_qubit">
+<a class="viewcode-back" href="../../../../reference/qns.entity.memory.html#qns.entity.QuantumMemory.decohere_qubit">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">decohere_qubit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">qubit</span><span class="p">:</span> <span class="n">MemoryQubit</span><span class="p">,</span> <span class="n">qm</span><span class="p">:</span> <span class="n">QuantumModel</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Mark the `BaseEntanglement` quantum model associated with a qubit as decohered.</span>
+<span class="sd">        This is invoked through decoherence event from `_schedule_decohere`.</span>
+
+<span class="sd">        1. Check whether the EPR pair still exists in memory via `self.read(key=qm)`.</span>
+<span class="sd">           - If the qubit was already released via swap/purify, it is safely ignored.</span>
+<span class="sd">           - If the qubit was re-entangled, it would be associated with a different quantum model</span>
+<span class="sd">             and would not be found via `self.read(key=qm)`.</span>
+<span class="sd">        2. If the EPR is still present, set the qubit to RELEASE state, and then</span>
+<span class="sd">           schedule a `QubitDecoheredEvent` to inform the link layer.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            qubit: The memory qubit that has reached its decoherence time.</span>
+<span class="sd">            qm: The assocated quantum model, which must also be an instance of `BaseEntanglement`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">qns.network.protocol.event</span><span class="w"> </span><span class="kn">import</span> <span class="n">QubitDecoheredEvent</span>  <span class="c1"># noqa: PLC0415</span>
+
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">node</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="n">simulator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">simulator</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">qm</span><span class="p">,</span> <span class="n">BaseEntanglement</span><span class="p">)</span>
+
+        <span class="n">qm</span><span class="o">.</span><span class="n">is_decoherenced</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">qm</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">qubit</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">QubitState</span><span class="o">.</span><span class="n">RELEASE</span>
+        <span class="n">simulator</span><span class="o">.</span><span class="n">add_event</span><span class="p">(</span><span class="n">QubitDecoheredEvent</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">node</span><span class="p">,</span> <span class="n">qubit</span><span class="p">,</span> <span class="n">t</span><span class="o">=</span><span class="n">simulator</span><span class="o">.</span><span class="n">tc</span><span class="p">,</span> <span class="n">by</span><span class="o">=</span><span class="bp">self</span><span class="p">))</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;&lt;memory &quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;&gt;&quot;</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Amar Abane.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
