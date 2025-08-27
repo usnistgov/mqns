@@ -348,7 +348,7 @@ class ProactiveRoutingController(Application):
             path_id: numeric identifier to uniquely identify this path within the network.
             swap: swap sequence.
                   This list shall have the same length as route.
-                  Each integer is the swapping rank of a node, as explained in `find_index_and_swapping_rank`.
+                  Each integer is the swapping rank of a node, as explained in `FIBEntry.find_index_and_swap_rank`.
             purif: purification instructions.
                    Each key is a segment name consists of two node names concatenated with a hyphen ("-"),
                    where the nodes appear in the same order as in the route but do not have to be adjacent.

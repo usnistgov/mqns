@@ -19,7 +19,7 @@ from collections.abc import Callable, Iterator, Set
 from dataclasses import dataclass
 
 
-@dataclass
+@dataclass(frozen=True)
 class FIBEntry:
     path_id: int
     """Path identifier, identifies end-to-end path."""
@@ -34,25 +34,28 @@ class FIBEntry:
     purif: dict[str, int]
     """Purification scheme."""
 
+    @property
+    def own_swap_rank(self) -> int:
+        return self.swap[self.own_idx]
 
-def find_index_and_swapping_rank(fib_entry: FIBEntry, node_name: str) -> tuple[int, int]:
-    """
-    Determine the swapping rank of a node.
+    def find_index_and_swap_rank(self, node_name: str) -> tuple[int, int]:
+        """
+        Determine the swapping rank of a node.
 
-    Args:
-        fib_entry: a FIB entry.
-        node_name: a node name that exists in route.
+        Args:
+            fib_entry: a FIB entry.
+            node_name: a node name that exists in route.
 
-    Returns:
-        [0]: The node index in the route.
-        [1]: A nonnegative integer that represents swapping rank of the node.
-             A node with smaller rank shall perform swapping before a node with larger rank.
+        Returns:
+            [0]: The node index in the route.
+            [1]: A nonnegative integer that represents swapping rank of the node.
+                 A node with smaller rank shall perform swapping before a node with larger rank.
 
-    Raises:
-        IndexError - node does not exist in route.
-    """
-    idx = fib_entry.route.index(node_name)
-    return idx, fib_entry.swap[idx]
+        Raises:
+            IndexError - node does not exist in route.
+        """
+        idx = self.route.index(node_name)
+        return idx, self.swap[idx]
 
 
 def is_swap_disabled(fib_entry: FIBEntry) -> bool:

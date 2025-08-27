@@ -17,20 +17,6 @@ except ImportError:
     from typing_extensions import override
 
 
-def _can_enter_purif(own_name: str, partner_name: str) -> bool:
-    """
-    Evaluate if a qubit is eligible for purification, in statistical_mux only with limited support.
-
-    - Any entangled qubit at intermediate node is always eligible.
-    - Entangled qubit at end-node is eligible only if entangled with another end-node.
-    """
-    return (
-        (own_name.startswith("R"))
-        or (own_name.startswith("S") and partner_name.startswith("D"))
-        or (own_name.startswith("D") and partner_name.startswith("S"))
-    )
-
-
 def has_intersect_tmp_path_ids(epr0: Set[int] | None, epr1: Iterable[int] | None) -> bool:
     """
     Determine whether at least one path_id overlaps between tmp_path_ids sets in two EPRs.
@@ -101,6 +87,7 @@ class MuxSchemeStatistical(MuxSchemeDynamicBase):
 
     @override
     def qubit_is_entangled(self, qubit: MemoryQubit, neighbor: QNode) -> None:
+        _ = neighbor
         possible_path_ids = frozenset(self._qubit_is_entangled_0(qubit))
         _, epr = self.memory.get(qubit.addr, must=True)
         assert isinstance(epr, WernerStateEntanglement)
@@ -113,13 +100,24 @@ class MuxSchemeStatistical(MuxSchemeDynamicBase):
             # both nodes should have the same qchannel_paths_map and thus derive the same tmp_path_ids.
             assert epr.tmp_path_ids == possible_path_ids
 
-        if _can_enter_purif(self.own.name, neighbor.name):
+        if self._can_enter_purif(epr, neighbor):
             qubit.state = QubitState.PURIF
 
             # purif scheme is empty, as checked in validate_path_instructions
             log.debug(f"{self.own}: no FIB associated to qubit -> set eligible")
             qubit.state = QubitState.ELIGIBLE
             self.fw.qubit_is_eligible(qubit, None)
+
+    def _can_enter_purif(self, epr: WernerStateEntanglement, neighbor: QNode) -> bool:
+        def calc_rank_diff(path_id: int):
+            fib_entry = self.fib.get(path_id)
+            _, p_rank = fib_entry.find_index_and_swap_rank(neighbor.name)
+            return fib_entry.own_swap_rank - p_rank
+
+        assert epr.tmp_path_ids is not None
+        rank_diff = [calc_rank_diff(path_id) for path_id in epr.tmp_path_ids]
+        assert min(rank_diff) == max(rank_diff)  # failure means one route is a substring of another route, unsupported
+        return rank_diff[0] <= 0
 
     @override
     def find_swap_candidate(
