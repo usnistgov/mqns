@@ -5,7 +5,7 @@ from qns.network.network import QuantumNetwork
 from qns.network.protocol.classicforward import ClassicPacketForwardApp
 from qns.network.route.dijkstra import DijkstraRouteAlgorithm
 from qns.network.route.route import RouteImpl
-from qns.network.topology.linetopo import LineTopology
+from qns.network.topology.lineartopo import LinearTopology
 from qns.network.topology.topo import ClassicTopology
 from qns.simulator.event import Event, func_to_event
 from qns.simulator.simulator import Simulator
@@ -61,7 +61,7 @@ class RecvApp(Application):
 def main():
     s = Simulator(0, 10, accuracy=10000000)
 
-    topo = LineTopology(nodes_number=10, qchannel_args={"delay": 0.1}, cchannel_args={"delay": 0.1})
+    topo = LinearTopology(nodes_number=10, qchannel_args={"delay": 0.1}, cchannel_args={"delay": 0.1})
 
     net = QuantumNetwork(topo=topo, classic_topo=ClassicTopology.Follow)
 
