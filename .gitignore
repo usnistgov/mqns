@@ -16,3 +16,4 @@ qns/**/*.pyd
 .eggs
 **/*.log
 **/*.csv
+docs/_build/
