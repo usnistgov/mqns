@@ -16,14 +16,9 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from collections.abc import Callable
-from typing import Generic, TypeVar
+from typing import Generic
 
-from qns.entity.cchannel import ClassicChannel
-from qns.entity.node import NodeT
-from qns.entity.qchannel import QuantumChannel
-
-ChannelT = TypeVar("ChannelT", bound=ClassicChannel | QuantumChannel)
-"""Either ClassicChannel or QuantumChannel used in routing algorithms."""
+from qns.entity import ChannelT, NodeT
 
 MetricFunc = Callable[[ChannelT], float]
 """Callback function that returns the edge cost of a channel."""

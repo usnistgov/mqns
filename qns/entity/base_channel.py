@@ -1,4 +1,4 @@
-from typing import Generic, TypedDict
+from typing import Generic, TypedDict, TypeVar
 
 from qns.entity.entity import Entity
 from qns.entity.node import NodeT
@@ -119,3 +119,7 @@ class BaseChannel(Entity, Generic[NodeT]):
 
 class NextHopNotConnectionException(Exception):
     pass
+
+
+ChannelT = TypeVar("ChannelT", bound=BaseChannel)
+"""Either ClassicChannel or QuantumChannel."""

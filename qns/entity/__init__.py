@@ -25,7 +25,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from qns.entity.base_channel import default_light_speed, set_default_light_speed
+from qns.entity.base_channel import ChannelT, default_light_speed, set_default_light_speed
 from qns.entity.cchannel import ClassicChannel, ClassicPacket, RecvClassicPacket
 from qns.entity.entity import Entity
 from qns.entity.memory import (
@@ -36,13 +36,14 @@ from qns.entity.memory import (
     QuantumMemory,
 )
 from qns.entity.monitor import Monitor, MonitorEvent
-from qns.entity.node import Application, Controller, Node, QNode
+from qns.entity.node import Application, Controller, Node, NodeT, QNode
 from qns.entity.operator import OperateRequestEvent, OperateResponseEvent, QuantumOperator
 from qns.entity.qchannel import QuantumChannel, RecvQubitPacket
 from qns.entity.timer import Timer
 
 __all__ = [
     "Application",
+    "ChannelT",
     "ClassicChannel",
     "ClassicPacket",
     "Controller",
@@ -55,6 +56,7 @@ __all__ = [
     "Monitor",
     "MonitorEvent",
     "Node",
+    "NodeT",
     "OperateRequestEvent",
     "OperateResponseEvent",
     "QNode",

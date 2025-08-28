@@ -26,6 +26,6 @@ def test_timing_mode_sync():
     net.install(simulator)
     simulator.run()
 
-    for node in net.get_nodes() + [net.get_controller()]:
+    for node in net.nodes + [net.get_controller()]:
         app = node.get_app(SyncCheckApp)
         assert app.changes == 12

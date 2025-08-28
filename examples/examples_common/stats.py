@@ -13,7 +13,7 @@ def gather_etg_decoh(net: QuantumNetwork) -> tuple[int, int, float]:
     """
     total_etg = 0
     total_decohered = 0
-    for node in net.get_nodes():
+    for node in net.nodes:
         for ll_app in node.get_apps(LinkLayer):
             total_etg += ll_app.etg_count
             total_decohered += ll_app.decoh_count

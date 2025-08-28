@@ -24,9 +24,9 @@ def build_linear_network(
     topo.controller = Controller("ctrl", apps=[ProactiveRoutingController()])
 
     net = QuantumNetwork(topo=topo, classic_topo=ClassicTopology.Follow)
-    for qchannel in net.get_qchannels():
+    for qchannel in net.qchannels:
         qchannel.assign_memory_qubits(capacity=qchannel_capacity)
-    topo.connect_controller(net.get_nodes())
+    topo.connect_controller(net.nodes)
 
     simulator = Simulator(0.0, 60.0)
     log.install(simulator)

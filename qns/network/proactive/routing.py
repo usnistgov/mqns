@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
+from collections import defaultdict
 from collections.abc import Iterator
 from enum import Enum, auto
+from itertools import pairwise
 
 from qns.network.network import QuantumNetwork
 from qns.network.proactive.message import MultiplexingVector, PathInstructions, make_path_instructions
@@ -191,41 +193,34 @@ class RoutingPathMulti(RoutingPath):
         # Get all shortest paths (M ≥ 1)
         routes = list(self.query_routes(net))
 
-        # Get all quantum channels and initialize usage count
-        network_channels = net.get_qchannels()
-        qchannel_use_count = {ch.name: 0 for ch in network_channels}
-
         # Count usage of each quantum channel across all paths
+        qchannel_use_count = defaultdict[str, int](lambda: 0)
         for route in routes:
-            for i in range(len(route) - 1):
-                n1, n2 = route[i], route[i + 1]
-                ch_name = f"q_{n1},{n2}" if f"q_{n1},{n2}" in qchannel_use_count else f"q_{n2},{n1}"
-                qchannel_use_count[ch_name] += 1
+            for name_a, name_b in pairwise(route):
+                ch = net.get_qchannel(name_a, name_b)
+                qchannel_use_count[ch.name] += 1
 
         # Process each path
-        for path_id, route in enumerate(routes):
+        for path_id_add, route in enumerate(routes):
+            path_id = self.path_id + path_id_add
             log.debug(f"ROUTING: Computed path #{path_id}: {route}")
 
             # Compute buffer-space multiplexing vector as pairs of (qubits_at_node_i, qubits_at_node_i+1)
             # The qubits are divided among all paths that share the qchannel
             m_v: MultiplexingVector = []
-            for i in range(len(route) - 1):
-                node_a = net.get_node(route[i])
-                node_b = net.get_node(route[i + 1])
-
-                try:
-                    ch_name = f"q_{node_a.name},{node_b.name}"
-                    shared = qchannel_use_count[ch_name]
-                except KeyError:
-                    ch_name = f"q_{node_b.name},{node_a.name}"
-                    shared = qchannel_use_count[ch_name]
+            for name_a, name_b in pairwise(route):
+                node_a = net.get_node(name_a)
+                node_b = net.get_node(name_b)
+                ch = net.get_qchannel(name_a, name_b)
+                shared = qchannel_use_count.get(ch.name)
+                assert shared is not None
 
                 # From node_i
-                full_qubits_a = node_a.get_memory().get_channel_qubits(ch_name)
+                full_qubits_a = node_a.get_memory().get_channel_qubits(ch.name)
                 qubits_a = len(full_qubits_a) // shared if shared > 0 else len(full_qubits_a)
 
                 # From node_i+1
-                full_qubits_b = node_b.get_memory().get_channel_qubits(ch_name)
+                full_qubits_b = node_b.get_memory().get_channel_qubits(ch.name)
                 qubits_b = len(full_qubits_b) // shared if shared > 0 else len(full_qubits_b)
 
                 m_v.append((qubits_a, qubits_b))

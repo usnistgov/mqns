@@ -27,8 +27,9 @@
 
 from collections import deque
 from enum import Enum, auto
+from typing import cast, overload
 
-from qns.entity import ClassicChannel, Controller, QNode, QuantumChannel, QuantumMemory
+from qns.entity import ChannelT, ClassicChannel, Controller, QNode, QuantumChannel, QuantumMemory
 from qns.network.requests import Request
 from qns.network.route import DijkstraRouteAlgorithm, RouteImpl
 from qns.network.topology import ClassicTopology, Topology
@@ -51,6 +52,33 @@ class SignalTypeEnum(Enum):
 SignalSequence = deque[tuple[SignalTypeEnum, float]]
 
 
+def _save_channel(l: list[ChannelT], d: dict[tuple[str, str], ChannelT], ch: ChannelT):
+    l.append(ch)
+    if len(ch.node_list) != 2:
+        return
+    a, b = [node.name for node in cast(list[QNode], ch.node_list)]
+    if a > b:
+        a, b = b, a
+    d[(a, b)] = ch
+
+
+def _get_channel(l: list[ChannelT], d: dict[tuple[str, str], ChannelT], q: tuple[str, ...]):
+    if len(q) == 1:
+        name = q[0]
+        for ch in l:
+            if ch.name == name:
+                return ch
+        raise IndexError(f"channel {name} does not exist")
+
+    a, b = q
+    if a > b:
+        a, b = b, a
+    try:
+        return d[(a, b)]
+    except KeyError:
+        raise IndexError(f"channel between {a} and {b} does not exist")
+
+
 class QuantumNetwork:
     """QuantumNetwork includes quantum nodes, quantum and classical channels, arranged in a given topology"""
 
@@ -58,50 +86,56 @@ class QuantumNetwork:
         self,
         *,
         topo: Topology | None = None,
-        route: RouteImpl | None = None,
         classic_topo: ClassicTopology | None = None,
-        name: str | None = None,
+        route: RouteImpl | None = None,
         timing_mode: TimingModeEnum = TimingModeEnum.ASYNC,
         t_ext: float = 0,
         t_int: float = 0,
     ):
-        """Args:
-        topo: a `Topology` class.
-        route: the routing implement. If route is None, the dijkstra algorithm will be used.
-        classic_topo (ClassicTopo): a `ClassicTopo` enum class.
-        name: name of the network.
-
+        """
+        Args:
+            topo: topology builder.
+            classic_topo: classic topology parameter, passed to topology builder.
+            route: routing algorithm, defaults to dijkstra.
+            timing_mode: network-wide application timing mode.
+            t_ext: EXTERNAL phase duration in SYNC timing mode.
+            t_int: INTERNAL phase duration in SYNC timing mode.
         """
         self.timing_mode = timing_mode
-        self.t_ext = t_ext  # for SYNC
-        self.t_int = t_int  # for SYNC
+        self.t_ext = t_ext
+        self.t_int = t_int
 
-        self.name = name
         self.controller: Controller | None = None
+        self.nodes: list[QNode] = []
+        self._node_by_name: dict[str, QNode] = {}
+        self.qchannels: list[QuantumChannel] = []
+        self._qchannel_by_ends: dict[tuple[str, str], QuantumChannel] = {}
+        self.cchannels: list[ClassicChannel] = []
+        self._cchannel_by_ends: dict[tuple[str, str], ClassicChannel] = {}
 
-        if topo is None:
-            self.nodes: list[QNode] = []
-            self.qchannels: list[QuantumChannel] = []
-            self.cchannels: list[ClassicChannel] = []
-        else:
-            self.nodes, self.qchannels = topo.build()
-            if classic_topo is not None:
-                self.cchannels = topo.add_cchannels(classic_topo=classic_topo, nl=self.nodes, ll=self.qchannels)
-            else:
-                self.cchannels = topo.add_cchannels()
+        if topo is not None:
+            self._populate_from_topo(topo, classic_topo)
 
-            for n in self.nodes:
-                n.add_network(self)
-
-            # set network controller if centralized routing
-            if topo.controller:
-                self.controller = topo.controller
-                self.controller.add_network(self)
-
-        # set quantum routing algorithm
         self.route: RouteImpl = DijkstraRouteAlgorithm() if route is None else route
 
         self.requests: list[Request] = []
+
+    def _populate_from_topo(self, topo: Topology, classic_topo: ClassicTopology | None):
+        nodes, qchannels = topo.build()
+        if classic_topo is not None:
+            cchannels = topo.add_cchannels(classic_topo=classic_topo, nl=nodes, ll=qchannels)
+        else:
+            cchannels = topo.add_cchannels()
+
+        for node in nodes:
+            self.add_node(node)
+        for ch in qchannels:
+            self.add_qchannel(ch)
+        for ch in cchannels:
+            self.add_cchannel(ch)
+
+        if topo.controller:
+            self.set_controller(topo.controller)
 
     def install(self, simulator: Simulator):
         """Install all nodes (including channels, memories and applications) in this network
@@ -142,107 +176,102 @@ class QuantumNetwork:
         if self.controller:
             self.controller.handle_sync_signal(phase_signal)
 
-    def get_nodes(self):
-        return self.nodes
-
-    def get_cchannels(self):
-        return self.cchannels
-
-    def get_qchannels(self):
-        return self.qchannels
-
     def add_node(self, node: QNode):
-        """Add a QNode into this network.
-
-        Args:
-            node (qns.entity.node.node.QNode): the inserting node
-
         """
+        Add a QNode into this network.
+        """
+        assert node.name not in self._node_by_name, f"duplicate node name {node.name}"
         self.nodes.append(node)
+        self._node_by_name[node.name] = node
         node.add_network(self)
 
     def get_node(self, name: str) -> QNode:
-        """Get the QNode by its name
-
-        Args:
-            name (str): its name
-        Returns:
-            the QNode
-
         """
-        for n in self.nodes:
-            if n.name == name:
-                return n
-        raise IndexError(f"node {name} does not exist")
+        Get QNode by name.
+
+        Raises:
+            IndexError - node does not exist.
+        """
+        try:
+            return self._node_by_name[name]
+        except KeyError:
+            raise IndexError(f"node {name} does not exist")
 
     def set_controller(self, controller: Controller):
-        """Set the controller of this network.
-
-        Args:
-            node (qns.entity.node.node.Controller): the controller node
-
+        """
+        Set the controller of this network.
         """
         self.controller = controller
         controller.add_network(self)
 
     def get_controller(self) -> Controller:
-        """Get the Controller of this network
+        """
+        Get the Controller of this network.
 
-        Args:
-            name (str): its name
-        Returns:
-            the Controller
-
+        Raises:
+            IndexError - controller does not exist.
         """
         if self.controller is None:
             raise IndexError("network does not have a controller")
         return self.controller
 
     def add_qchannel(self, qchannel: QuantumChannel):
-        """Add a QuantumChannel into this network.
-
-        Args:
-            qchannel (qns.entity.qchannel.qchannel.QuantumChannel): the inserting QuantumChannel
-
         """
-        self.qchannels.append(qchannel)
-
-    def get_qchannel(self, name: str) -> QuantumChannel:
-        """Get the QuantumChannel by its name
-
-        Args:
-            name (str): its name
-        Returns:
-            the QuantumChannel
-
+        Add a QuantumChannel into this network.
         """
-        for n in self.qchannels:
-            if n.name == name:
-                return n
-        raise IndexError(f"qchannel {name} does not exist")
+        _save_channel(self.qchannels, self._qchannel_by_ends, qchannel)
+
+    @overload
+    def get_qchannel(self, name: str, /) -> QuantumChannel:
+        """
+        Retrieve QuantumChannel by name.
+
+        Raises:
+            IndexError - channel does not exist.
+        """
+        pass
+
+    @overload
+    def get_qchannel(self, a: str, b: str, /) -> QuantumChannel:
+        """
+        Retrieve QuantumChannel by node names.
+
+        Raises:
+            IndexError - channel does not exist.
+        """
+        pass
+
+    def get_qchannel(self, *q: str) -> QuantumChannel:
+        return _get_channel(self.qchannels, self._qchannel_by_ends, q)
 
     def add_cchannel(self, cchannel: ClassicChannel):
-        """Add a ClassicChannel into this network.
-
-        Args:
-            cchannel (qns.entity.cchannel.cchannel.ClassicChannel): the inserting ClassicChannel
-
         """
-        self.cchannels.append(cchannel)
-
-    def get_cchannel(self, name: str) -> ClassicChannel:
-        """Get the ClassicChannel by its name
-
-        Args:
-            name (str): its name
-        Returns:
-            the ClassicChannel
-
+        Add a ClassicChannel into this network.
         """
-        for n in self.cchannels:
-            if n.name == name:
-                return n
-        raise IndexError(f"cchannel {name} does not exist")
+        _save_channel(self.cchannels, self._cchannel_by_ends, cchannel)
+
+    @overload
+    def get_cchannel(self, name: str, /) -> ClassicChannel:
+        """
+        Retrieve ClassicalChannel by name.
+
+        Raises:
+            IndexError - channel does not exist.
+        """
+        pass
+
+    @overload
+    def get_cchannel(self, a: str, b: str, /) -> ClassicChannel:
+        """
+        Retrieve ClassicalChannel by node names.
+
+        Raises:
+            IndexError - channel does not exist.
+        """
+        pass
+
+    def get_cchannel(self, *q: str) -> ClassicChannel:
+        return _get_channel(self.cchannels, self._cchannel_by_ends, q)
 
     def add_memories(self, capacity: int = 0, decoherence_rate: float = 0, store_error_model_args: dict = {}):
         """Add quantum memories to every nodes in this network
