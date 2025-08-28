@@ -1,5 +1,5 @@
 from qns.network.network import QuantumNetwork
-from qns.network.proactive import LinkLayer, ProactiveForwarder, ProactiveRoutingController
+from qns.network.proactive import LinkLayer, ProactiveForwarder, ProactiveRoutingController, RoutingPathMulti
 from qns.network.route import YenRouteAlgorithm
 from qns.network.topology.customtopo import CustomTopology, Topo, TopoQNode
 from qns.simulator import Simulator
@@ -27,9 +27,6 @@ t_coherence = 0.01  # sec
 node_capacity = 4
 
 swapping_policy = "r2l"
-
-# Multipath settings
-routing_type = "SRMP_STATIC"  # Controller installs multiple paths for a single S-D request, with qubit-path allocation
 
 # NOTE: Non-isolated paths does not work with SWAP-ASAP
 isolate_paths = True  # Routers can/cannot swap qubits allocated to different paths (but serving same S-D request)
@@ -147,7 +144,7 @@ def generate_topology() -> Topo:
         ],
         "controller": {
             "name": "ctrl",
-            "apps": [ProactiveRoutingController(swapping_policy=swapping_policy, routing_type=routing_type)],
+            "apps": [ProactiveRoutingController(RoutingPathMulti("S", "D", swap=swapping_policy))],
         },
     }
 

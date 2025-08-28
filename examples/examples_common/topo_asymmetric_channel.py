@@ -1,7 +1,7 @@
 from typing import cast
 
 from qns.entity.qchannel import LinkArch, LinkArchDimBkSeq
-from qns.network.proactive import LinkLayer, ProactiveForwarder, ProactiveRoutingController
+from qns.network.proactive import LinkLayer, ProactiveForwarder, ProactiveRoutingController, RoutingPathSingle
 from qns.network.topology.customtopo import CustomTopology, Topo, TopoCChannel, TopoController, TopoQChannel, TopoQNode
 from qns.network.topology.topo import Topology
 
@@ -87,7 +87,7 @@ def build_topology(
 
     controller: TopoController = {
         "name": "ctrl",
-        "apps": [ProactiveRoutingController(routing_type="SRSP", swapping=swapping_order)],
+        "apps": [ProactiveRoutingController(RoutingPathSingle("S", "D", swap=swapping_order))],
     }
     for node in nodes:
         cchannels.append({"node1": "ctrl", "node2": node, "parameters": {"length": 1.0}})

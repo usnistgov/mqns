@@ -1,4 +1,4 @@
-from qns.network.proactive import LinkLayer, ProactiveForwarder, ProactiveRoutingController
+from qns.network.proactive import LinkLayer, ProactiveForwarder, ProactiveRoutingController, RoutingPathSingle
 from qns.network.topology.customtopo import CustomTopology, Topo
 from qns.network.topology.topo import Topology
 
@@ -112,7 +112,7 @@ def build_topology(
         ],
         "controller": {
             "name": "ctrl",
-            "apps": [ProactiveRoutingController(routing_type="SRSP", swapping=swapping_order)],
+            "apps": [ProactiveRoutingController(RoutingPathSingle("S", "D", swap=swapping_order))],
         },
     }
     return CustomTopology(topo)

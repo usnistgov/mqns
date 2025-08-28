@@ -14,6 +14,8 @@ from qns.network.proactive import (
     MuxSchemeStatistical,
     ProactiveForwarder,
     ProactiveRoutingController,
+    QubitAllocationType,
+    RoutingPathSingle,
     select_weighted_by_swaps,
 )
 from qns.network.topology.customtopo import CustomTopology, Topo
@@ -46,9 +48,6 @@ entg_attempt_rate = 50e6  # From fiber max frequency (50 MHz) AND detectors coun
 init_fidelity = 0.99
 
 swapping_policy = "asap"
-
-# Multipath settings
-routing_type = "MRSP_DYNAMIC"  # Controller installs one path for each S-D request, without qubit-path allocation
 
 # Quantum channel lengths
 ch_S1_R1 = 10
@@ -161,7 +160,14 @@ def generate_topology(t_coherence: float, p_swap: float, mux: MuxScheme) -> Topo
         ],
         "controller": {
             "name": "ctrl",
-            "apps": [ProactiveRoutingController(swapping_policy=swapping_policy, routing_type=routing_type)],
+            "apps": [
+                ProactiveRoutingController(
+                    [
+                        RoutingPathSingle("S1", "D1", qubit_allocation=QubitAllocationType.DISABLED, swap=swapping_policy),
+                        RoutingPathSingle("S2", "D2", qubit_allocation=QubitAllocationType.DISABLED, swap=swapping_policy),
+                    ]
+                )
+            ],
         },
     }
 

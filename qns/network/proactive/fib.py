@@ -63,7 +63,7 @@ class FibEntry:
 
         Returns:
             [0]: The node index in the route.
-            [1]: Swapping rank of the node, explained in `ProactiveRoutingController.install_path`.
+            [1]: Swapping rank of the node, explained in `PathInstructions`.
 
         Raises:
             IndexError - node does not exist in route.
