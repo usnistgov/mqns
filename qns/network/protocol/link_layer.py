@@ -354,6 +354,13 @@ class LinkLayer(Application):
         epr.key = qubit.active
         epr.creation_time = t_epr_creation
 
+        if not self.own.timing.is_external(max(t_notify_a, t_notify_b)):
+            log.debug(
+                f"{self.own}: skip prepare EPR {epr.name} key={epr.key} dst={epr.dst} attempts={k} "
+                f"times={t_epr_creation},{t_notify_a},{t_notify_b} reason=beyond-external-phase"
+            )
+            return
+
         log.debug(
             f"{self.own}: prepare EPR {epr.name} key={epr.key} dst={epr.dst} attempts={k} "
             f"times={t_epr_creation},{t_notify_a},{t_notify_b}"
@@ -363,9 +370,7 @@ class LinkLayer(Application):
         simulator.add_event(LinkArchSuccessEvent(next_hop, epr, t=t_notify_b, by=self))
 
     def handle_success_entangle(self, event: LinkArchSuccessEvent):
-        if not self.own.timing.is_external():
-            log.debug(f"{self.own}: EXT phase is over -> stop attempts")
-            return
+        assert self.own.timing.is_external()
 
         simulator = self.simulator
         epr = event.epr

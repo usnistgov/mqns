@@ -5,7 +5,7 @@ from qns.entity.memory import QubitState
 from qns.entity.node import Application, Node, QNode
 from qns.entity.qchannel import LinkArchDimBk
 from qns.models.epr import BaseEntanglement
-from qns.network.network import QuantumNetwork
+from qns.network.network import QuantumNetwork, TimingModeSync
 from qns.network.protocol.event import (
     ManageActiveChannels,
     QubitDecoheredEvent,
@@ -14,7 +14,7 @@ from qns.network.protocol.event import (
     TypeEnum,
 )
 from qns.network.protocol.link_layer import LinkLayer
-from qns.network.topology import ClassicTopology, LinearTopology
+from qns.network.topology import ClassicTopology, CustomTopology, LinearTopology
 from qns.simulator import Simulator
 from qns.utils import log
 
@@ -60,7 +60,19 @@ class LinkArchDimBkAlways(LinkArchDimBk):
         return 1.0
 
 
-def test_link_layer_basic():
+def add_active_channel(simulator: Simulator, t: float, src: NetworkLayer, dst: NetworkLayer):
+    simulator.add_event(
+        ManageActiveChannels(
+            src.own,
+            dst.own,
+            TypeEnum.ADD,
+            t=simulator.time(sec=t),
+            by=src,
+        )
+    )
+
+
+def test_basic():
     topo = LinearTopology(
         nodes_number=2,
         nodes_apps=[NetworkLayer(), LinkLayer()],
@@ -70,25 +82,15 @@ def test_link_layer_basic():
     )
     net = QuantumNetwork(topo=topo, classic_topo=ClassicTopology.Follow)
     net.build_route()
-    n1 = net.get_node("n1")
-    n2 = net.get_node("n2")
-    net.get_qchannel("l0,1").assign_memory_qubits(capacity=1)
+    net.get_qchannel("n1", "n2").assign_memory_qubits(capacity=1)
 
     simulator = Simulator(0.0, 10.0)
     log.install(simulator)
     net.install(simulator)
 
-    a1 = n1.get_app(NetworkLayer)
-    a2 = n2.get_app(NetworkLayer)
-    simulator.add_event(
-        ManageActiveChannels(
-            n1,
-            n2,
-            TypeEnum.ADD,
-            t=simulator.time(sec=0.5),
-            by=a1,
-        )
-    )
+    a1 = net.get_node("n1").get_app(NetworkLayer)
+    a2 = net.get_node("n2").get_app(NetworkLayer)
+    add_active_channel(simulator, 0.5, a1, a2)
     a1.release_after = 2.9
     a2.release_after = 3.2
 
@@ -121,7 +123,7 @@ def test_link_layer_basic():
         assert app.entangle[2] == pytest.approx((8.7, 8.5), abs=1e-3)
 
 
-def test_link_layer_skip_ahead():
+def test_skip_ahead():
     topo = LinearTopology(
         nodes_number=2,
         nodes_apps=[NetworkLayer(), LinkLayer()],
@@ -133,10 +135,10 @@ def test_link_layer_skip_ahead():
     net.build_route()
     n1 = net.get_node("n1")
     n2 = net.get_node("n2")
-    qc = net.get_qchannel("l0,1")
-    qc.assign_memory_qubits(capacity=1)
+    net.get_qchannel("n1", "n2").assign_memory_qubits(capacity=1)
 
     simulator = Simulator(0.0, 10.0)
+    log.install(simulator)
     net.install(simulator)
 
     a1 = n1.get_app(NetworkLayer)
@@ -159,3 +161,58 @@ def test_link_layer_skip_ahead():
     assert len(a1.entangle) == len(a2.entangle) > 0
     for t1, t2 in zip(a1.entangle, a2.entangle):
         assert t1 == pytest.approx(t2, abs=1e-3)
+
+
+def test_timing_mode_sync():
+    topo = CustomTopology(
+        {
+            "qnodes": [
+                {"name": "n0", "memory": {"decoherence_rate": 1 / 10.0}, "apps": [NetworkLayer(), LinkLayer()]},
+                {"name": "n1", "memory": {"decoherence_rate": 1 / 10.0}, "apps": [NetworkLayer(), LinkLayer()]},
+                {"name": "n2", "memory": {"decoherence_rate": 1 / 10.0}, "apps": [NetworkLayer(), LinkLayer()]},
+                {"name": "n3", "memory": {"decoherence_rate": 1 / 10.0}, "apps": [NetworkLayer(), LinkLayer()]},
+            ],
+            "qchannels": [
+                {"node1": "n0", "node2": "n1", "parameters": {"delay": 0.2, "link_arch": LinkArchDimBkAlways()}},
+                {"node1": "n2", "node2": "n3", "parameters": {"delay": 0.1, "link_arch": LinkArchDimBkAlways()}},
+            ],
+            "cchannels": [
+                {"node1": "n0", "node2": "n1", "parameters": {"delay": 0.2}},
+                {"node1": "n2", "node2": "n3", "parameters": {"delay": 0.1}},
+            ],
+        }
+    )
+    net = QuantumNetwork(topo=topo, timing=TimingModeSync(t_ext=0.6, t_int=0.4))
+    net.build_route()
+
+    simulator = Simulator(0.0, 5.0)
+    log.install(simulator)
+    net.install(simulator)
+
+    a0 = net.get_node("n0").get_app(NetworkLayer)
+    a1 = net.get_node("n1").get_app(NetworkLayer)
+    a2 = net.get_node("n2").get_app(NetworkLayer)
+    a3 = net.get_node("n3").get_app(NetworkLayer)
+    add_active_channel(simulator, 0.1, a0, a1)
+    add_active_channel(simulator, 0.1, a2, a3)
+
+    simulator.run()
+
+    for app in (a0, a1):
+        print((app.get_node().name, app.entangle, app.decohere))
+        # τ=0.2 for the channel between n0 and n1.
+        # Entanglement (including reservation) requires 4τ i.e. 0.8 seconds but the EXTERNAL phase
+        # has only 0.6 seconds, so that no entanglement could complete on this channel.
+        assert len(app.entangle) == 0
+        assert len(app.decohere) == 0
+
+    for app in (a2, a3):
+        print((app.get_node().name, app.entangle, app.decohere))
+        # τ=0.1 for the channel between n2 and n3.
+        # Entanglement (including reservation) requires 4τ i.e. 0.4 seconds.
+        # No entanglement occurs in the first EXTERNAL phase window, because reservations are only initiated
+        # at the start of each EXTERNAL phase window, not when ManageActiveChannels arrives.
+        assert [t_notify for t_notify, _ in app.entangle] == pytest.approx([1.4, 2.4, 3.4, 4.4], abs=1e-3)
+        # All qubits are cleared at the start of each EXTERNAL phase, before memory decoherence occurs.
+        # Decoherence events are not emitted for cleared qubits.
+        assert len(app.decohere) == 0
