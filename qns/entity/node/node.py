@@ -32,11 +32,10 @@ from typing_extensions import override
 from qns.entity.entity import Entity
 from qns.entity.node.app import Application
 from qns.simulator import Event, Simulator
-from qns.utils import log
 
 if TYPE_CHECKING:
-    from qns.entity import ClassicChannel
-    from qns.network.network import QuantumNetwork
+    from qns.entity.cchannel import ClassicChannel
+    from qns.network.network import QuantumNetwork, TimingMode
 
 ApplicationT = TypeVar("ApplicationT", bound=Application)
 
@@ -50,18 +49,10 @@ class Node(Entity):
         apps (List[Application]): the installing applications.
 
         """
-        from qns.network.network import SignalTypeEnum, TimingModeEnum  # noqa: PLC0415
-
         super().__init__(name=name)
         self._network: "QuantumNetwork|None" = None
         self.cchannels: list["ClassicChannel"] = []
         self.apps: list[Application] = [] if apps is None else apps
-
-        # set default timing to ASYNC
-        self.timing_mode = TimingModeEnum.ASYNC
-        """Network timing mode."""
-        self.sync_current_phase = SignalTypeEnum.EXTERNAL
-        """Phase set from last sync signal, only relevant with SYNC timing mode."""
 
     def install(self, simulator: Simulator) -> None:
         """Called from Network.install()"""
@@ -87,16 +78,6 @@ class Node(Entity):
             event (Event): the event that happens on this Node
 
         """
-        from qns.network.network import SignalTypeEnum, TimingPhase, TimingPhaseEvent  # noqa: PLC0415
-
-        if isinstance(event, TimingPhaseEvent):
-            signal_type = SignalTypeEnum.EXTERNAL if event.phase == TimingPhase.EXTERNAL else SignalTypeEnum.INTERNAL
-            log.debug(f"{self}:TIMING SIGNAL <{signal_type}>")
-            self.sync_current_phase = signal_type
-            for app in self.apps:
-                app.handle_sync_signal(signal_type)
-            return
-
         for app in self.apps:
             skip = app.handle(event)
             if skip:
@@ -172,10 +153,7 @@ class Node(Entity):
             network (qns.network.network.Network): the network object
 
         """
-        from qns.network.network import TimingModeAsync, TimingModeEnum  # noqa: PLC0415
-
         self._network = network
-        self.timing_mode = TimingModeEnum.ASYNC if isinstance(network.timing, TimingModeAsync) else TimingModeEnum.SYNC
 
     @property
     def network(self) -> "QuantumNetwork":
@@ -188,6 +166,13 @@ class Node(Entity):
         if self._network is None:
             raise IndexError(f"node {repr(self)} is not in a network")
         return self._network
+
+    @property
+    def timing(self) -> "TimingMode":
+        """
+        Access the network-wide application timing mode.
+        """
+        return self.network.timing
 
     def __repr__(self) -> str:
         return f"<node {self.name}>"

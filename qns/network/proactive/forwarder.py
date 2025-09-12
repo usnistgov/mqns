@@ -23,7 +23,7 @@ from qns.entity.cchannel import ClassicPacket, RecvClassicPacket
 from qns.entity.memory import MemoryQubit, PathDirection, QuantumMemory, QubitState
 from qns.entity.node import Application, Node, QNode
 from qns.models.epr import WernerStateEntanglement
-from qns.network.network import QuantumNetwork, SignalTypeEnum, TimingModeEnum
+from qns.network.network import QuantumNetwork, TimingPhase, TimingPhaseEvent
 from qns.network.proactive.fib import Fib, FibEntry
 from qns.network.proactive.message import InstallPathMsg, PurifResponseMsg, PurifSolicitMsg, SwapUpdateMsg
 from qns.network.proactive.mux import MuxScheme
@@ -123,6 +123,7 @@ class ProactiveForwarder(Application):
         """
 
         # event handlers
+        self.add_handler(self.handle_sync_signal, TimingPhaseEvent)
         self.add_handler(self.RecvClassicPacketHandler, RecvClassicPacket)
         self.add_handler(self.qubit_is_entangled, QubitEntangledEvent)
 
@@ -160,7 +161,7 @@ class ProactiveForwarder(Application):
         self.net = self.own.network
         self.mux.fw = self
 
-    def handle_sync_signal(self, signal_type: SignalTypeEnum):
+    def handle_sync_signal(self, event: TimingPhaseEvent):
         """Processes timing signals for SYNC mode. When receiving an INTERNAL phase start signal, all
         previously queued QubitEntangledEvent instances are processed. Updates the current
         synchronization phase to match the received signal type.
@@ -170,14 +171,14 @@ class ProactiveForwarder(Application):
             signal_type (SignalTypeEnum): The received synchronization signal.
 
         """
-        if signal_type == SignalTypeEnum.EXTERNAL:
+        if event.phase == TimingPhase.EXTERNAL:
             self.remote_swapped_eprs.clear()
-        elif signal_type == SignalTypeEnum.INTERNAL:
+        elif event.phase == TimingPhase.INTERNAL:
             # internal phase -> time to handle all entangled qubits
             log.debug(f"{self.own}: there are {len(self.waiting_qubits)} etg qubits to process")
-            for event in self.waiting_qubits:
-                self.qubit_is_entangled(event)
-            self.waiting_qubits = []
+            for etg_event in self.waiting_qubits:
+                self.qubit_is_entangled(etg_event)
+            self.waiting_qubits.clear()
 
     CLASSIC_SIGNALING_HANDLERS: dict[str, Callable[["ProactiveForwarder", Any, FibEntry], None]] = {}
 
@@ -301,7 +302,7 @@ class ProactiveForwarder(Application):
             event: Event containing the entangled qubit and its associated metadata (e.g., neighbor).
 
         """
-        if self.own.timing_mode == TimingModeEnum.SYNC and self.sync_current_phase == SignalTypeEnum.EXTERNAL:
+        if not self.own.timing.is_internal():
             # Accept new etg while we are in EXT phase
             # Assume t_coh > t_ext: QubitEntangledEvent events should correspond to different qubits, no redundancy
             self.waiting_qubits.append(event)
@@ -537,7 +538,7 @@ class ProactiveForwarder(Application):
             fib_entry: FIB entry (not available with MuxSchemeStatistical).
         """
         assert qubit.state == QubitState.ELIGIBLE
-        if self.own.timing_mode == TimingModeEnum.SYNC and self.sync_current_phase != SignalTypeEnum.INTERNAL:
+        if not self.own.timing.is_internal():
             log.debug(f"{self.own}: INT phase is over -> stop swaps")
             return
 
@@ -677,7 +678,7 @@ class ProactiveForwarder(Application):
             fib_entry: FIB entry associated with path_id in the message.
 
         """
-        if self.own.timing_mode == TimingModeEnum.SYNC and self.sync_current_phase != SignalTypeEnum.INTERNAL:
+        if not self.own.timing.is_internal():
             log.debug(f"{self.own}: INT phase is over -> stop swaps")
             return
 

@@ -27,7 +27,7 @@ from qns.entity.memory import MemoryQubit, QuantumMemory, QubitState
 from qns.entity.node import Application, Node, QNode
 from qns.entity.qchannel import QuantumChannel
 from qns.models.epr import WernerStateEntanglement
-from qns.network.network import SignalTypeEnum, TimingModeEnum
+from qns.network.network import TimingPhase, TimingPhaseEvent
 from qns.network.protocol.event import (
     LinkArchSuccessEvent,
     ManageActiveChannels,
@@ -132,6 +132,7 @@ class LinkLayer(Application):
         """Counter of decohered qubits never swapped."""
 
         # event handlers
+        self.add_handler(self.handle_sync_signal, TimingPhaseEvent)
         self.add_handler(self.RecvClassicPacketHandler, RecvClassicPacket)
         self.add_handler(self.handle_manage_active_channels, ManageActiveChannels)
         self.add_handler(self.handle_success_entangle, LinkArchSuccessEvent)
@@ -142,9 +143,9 @@ class LinkLayer(Application):
         self.own = self.get_node(node_type=QNode)
         self.memory = self.own.get_memory()
 
-    def handle_sync_signal(self, signal_type: SignalTypeEnum):
+    def handle_sync_signal(self, event: TimingPhaseEvent):
         """Handles timing synchronization signals for SYNC mode (not very reliable at this time)."""
-        if signal_type == SignalTypeEnum.EXTERNAL:
+        if event.phase == TimingPhase.EXTERNAL:
             # clear all qubits and retry all active_channels until INTERNAL signal
             self.memory.clear()
             for (_, path_id), (qchannel, next_hop) in self.active_channels.items():
@@ -181,7 +182,7 @@ class LinkLayer(Application):
 
         log.debug(f"{self.own}: add qchannel {qchannel} with {neighbor} on path {path_id}, link arch {qchannel.link_arch.name}")
         self.active_channels[key] = (qchannel, neighbor)
-        if self.own.timing_mode == TimingModeEnum.ASYNC:
+        if self.own.timing.is_async():
             self.run_active_channel(qchannel, neighbor, path_id)
 
     def remove_active_channel(self, qchannel: QuantumChannel, neighbor: QNode, path_id: int | None):
@@ -362,7 +363,7 @@ class LinkLayer(Application):
         simulator.add_event(LinkArchSuccessEvent(next_hop, epr, t=t_notify_b, by=self))
 
     def handle_success_entangle(self, event: LinkArchSuccessEvent):
-        if self.own.timing_mode == TimingModeEnum.SYNC and self.sync_current_phase != SignalTypeEnum.EXTERNAL:
+        if not self.own.timing.is_external():
             log.debug(f"{self.own}: EXT phase is over -> stop attempts")
             return
 
@@ -403,8 +404,8 @@ class LinkLayer(Application):
                 self.fifo_reservation_req.popleft()
         else:  # this node is the EPR initiator
             qchannel, next_hop = ac
-            if self.own.timing_mode == TimingModeEnum.ASYNC:
+            if self.own.timing.is_async():
                 self.start_reservation(next_hop, qchannel, qubit)
-            elif is_decoh and self.own.timing_mode == TimingModeEnum.SYNC:
+            elif is_decoh:
                 raise Exception(f"{self.own}: UNEXPECTED -> (t_ext + t_int) too short")
         return True

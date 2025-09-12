@@ -1,5 +1,5 @@
 from qns.entity import Application, Controller
-from qns.network.network import QuantumNetwork, SignalTypeEnum, TimingModeSync
+from qns.network.network import QuantumNetwork, TimingModeSync, TimingPhase, TimingPhaseEvent
 from qns.network.topology import BasicTopology
 from qns.simulator import Simulator
 
@@ -8,12 +8,11 @@ class SyncCheckApp(Application):
     def __init__(self):
         super().__init__()
         self.changes = 0
+        self.add_handler(self.handle_sync_signal, TimingPhaseEvent)
 
-    def handle_sync_signal(self, signal_type: SignalTypeEnum):
+    def handle_sync_signal(self, event: TimingPhaseEvent):
         t = self.simulator.tc.sec
-        assert (t % 5 == 0 and signal_type == SignalTypeEnum.EXTERNAL) or (
-            t % 5 == 4 and signal_type == SignalTypeEnum.INTERNAL
-        )
+        assert (t % 5 == 0 and event.phase == TimingPhase.EXTERNAL) or (t % 5 == 4 and event.phase == TimingPhase.INTERNAL)
         self.changes += 1
 
 

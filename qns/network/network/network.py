@@ -25,8 +25,6 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from collections import deque
-from enum import Enum, auto
 from typing import cast, overload
 
 from qns.entity import ChannelT, ClassicChannel, Controller, Node, QNode, QuantumChannel, QuantumMemory
@@ -35,21 +33,6 @@ from qns.network.network.timing import TimingMode, TimingModeAsync
 from qns.network.route import DijkstraRouteAlgorithm, RouteImpl
 from qns.network.topology import ClassicTopology, Topology
 from qns.simulator import Simulator
-
-
-class TimingModeEnum(Enum):
-    ASYNC = auto()
-    SYNC = auto()
-
-
-class SignalTypeEnum(Enum):
-    INTERNAL = auto()  # used by SYNC to set the phase
-    EXTERNAL = auto()  # used by SYNC to set the phase
-    ROUTING = auto()  # used by SYNC to set the phase
-    APP = auto()  # used by SYNC to set the phase
-
-
-SignalSequence = deque[tuple[SignalTypeEnum, float]]
 
 
 def _save_channel(l: list[ChannelT], d: dict[tuple[str, str], ChannelT], ch: ChannelT):
