@@ -19,11 +19,13 @@ from collections.abc import Callable
 from copy import deepcopy
 from typing import Any, cast
 
+from typing_extensions import override
+
 from qns.entity.cchannel import ClassicPacket, RecvClassicPacket
-from qns.entity.memory import MemoryQubit, PathDirection, QuantumMemory, QubitState
+from qns.entity.memory import MemoryQubit, PathDirection, QubitState
 from qns.entity.node import Application, Node, QNode
 from qns.models.epr import WernerStateEntanglement
-from qns.network.network import QuantumNetwork, TimingPhase, TimingPhaseEvent
+from qns.network.network import TimingPhase, TimingPhaseEvent
 from qns.network.proactive.fib import Fib, FibEntry
 from qns.network.proactive.message import InstallPathMsg, PurifResponseMsg, PurifSolicitMsg, SwapUpdateMsg
 from qns.network.proactive.mux import MuxScheme
@@ -46,7 +48,7 @@ class ProactiveForwarderCounters:
         self.n_swapped_p = 0
         """how many swaps succeeded with parallel merging"""
         self.n_consumed = 0
-        """how many entanglements were consumed (either end-to-end or in isolated links mode)"""
+        """how many entanglements were consumed (either end-to-end or in swap-disabled mode)"""
         self.consumed_sum_fidelity = 0.0
         """sum of fidelity of consumed entanglements"""
 
@@ -87,7 +89,8 @@ class ProactiveForwarder(Application):
         mux: MuxScheme = MuxSchemeBufferSpace(),
         isolate_paths: bool = True,
     ):
-        """This constructor sets up a node's entanglement forwarding logic in a quantum network.
+        """
+        This constructor sets up a node's entanglement forwarding logic in a quantum network.
         It configures the swapping success probability and preparing internal
         state for managing memory, routing instructions (via FIB), synchronization,
         and classical communication handling.
@@ -100,32 +103,27 @@ class ProactiveForwarder(Application):
         """
         super().__init__()
 
+        assert 0.0 <= ps <= 1.0
         self.ps = ps
-        """Probability of successful entanglement swapping"""
+        """Probability of successful entanglement swapping."""
+        self.mux = deepcopy(mux)
+        """Multiplexing scheme."""
         self.isolate_paths = isolate_paths
-        """Whether to isolate or not paths serving the same request"""
-        self.net: QuantumNetwork
-        """quantum network instance"""
-        self.own: QNode
-        """quantum node this Forwarder equips"""
-        self.memory: QuantumMemory
-        """quantum memory of the node"""
+        """Whether to isolate or not paths serving the same request."""
 
         self.fib = Fib()
-        """FIB structure"""
-
-        self.waiting_qubits: list[QubitEntangledEvent] = []
-        """stores the qubits waiting for the INTERNAL phase (SYNC mode)"""
-
-        self.mux = deepcopy(mux)
-        """
-        Multiplexing scheme.
-        """
+        """FIB structure."""
 
         # event handlers
-        self.add_handler(self.handle_sync_signal, TimingPhaseEvent)
+        self.add_handler(self.handle_sync_phase, TimingPhaseEvent)
         self.add_handler(self.RecvClassicPacketHandler, RecvClassicPacket)
         self.add_handler(self.qubit_is_entangled, QubitEntangledEvent)
+
+        self.waiting_etg: list[QubitEntangledEvent] = []
+        """
+        Elementary-entangled qubits received during EXTERNAL phase.
+        These are buffered until INTERNAL phase starts.
+        """
 
         self.waiting_su: dict[int, tuple[SwapUpdateMsg, FibEntry]] = {}
         """
@@ -137,7 +135,10 @@ class ProactiveForwarder(Application):
         self.parallel_swappings: dict[
             str, tuple[WernerStateEntanglement, WernerStateEntanglement, WernerStateEntanglement]
         ] = {}
-        """manage potential parallel swappings"""
+        """
+        Records for potential parallel swappings.
+        See `_su_parallel` method.
+        """
 
         self.remote_swapped_eprs: dict[str, WernerStateEntanglement] = {}
         """
@@ -152,48 +153,51 @@ class ProactiveForwarder(Application):
         """
 
         self.cnt = ProactiveForwarderCounters()
+        """
+        Counters.
+        """
 
+    @override
     def install(self, node: Node, simulator: Simulator):
-        """called at initialization of the node"""
         super().install(node, simulator)
         self.own = self.get_node(node_type=QNode)
         self.memory = self.own.get_memory()
         self.net = self.own.network
         self.mux.fw = self
 
-    def handle_sync_signal(self, event: TimingPhaseEvent):
-        """Processes timing signals for SYNC mode. When receiving an INTERNAL phase start signal, all
-        previously queued QubitEntangledEvent instances are processed. Updates the current
-        synchronization phase to match the received signal type.
+    def handle_sync_phase(self, event: TimingPhaseEvent):
+        """
+        Handle timing phase signals, only used in SYNC timing mode.
 
-        Parameters
-        ----------
-            signal_type (SignalTypeEnum): The received synchronization signal.
+        Upon entering EXTERNAL phase:
 
+        1. Clear `remote_swapped_eprs`.
+           All memory qubits are being discarded by LinkLayer, so that these have become useless.
+
+        Upon entering INTERNAL phase:
+
+        1. Start processing elementary entanglements that arrived during EXTERNAL phase.
         """
         if event.phase == TimingPhase.EXTERNAL:
             self.remote_swapped_eprs.clear()
         elif event.phase == TimingPhase.INTERNAL:
-            # internal phase -> time to handle all entangled qubits
-            log.debug(f"{self.own}: there are {len(self.waiting_qubits)} etg qubits to process")
-            for etg_event in self.waiting_qubits:
+            log.debug(f"{self.own}: there are {len(self.waiting_etg)} etg qubits to process")
+            for etg_event in self.waiting_etg:
                 self.qubit_is_entangled(etg_event)
-            self.waiting_qubits.clear()
+            self.waiting_etg.clear()
 
     CLASSIC_SIGNALING_HANDLERS: dict[str, Callable[["ProactiveForwarder", Any, FibEntry], None]] = {}
 
     def RecvClassicPacketHandler(self, event: RecvClassicPacket) -> bool:
         """
-        Receives a classical packet and dispatches it as control or signaling.
+        Dispatch or forward a received classical packet.
 
-        If the message is originated from a Controller, it is treated as a control message and passed to `handle_control`.
+        This method recognizes a message that is a dict with "cmd" key with known value.
+        The message is then passed to the appropriate handler function.
 
-        If the message is originated from another node type and contains a `cmd` field recognized as a signaling message:
-        - If the current node is the destination, it is dispatched to the corresponding signaling command handler.
-        - If the current node is not the destination, it is forwarded along the path.
+        For a signaling message where own node is not the destination, it is forwarded along the path.
 
-        Returns False for unrecognized message types, which allows the classic packet to go to the next application.
-
+        Returns False for unrecognized message types, which allows the packet to go to the next application.
         """
         packet = event.packet
         msg = packet.get()
@@ -209,8 +213,7 @@ class ProactiveForwarder(Application):
         path_id: int = msg["path_id"]
         fib_entry = self.fib.get(path_id)
 
-        assert packet.dest is not None
-        if packet.dest.name != self.own.name:  # node is not destination: forward message
+        if packet.dest != self.own:  # node is not destination: forward message
             self.send_msg(packet.dest, msg, fib_entry)
             return True
 
@@ -218,6 +221,9 @@ class ProactiveForwarder(Application):
         return True
 
     def send_msg(self, dest: Node, msg: Any, fib_entry: FibEntry):
+        """
+        Send/forwarder a message along the path specified in FIB entry.
+        """
         dest_idx = fib_entry.route.index(dest.name)
         nh = fib_entry.route[fib_entry.own_idx + 1] if dest_idx > fib_entry.own_idx else fib_entry.route[fib_entry.own_idx - 1]
         next_hop = self.own.network.get_node(nh)
@@ -227,7 +233,7 @@ class ProactiveForwarder(Application):
 
     def handle_install_path(self, msg: InstallPathMsg) -> bool:
         """
-        Processes an install_path message containing routing instructions from the controller.
+        Process an install_path message containing routing instructions from the controller.
 
         Determines left/right neighbors from the route, identifies corresponding quantum channels,
         and allocates qubits based on the multiplexing vector (for the buffer-space mode).
@@ -253,25 +259,23 @@ class ProactiveForwarder(Application):
         )
         self.fib.insert_or_replace(fib_entry)
 
-        # identify left/right neighbors and allocate memory qubits to the path
-        # example visualization:
-        # route = [ S, R, D ]
-        # m_v = [ (4,2) , (2,4) ]
-        # S--(4,2)--R--(2,4)--D
-        # here, R should allocate 2 qubits toward S.
+        # identify left/right neighbors
         l_neighbor = self._find_neighbor(fib_entry, -1)
+        r_neighbor = self._find_neighbor(fib_entry, +1)
+
         if l_neighbor:
+            # associate path with qchannel and allocate qubits
             self.mux.install_path_neighbor(
                 instructions, fib_entry, PathDirection.LEFT, l_neighbor, self.own.get_qchannel(l_neighbor)
             )
-        r_neighbor = self._find_neighbor(fib_entry, +1)
+
         if r_neighbor:
+            # associate path with qchannel and allocate qubits
             self.mux.install_path_neighbor(
                 instructions, fib_entry, PathDirection.RIGHT, r_neighbor, self.own.get_qchannel(r_neighbor)
             )
 
-        # instruct LinkLayer to start generating EPRs on the qchannel toward the right neighbor
-        if r_neighbor:
+            # instruct LinkLayer to start generating EPRs on the qchannel toward the right neighbor
             p = path_id if "m_v" in instructions else None
             simulator.add_event(ManageActiveChannels(self.own, r_neighbor, TypeEnum.ADD, p, t=simulator.tc, by=self))
 
@@ -286,26 +290,24 @@ class ProactiveForwarder(Application):
 
     def qubit_is_entangled(self, event: QubitEntangledEvent):
         """
-        Handle a qubit entering ENTANGLED state.
-        QubitEntangledEvent is either delivered from simulator or dequeued from `self.waiting_qubits`.
-        In SYNC timing mode, events are queued if the current phase is EXTERNAL.
-        In ASYNC timing mode or INTERNAL sync phase, events are handled immediately.
+        Handle a qubit entering ENTANGLED state, i.e. having an elementary entanglement.
 
-        Newly arrived elementary entanglements are processed based on their path allocation.
+        In ASYNC timing mode, events are processed immediately.
+        In SYNC timing mode, events arrive in EXTERNAL phase and is queued in `self.waiting_etg`.
+        Queued events are released upon entering INTERNAL phase and then processed.
 
-        If the qubit is assigned a path (buffer-space multiplexing), the method checks its eligibility and,
-        if conditions are met, transitions it to the PURIF state and calls `purif` method.
+        The actual processing is handled by the multiplexing scheme.
 
-        If the qubit is unassigned (statistical multiplexing), it is TODO.
+        If a SwapUpdate was received before processing this event and buffered in `self.waiting_su`,
+        it is re-processed at this time.
 
         Args:
             event: Event containing the entangled qubit and its associated metadata (e.g., neighbor).
 
         """
         if not self.own.timing.is_internal():
-            # Accept new etg while we are in EXT phase
-            # Assume t_coh > t_ext: QubitEntangledEvent events should correspond to different qubits, no redundancy
-            self.waiting_qubits.append(event)
+            # queue events in SYNC timing mode EXTERNAL phase
+            self.waiting_etg.append(event)
             return
 
         self.cnt.n_entg += 1
@@ -320,12 +322,13 @@ class ProactiveForwarder(Application):
 
     def qubit_is_purif(self, qubit: MemoryQubit, fib_entry: FibEntry, partner: QNode):
         """
-        Handle a qubit entering PURIF state.
-        Determines the segment in which the qubit is entangled and number of required purification rounds from the FIB.
-        If the required rounds are completed, the qubit becomes eligible. Otherwise, the node evaluates
-        whether it is the initiator for the purification (i.e., primary). If so, it searches for an auxiliary
-        qubit to use, consumes the auxiliary, updates qubit states, and sends a PURIF_SOLICIT message
-        to the partner node.
+        Handle a qubit entering PURIF state or have completed a previous purification round.
+
+        1. Determines the segment in which the qubit is entangled and number of required purification rounds.
+        2. If the required rounds are completed, the qubit becomes eligible.
+        3. Otherwise, check if own node is primary for the purification protocol.
+           If so, search for an auxiliary qubit to use, release the auxiliary qubit,
+           and send PURIF_SOLICIT to the partner node.
 
         Args:
             qubit: The memory qubit at PURIF state.
@@ -419,15 +422,22 @@ class ProactiveForwarder(Application):
         self.send_msg(partner, msg, fib_entry)
 
     def handle_purif_solicit(self, msg: PurifSolicitMsg, fib_entry: FibEntry):
-        """Processes a PURIF_SOLICIT message from a partner node as part of the purification protocol.
-        Retrieves the target and auxiliary qubits from memory, verifies their states, and attempts
-        purification. If successful, updates the EPR and sends a PURIF_RESPONSE with result=True;
-        otherwise, marks both qubits for release and replies with result=False.
+        """
+        Process a PURIF_SOLICIT message from primary node as part of the purification protocol.
+
+        1. Retrieve the target and auxiliary qubits from memory and verify their states.
+        2. Attempt purification.
+        3. If successful, update the EPR and send a PURIF_RESPONSE with result=True.
+        4. Otherwise, mark both qubits for release and reply with result=False.
 
         Args:
             msg: Message containing purification parameters and EPR names.
             fib_entry: FIB entry associated with path_id in the message.
 
+        Notes:
+            If EPR purification succeeds, if the qubit has completed the required rounds of purifications,
+            it may immediately become eligible and thus available for swaps or end-to-end consumption,
+            even if the PURIF_RESPONSE message has not arrived at the primary node.
         """
         simulator = self.simulator
 
@@ -484,13 +494,20 @@ class ProactiveForwarder(Application):
     CLASSIC_SIGNALING_HANDLERS["PURIF_SOLICIT"] = handle_purif_solicit
 
     def handle_purif_response(self, msg: PurifResponseMsg, fib_entry: FibEntry):
-        """Handles a PURIF_RESPONSE message indicating the outcome of a purification attempt.
-        If the current node is the destination and purification succeeded, the EPR is updated,
-        the qubit's purification round counter is incremented, and the qubit may re-enter the
-        purification process. If purification failed, the qubit is released.
+        """
+        Process a PURIF_RESPONSE message indicating the outcome of a purification attempt.
 
-        Parameters
-        ----------
+        If the purification succeeded:
+
+        1. Update the EPR.
+        2. Increment the qubit's purification round counter.
+        3. Allow the qubit to re-enter the purification process.
+
+        If the purification failed:
+
+        1. Release the qubit.
+
+        Args:
             msg: Response message containing the result and identifiers of the purified EPRs.
             fib_entry: FIB entry associated with path_id in the message.
 
@@ -529,6 +546,7 @@ class ProactiveForwarder(Application):
         If this is an end node of the path, consume the EPR.
 
         Otherwise, attempt entanglement swapping:
+
         1. Look for a matching eligible qubit to perform swapping.
         2. Generate a new EPR if successful.
         3. Notify adjacent nodes with SWAP_UPDATE messages.
@@ -667,13 +685,14 @@ class ProactiveForwarder(Application):
             simulator.add_event(QubitReleasedEvent(self.own, qubit, t=(simulator.tc + i * 1e-6), by=self))
 
     def handle_swap_update(self, msg: SwapUpdateMsg, fib_entry: FibEntry):
-        """Processes an SWAP_UPDATE signaling message from a neighboring node, updating local
-        qubit state, releasing decohered pairs, or forwarding the update along the path.
-        Handles both sequential and parallel swap scenarios, updates quantum memory with
-        new EPRs when valid, and updates the qubit state.
+        """
+        Process an SWAP_UPDATE signaling message.
+        It may either update local qubit state or release decohered pairs.
 
-        Parameters
-        ----------
+        If QubitEntangledEvent for the qubit has not been processed, the SwapUpdate is buffered
+        in `self.waiting_su` and will be re-tried after processing the QubitEntangledEvent.
+
+        Args:
             msg: The SWAP_UPDATE message.
             fib_entry: FIB entry associated with path_id in the message.
 
@@ -695,8 +714,8 @@ class ProactiveForwarder(Application):
         if qubit_pair is not None:
             qubit, _ = qubit_pair
             if qubit.state == QubitState.ENTANGLED0:
-                if new_epr_name is not None and new_epr is not None:
-                    self.remote_swapped_eprs[new_epr_name] = new_epr
+                if new_epr is not None:
+                    self.remote_swapped_eprs[cast(str, new_epr_name)] = new_epr
                 self.waiting_su[qubit.addr] = (msg, fib_entry)
                 return
             self.parallel_swappings.pop(epr_name, None)

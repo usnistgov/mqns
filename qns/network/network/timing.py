@@ -115,7 +115,9 @@ class TimingModeSync(TimingMode):
             ]
         )
         self.phase = self.sequence[-1][0]
+        """Current phase."""
         self.end_time = Time()
+        """Current phase end time (exclusive)."""
 
     @override
     def install(self, network: "QuantumNetwork"):

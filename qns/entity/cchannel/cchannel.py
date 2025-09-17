@@ -38,7 +38,7 @@ from qns.simulator import Event, Time
 class ClassicPacket:
     """ClassicPacket is the message that transfer on a ClassicChannel"""
 
-    def __init__(self, msg: Any, src: Node | None = None, dest: Node | None = None):
+    def __init__(self, msg: Any, *, src: Node, dest: Node):
         """Args:
         msg (Union[str, bytes, Any]): the message content.
             It can be a `str` or `bytes` type or can be dumpped to json.

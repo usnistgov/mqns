@@ -52,6 +52,12 @@ class MuxSchemeBufferSpace(MuxSchemeFibBase):
         m_v = instructions["m_v"]
         m_v_offset, ch_side = (-1, 1) if direction == PathDirection.LEFT else (0, 0)
 
+        # example visualization:
+        # route = [ S, R, D ]
+        # m_v = [ (4,2) , (2,4) ]
+        # S--(4,2)--R--(2,4)--D
+        # here, R should allocate 2 qubits toward S and 2 qubits toward D.
+
         n_qubits = m_v[fib_entry.own_idx + m_v_offset][ch_side]
         if n_qubits == 0:  # 0 means use all qubits assigned to this qchannel
             n_qubits = len(self.memory.get_channel_qubits(qchannel.name))

@@ -67,6 +67,11 @@ class MuxScheme(ABC):
 
     @abstractmethod
     def qubit_is_entangled(self, qubit: MemoryQubit, neighbor: QNode) -> None:
+        """
+        Handle a qubit entering ENTANGLED state, i.e. having an elementary entanglement.
+
+        This can only be invoked in ASYNC timing mode or INTERNAL phase.
+        """
         pass
 
     @abstractmethod

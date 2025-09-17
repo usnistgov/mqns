@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from typing import Literal, TypedDict, cast
 
 import numpy as np
+from typing_extensions import override
 
 from qns.entity.cchannel import ClassicChannel, ClassicPacket, RecvClassicPacket
 from qns.entity.memory import MemoryQubit, QuantumMemory, QubitState
@@ -132,19 +133,29 @@ class LinkLayer(Application):
         """Counter of decohered qubits never swapped."""
 
         # event handlers
-        self.add_handler(self.handle_sync_signal, TimingPhaseEvent)
+        self.add_handler(self.handle_sync_phase, TimingPhaseEvent)
         self.add_handler(self.RecvClassicPacketHandler, RecvClassicPacket)
         self.add_handler(self.handle_manage_active_channels, ManageActiveChannels)
         self.add_handler(self.handle_success_entangle, LinkArchSuccessEvent)
         self.add_handler(self.handle_decoh_rel, [QubitDecoheredEvent, QubitReleasedEvent])
 
+    @override
     def install(self, node: Node, simulator: Simulator):
         super().install(node, simulator)
         self.own = self.get_node(node_type=QNode)
         self.memory = self.own.get_memory()
 
-    def handle_sync_signal(self, event: TimingPhaseEvent):
-        """Handles timing synchronization signals for SYNC mode (not very reliable at this time)."""
+    def handle_sync_phase(self, event: TimingPhaseEvent):
+        """
+        Handle timing phase signals, only used in SYNC timing mode.
+
+        Upon entering EXTERNAL phase:
+
+        1. Clear existing memory qubits.
+        2. Run all active channels from reservation step.
+
+        Upon entering INTERNAL phase: do nothing.
+        """
         if event.phase == TimingPhase.EXTERNAL:
             # clear all qubits and retry all active_channels until INTERNAL signal
             self.memory.clear()
@@ -243,7 +254,7 @@ class LinkLayer(Application):
 
         Notes:
             - The `key` uniquely identifies the reservation context.
-            Key format: <node1>_<node2>_[<path_id>]_<local_qubit_addr>
+              Key format: `<node1>_<node2>_[<path_id>]_<local_qubit_addr>`
             - The reservation is communicated via a classical message using the `RESERVE_QUBIT` command.
         """
 
@@ -260,6 +271,7 @@ class LinkLayer(Application):
     def handle_reserve_req(self, msg: ReserveMsg, cchannel: ClassicChannel):
         """
         Handle `RESERVE_QUBIT` control message sent by the initiating node to request a memory qubit reservation.
+
         1. If an available memory qubit is found, it is reserved (marked active using the given key).
         2. A `RESERVE_QUBIT_OK` response is sent back to confirm the reservation.
         3. If no available qubit is found, the request is enqueued for future retry (FIFO).
@@ -303,40 +315,33 @@ class LinkLayer(Application):
     def handle_reserve_res(self, msg: ReserveMsg):
         """
         Handle `RESERVE_QUBIT_OK` control messages received as a response to a reservation request.
+
         1. Trigger the entanglement generation process using the reserved memory qubit.
         """
         key = msg["key"]
         (qchannel, next_hop, qubit) = self.pending_init_reservation.pop(key)
         assert qubit.active == key
         qubit.state = QubitState.RESERVED
-        self.generate_entanglement(qchannel=qchannel, next_hop=next_hop, qubit=qubit)
+        self.generate_entanglement(qchannel, next_hop, qubit)
 
     def generate_entanglement(self, qchannel: QuantumChannel, next_hop: QNode, qubit: MemoryQubit):
-        """Schedule a successful entanglement attempt using skip-ahead sampling.
-        `LinkArchSuccessEvent`s are scheduled to handle the result of this attempt.
-
-        It performs the following checks and steps:
-            - Ensures the memory's decoherence time is sufficient for the channel length.
-            - Computes the time of the next successful attempt and number of skipped trials.
-            - Schedules a successful entanglement event at the computed time.
+        """
+        Schedule a successful entanglement attempt using skip-ahead sampling.
 
         Args:
-            qchannel (QuantumChannel): The quantum channel over which entanglement is to be generated.
-            next_hop (QNode): The neighboring node with which the entanglement is attempted.
-            address (int): The address of the memory qubit used for this attempt.
-            key (str): A unique identifier for this entanglement reservation/attempt.
-
+            qchannel: The quantum channel over which entanglement is to be generated.
+            next_hop: The neighboring node with which the entanglement is attempted.
+            qubit: The memory qubit used for this attempt.
         """
         simulator = self.simulator
 
-        # Calculate the time until the successful attempt.
-        # Then, the last tau of the the successful attempt is simulated by sending the EPR
-        # from primary node to secondary node.
+        # Calculate which attempt would succeed.
         p = qchannel.link_arch.success_prob(
             length=qchannel.length, alpha=self.alpha_db_per_km, eta_s=self.eta_s, eta_d=self.eta_d
         )
-        k = np.random.geometric(p)  # k-th attempt will succeed
+        k = np.random.geometric(p)
 
+        # Calculate when would the k-th attempt (1-based) succeed.
         d_epr_creation, d_notify_a, d_notify_b = qchannel.link_arch.delays(
             k,
             reset_time=self.reset_time,
@@ -354,6 +359,8 @@ class LinkLayer(Application):
         epr.key = qubit.active
         epr.creation_time = t_epr_creation
 
+        # If the network uses SYNC timing mode but the successful attempt would exceed the current EXTERNAL phase,
+        # the EPR would not arrive in time, and therefore is not scheduled.
         if not self.own.timing.is_external(max(t_notify_a, t_notify_b)):
             log.debug(
                 f"{self.own}: skip prepare EPR {epr.name} key={epr.key} dst={epr.dst} attempts={k} "
@@ -361,6 +368,8 @@ class LinkLayer(Application):
             )
             return
 
+        # If the network uses ASYNC timing mode or the successful attempt can complete within the current EXTERNAL phase,
+        # schedule the EPR arrival on both nodes via LinkArchSuccessEvents.
         log.debug(
             f"{self.own}: prepare EPR {epr.name} key={epr.key} dst={epr.dst} attempts={k} "
             f"times={t_epr_creation},{t_notify_a},{t_notify_b}"
