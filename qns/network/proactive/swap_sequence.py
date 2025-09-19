@@ -3,6 +3,7 @@ _predefined_swap_sequences = {
     "no_swap": [0, 0, 0],
     # for 1-repeater
     "swap_1": [1, 0, 1],
+    "swap_1_asap": [1, 0, 1],
     # for 2-repeater
     "swap_2_asap": [1, 0, 0, 1],
     "swap_2_l2r": [2, 0, 1, 2],

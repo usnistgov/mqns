@@ -33,6 +33,7 @@ from qns.network.network.timing import TimingMode, TimingModeAsync
 from qns.network.route import DijkstraRouteAlgorithm, RouteImpl
 from qns.network.topology import ClassicTopology, Topology
 from qns.simulator import Simulator
+from qns.utils import get_randint
 
 
 def _save_channel(l: list[ChannelT], d: dict[tuple[str, str], ChannelT], ch: ChannelT):
@@ -132,7 +133,6 @@ class QuantumNetwork:
 
         for node in self.all_nodes:
             node.install(simulator)
-
         self.timing.install(self)
 
     def add_node(self, node: QNode):
@@ -252,7 +252,19 @@ class QuantumNetwork:
 
     def build_route(self):
         """Build static route tables for each nodes"""
+        # import time
+
+        # Time of the SciPy/adjacency build
+        # t0 = time.perf_counter()
         self.route.build(self.nodes, self.qchannels)
+        # t1 = time.perf_counter()
+        # log.critical(f"build() Routing table computation took {t1 - t0:.6f} seconds")
+
+        # Time of the old build
+        # t2 = time.perf_counter()
+        # self.route.build2(self.nodes, self.qchannels)
+        # t3 = time.perf_counter()
+        # log.debug(f"build2() Routing table computation took {t3 - t2:.6f} seconds")
 
     def query_route(self, src: QNode, dest: QNode) -> list[tuple[float, QNode, list[QNode]]]:
         """Query the metric, nexthop and the path
@@ -283,50 +295,94 @@ class QuantumNetwork:
         # src.add_request(req)
         # dest.add_request(req)
 
-    def random_requests(self, number: int, allow_overlay: bool = False, attr: dict = {}):
-        """Generate random requests
+    def random_requests(
+        self,
+        number: int,
+        allow_overlay: bool = False,
+        min_hops: int = 1,
+        max_hops: int = 10,
+        attr: dict | None = None,
+        forbid_endpoint_internal: bool = True,  # reject endpoint-vs-internal conflicts
+    ):
+        """Generate random (src, dst) pairs requests.
 
         Args:
-            number (int): the number of requests
-            allow_overlay (bool): allow a node to be the source or destination in multiple requests
-            attr (Dict): request attributions
-
+            number (int): number of requests to generate
+            allow_overlay (bool): allow nodes to be the source or destination in multiple requests
+            min_hops (int): minimum number of hops (inclusive)
+            max_hops (int): maximum number of hops (inclusive)
+            attr (dict): request attributes
+            forbid_endpoint_internal (bool): if True, eliminate requests that
+                would fail the rank-based endpoint-vs-internal check in SWAP-ASAP.
         """
-        raise NotImplementedError
-        # used_nodes: list[int] = []
-        # nnodes = len(self.nodes)
+        if attr is None:
+            attr = {}
 
-        # if number < 1:
-        #     raise QNSNetworkError("number of requests should be large than 1")
+        used_nodes: list[int] = []
+        nnodes = len(self.nodes)
 
-        # if not allow_overlay and number * 2 > nnodes:
-        #     raise QNSNetworkError("Too many requests")
+        if number < 1:
+            raise QNSNetworkError("number of requests should be larger than 1")
+        if not allow_overlay and number * 2 > nnodes:
+            raise QNSNetworkError("Too many requests")
 
-        # for n in self.nodes:
-        #     n.clear_request()
-        # self.requests.clear()
+        self.requests.clear()
 
-        # for _ in range(number):
-        #     while True:
-        #         src_idx = get_randint(0, nnodes - 1)
-        #         dest_idx = get_randint(0, nnodes - 1)
-        #         if src_idx == dest_idx:
-        #             continue
-        #         if not allow_overlay and src_idx in used_nodes:
-        #             continue
-        #         if not allow_overlay and dest_idx in used_nodes:
-        #             continue
-        #         if not allow_overlay:
-        #             used_nodes.append(src_idx)
-        #             used_nodes.append(dest_idx)
-        #         break
+        # Track accepted paths
+        accepted_paths: list[dict] = []  # each: {"endpoints": set, "edges": set}
 
-        #     src = self.nodes[src_idx]
-        #     dest = self.nodes[dest_idx]
-        #     req = Request(src=src, dest=dest, attr=attr)
-        #     self.requests.append(req)
-        #     src.add_request(req)
-        #     dest.add_request(req)
+        def to_meta(path_nodes: list[QNode]) -> dict:
+            endpoints = {path_nodes[0].name, path_nodes[-1].name}
+            edges = {(path_nodes[i].name, path_nodes[i + 1].name) for i in range(len(path_nodes) - 1)}
+            return {"endpoints": endpoints, "edges": edges}
+
+        def violates_endpoint_internal(candidate_meta: dict) -> bool:
+            cend = candidate_meta["endpoints"]
+            cedges = candidate_meta["edges"]
+            for meta in accepted_paths:
+                pend = meta["endpoints"]
+                pedges = meta["edges"]
+                shared = cedges & pedges
+                if not shared:
+                    continue
+                for u, v in shared:
+                    # one path treats node as endpoint, other as internal
+                    if ((u in cend) != (u in pend)) or ((v in cend) != (v in pend)):
+                        return True
+            return False
+
+        for _ in range(number):
+            while True:
+                src_idx = get_randint(0, nnodes - 1)
+                dest_idx = get_randint(0, nnodes - 1)
+                if src_idx == dest_idx:
+                    continue
+                if not allow_overlay and (src_idx in used_nodes or dest_idx in used_nodes):
+                    continue
+
+                src = self.nodes[src_idx]
+                dest = self.nodes[dest_idx]
+                route_result = self.query_route(src, dest)
+                if not route_result:
+                    continue
+
+                hops, _, path_nodes = route_result[0]
+                if not (min_hops <= hops <= max_hops):
+                    continue
+
+                if forbid_endpoint_internal:
+                    meta = to_meta(path_nodes)
+                    if violates_endpoint_internal(meta):
+                        continue
+                    accepted_paths.append(meta)
+
+                # Accept
+                if not allow_overlay:
+                    used_nodes.extend([src_idx, dest_idx])
+
+                req = Request(src=src, dest=dest, attr=attr)
+                self.requests.append(req)
+                break
 
 
 class QNSNetworkError(Exception):
