@@ -1,4 +1,6 @@
 import math
+from collections.abc import Callable
+from typing import Any
 
 import pytest
 
@@ -14,6 +16,7 @@ from qns.network.proactive import (
     ProactiveForwarder,
     ProactiveRoutingController,
     QubitAllocationType,
+    RoutingPath,
     RoutingPathMulti,
     RoutingPathSingle,
     RoutingPathStatic,
@@ -21,7 +24,7 @@ from qns.network.proactive import (
 from qns.network.proactive.message import validate_path_instructions
 from qns.network.route import RouteImpl, YenRouteAlgorithm
 from qns.network.topology import ClassicTopology, GridTopology, LinearTopology, Topology, TreeTopology
-from qns.simulator import Simulator
+from qns.simulator import Simulator, func_to_event
 from qns.utils import log
 
 init_fidelity = 0.90
@@ -136,6 +139,58 @@ def build_rect_network(
     return build_network_finish(topo, qchannel_capacity, end_time, timing, route=YenRouteAlgorithm(k_paths=2))
 
 
+def install_path(
+    ctrl: ProactiveRoutingController,
+    rp: RoutingPath,
+    *,
+    t_install: float | None = 0.0,
+    t_uninstall: float | None = None,
+):
+    """
+    Install and/or uninstall a routing path at specific times.
+    """
+    simulator = ctrl.own.simulator
+
+    if t_install is not None:
+        simulator.add_event(func_to_event(simulator.time(sec=t_install), ctrl.install_path, rp))
+
+    if t_uninstall is not None:
+        simulator.add_event(func_to_event(simulator.time(sec=t_uninstall), ctrl.uninstall_path, rp))
+
+
+class CheckUnchanged:
+    """
+    Check one or more counters are unchanged during a period of time.
+
+    Example:
+    ```
+    with CheckUnchanged(...):
+        simulator.run()
+    ```
+    """
+
+    def __init__(
+        self,
+        simulator: Simulator,
+        t0: float,
+        t1: float,
+        getter: Callable[[], Any],
+        *,
+        abs=1e-6,
+    ):
+        self.values: list[Any] = []
+        self.abs = abs
+        simulator.add_event(func_to_event(simulator.time(sec=t0), lambda: self.values.append(getter())))
+        simulator.add_event(func_to_event(simulator.time(sec=t1), lambda: self.values.append(getter())))
+
+    def __enter__(self):
+        pass
+
+    def __exit__(self, *_):
+        v0, v1 = self.values
+        assert v0 == pytest.approx(v1, abs=self.abs)
+
+
 def check_e2e_consumed(
     fl: ProactiveForwarder,
     fr: ProactiveForwarder,
@@ -234,11 +289,11 @@ def test_no_swap():
     f2 = net.get_node("n2").get_app(ProactiveForwarder)
     f3 = net.get_node("n3").get_app(ProactiveForwarder)
 
-    ctrl.install_path(RoutingPathStatic(["n1", "n2", "n3"], swap=[0, 0, 0]))
+    install_path(ctrl, RoutingPathStatic(["n1", "n2", "n3"], swap=[0, 0, 0]))
     simulator.run()
 
     for fw in (f1, f2, f3):
-        print((fw.own.name, fw.cnt))
+        print(fw.own.name, fw.cnt)
         assert 0.88 <= fw.cnt.consumed_avg_fidelity <= 0.90
 
     assert f1.cnt.n_entg == f1.cnt.n_eligible == f1.cnt.n_consumed == pytest.approx(5000, abs=5)
@@ -256,11 +311,11 @@ def test_swap_1():
     f2 = net.get_node("n2").get_app(ProactiveForwarder)
     f3 = net.get_node("n3").get_app(ProactiveForwarder)
 
-    ctrl.install_path(RoutingPathStatic(["n1", "n2", "n3"], swap=[1, 0, 1]))
+    install_path(ctrl, RoutingPathStatic(["n1", "n2", "n3"], swap=[1, 0, 1]))
     simulator.run()
 
     for fw in (f1, f2, f3):
-        print((fw.own.name, fw.cnt))
+        print(fw.own.name, fw.cnt)
 
     # entanglements at n2 are immediately eligible because there's no purification
     assert f1.cnt.n_entg + f3.cnt.n_entg == f2.cnt.n_entg == f2.cnt.n_eligible == pytest.approx(8000, abs=5)
@@ -286,11 +341,11 @@ def test_swap_2():
     f3 = net.get_node("n3").get_app(ProactiveForwarder)
     f4 = net.get_node("n4").get_app(ProactiveForwarder)
 
-    ctrl.install_path(RoutingPathStatic(["n1", "n2", "n3", "n4"], swap=[1, 0, 0, 1]))
+    install_path(ctrl, RoutingPathStatic(["n1", "n2", "n3", "n4"], swap=[1, 0, 0, 1]))
     simulator.run()
 
     for fw in (f1, f2, f3, f4):
-        print((fw.own.name, fw.cnt))
+        print(fw.own.name, fw.cnt)
 
     # entanglements at n2 and n3 are immediately eligible because there's no purification
     assert f2.cnt.n_entg == f2.cnt.n_eligible > 6000
@@ -308,7 +363,7 @@ def test_swap_2():
 
 
 def run_swap_3(timing: TimingMode):
-    net, simulator = build_linear_network(5, timing=timing)
+    net, simulator = build_linear_network(5, timing=timing, end_time=20.0)
     ctrl = net.get_controller().get_app(ProactiveRoutingController)
     f1 = net.get_node("n1").get_app(ProactiveForwarder)
     f2 = net.get_node("n2").get_app(ProactiveForwarder)
@@ -316,11 +371,12 @@ def run_swap_3(timing: TimingMode):
     f4 = net.get_node("n4").get_app(ProactiveForwarder)
     f5 = net.get_node("n5").get_app(ProactiveForwarder)
 
-    ctrl.install_path(RoutingPathStatic(["n1", "n2", "n3", "n4", "n5"], swap=[2, 0, 1, 0, 2]))
-    simulator.run()
+    install_path(ctrl, RoutingPathStatic(["n1", "n2", "n3", "n4", "n5"], swap=[2, 0, 1, 0, 2]), t_uninstall=9.999999)
+    with CheckUnchanged(simulator, 10.0, 20.0, lambda: (f1.cnt.n_consumed, f5.cnt.n_consumed, f3.cnt.n_swapped)):
+        simulator.run()
 
     for fw in (f1, f2, f3, f4, f5):
-        print((fw.own.name, fw.cnt))
+        print(fw.own.name, fw.cnt)
         assert fw.cnt.n_swapped_p == 0
 
     return f1, f2, f3, f4, f5
@@ -359,7 +415,7 @@ def test_swap_3_sync():
 
 def test_swap_mr():
     """Test swapping over multiple requests."""
-    net, simulator = build_dumbbell_network(qchannel_capacity=8, mux=MuxSchemeDynamicEpr(), end_time=60.0)
+    net, simulator = build_dumbbell_network(qchannel_capacity=8, mux=MuxSchemeDynamicEpr(), end_time=90.0)
     ctrl = net.get_controller().get_app(ProactiveRoutingController)
     f4 = net.get_node("n4").get_app(ProactiveForwarder)
     f6 = net.get_node("n6").get_app(ProactiveForwarder)
@@ -367,13 +423,18 @@ def test_swap_mr():
     f7 = net.get_node("n7").get_app(ProactiveForwarder)
 
     # n4-n2-n1-n3-n6
-    ctrl.install_path(RoutingPathSingle("n4", "n6", qubit_allocation=QubitAllocationType.DISABLED, swap="l2r"))
+    install_path(ctrl, RoutingPathSingle("n4", "n6", qubit_allocation=QubitAllocationType.DISABLED, swap="l2r"), t_install=10)
     # n5-n2-n1-n3-n7
-    ctrl.install_path(RoutingPathSingle("n5", "n7", qubit_allocation=QubitAllocationType.DISABLED, swap="l2r"))
-    simulator.run()
+    install_path(ctrl, RoutingPathSingle("n5", "n7", qubit_allocation=QubitAllocationType.DISABLED, swap="l2r"), t_uninstall=80)
 
-    for app in (f4, f6, f5, f7):
-        print((app.own.name, app.cnt))
+    with (
+        CheckUnchanged(simulator, 0, 9, lambda: (f4.cnt.n_entg, f4.cnt.n_consumed)),
+        CheckUnchanged(simulator, 81, 90, lambda: (f5.cnt.n_entg, f7.cnt.n_consumed)),
+    ):
+        simulator.run()
+
+    for fw in (f4, f6, f5, f7):
+        print(fw.own.name, fw.cnt)
 
     # some end-to-end entanglements should be consumed at n4 and n6
     check_e2e_consumed(f4, f6, n_min=1, capacity=8)
@@ -391,11 +452,11 @@ def test_swap_mp():
     f4 = net.get_node("n4").get_app(ProactiveForwarder)
 
     # n1-n2-n4 and n1-n3-n4
-    ctrl.install_path(RoutingPathMulti("n1", "n4", swap="swap_1"))
+    install_path(ctrl, RoutingPathMulti("n1", "n4", swap="swap_1"))
     simulator.run()
 
-    for app in (f1, f2, f3, f4):
-        print((app.own.name, app.cnt))
+    for fw in (f1, f2, f3, f4):
+        print(fw.own.name, fw.cnt)
 
     # both paths are used
     assert f2.cnt.n_swapped > 4000
@@ -412,14 +473,14 @@ def test_purif_link1r():
     f2 = net.get_node("n2").get_app(ProactiveForwarder)
     f3 = net.get_node("n3").get_app(ProactiveForwarder)
 
-    ctrl.install_path(RoutingPathStatic(["n1", "n2", "n3"], swap=[1, 0, 1], purif={"n1-n2": 1, "n2-n3": 1}))
+    install_path(ctrl, RoutingPathStatic(["n1", "n2", "n3"], swap=[1, 0, 1], purif={"n1-n2": 1, "n2-n3": 1}))
     simulator.run()
 
-    for app in (f1, f2, f3):
-        print((app.own.name, app.cnt))
+    for fw in (f1, f2, f3):
+        print(fw.own.name, fw.cnt)
 
         # some purifications should fail
-        assert app.cnt.n_purif[0] < app.cnt.n_entg * 0.8
+        assert fw.cnt.n_purif[0] < fw.cnt.n_entg * 0.8
 
     # entanglements at n2 are eligible after 1-round purification
     f1f3_n_purif0 = f1.cnt.n_purif[0] + f3.cnt.n_purif[0]
@@ -440,15 +501,15 @@ def test_purif_link2r():
     f2 = net.get_node("n2").get_app(ProactiveForwarder)
     f3 = net.get_node("n3").get_app(ProactiveForwarder)
 
-    ctrl.install_path(RoutingPathStatic(["n1", "n2", "n3"], swap=[1, 0, 1], purif={"n1-n2": 2, "n2-n3": 2}))
+    install_path(ctrl, RoutingPathStatic(["n1", "n2", "n3"], swap=[1, 0, 1], purif={"n1-n2": 2, "n2-n3": 2}))
     simulator.run()
 
-    for app in (f1, f2, f3):
-        print((app.own.name, app.cnt))
+    for fw in (f1, f2, f3):
+        print(fw.own.name, fw.cnt)
 
         # some purifications should fail
-        assert app.cnt.n_purif[0] < app.cnt.n_entg * 0.8
-        assert app.cnt.n_purif[1] < app.cnt.n_purif[0] * 0.8
+        assert fw.cnt.n_purif[0] < fw.cnt.n_entg * 0.8
+        assert fw.cnt.n_purif[1] < fw.cnt.n_purif[0] * 0.8
 
     # entanglements at n2 are eligible after 2-round purification
     f1f3_n_purif0 = f1.cnt.n_purif[0] + f3.cnt.n_purif[0]
@@ -472,11 +533,11 @@ def test_purif_ee2r():
     f2 = net.get_node("n2").get_app(ProactiveForwarder)
     f3 = net.get_node("n3").get_app(ProactiveForwarder)
 
-    ctrl.install_path(RoutingPathStatic(["n1", "n2", "n3"], swap=[1, 0, 1], purif={"n1-n3": 2}))
+    install_path(ctrl, RoutingPathStatic(["n1", "n2", "n3"], swap=[1, 0, 1], purif={"n1-n3": 2}))
     simulator.run()
 
     for fw in (f1, f2, f3):
-        print((fw.own.name, fw.cnt))
+        print(fw.own.name, fw.cnt)
 
     # successful swap at n2 enables first round of n1-n3 purification; some purifications should fail
     assert pytest.approx(f1.cnt.n_purif[0], abs=1) == f3.cnt.n_purif[0] < f2.cnt.n_swapped * 0.6

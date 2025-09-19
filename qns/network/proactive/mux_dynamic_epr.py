@@ -41,6 +41,9 @@ class MuxSchemeDynamicEpr(MuxSchemeDynamicBase, MuxSchemeFibBase):
     @override
     def qubit_is_entangled(self, qubit: MemoryQubit, neighbor: QNode) -> None:
         possible_path_ids = self._qubit_is_entangled_0(qubit)
+        if not possible_path_ids:  # all paths on the channel have been uninstalled
+            return
+
         # TODO: if paths have different swap policies
         #       -> consider only paths for which this qubit may be eligible ??
         _, epr = self.memory.get(qubit.addr, must=True)

@@ -154,7 +154,7 @@ class RoutingPathSingle(RoutingPath):
     @override
     def compute_paths(self, net: QuantumNetwork) -> Iterator[PathInstructions]:
         route = next(self.query_routes(net))
-        log.debug(f"ROUTING: Computed path: {route}")
+        log.debug(f"ROUTING: Computed path #{self.path_id}: {route}")
         yield make_path_instructions(
             self.req_id,
             route,

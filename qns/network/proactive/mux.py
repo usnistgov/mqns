@@ -54,14 +54,40 @@ class MuxScheme(ABC):
         qchannel: QuantumChannel,
     ) -> None:
         """
-        Save information about neighbor node.
+        Store information about neighbor node and allocate resources.
 
         Args:
             instructions: Path instructions.
             fib_entry: FIB entry derived from path instructions.
-            directions: LEFT for left neighbor or RIGHT for right neighbor.
+            direction: LEFT for left neighbor or RIGHT for right neighbor.
             neighbor: Neighbor node.
             qchannel: Quantum channel to the neighbor.
+        """
+        pass
+
+    @abstractmethod
+    def uninstall_path_neighbor(
+        self,
+        fib_entry: FibEntry,
+        direction: PathDirection,
+        neighbor: QNode,
+        qchannel: QuantumChannel,
+    ) -> None:
+        """
+        Erase information about neighbor node and deallocate resources.
+
+        Args:
+            fib_entry: FIB entry.
+            direction: LEFT for left neighbor or RIGHT for right neighbor.
+            neighbor: Neighbor node.
+            qchannel: Quantum channel to the neighbor.
+        """
+        pass
+
+    @abstractmethod
+    def qubit_has_path_id(self) -> bool:
+        """
+        Indicate whether each memory qubit shall be assigned to specific path_id.
         """
         pass
 

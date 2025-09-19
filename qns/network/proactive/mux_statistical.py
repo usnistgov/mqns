@@ -58,11 +58,34 @@ class MuxSchemeDynamicBase(MuxScheme):
         _ = neighbor
         self.qchannel_paths_map[qchannel.name].append(fib_entry.path_id)
 
+    @override
+    def uninstall_path_neighbor(
+        self,
+        fib_entry: FibEntry,
+        direction: PathDirection,
+        neighbor: QNode,
+        qchannel: QuantumChannel,
+    ) -> None:
+        _ = direction
+        _ = neighbor
+        paths = self.qchannel_paths_map[qchannel.name]
+        paths.remove(fib_entry.path_id)
+        if len(paths) == 0:
+            del self.qchannel_paths_map[qchannel.name]
+
+    @override
+    def qubit_has_path_id(self) -> bool:
+        return False
+
     def _qubit_is_entangled_0(self, qubit: MemoryQubit) -> list[int]:
         assert qubit.path_id is None
         assert qubit.qchannel is not None, f"{self.own}: No qubit-qchannel assignment. Not supported."
-        possible_path_ids = self.qchannel_paths_map.get(qubit.qchannel.name, None)
-        assert possible_path_ids, f"{self.own}: qchannel {qubit.qchannel.name} not mapped to any path."
+
+        possible_path_ids = self.qchannel_paths_map.get(qubit.qchannel.name, [])
+        if not possible_path_ids:
+            log.debug(f"{self.own}: release entangled qubit {qubit.addr} due to uninstalled path")
+            self.fw.release_qubit(qubit, read=True)
+
         return possible_path_ids
 
 
@@ -86,6 +109,9 @@ class MuxSchemeStatistical(MuxSchemeDynamicBase):
     def qubit_is_entangled(self, qubit: MemoryQubit, neighbor: QNode) -> None:
         _ = neighbor
         possible_path_ids = frozenset(self._qubit_is_entangled_0(qubit))
+        if not possible_path_ids:  # all paths on the channel have been uninstalled
+            return
+
         _, epr = self.memory.get(qubit.addr, must=True)
         assert isinstance(epr, WernerStateEntanglement)
 

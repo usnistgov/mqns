@@ -35,7 +35,6 @@ from qns.network.protocol.event import (
     QubitDecoheredEvent,
     QubitEntangledEvent,
     QubitReleasedEvent,
-    TypeEnum,
 )
 from qns.simulator import Simulator, func_to_event
 from qns.utils import log
@@ -110,11 +109,19 @@ class LinkLayer(Application):
         self.memory: QuantumMemory
         """Quantum memory of the node."""
 
-        self.active_channels: dict[tuple[str, int | None], tuple[QuantumChannel, QNode]] = {}
+        self.active_channels = dict[tuple[QuantumChannel, int | None], tuple[QNode, int]]()
         """
-        Table of active quantum channels and paths.
-        Key is qchannel name and optional path_id.
-        Value is the qchannel and remote QNode.
+        Active quantum channels and paths where own node is the primary (on the left side).
+        Key is qchannel and optional path_id.
+        Value is [0] neighbor QNode [1] insertion count.
+
+        When qubits were assigned to qchannels but not allocated to specific path_ids,
+        such as in MuxSchemeDynamicEpr, path_id would be None, but LinkLayer would still
+        receive one ManageActiveChannels start event per qchannel+path combination.
+        The insertion count keeps track of how many start events were received
+        for the qchannel that are not yet canceled by corresponding stop events.
+
+        When qubits were allocated to specific path_ids, insertion count should always be 1.
         """
         self.pending_init_reservation: dict[str, tuple[QuantumChannel, QNode, MemoryQubit]] = {}
         """
@@ -157,10 +164,9 @@ class LinkLayer(Application):
         Upon entering INTERNAL phase: do nothing.
         """
         if event.phase == TimingPhase.EXTERNAL:
-            # clear all qubits and retry all active_channels until INTERNAL signal
             self.memory.clear()
-            for (_, path_id), (qchannel, next_hop) in self.active_channels.items():
-                self.run_active_channel(qchannel, next_hop, path_id)
+            for (qchannel, path_id), (neighbor, _) in self.active_channels.items():
+                self.run_active_channel(qchannel, path_id, neighbor)
 
     def RecvClassicPacketHandler(self, event: RecvClassicPacket) -> bool:
         msg = event.packet.get()
@@ -179,28 +185,39 @@ class LinkLayer(Application):
 
     def handle_manage_active_channels(self, event: ManageActiveChannels) -> bool:
         """Handle ManageActiveChannels event from forwarder."""
-        qchannel = self.own.get_qchannel(event.neighbor)
-        if event.type == TypeEnum.ADD:
-            self.add_active_channel(qchannel, event.neighbor, event.path_id)
+        if event.start:
+            self.add_active_channel(event.qchannel, event.path_id, event.neighbor)
         else:
-            self.remove_active_channel(qchannel, event.neighbor, event.path_id)
+            self.remove_active_channel(event.qchannel, event.path_id, event.neighbor)
         return True
 
-    def add_active_channel(self, qchannel: QuantumChannel, neighbor: QNode, path_id: int | None):
-        key = (qchannel.name, path_id)
-        if key in self.active_channels:  # ignore duplicate add
+    def add_active_channel(self, qchannel: QuantumChannel, path_id: int | None, neighbor: QNode):
+        key = (qchannel, path_id)
+        _, n = self.active_channels.get(key, (neighbor, 0))
+        n += 1
+        self.active_channels[key] = (neighbor, n)
+
+        if n > 1:
+            assert path_id is None
             return
 
         log.debug(f"{self.own}: add qchannel {qchannel} with {neighbor} on path {path_id}, link arch {qchannel.link_arch.name}")
-        self.active_channels[key] = (qchannel, neighbor)
+
         if self.own.timing.is_async():
-            self.run_active_channel(qchannel, neighbor, path_id)
+            self.run_active_channel(qchannel, path_id, neighbor)
 
-    def remove_active_channel(self, qchannel: QuantumChannel, neighbor: QNode, path_id: int | None):
-        log.debug(f"{self.own}: remove qchannel {qchannel} with {neighbor} on path {path_id}")
-        self.active_channels.pop((qchannel.name, path_id), None)
+    def remove_active_channel(self, qchannel: QuantumChannel, path_id: int | None, neighbor: QNode):
+        key = (qchannel, path_id)
+        _, n = self.active_channels[key]
+        n -= 1
 
-    def run_active_channel(self, qchannel: QuantumChannel, next_hop: QNode, path_id: int | None):
+        if n == 0:
+            del self.active_channels[key]
+            log.debug(f"{self.own}: remove qchannel {qchannel} with {neighbor} on path {path_id}")
+        else:
+            self.active_channels[key] = (neighbor, n)
+
+    def run_active_channel(self, qchannel: QuantumChannel, path_id: int | None, next_hop: QNode):
         """
         Start EPR generation over the given quantum channel and the specified next-hop.
         It performs qubit reservation, and for each available qubit, an EPR creation event is scheduled
@@ -208,13 +225,9 @@ class LinkLayer(Application):
 
         Args:
             qchannel: The quantum channel over which entanglement is to be attempted.
-            next_hop: The neighboring node with which to initiate the negotiation.
             path_id: The path_id to restrict attempts to path-allocated qubits only.
                     Needed in multipath where a channel may be activated while not all qubits have been allocated to paths.
-
-        Raises:
-            Exception: If a qubit assigned to the channel is unexpectedly already associated
-                   with a `QuantumModel`, indicating a logic error or memory mismanagement.
+            next_hop: The neighboring node with which to initiate the negotiation.
 
         Notes:
             - Qubits assigned to memory are retrieved using the channel's name.
@@ -410,16 +423,16 @@ class LinkLayer(Application):
         qubit.state, qubit.active = QubitState.RAW, None
 
         assert qubit.qchannel is not None
-        ac = self.active_channels.get((qubit.qchannel.name, qubit.path_id))
+        ac = self.active_channels.get((qubit.qchannel, qubit.path_id))
         if ac is None:  # this node is not the EPR initiator
             # Check deferred reservation requests and attempt to fulfill the reservation.
             # Only the first (oldest) request in the FIFO is processed per call.
             if self.fifo_reservation_req and self.try_accept_reservation(self.fifo_reservation_req[0]):
                 self.fifo_reservation_req.popleft()
         else:  # this node is the EPR initiator
-            qchannel, next_hop = ac
+            next_hop, _ = ac
             if self.own.timing.is_async():
-                self.start_reservation(next_hop, qchannel, qubit)
+                self.start_reservation(next_hop, qubit.qchannel, qubit)
             elif is_decoh:
                 raise Exception(f"{self.own}: UNEXPECTED -> (t_ext + t_int) too short")
         return True

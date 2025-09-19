@@ -27,10 +27,10 @@ from qns.entity.node import Application, Node, QNode
 from qns.models.epr import WernerStateEntanglement
 from qns.network.network import TimingPhase, TimingPhaseEvent
 from qns.network.proactive.fib import Fib, FibEntry
-from qns.network.proactive.message import InstallPathMsg, PurifResponseMsg, PurifSolicitMsg, SwapUpdateMsg
+from qns.network.proactive.message import InstallPathMsg, PurifResponseMsg, PurifSolicitMsg, SwapUpdateMsg, UninstallPathMsg
 from qns.network.proactive.mux import MuxScheme
 from qns.network.proactive.mux_buffer_space import MuxSchemeBufferSpace
-from qns.network.protocol.event import ManageActiveChannels, QubitEntangledEvent, QubitReleasedEvent, TypeEnum
+from qns.network.protocol.event import ManageActiveChannels, QubitEntangledEvent, QubitReleasedEvent
 from qns.simulator import Simulator
 from qns.utils import log
 
@@ -186,6 +186,7 @@ class ProactiveForwarder(Application):
                 self.qubit_is_entangled(etg_event)
             self.waiting_etg.clear()
 
+    CLASSIC_CONTROL_HANDLERS: dict[str, Callable[["ProactiveForwarder", Any], None]] = {}
     CLASSIC_SIGNALING_HANDLERS: dict[str, Callable[["ProactiveForwarder", Any, FibEntry], None]] = {}
 
     def RecvClassicPacketHandler(self, event: RecvClassicPacket) -> bool:
@@ -203,48 +204,57 @@ class ProactiveForwarder(Application):
         msg = packet.get()
         if not (isinstance(msg, dict) and "cmd" in msg):
             return False
-        if msg["cmd"] == "install_path":
-            return self.handle_install_path(cast(InstallPathMsg, msg))
-        if msg["cmd"] not in self.CLASSIC_SIGNALING_HANDLERS:
-            return False
-
-        log.debug(f"{self.own.name}: {msg}")
-
-        path_id: int = msg["path_id"]
-        fib_entry = self.fib.get(path_id)
-
-        if packet.dest != self.own:  # node is not destination: forward message
-            self.send_msg(packet.dest, msg, fib_entry)
+        cmd: str = msg["cmd"]
+        handler = self.CLASSIC_CONTROL_HANDLERS.get(cmd)
+        if handler is not None:
+            log.debug(f"{self.own}: received control message from {packet.src} | {msg}")
+            handler(self, msg)
             return True
 
-        self.CLASSIC_SIGNALING_HANDLERS[msg["cmd"]](self, msg, fib_entry)
+        handler = self.CLASSIC_SIGNALING_HANDLERS.get(cmd)
+        if handler is None:
+            return False
+
+        path_id: int = msg["path_id"]
+        try:
+            fib_entry = self.fib.get(path_id)
+        except IndexError:
+            log.debug(f"{self.own}: dropping signaling message from {packet.src}, reason=no-fib-entry | {msg}")
+            return True
+
+        if packet.dest != self.own:
+            self.send_msg(packet.dest, msg, fib_entry, forward=True)
+            return True
+
+        log.debug(f"{self.own}: received signaling message from {packet.src} | {msg}")
+        handler(self, msg, fib_entry)
         return True
 
-    def send_msg(self, dest: Node, msg: Any, fib_entry: FibEntry):
+    def send_msg(self, dest: Node, msg: Any, fib_entry: FibEntry, *, forward=False):
         """
-        Send/forwarder a message along the path specified in FIB entry.
+        Send/forward a message along the path specified in FIB entry.
         """
         dest_idx = fib_entry.route.index(dest.name)
         nh = fib_entry.route[fib_entry.own_idx + 1] if dest_idx > fib_entry.own_idx else fib_entry.route[fib_entry.own_idx - 1]
         next_hop = self.own.network.get_node(nh)
 
-        log.debug(f"{self.own.name}: send msg to {dest.name} via {next_hop.name} | msg: {msg}")
-        self.own.get_cchannel(next_hop).send(ClassicPacket(msg=msg, src=self.own, dest=dest), next_hop)
+        log.debug(
+            f"{self.own}: {'forwarding' if forward else 'sending'} signaling message to {dest.name} via {next_hop.name} | {msg}"
+        )
+        self.own.get_cchannel(next_hop).send(ClassicPacket(msg, src=self.own, dest=dest), next_hop)
 
-    def handle_install_path(self, msg: InstallPathMsg) -> bool:
+    def handle_install_path(self, msg: InstallPathMsg):
         """
         Process an install_path message containing routing instructions from the controller.
 
-        Determines left/right neighbors from the route, identifies corresponding quantum channels,
-        and allocates qubits based on the multiplexing vector (for the buffer-space mode).
-        Updates the FIB with path, swapping, and purification info, and triggers EPR generation via the
-        link layer on the outgoing channel.
-        No path allocation for qubits means statistical mux is required, but this is not implemented.
+        1. Insert FIB entry.
+        2. Identity neighbors and qchannels.
+        3. Save the path and neighbors in the multiplexing scheme.
+        4. Notify LinkLayer to start elementary EPR generation toward the right neighbor.
         """
         simulator = self.simulator
         path_id = msg["path_id"]
         instructions = msg["instructions"]
-        log.debug(f"{self.own.name}: routing instructions of path {path_id}: {instructions}")
         self.mux.validate_path_instructions(instructions)
 
         # populate FIB
@@ -264,23 +274,79 @@ class ProactiveForwarder(Application):
         r_neighbor = self._find_neighbor(fib_entry, +1)
 
         if l_neighbor:
+            l_qchannel = self.own.get_qchannel(l_neighbor)
+
             # associate path with qchannel and allocate qubits
-            self.mux.install_path_neighbor(
-                instructions, fib_entry, PathDirection.LEFT, l_neighbor, self.own.get_qchannel(l_neighbor)
-            )
+            self.mux.install_path_neighbor(instructions, fib_entry, PathDirection.LEFT, l_neighbor, l_qchannel)
 
         if r_neighbor:
+            r_qchannel = self.own.get_qchannel(r_neighbor)
+
             # associate path with qchannel and allocate qubits
-            self.mux.install_path_neighbor(
-                instructions, fib_entry, PathDirection.RIGHT, r_neighbor, self.own.get_qchannel(r_neighbor)
-            )
+            self.mux.install_path_neighbor(instructions, fib_entry, PathDirection.RIGHT, r_neighbor, r_qchannel)
 
             # instruct LinkLayer to start generating EPRs on the qchannel toward the right neighbor
-            p = path_id if "m_v" in instructions else None
-            simulator.add_event(ManageActiveChannels(self.own, r_neighbor, TypeEnum.ADD, p, t=simulator.tc, by=self))
+            simulator.add_event(
+                ManageActiveChannels(
+                    self.own,
+                    r_neighbor,
+                    r_qchannel,
+                    path_id=path_id if self.mux.qubit_has_path_id() else None,
+                    start=True,
+                    t=simulator.tc,
+                    by=self,
+                )
+            )
 
-        # TODO: remove path, type=TypeEnum.REMOVE
-        return True
+    CLASSIC_CONTROL_HANDLERS["install_path"] = handle_install_path
+
+    def handle_uninstall_path(self, msg: UninstallPathMsg):
+        """
+        Process an uninstall_path message containing routing instructions from the controller.
+
+        1. Insert FIB entry.
+        2. Identity neighbors and qchannels.
+        3. Save the path and neighbors in the multiplexing scheme.
+        4. Notify LinkLayer to start elementary EPR generation toward the right neighbor.
+        """
+        simulator = self.simulator
+        path_id = msg["path_id"]
+
+        # retrieve and erase FIB entry
+        fib_entry = self.fib.get(path_id)
+        self.fib.erase(path_id)
+
+        # identify left/right neighbors
+        l_neighbor = self._find_neighbor(fib_entry, -1)
+        r_neighbor = self._find_neighbor(fib_entry, +1)
+
+        if l_neighbor:
+            l_qchannel = self.own.get_qchannel(l_neighbor)
+
+            # disassociate path with qchannel and deallocate qubits
+            _ = l_qchannel
+            self.mux.uninstall_path_neighbor(fib_entry, PathDirection.LEFT, l_neighbor, l_qchannel)
+
+        if r_neighbor:
+            r_qchannel = self.own.get_qchannel(r_neighbor)
+
+            # disassociate path with qchannel and deallocate qubits
+            self.mux.uninstall_path_neighbor(fib_entry, PathDirection.RIGHT, r_neighbor, r_qchannel)
+
+            # instruct LinkLayer to stop generating EPRs on the qchannel toward the right neighbor
+            simulator.add_event(
+                ManageActiveChannels(
+                    self.own,
+                    r_neighbor,
+                    r_qchannel,
+                    path_id=path_id if self.mux.qubit_has_path_id() else None,
+                    start=False,
+                    t=simulator.tc,
+                    by=self,
+                )
+            )
+
+    CLASSIC_CONTROL_HANDLERS["uninstall_path"] = handle_uninstall_path
 
     def _find_neighbor(self, fib_entry: FibEntry, route_offset: int) -> QNode | None:
         neigh_idx = fib_entry.own_idx + route_offset
@@ -305,8 +371,7 @@ class ProactiveForwarder(Application):
             event: Event containing the entangled qubit and its associated metadata (e.g., neighbor).
 
         """
-        if not self.own.timing.is_internal():
-            # queue events in SYNC timing mode EXTERNAL phase
+        if not self.own.timing.is_internal():  # in SYNC timing mode EXTERNAL phase
             self.waiting_etg.append(event)
             return
 
@@ -317,7 +382,10 @@ class ProactiveForwarder(Application):
         self.mux.qubit_is_entangled(qubit, event.neighbor)
 
         su_args = self.waiting_su.pop(qubit.addr, None)
-        if su_args:
+        if (
+            qubit.state != QubitState.RELEASE  # qubit was released due to uninstalled path
+            and su_args
+        ):
             self.handle_swap_update(*su_args)
 
     def qubit_is_purif(self, qubit: MemoryQubit, fib_entry: FibEntry, partner: QNode):
@@ -392,8 +460,6 @@ class ProactiveForwarder(Application):
             fib_entry: FIB entry.
             partner: quantum node with which entanglements are shared.
         """
-        simulator = self.simulator
-
         # read qubits to set fidelity at this time
         _, epr0 = self.memory.read(mq0.addr, destructive=False, must=True)
         _, epr1 = self.memory.read(mq1.addr, must=True)
@@ -406,8 +472,7 @@ class ProactiveForwarder(Application):
         )
 
         mq0.state = QubitState.PENDING
-        mq1.state = QubitState.RELEASE
-        simulator.add_event(QubitReleasedEvent(self.own, mq1, t=simulator.tc, by=self))
+        self.release_qubit(mq1)
 
         # send purif_solicit to partner
         msg: PurifSolicitMsg = {
@@ -439,8 +504,6 @@ class ProactiveForwarder(Application):
             it may immediately become eligible and thus available for swaps or end-to-end consumption,
             even if the PURIF_RESPONSE message has not arrived at the primary node.
         """
-        simulator = self.simulator
-
         # mq0 is the "kept" memory whose fidelity would be increased if purification succeeds
         # mq1 is the "measured" memory that is consumed during purification
         mq0, epr0 = self.memory.read(msg["epr"], destructive=False, must=True)
@@ -475,13 +538,10 @@ class ProactiveForwarder(Application):
             self.qubit_is_purif(mq0, fib_entry, primary)
         else:
             # in case of purification failure, release mq0
-            self.memory.read(mq0.addr)  # destructive reading
-            mq0.state = QubitState.RELEASE
-            simulator.add_event(QubitReleasedEvent(self.own, mq0, t=simulator.tc, by=self))
+            self.release_qubit(mq0, read=True)
 
         # release mq1; destructive reading is already performed
-        mq1.state = QubitState.RELEASE
-        simulator.add_event(QubitReleasedEvent(self.own, mq1, t=simulator.tc, by=self))
+        self.release_qubit(mq1)
 
         # send response message
         resp: PurifResponseMsg = {
@@ -512,8 +572,6 @@ class ProactiveForwarder(Application):
             fib_entry: FIB entry associated with path_id in the message.
 
         """
-        simulator = self.simulator
-
         qubit, epr = self.memory.get(msg["epr"], must=True)
         # TODO: handle the exception case when an EPR is decohered and not found in memory
         assert isinstance(epr, WernerStateEntanglement)
@@ -525,9 +583,7 @@ class ProactiveForwarder(Application):
         )
 
         if not result:  # purif failed
-            self.memory.read(qubit.addr)  # destructive reading
-            qubit.state = QubitState.RELEASE
-            simulator.add_event(QubitReleasedEvent(self.own, qubit, t=simulator.tc, by=self))
+            self.release_qubit(qubit, read=True)
             return
 
         # purif succeeded
@@ -583,7 +639,6 @@ class ProactiveForwarder(Application):
         These qubits must be in ELIGIBLE state and come from different qchannels.
         Partners are notified with SWAP_UPDATE messages.
         """
-        simulator = self.simulator
         assert mq0.addr != mq1.addr
         assert mq0.state == QubitState.ELIGIBLE
         assert mq1.state == QubitState.ELIGIBLE
@@ -681,8 +736,7 @@ class ProactiveForwarder(Application):
 
         # Release old qubits.
         for i, qubit in enumerate((prev_qubit, next_qubit)):
-            qubit.state = QubitState.RELEASE
-            simulator.add_event(QubitReleasedEvent(self.own, qubit, t=(simulator.tc + i * 1e-6), by=self))
+            self.release_qubit(qubit, delay=i * 1e-6)
 
     def handle_swap_update(self, msg: SwapUpdateMsg, fib_entry: FibEntry):
         """
@@ -750,10 +804,8 @@ class ProactiveForwarder(Application):
         ):
             if new_epr:
                 log.debug(f"{self.own}: NEW EPR {new_epr} decohered during SU transmissions")
-            self.memory.read(qubit.addr)  # destructive reading
-            qubit.state = QubitState.RELEASE
             # Inform LinkLayer that the memory qubit has been released.
-            simulator.add_event(QubitReleasedEvent(self.own, qubit, t=simulator.tc, by=self))
+            self.release_qubit(qubit, read=True)
             return
 
         # Update old EPR with new EPR (fidelity and partner).
@@ -887,15 +939,29 @@ class ProactiveForwarder(Application):
         """
         Consume an entangled qubit.
         """
-        simulator = self.simulator
-
         _, qm = self.memory.read(qubit.addr, must=True)
         assert isinstance(qm, WernerStateEntanglement)
         assert qm.src is not None
         assert qm.dst is not None
-        qubit.state = QubitState.RELEASE
-        log.debug(f"{self.own}: consume EPR: {qm.name} -> {qm.src.name}-{qm.dst.name} | F={qm.fidelity}")
 
+        log.debug(f"{self.own}: consume EPR: {qm.name} -> {qm.src.name}-{qm.dst.name} | F={qm.fidelity}")
         self.cnt.n_consumed += 1
         self.cnt.consumed_sum_fidelity += qm.fidelity
-        simulator.add_event(QubitReleasedEvent(self.own, qubit, t=simulator.tc, by=self))
+
+        self.release_qubit(qubit)
+
+    def release_qubit(self, qubit: MemoryQubit, *, read=False, delay=0.0):
+        """
+        Release a qubit.
+
+        Args:
+            read: whether to perform a destructive read.
+            delay: delay in seconds for scheduling QubitReleasedEvent.
+        """
+        simulator = self.simulator
+
+        if read:
+            self.memory.read(qubit.addr)
+
+        qubit.state = QubitState.RELEASE
+        simulator.add_event(QubitReleasedEvent(self.own, qubit, t=simulator.tc + delay, by=self))

@@ -52,22 +52,39 @@ class MuxSchemeBufferSpace(MuxSchemeFibBase):
         m_v = instructions["m_v"]
         m_v_offset, ch_side = (-1, 1) if direction == PathDirection.LEFT else (0, 0)
 
-        # example visualization:
-        # route = [ S, R, D ]
-        # m_v = [ (4,2) , (2,4) ]
-        # S--(4,2)--R--(2,4)--D
-        # here, R should allocate 2 qubits toward S and 2 qubits toward D.
-
         n_qubits = m_v[fib_entry.own_idx + m_v_offset][ch_side]
         if n_qubits == 0:  # 0 means use all qubits assigned to this qchannel
             n_qubits = len(self.memory.get_channel_qubits(qchannel.name))
 
-        qubits = self.memory.allocate(fib_entry.path_id, direction, ch_name=qchannel.name, n=n_qubits)
-        log.debug(f"{self.own}: Allocated {direction} qubits: {qubits}")
+        addrs = self.memory.allocate(fib_entry.path_id, direction, ch_name=qchannel.name, n=n_qubits)
+        log.debug(f"{self.own}: allocated {direction} qubits: {addrs}")
+
+    @override
+    def uninstall_path_neighbor(
+        self,
+        fib_entry: FibEntry,
+        direction: PathDirection,
+        neighbor: QNode,
+        qchannel: QuantumChannel,
+    ) -> None:
+        _ = neighbor
+        qubits = self.memory.find(lambda q, _: q.qchannel == qchannel and q.path_id == fib_entry.path_id)
+        addrs = [q[0].addr for q in qubits]
+        self.memory.deallocate(*addrs)
+        log.debug(f"{self.own}: deallocated {direction} qubits: {addrs}")
+        pass
+
+    @override
+    def qubit_has_path_id(self) -> bool:
+        return True
 
     @override
     def qubit_is_entangled(self, qubit: MemoryQubit, neighbor: QNode) -> None:
-        assert qubit.path_id is not None
+        if qubit.path_id is None:
+            log.debug(f"{self.own}: release entangled qubit {qubit.addr} due to uninstalled path")
+            self.fw.release_qubit(qubit, read=True)
+            return
+
         fib_entry = self.fib.get(qubit.path_id)
         qubit.purif_rounds = 0
         qubit.state = QubitState.PURIF

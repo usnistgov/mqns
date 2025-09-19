@@ -15,43 +15,40 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from enum import Enum, auto
 from typing import Any
 
 from typing_extensions import override
 
 from qns.entity.memory import MemoryQubit, QubitState
 from qns.entity.node import QNode
+from qns.entity.qchannel import QuantumChannel
 from qns.models.epr import WernerStateEntanglement
 from qns.simulator import Event, Time
 
 
-class TypeEnum(Enum):
-    ADD = auto()
-    REMOVE = auto()
-
-
 class ManageActiveChannels(Event):
     """
-    Event sent by Forwarder to request LinkLayer to start generating EPRs over a qchannel.
+    Event sent by Forwarder to request LinkLayer to start/stop generating EPRs over a qchannel.
     """
 
     def __init__(
         self,
         node: QNode,
         neighbor: QNode,
-        type: TypeEnum,
-        path_id: int | None = None,
+        qchannel: QuantumChannel,
         *,
+        path_id: int | None = None,
+        start: bool,
         t: Time,
         name: str | None = None,
         by: Any = None,
     ):
-        super().__init__(t=t, name=name, by=by)
+        super().__init__(t, name, by)
         self.node = node
         self.neighbor = neighbor
+        self.qchannel = qchannel
         self.path_id = path_id
-        self.type = type
+        self.start = start
 
     @override
     def invoke(self) -> None:
@@ -72,7 +69,7 @@ class LinkArchSuccessEvent(Event):
         name: str | None = None,
         by: Any = None,
     ):
-        super().__init__(t=t, name=name, by=by)
+        super().__init__(t, name, by)
         self.node = node
         self.epr = epr
 
@@ -96,7 +93,7 @@ class QubitEntangledEvent(Event):
         name: str | None = None,
         by: Any = None,
     ):
-        super().__init__(t=t, name=name, by=by)
+        super().__init__(t, name, by)
         self.node = node
         self.neighbor = neighbor
         self.qubit = qubit
@@ -114,7 +111,7 @@ class QubitDecoheredEvent(Event):
     """
 
     def __init__(self, node: QNode, qubit: MemoryQubit, *, t: Time, name: str | None = None, by: Any = None):
-        super().__init__(t=t, name=name, by=by)
+        super().__init__(t, name, by)
         self.node = node
         self.qubit = qubit
         assert self.qubit.state == QubitState.RELEASE
@@ -139,7 +136,7 @@ class QubitReleasedEvent(Event):
         name: str | None = None,
         by: Any = None,
     ):
-        super().__init__(t=t, name=name, by=by)
+        super().__init__(t, name, by)
         self.node = node
         self.qubit = qubit
         assert self.qubit.state == QubitState.RELEASE

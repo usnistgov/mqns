@@ -15,10 +15,11 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from typing_extensions import override
 
 from qns.entity.cchannel import ClassicPacket
 from qns.entity.node import Application, Controller, Node
-from qns.network.proactive.message import InstallPathMsg
+from qns.network.proactive.message import InstallPathMsg, PathInstructions, UninstallPathMsg
 from qns.network.proactive.routing import RoutingPath
 from qns.simulator import Simulator
 from qns.utils import log
@@ -41,6 +42,7 @@ class ProactiveRoutingController(Application):
         super().__init__()
         self.paths = [] if not paths else paths if isinstance(paths, list) else [paths]
 
+    @override
     def install(self, node: Node, simulator: Simulator):
         super().install(node, simulator)
         self.own = self.get_node(node_type=Controller)
@@ -48,14 +50,14 @@ class ProactiveRoutingController(Application):
         self.next_req_id = 0
         self.next_path_id = 0
 
-        # install the test path on QNodes
+        # install pre-requested paths on QNodes
         self.net.build_route()
         for rp in self.paths:
             self.install_path(rp)
 
     def install_path(self, rp: RoutingPath):
         """
-        Compute routing path(s) and install onto nodes.
+        Compute routing path(s) and send install commands to nodes.
         """
         if rp.req_id < 0:
             rp.req_id = self.next_req_id
@@ -67,12 +69,26 @@ class ProactiveRoutingController(Application):
         for path_id_add, instructions in enumerate(rp.compute_paths(self.net)):
             path_id = rp.path_id + path_id_add
             self.next_path_id = max(self.next_path_id, path_id + 1)
+            self._send_instructions(path_id, instructions)
 
-            route = instructions["route"]
-            for node_name in route:
-                qnode = self.net.get_node(node_name)
-                msg: "InstallPathMsg" = {"cmd": "install_path", "path_id": path_id, "instructions": instructions}
+    def uninstall_path(self, rp: RoutingPath):
+        """
+        Compute routing path(s) and send uninstall commands to nodes.
+        """
+        assert rp.req_id >= 0
+        assert rp.path_id >= 0
 
-                cchannel = self.own.get_cchannel(qnode)
-                cchannel.send(ClassicPacket(msg, src=self.own, dest=qnode), next_hop=qnode)
-                log.debug(f"{self.own}: send {msg} to {qnode}")
+        for path_id_add, instructions in enumerate(rp.compute_paths(self.net)):
+            self._send_instructions(rp.path_id + path_id_add, instructions, uninstall=True)
+
+    def _send_instructions(self, path_id: int, instructions: PathInstructions, *, uninstall=False):
+        verb, msg = (
+            ("uninstall", UninstallPathMsg(cmd="uninstall_path", path_id=path_id))
+            if uninstall
+            else ("install", InstallPathMsg(cmd="install_path", path_id=path_id, instructions=instructions))
+        )
+
+        for node_name in instructions["route"]:
+            qnode = self.net.get_node(node_name)
+            self.own.get_cchannel(qnode).send(ClassicPacket(msg, src=self.own, dest=qnode), next_hop=qnode)
+            log.debug(f"{self.own}: {verb} path #{path_id} at {qnode}: {instructions}")

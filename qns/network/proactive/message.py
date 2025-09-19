@@ -35,6 +35,14 @@ class PathInstructions(TypedDict):
     Each element is a pair of nonnegative integers, corresponding to left and right qchannels.
     Each integer indicates how many memory qubits shall be allocated on the left/right qchannel for this path.
     If an integer is zero, it means allocating all qubits assigned to that qchannel for this path.
+
+    Example:
+        route = [S,    R,     D]
+        m_v   = [ (4,2), (3,0) ]
+
+        S should allocate 4 qubits on S-R channel.
+        R should allocate 2 qubits on S-R channel and 3 qubits on R-D channel.
+        D should allocate all qubits assigned to R-D channel.
     """
 
     purif: dict[str, int]
@@ -92,6 +100,11 @@ class InstallPathMsg(TypedDict):
     cmd: Literal["install_path"]
     path_id: int
     instructions: PathInstructions
+
+
+class UninstallPathMsg(TypedDict):
+    cmd: Literal["uninstall_path"]
+    path_id: int
 
 
 class PurifMsgBase(TypedDict):
