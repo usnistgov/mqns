@@ -21,7 +21,7 @@ from qns.entity import QNode
 class Request:
     """Requests entanglement pairs between a source and a destination."""
 
-    def __init__(self, src: QNode, dest: QNode, attr: dict = {}) -> None:
+    def __init__(self, src: QNode, dst: QNode, attr: dict = {}) -> None:
         """Args:
         src: the source node
         dest: the destination node
@@ -29,8 +29,8 @@ class Request:
 
         """
         self.src = src
-        self.dest = dest
+        self.dst = dst
         self.attr = attr
 
     def __repr__(self) -> str:
-        return f"<Request {self.src}->{self.dest}>"
+        return f"<Request {self.src}->{self.dst}>"

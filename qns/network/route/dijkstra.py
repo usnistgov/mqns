@@ -15,7 +15,6 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import math
 from typing import Any
 
 import numpy as np
@@ -27,7 +26,7 @@ from qns.network.route.route import ChannelT, MetricFunc, NodeT, RouteImpl, make
 class DijkstraRouteAlgorithm(RouteImpl[NodeT, ChannelT]):
     """This is the Dijkstra algorithm implementation"""
 
-    INF = math.inf
+    INF = np.inf
 
     def __init__(self, name: str = "dijkstra", metric_func: MetricFunc | None = None) -> None:
         """
@@ -109,7 +108,7 @@ class DijkstraRouteAlgorithm(RouteImpl[NodeT, ChannelT]):
             metric, path = le
             path = path.copy()
             path.reverse()
-            if len(path) <= 1 or metric == self.INF:  # unreachable
+            if len(path) <= 1 or np.isinf(metric):  # unreachable
                 next_hop = None
                 return []
             else:

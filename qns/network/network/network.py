@@ -97,6 +97,9 @@ class QuantumNetwork:
         self.route: RouteImpl = DijkstraRouteAlgorithm() if route is None else route
 
         self.requests: list[Request] = []
+        """
+        Requested end-to-end entanglements.
+        """
 
     def _populate_from_topo(self, topo: Topology, classic_topo: ClassicTopology | None):
         nodes, qchannels = topo.build()
@@ -252,12 +255,7 @@ class QuantumNetwork:
 
     def build_route(self):
         """Build static route tables for each nodes"""
-        # import time
-
-        # t0 = time.perf_counter()
         self.route.build(self.nodes, self.qchannels)
-        # t1 = time.perf_counter()
-        # log.critical(f"Routing table computation took {t1 - t0:.6f} seconds")
 
     def query_route(self, src: QNode, dest: QNode) -> list[tuple[float, QNode, list[QNode]]]:
         """Query the metric, nexthop and the path
@@ -273,53 +271,59 @@ class QuantumNetwork:
         """
         return self.route.query(src, dest)
 
-    def add_request(self, src: QNode, dest: QNode, attr: dict = {}):
-        """Add a request (SD-pair) to the network
+    def add_request(self, src: QNode, dst: QNode, attr: dict = {}):
+        """
+        Add a request (src, dst) pair to the network.
+
+        The request is placed in `self.requests` list.
+        The scenario must manually pass these requests to relevant applications (e.g. ProactiveRoutingController).
 
         Args:
             src: the source node
-            dest: the destination node
+            dst: the destination node
             attr: other attributions
-
         """
-        raise NotImplementedError
-        # req = Request(src=src, dest=dest, attr=attr)
-        # self.requests.append(req)
-        # src.add_request(req)
-        # dest.add_request(req)
+        req = Request(src, dst, attr)
+        self.requests.append(req)
 
     def random_requests(
         self,
-        number: int,
-        allow_overlay: bool = False,
-        min_hops: int = 1,
-        max_hops: int = 10,
+        n: int,
+        *,
+        clear=True,
+        allow_overlay=False,
+        min_hops=1,
+        max_hops=10,
         attr: dict | None = None,
-        forbid_endpoint_internal: bool = True,  # reject endpoint-vs-internal conflicts
+        forbid_endpoint_internal=True,  # reject endpoint-vs-internal conflicts
     ):
-        """Generate random (src, dst) pairs requests.
+        """
+        Generate random (src, dst) pairs requests.
+
+        The requests are placed in `self.requests` list.
+        The scenario must manually pass these requests to relevant applications (e.g. ProactiveRoutingController).
 
         Args:
-            number (int): number of requests to generate
-            allow_overlay (bool): allow nodes to be the source or destination in multiple requests
-            min_hops (int): minimum number of hops (inclusive)
-            max_hops (int): maximum number of hops (inclusive)
-            attr (dict): request attributes
-            forbid_endpoint_internal (bool): if True, eliminate requests that
+            n: number of requests to generate
+            clear: if True, clear existing requests in `self.requests`
+            allow_overlay: allow nodes to be the source or destination in multiple requests
+            min_hops: minimum number of hops (inclusive)
+            max_hops: maximum number of hops (inclusive)
+            attr: request attributes
+            forbid_endpoint_internal: if True, eliminate requests that
                 would fail the rank-based endpoint-vs-internal check in SWAP-ASAP.
         """
-        if attr is None:
-            attr = {}
-
+        attr = {} if attr is None else attr
         used_nodes: list[int] = []
         nnodes = len(self.nodes)
 
-        if number < 1:
-            raise QNSNetworkError("number of requests should be larger than 1")
-        if not allow_overlay and number * 2 > nnodes:
-            raise QNSNetworkError("Too many requests")
+        if n < 1:
+            raise ValueError("number of requests should be larger than 1")
+        if not allow_overlay and n * 2 > nnodes:
+            raise ValueError("Too many requests")
 
-        self.requests.clear()
+        if clear:
+            self.requests.clear()
 
         # Track accepted paths
         accepted_paths: list[dict] = []  # each: {"endpoints": set, "edges": set}
@@ -344,18 +348,18 @@ class QuantumNetwork:
                         return True
             return False
 
-        for _ in range(number):
+        for _ in range(n):
             while True:
                 src_idx = get_randint(0, nnodes - 1)
-                dest_idx = get_randint(0, nnodes - 1)
-                if src_idx == dest_idx:
+                dst_idx = get_randint(0, nnodes - 1)
+                if src_idx == dst_idx:
                     continue
-                if not allow_overlay and (src_idx in used_nodes or dest_idx in used_nodes):
+                if not allow_overlay and (src_idx in used_nodes or dst_idx in used_nodes):
                     continue
 
                 src = self.nodes[src_idx]
-                dest = self.nodes[dest_idx]
-                route_result = self.query_route(src, dest)
+                dst = self.nodes[dst_idx]
+                route_result = self.query_route(src, dst)
                 if not route_result:
                     continue
 
@@ -371,12 +375,7 @@ class QuantumNetwork:
 
                 # Accept
                 if not allow_overlay:
-                    used_nodes.extend([src_idx, dest_idx])
+                    used_nodes.extend([src_idx, dst_idx])
 
-                req = Request(src=src, dest=dest, attr=attr)
-                self.requests.append(req)
+                self.add_request(src, dst, attr)
                 break
-
-
-class QNSNetworkError(Exception):
-    pass

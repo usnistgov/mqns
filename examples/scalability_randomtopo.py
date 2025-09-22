@@ -133,7 +133,7 @@ def run_simulation(nnodes: int, nedges: int, nqubits: int, seed: int):
 
     for req in net.requests:
         ctrl.install_path(
-            RoutingPathSingle(req.src.name, req.dest.name, qubit_allocation=QubitAllocationType.DISABLED, swap="asap")
+            RoutingPathSingle(req.src.name, req.dst.name, qubit_allocation=QubitAllocationType.DISABLED, swap="asap")
         )
 
     s.run()
