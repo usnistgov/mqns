@@ -1,9 +1,9 @@
 from typing import cast
 
-from qns.entity.qchannel import LinkArch, LinkArchDimBkSeq
-from qns.network.proactive import LinkLayer, ProactiveForwarder, ProactiveRoutingController, RoutingPathSingle
-from qns.network.topology.customtopo import CustomTopology, Topo, TopoCChannel, TopoController, TopoQChannel, TopoQNode
-from qns.network.topology.topo import Topology
+from mqns.entity.qchannel import LinkArch, LinkArchDimBkSeq
+from mqns.network.proactive import LinkLayer, ProactiveForwarder, ProactiveRoutingController, RoutingPathSingle
+from mqns.network.topology.customtopo import CustomTopology, Topo, TopoCChannel, TopoController, TopoQChannel, TopoQNode
+from mqns.network.topology.topo import Topology
 
 # parameters
 fiber_alpha = 0.2

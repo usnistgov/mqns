@@ -6,6 +6,8 @@
 
 **Multiverse** is a quantum network simulator designed to streamline the comparative evaluation of entanglement routing under dynamic and heterogeneous network conditions. It addresses the need for a unified, flexible framework for rapidly prototyping and benchmarking a wide range of entanglement distribution strategies and quantum network architectures. The simulator supports systematic exploration of routing algorithms, swapping strategies, purification schedules, and qubit/resource management across diverse network scenarios.
 
+This software is developed at the [Smart Connected Systems Division](https://www.nist.gov/ctl/smart-connected-systems-division) of the [National Institute of Standards and Technology](https://www.nist.gov/).
+
 This project is part of an ongoing research effort to evaluate the quantum networking approaches presented in our survey:
 🔗 [Entanglement Routing in Quantum Networks: A Comprehensive Survey](https://ieeexplore.ieee.org/document/10882978).
 
@@ -17,7 +19,7 @@ This project is part of an ongoing research effort to evaluate the quantum netwo
 * Global path computation at simulation start:
   * **Dijkstra's algorithm** for single-path routing.
   * **Yen’s algorithm** for multipath routing.
-* Paths are pre-installed at quantum routers; simulation focuses on the **forwarding phase**.
+* Paths can be installed/uninstalled at quantum routers; simulation focuses on the **forwarding phase**.
 
 ### Forwarding Phase Components
 
@@ -88,8 +90,6 @@ This project reuses components from [SimQN v0.1.5](https://github.com/QNLab-USTC
 This is *not* a fork of the official SimQN repository, but rather a standalone project that incorporates a snapshot of SimQN's implementation—specifically the discrete-event simulation engine, noise modeling framework, and code structure. Substantial modifications have been made to support dynamic routing protocols and enhanced entanglement management capabilities.
 
 This project is therefore licensed under the GPLv3. See the LICENSE file for details.
-
-While we are developing dedicated documentation tailored to this simulator, users can refer to [SimQN’s documentation](https://qnlab-ustc.github.io/SimQN/) in the meantime to understand the foundational models and architecture.
 
 ---
 

@@ -8,11 +8,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 from tap import Tap
 
-from qns.entity.qchannel import LinkArch, LinkArchDimBk, LinkArchSim, LinkArchSr
-from qns.network.network import QuantumNetwork
-from qns.network.proactive import ProactiveForwarder
-from qns.simulator import Simulator
-from qns.utils import log, set_seed
+from mqns.entity.qchannel import LinkArch, LinkArchDimBk, LinkArchSim, LinkArchSr
+from mqns.network.network import QuantumNetwork
+from mqns.network.proactive import ProactiveForwarder
+from mqns.simulator import Simulator
+from mqns.utils import log, set_seed
 
 from examples_common.topo_asymmetric_channel import build_topology
 

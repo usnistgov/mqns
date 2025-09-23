@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from tap import Tap
 
-from qns.network.network import QuantumNetwork
-from qns.network.proactive import (
+from mqns.network.network import QuantumNetwork
+from mqns.network.proactive import (
     LinkLayer,
     MuxScheme,
     MuxSchemeDynamicEpr,
@@ -17,9 +17,9 @@ from qns.network.proactive import (
     RoutingPathSingle,
     select_weighted_by_swaps,
 )
-from qns.network.topology import CustomTopology, Topology
-from qns.simulator import Simulator
-from qns.utils import log, set_seed
+from mqns.network.topology import CustomTopology, Topology
+from mqns.simulator import Simulator
+from mqns.utils import log, set_seed
 
 
 # Command line arguments

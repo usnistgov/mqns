@@ -5,11 +5,11 @@ import numpy as np
 import pandas as pd
 from tap import Tap
 
-from qns.entity.monitor import Monitor
-from qns.network.network import QuantumNetwork
-from qns.network.protocol.event import LinkArchSuccessEvent
-from qns.simulator import Event, Simulator
-from qns.utils import log, set_seed
+from mqns.entity.monitor import Monitor
+from mqns.network.network import QuantumNetwork
+from mqns.network.protocol.event import LinkArchSuccessEvent
+from mqns.simulator import Event, Simulator
+from mqns.utils import log, set_seed
 
 from examples_common.topo_3_nodes import build_topology
 

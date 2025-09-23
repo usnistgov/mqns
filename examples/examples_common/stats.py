@@ -1,5 +1,5 @@
-from qns.network.network import QuantumNetwork
-from qns.network.protocol import LinkLayer
+from mqns.network.network import QuantumNetwork
+from mqns.network.protocol import LinkLayer
 
 
 def gather_etg_decoh(net: QuantumNetwork) -> tuple[int, int, float]:

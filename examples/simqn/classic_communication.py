@@ -1,9 +1,9 @@
-from qns.entity.cchannel.cchannel import ClassicChannel, ClassicPacket, RecvClassicPacket
-from qns.entity.node.app import Application
-from qns.entity.node.node import QNode
-from qns.simulator import func_to_event
-from qns.simulator.event import Event
-from qns.simulator.simulator import Simulator
+from mqns.entity.cchannel.cchannel import ClassicChannel, ClassicPacket, RecvClassicPacket
+from mqns.entity.node.app import Application
+from mqns.entity.node.node import QNode
+from mqns.simulator import func_to_event
+from mqns.simulator.event import Event
+from mqns.simulator.simulator import Simulator
 
 
 # the send application

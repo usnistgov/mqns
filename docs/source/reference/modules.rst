@@ -1,7 +1,7 @@
-qns
-===
+mqns
+====
 
 .. toctree::
    :maxdepth: 4
 
-   qns
+   mqns

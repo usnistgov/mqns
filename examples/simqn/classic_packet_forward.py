@@ -1,14 +1,14 @@
-from qns.entity.cchannel.cchannel import ClassicChannel, ClassicPacket, RecvClassicPacket
-from qns.entity.node.app import Application
-from qns.entity.node.node import QNode
-from qns.network.network import QuantumNetwork
-from qns.network.protocol.classicforward import ClassicPacketForwardApp
-from qns.network.route.dijkstra import DijkstraRouteAlgorithm
-from qns.network.route.route import RouteImpl
-from qns.network.topology.lineartopo import LinearTopology
-from qns.network.topology.topo import ClassicTopology
-from qns.simulator.event import Event, func_to_event
-from qns.simulator.simulator import Simulator
+from mqns.entity.cchannel.cchannel import ClassicChannel, ClassicPacket, RecvClassicPacket
+from mqns.entity.node.app import Application
+from mqns.entity.node.node import QNode
+from mqns.network.network import QuantumNetwork
+from mqns.network.protocol.classicforward import ClassicPacketForwardApp
+from mqns.network.route.dijkstra import DijkstraRouteAlgorithm
+from mqns.network.route.route import RouteImpl
+from mqns.network.topology.lineartopo import LinearTopology
+from mqns.network.topology.topo import ClassicTopology
+from mqns.simulator.event import Event, func_to_event
+from mqns.simulator.simulator import Simulator
 
 
 class SendApp(Application):

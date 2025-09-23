@@ -1,7 +1,7 @@
 import numpy as np
 
-from qns.models.epr.mixed import MixedStateEntanglement
-from qns.models.qubit.gate import CNOT, RX
+from mqns.models.epr.mixed import MixedStateEntanglement
+from mqns.models.qubit.gate import CNOT, RX
 
 
 def DEJMPS(q1, q2, q3, q4):

@@ -1,6 +1,6 @@
-from qns.network.proactive import LinkLayer, ProactiveForwarder, ProactiveRoutingController, RoutingPathSingle
-from qns.network.topology.customtopo import CustomTopology, Topo
-from qns.network.topology.topo import Topology
+from mqns.network.proactive import LinkLayer, ProactiveForwarder, ProactiveRoutingController, RoutingPathSingle
+from mqns.network.topology.customtopo import CustomTopology, Topo
+from mqns.network.topology.topo import Topology
 
 
 def build_topology(

@@ -1,9 +1,9 @@
 import numpy as np
 
-from qns.entity.memory.memory import QuantumMemory
-from qns.entity.node.qnode import QNode
-from qns.models.epr import WernerStateEntanglement
-from qns.simulator.simulator import Simulator
+from mqns.entity.memory.memory import QuantumMemory
+from mqns.entity.node.qnode import QNode
+from mqns.models.epr import WernerStateEntanglement
+from mqns.simulator.simulator import Simulator
 
 
 class ErrorEntanglement(WernerStateEntanglement):

@@ -1,9 +1,9 @@
-from qns.network.network import QuantumNetwork
-from qns.network.proactive import LinkLayer, ProactiveForwarder, ProactiveRoutingController, RoutingPathMulti
-from qns.network.route import YenRouteAlgorithm
-from qns.network.topology import CustomTopology, Topology
-from qns.simulator import Simulator
-from qns.utils import log, set_seed
+from mqns.network.network import QuantumNetwork
+from mqns.network.proactive import LinkLayer, ProactiveForwarder, ProactiveRoutingController, RoutingPathMulti
+from mqns.network.route import YenRouteAlgorithm
+from mqns.network.topology import CustomTopology, Topology
+from mqns.simulator import Simulator
+from mqns.utils import log, set_seed
 
 from examples_common.stats import gather_etg_decoh
 

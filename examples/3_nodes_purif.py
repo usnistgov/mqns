@@ -2,10 +2,10 @@ import numpy as np
 import pandas as pd
 from tap import Tap
 
-from qns.network.network import QuantumNetwork
-from qns.network.proactive import ProactiveForwarder
-from qns.simulator import Simulator
-from qns.utils import log, set_seed
+from mqns.network.network import QuantumNetwork
+from mqns.network.proactive import ProactiveForwarder
+from mqns.simulator import Simulator
+from mqns.utils import log, set_seed
 
 from examples_common.topo_3_nodes import build_topology
 

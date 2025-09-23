@@ -1,10 +1,10 @@
 import numpy as np
 
-from qns.network import QuantumNetwork
-from qns.network.protocol.bb84 import BB84RecvApp, BB84SendApp
-from qns.network.topology import LineTopology
-from qns.network.topology.topo import ClassicTopology
-from qns.simulator.simulator import Simulator
+from mqns.network import QuantumNetwork
+from mqns.network.protocol.bb84 import BB84RecvApp, BB84SendApp
+from mqns.network.topology import LineTopology
+from mqns.network.topology.topo import ClassicTopology
+from mqns.simulator.simulator import Simulator
 
 light_speed = 299791458
 total_length = 100000

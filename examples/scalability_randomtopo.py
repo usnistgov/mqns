@@ -6,9 +6,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from tap import Tap
 
-from qns.entity import Controller
-from qns.network.network import QuantumNetwork
-from qns.network.proactive import (
+from mqns.entity import Controller
+from mqns.network.network import QuantumNetwork
+from mqns.network.proactive import (
     LinkLayer,
     MuxSchemeStatistical,
     ProactiveForwarder,
@@ -16,9 +16,9 @@ from qns.network.proactive import (
     QubitAllocationType,
     RoutingPathSingle,
 )
-from qns.network.topology import ClassicTopology, RandomTopology
-from qns.simulator import Simulator
-from qns.utils import log, set_seed
+from mqns.network.topology import ClassicTopology, RandomTopology
+from mqns.simulator import Simulator
+from mqns.utils import log, set_seed
 
 """
 This script measures how simulation performance and outcomes scale as the
