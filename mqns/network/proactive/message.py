@@ -2,6 +2,8 @@ from typing import Literal, TypedDict
 
 from typing_extensions import NotRequired
 
+from mqns.simulator import Time
+
 MultiplexingVector = list[tuple[int, int]]
 
 
@@ -25,6 +27,23 @@ class PathInstructions(TypedDict):
     This list shall have the same length as `route`.
     Each element represents swapping rank of the corresponding node.
     A node with smaller rank shall perform swapping before a node with larger rank.
+
+    To disable swapping, set this to a list of zeros.
+    When swapping is disabled, the forwarder will consume entanglement upon completing purification,
+    without attempting entanglement swapping.
+    """
+
+    swap_cutoff: list[int]
+    """
+    Swap cutoff time: maximum age at each swapping step.
+
+    This list shall have the same length as `swap`.
+    The i-th element corresponds to the i-th node in the `route` list.
+    Each element is a duration in time_slot unit (see `Time` class); `-1` means no restriction.
+
+    The semantics of "age" depend on the CutoffScheme passed to ProactiveForwarder.
+    Since the first and last nodes in `route` do not perform swapping, the first and last elements
+    in this list have no effect. Likewise, if swapping has been disabled, this list has no effect.
     """
 
     m_v: NotRequired[MultiplexingVector]
@@ -60,6 +79,7 @@ def make_path_instructions(
     req_id: int,
     route: list[str],
     swap: list[int],
+    swap_cutoff: list[Time | None] | None,
     m_v: MultiplexingVector | None,
     purif: dict[str, int],
 ) -> PathInstructions:
@@ -67,8 +87,11 @@ def make_path_instructions(
         "req_id": req_id,
         "route": route,
         "swap": swap,
+        "swap_cutoff": [-1] * len(swap),
         "purif": purif,
     }
+    if swap_cutoff is not None:
+        instructions["swap_cutoff"] = [-1 if t is None else t.time_slot for t in swap_cutoff]
     if m_v is not None:
         instructions["m_v"] = m_v
 
@@ -85,8 +108,14 @@ def validate_path_instructions(instructions: PathInstructions) -> None:
             return False
 
     route = instructions["route"]
-    if len(route) != len(instructions["swap"]) or len(route) == 0:
+    if len(route) == 0:
+        raise ValueError("route is empty")
+
+    if len(instructions["swap"]) != len(route):
         raise ValueError("swapping order does not match route length")
+
+    if "swap_cutoff" in instructions and len(instructions["swap_cutoff"]) != len(route):
+        raise ValueError("swap_cutoff does not match swapping order length")
 
     if "m_v" in instructions and len(instructions["m_v"]) != len(route) - 1:
         raise ValueError("multiplexing vector does not match route length")
