@@ -18,6 +18,8 @@
 from collections.abc import Callable, Iterator, Set
 from dataclasses import dataclass
 
+from mqns.simulator import Time
+
 
 @dataclass(frozen=True)
 class FibEntry:
@@ -31,6 +33,8 @@ class FibEntry:
     """Index of own node within the route."""
     swap: list[int]
     """Swap sequence."""
+    swap_cutoff: list[Time | None]
+    """Swap cutoff times."""
     purif: dict[str, int]
     """Purification scheme."""
 

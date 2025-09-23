@@ -269,6 +269,7 @@ class ProactiveForwarder(Application):
             route=route,
             own_idx=route.index(self.own.name),
             swap=instructions["swap"],
+            swap_cutoff=[None if t < 0 else simulator.time(time_slot=t) for t in instructions["swap_cutoff"]],
             purif=instructions["purif"],
         )
         self.fib.insert_or_replace(fib_entry)

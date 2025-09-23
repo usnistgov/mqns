@@ -9,6 +9,7 @@ from typing_extensions import override
 from mqns.network.network import QuantumNetwork
 from mqns.network.proactive.message import MultiplexingVector, PathInstructions, make_path_instructions
 from mqns.network.proactive.swap_sequence import parse_swap_sequence
+from mqns.simulator import Simulator, Time
 from mqns.utils import log
 
 
@@ -21,7 +22,7 @@ class QubitAllocationType(Enum):
     """Compute buffer-space multiplexing vector based on qubit-qchannel assignments."""
 
 
-def compute_mv(net: QuantumNetwork, route: list[str], qubit_allocation: QubitAllocationType) -> MultiplexingVector | None:
+def _compute_mv(net: QuantumNetwork, route: list[str], qubit_allocation: QubitAllocationType) -> MultiplexingVector | None:
     """
     Compute buffer-space multiplexing vector.
     """
@@ -38,6 +39,12 @@ def compute_mv(net: QuantumNetwork, route: list[str], qubit_allocation: QubitAll
             return [(0, 0) for _ in range(len(route) - 1)]
         case _:
             raise ValueError("unknown qubit_allocation")
+
+
+def _parse_swap_cutoff(simulator: Simulator, input: list[float] | None) -> list[Time | None] | None:
+    if input is None:
+        return None
+    return [simulator.time(sec=t) if t >= 0 else None for t in input]
 
 
 class RoutingPath(ABC):
@@ -110,12 +117,14 @@ class RoutingPathStatic(RoutingPath):
         req_id: int | None = None,
         path_id: int | None = None,
         swap: list[int] | str,
+        swap_cutoff: list[float] | None = None,
         m_v: MultiplexingVector | QubitAllocationType = QubitAllocationType.FOLLOW_QCHANNEL,
         purif: dict[str, int] = {},
     ):
         super().__init__(route[0], route[-1], req_id, path_id)
         self.route = route
         self.swap = swap
+        self.swap_cutoff = swap_cutoff
         self.m_v = m_v
         self.purif = purif
 
@@ -125,7 +134,8 @@ class RoutingPathStatic(RoutingPath):
             self.req_id,
             self.route,
             parse_swap_sequence(self.swap, self.route),
-            compute_mv(net, self.route, self.m_v) if isinstance(self.m_v, QubitAllocationType) else self.m_v,
+            _parse_swap_cutoff(net.simulator, self.swap_cutoff),
+            _compute_mv(net, self.route, self.m_v) if isinstance(self.m_v, QubitAllocationType) else self.m_v,
             self.purif,
         )
 
@@ -144,11 +154,13 @@ class RoutingPathSingle(RoutingPath):
         path_id: int | None = None,
         qubit_allocation=QubitAllocationType.FOLLOW_QCHANNEL,
         swap: list[int] | str,
+        swap_cutoff: list[float] | None = None,
         purif: dict[str, int] = {},
     ):
         super().__init__(src, dst, req_id, path_id)
         self.qubit_allocation = qubit_allocation
         self.swap = swap
+        self.swap_cutoff = swap_cutoff
         self.purif = purif
 
     @override
@@ -159,7 +171,8 @@ class RoutingPathSingle(RoutingPath):
             self.req_id,
             route,
             parse_swap_sequence(self.swap, route),
-            compute_mv(net, route, self.qubit_allocation),
+            _parse_swap_cutoff(net.simulator, self.swap_cutoff),
+            _compute_mv(net, route, self.qubit_allocation),
             self.purif,
         )
 
@@ -182,10 +195,12 @@ class RoutingPathMulti(RoutingPath):
         req_id: int | None = None,
         path_id: int | None = None,
         swap: list[int] | str,
+        swap_cutoff: list[float] | None = None,
         purif: dict[str, int] = {},
     ):
         super().__init__(src, dst, req_id, path_id)
         self.swap = swap
+        self.swap_cutoff = swap_cutoff
         self.purif = purif
 
     @override
@@ -230,6 +245,7 @@ class RoutingPathMulti(RoutingPath):
                 self.req_id,
                 route,
                 parse_swap_sequence(self.swap, route),
+                _parse_swap_cutoff(net.simulator, self.swap_cutoff),
                 m_v,
                 self.purif,
             )
