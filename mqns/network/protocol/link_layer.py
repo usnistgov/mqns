@@ -77,7 +77,7 @@ class LinkLayer(Application):
         and synchronization.
 
         Args:
-            attempt_rate: max entanglement attempts per second (default: 1e6).
+            attempt_rate: max entanglement attempts per second (default: 1e6) (currently ineffective).
             alpha_db_per_km: fiber attenuation loss in dB/km (default: 0.2).
             eta_s: source efficiency (default: 1.0).
             eta_d: detector efficiency (default: 1.0).
@@ -90,7 +90,7 @@ class LinkLayer(Application):
         super().__init__()
 
         self.attempt_interval = 1 / attempt_rate
-        """Minimum interval spaced out between attempts."""
+        """Minimum interval spaced out between attempts (currently ineffective)."""
         self.alpha_db_per_km = alpha_db_per_km
         """Fiber attenuation loss in dB/km."""
         self.eta_s = eta_s
@@ -219,9 +219,7 @@ class LinkLayer(Application):
 
     def run_active_channel(self, qchannel: QuantumChannel, path_id: int | None, next_hop: QNode):
         """
-        Start EPR generation over the given quantum channel and the specified next-hop.
-        It performs qubit reservation, and for each available qubit, an EPR creation event is scheduled
-        with a staggered delay based on EPR generation sampling.
+        Start EPR generation over the given quantum channel and the specified path_id.
 
         Args:
             qchannel: The quantum channel over which entanglement is to be attempted.
@@ -237,14 +235,12 @@ class LinkLayer(Application):
         simulator = self.simulator
         qubits = self.memory.get_channel_qubits(ch_name=qchannel.name)
         log.debug(f"{self.own}: {qchannel.name} has assigned qubits: {qubits}")
-        for i, (qb, data) in enumerate(qubits):
+        for qb, data in qubits:
             if qb.path_id != path_id or qb.state != QubitState.RAW:
                 continue
             assert qb.active is None
             assert data is None, f"{self.own}: qubit {qb} has data {data}"
-            simulator.add_event(
-                func_to_event(simulator.tc + i * self.attempt_interval, self.start_reservation, next_hop, qchannel, qb, by=self)
-            )
+            simulator.add_event(func_to_event(simulator.tc, self.start_reservation, next_hop, qchannel, qb, by=self))
 
     def start_reservation(self, next_hop: QNode, qchannel: QuantumChannel, qubit: MemoryQubit):
         """
@@ -361,6 +357,7 @@ class LinkLayer(Application):
             tau_l=qchannel.delay_model.calculate(),  # time to send photon/message one way
             tau_0=self.tau_0,
         )
+        # TODO space out EPRs on a qchannel by attempt_interval or qchannel.bandwidth
         t_epr_creation = simulator.tc + d_epr_creation
         t_notify_a = simulator.tc + (d_epr_creation + d_notify_a)
         t_notify_b = simulator.tc + (d_epr_creation + d_notify_b)
