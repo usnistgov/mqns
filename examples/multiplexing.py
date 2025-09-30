@@ -18,7 +18,7 @@ from mqns.network.proactive import (
     RoutingPathStatic,
 )
 from mqns.network.proactive.message import MultiplexingVector
-from mqns.network.topology import CustomTopology, Topology
+from mqns.network.topology.customtopo import CustomTopology, TopoCChannel, Topology, TopoQChannel, TopoQNode
 from mqns.simulator import Simulator
 from mqns.utils import log, set_seed
 
@@ -29,7 +29,8 @@ from mqns.utils import log, set_seed
 class Args(Tap):
     runs: int = 3
     json: str = ""
-    plt: str = ""
+    plt_stat: str = ""  # Statistical plot filename
+    plt_buff: str = ""  # Buffer-Space plot filename
 
 
 args = Args().parse_args()
@@ -58,6 +59,14 @@ RX_QUBITS = 32
 # ------------------------------
 # 13-node topology (A..M) with shared trunks EF and FJ
 # All quantum links 30 km
+#
+# A                         K
+#  \                       /
+# B-\                     /
+#    +E--------F--------J+--L
+# C-/         /|\         \
+#  /         / | \         \
+# D         G  H  I         M
 # ------------------------------
 KM20 = 30
 QCHANNELS = [
@@ -117,8 +126,13 @@ SCENARIOS = [
     ("4) AK+BL+CI+DH+GM", [("A", "K"), ("B", "L"), ("C", "I"), ("D", "H"), ("G", "M")]),
 ]
 
+# Flow order used by run_simulation return
+FLOW_ORDER = [("A", "K"), ("B", "L"), ("C", "I"), ("D", "H"), ("G", "M")]
+FLOW_LABELS = ["AK", "BL", "CI", "DH", "GM"]
+FLOW_IDX = {f: i for i, f in enumerate(FLOW_ORDER)}
 
-def mv_for_flow(flow, active_flows):
+
+def mv_for_flow(flow: tuple[str, str], active_flows: set[tuple[str, str]]):
     """
     Build a MultiplexingVector for one flow under Buffer-Space multiplexing,
     applying the per-link qubit allocations.
@@ -134,13 +148,13 @@ def mv_for_flow(flow, active_flows):
         # --- Buffer-space splits on contested links ---
         # EF contested:
         if pair == ("E", "F"):
-            if set(active_flows) == {("A", "K"), ("C", "I")}:
+            if active_flows == {("A", "K"), ("C", "I")}:
                 # AK+CI: 2 flows on EF -> 16@E, 25@F each
                 tx_rx = (16, 25)
-            elif set(active_flows) == {("A", "K"), ("B", "L")}:
+            elif active_flows == {("A", "K"), ("B", "L")}:
                 # AK+BL: 2 flows on EF (and also FJ elsewhere) -> 16@E, 25@F each
                 tx_rx = (16, 25)
-            elif set(active_flows) == {("A", "K"), ("C", "I"), ("D", "H")}:
+            elif active_flows == {("A", "K"), ("C", "I"), ("D", "H")}:
                 # AK+CI+DH: 3 flows on EF
                 # E: 11 (AK), 11 (CI), 10 (DH)
                 # F: 17 (AK), 17 (CI), 16 (DH)
@@ -150,7 +164,7 @@ def mv_for_flow(flow, active_flows):
                     tx_rx = (11, 17)
                 elif flow == ("D", "H"):
                     tx_rx = (10, 16)
-            elif set(active_flows) == {("A", "K"), ("B", "L"), ("C", "I"), ("D", "H"), ("G", "M")}:
+            elif active_flows == {("A", "K"), ("B", "L"), ("C", "I"), ("D", "H"), ("G", "M")}:
                 # All five: EF has 4 flows (A,B,C,D)
                 # E: 8 (AK,BL,CI,DH)
                 # F: 17 (AK,BL), 16 (CI,DH)
@@ -162,10 +176,10 @@ def mv_for_flow(flow, active_flows):
                 tx_rx = FULL_EF
         # FJ contested:
         elif pair == ("F", "J"):
-            if set(active_flows) == {("A", "K"), ("B", "L")}:
+            if active_flows == {("A", "K"), ("B", "L")}:
                 # AK+BL: 2 flows on FJ -> 16@J, 25@F each
                 tx_rx = (25, 16)  # (F side, J side)
-            elif set(active_flows) == {("A", "K"), ("B", "L"), ("C", "I"), ("D", "H"), ("G", "M")}:
+            elif active_flows == {("A", "K"), ("B", "L"), ("C", "I"), ("D", "H"), ("G", "M")}:
                 # All five: FJ has 3 flows (AK,BL,GM)
                 # F: 17 (AK,BL), 16 (GM); J: 11 (AK,BL), 10 (GM)
                 if flow in {("A", "K"), ("B", "L")}:
@@ -185,7 +199,7 @@ def build_topology(t_coherence: float, mux: MuxScheme, active_flows: list[tuple[
         # Explicit static paths with per-hop MVs
         for idx, flow in enumerate(active_flows):
             route = ROUTE[flow]
-            mvec = mv_for_flow(flow, active_flows)
+            mvec = mv_for_flow(flow, set(active_flows))
             install_paths.append(RoutingPathStatic(route, req_id=idx, path_id=idx, swap=SWAP[flow], m_v=mvec))
     else:
         # Statistical: best-effort usage; no pre-split
@@ -193,7 +207,7 @@ def build_topology(t_coherence: float, mux: MuxScheme, active_flows: list[tuple[
             s, d = flow
             install_paths.append(RoutingPathSingle(s, d, qubit_allocation=QubitAllocationType.DISABLED, swap=swapping_policy))
 
-    def _node(name, cap):
+    def _node(name, cap) -> TopoQNode:
         return {"name": name, "memory": {"decoherence_rate": 1 / t_coherence, "capacity": cap}}
 
     qnodes = (
@@ -202,26 +216,24 @@ def build_topology(t_coherence: float, mux: MuxScheme, active_flows: list[tuple[
         + [_node("E", 5 * RX_QUBITS), _node("F", 5 * TX_QUBITS), _node("J", 3 * TX_QUBITS + RX_QUBITS)]
     )
 
-    def qch(n1, n2):
+    def qch(n1, n2) -> TopoQChannel:
         if (n1, n2) in [("E", "F"), ("G", "F")]:
             return {"node1": n1, "node2": n2, "capacity1": RX_QUBITS, "capacity2": TX_QUBITS, "parameters": {"length": KM20}}
         else:
             return {"node1": n1, "node2": n2, "capacity1": TX_QUBITS, "capacity2": RX_QUBITS, "parameters": {"length": KM20}}
 
     qchannels = [qch(a, b) for (a, b) in QCHANNELS]
-    cchannels = [{"node1": a, "node2": b, "parameters": {"length": KM20}} for (a, b) in CCHANNELS] + [
-        {"node1": "ctrl", "node2": n, "parameters": {"length": 1.0}} for n in list("ABCDEFJKLMGHI")
+    cchannels = [TopoCChannel({"node1": a, "node2": b, "parameters": {"length": KM20}}) for (a, b) in CCHANNELS] + [
+        TopoCChannel({"node1": "ctrl", "node2": n, "parameters": {"length": 1.0}}) for n in list("ABCDEFJKLMGHI")
     ]
 
-    topo_dict = {
-        "qnodes": qnodes,
-        "qchannels": qchannels,
-        "cchannels": cchannels,
-        "controller": {"name": "ctrl", "apps": [ProactiveRoutingController(install_paths)]},
-    }
-
     return CustomTopology(
-        topo_dict,
+        {
+            "qnodes": qnodes,
+            "qchannels": qchannels,
+            "cchannels": cchannels,
+            "controller": {"name": "ctrl", "apps": [ProactiveRoutingController(install_paths)]},
+        },
         nodes_apps=[
             LinkLayer(
                 init_fidelity=init_fidelity,
@@ -251,41 +263,40 @@ def run_simulation(t_coherence: float, mux: MuxScheme, seed: int, active_flows: 
         fw = node.get_app(ProactiveForwarder)
         return (fw.cnt.n_consumed / sim_duration, fw.cnt.consumed_avg_fidelity)
 
-    present = {flow for flow in active_flows}
-    stats = []
-    for flow in [("A", "K"), ("B", "L"), ("C", "I"), ("D", "H"), ("G", "M")]:
-        if flow in present:
+    stats: list[tuple[float, float]] = []  # [(AK), (BL), (CI), (DH), (GM)] # disabled flows have zero stats
+    for flow in FLOW_ORDER:
+        if flow in active_flows:
             stats.append(_get_rate_fid(flow[0]))
         else:
             stats.append((0, 0))
-    return stats  # [(AK), (BL), (CI), (DH), (GM)] # disabled flows have np.nan stats
+    return stats
 
 
 # ------------------------------
 # Strategies
-strategies: dict[str, MuxScheme] = {
+STRATEGIES: dict[str, MuxScheme] = {
     "Statistical": MuxSchemeStatistical(),
     "Buffer-Space": MuxSchemeBufferSpace(),
 }
 
 # results[strategy][scenario_idx][flow_idx]
-results = {name: {i: {j: [] for j in range(5)} for i in range(len(SCENARIOS))} for name in strategies}
+results = {name: {i: {j: [] for j in range(len(FLOW_ORDER))} for i in range(len(SCENARIOS))} for name in STRATEGIES}
 
 for s_idx, (label, flows) in enumerate(SCENARIOS):
-    for strategy, mux in strategies.items():
-        flow_rates = [[] for _ in range(5)]
-        flow_fids = [[] for _ in range(5)]
+    for strategy, mux in STRATEGIES.items():
+        flow_rates = [[] for _ in range(len(FLOW_ORDER))]
+        flow_fids = [[] for _ in range(len(FLOW_ORDER))]
         for i in range(args.runs):
             print(f"{strategy}, {label}, run #{i}")
             ak, bl, ci, dh, gm = run_simulation(t_cohere, mux, SEED_BASE + i, flows)
             for idx, (rate, fid) in enumerate([ak, bl, ci, dh, gm]):
                 flow_rates[idx].append(rate)
                 flow_fids[idx].append(fid)
-        for idx in range(5):
-            mean_rate = np.nanmean(flow_rates[idx])
-            std_rate = np.nanstd(flow_rates[idx])
-            mean_fid = np.nanmean(flow_fids[idx])
-            std_fid = np.nanstd(flow_fids[idx])
+        for idx in range(len(FLOW_ORDER)):
+            mean_rate = np.mean(flow_rates[idx])
+            std_rate = np.std(flow_rates[idx])
+            mean_fid = np.mean(flow_fids[idx])
+            std_fid = np.std(flow_fids[idx])
             results[strategy][s_idx][idx].append((mean_rate, std_rate, mean_fid, std_fid))
 
 # Optional JSON dump
@@ -297,11 +308,6 @@ if args.json:
 # ==============================
 # Stacked aggregate-rate bars per strategy
 # ==============================
-
-# Flow order used by run_simulation return
-FLOW_ORDER = [("A", "K"), ("B", "L"), ("C", "I"), ("D", "H"), ("G", "M")]
-FLOW_LABELS = ["AK", "BL", "CI", "DH", "GM"]
-FLOW_IDX = {f: i for i, f in enumerate(FLOW_ORDER)}
 
 # Flow colors
 FLOW_COLORS = {
@@ -324,7 +330,7 @@ def find_alone_idx(flow: tuple[str, str]) -> int | None:
 
 
 # Find scenario indices for "1) .. 4)" by label
-scenario_1_to_4 = {}
+scenario_1_to_4: dict[int, int] = {}
 for i, (label, _) in enumerate(SCENARIOS):
     if label.startswith("1)"):
         scenario_1_to_4[1] = i
@@ -417,11 +423,10 @@ def plot_stacked_aggregate_bars(results: dict, strategy_name: str, title: str):
 fig_stack_stat = plot_stacked_aggregate_bars(results, "Statistical", "Throughput for Statistical Multiplexing (eps)")
 fig_stack_buff = plot_stacked_aggregate_bars(results, "Buffer-Space", "Throughput for Buffer-Space  Multiplexing (eps)")
 
-if args.plt:
-    base = args.plt.rsplit(".", 1)
-    out_stat = base[0] + "_aggregate_stacked_stat." + (base[1] if len(base) > 1 else "png")
-    out_buff = base[0] + "_aggregate_stacked_buffer." + (base[1] if len(base) > 1 else "png")
-    fig_stack_stat.savefig(out_stat, dpi=300, transparent=True)
-    fig_stack_buff.savefig(out_buff, dpi=300, transparent=True)
+if args.plt_stat:
+    fig_stack_stat.savefig(args.plt_stat, dpi=300, transparent=True)
+
+if args.plt_buff:
+    fig_stack_buff.savefig(args.plt_buff, dpi=300, transparent=True)
 
 plt.show()
