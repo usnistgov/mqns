@@ -120,7 +120,7 @@ class MuxSchemeBufferSpace(MuxSchemeFibBase):
         _ = new_epr
 
     @override
-    def su_parallel_avoid_conflict(self, my_new_epr: WernerStateEntanglement, su_path_id: int) -> bool:
+    def su_parallel_has_conflict(self, my_new_epr: WernerStateEntanglement, su_path_id: int) -> bool:
         assert my_new_epr.tmp_path_ids is None
         _ = su_path_id
         return False

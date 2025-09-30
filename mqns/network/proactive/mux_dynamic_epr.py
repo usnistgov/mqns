@@ -95,7 +95,7 @@ class MuxSchemeDynamicEpr(MuxSchemeDynamicBase, MuxSchemeFibBase):
         new_epr.tmp_path_ids = prev_epr.tmp_path_ids
 
     @override
-    def su_parallel_avoid_conflict(self, my_new_epr: WernerStateEntanglement, su_path_id: int) -> bool:
+    def su_parallel_has_conflict(self, my_new_epr: WernerStateEntanglement, su_path_id: int) -> bool:
         assert my_new_epr.tmp_path_ids is not None
         if su_path_id not in my_new_epr.tmp_path_ids:
             raise Exception(f"{self.own}: Unexpected conflictual parallel swapping")

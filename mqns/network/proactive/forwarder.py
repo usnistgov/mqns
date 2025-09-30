@@ -47,6 +47,8 @@ class ProactiveForwarderCounters:
         """how many swaps succeeded sequentially"""
         self.n_swapped_p = 0
         """how many swaps succeeded with parallel merging"""
+        self.n_swap_conflict = 0
+        """how many swaps were skipped due to conflictual decisions"""
         self.n_consumed = 0
         """how many entanglements were consumed (either end-to-end or in swap-disabled mode)"""
         self.consumed_sum_fidelity = 0.0
@@ -70,8 +72,9 @@ class ProactiveForwarderCounters:
     def __repr__(self) -> str:
         return (
             f"entg={self.n_entg} purif={self.n_purif} eligible={self.n_eligible} "
-            + f"swapped={self.n_swapped_s}+{self.n_swapped_p} "
-            + f"consumed={self.n_consumed} (F={self.consumed_avg_fidelity})"
+            f"swapped={self.n_swapped_s}+{self.n_swapped_p} "
+            f"swap-conflict={self.n_swap_conflict} "
+            f"consumed={self.n_consumed} (F={self.consumed_avg_fidelity})"
         )
 
 
@@ -802,7 +805,8 @@ class ProactiveForwarder(Application):
         _ = shared_epr
 
         # safety in statistical mux to avoid conflictual swappings on different paths
-        if self.mux.su_parallel_avoid_conflict(my_new_epr, msg["path_id"]):
+        if self.mux.su_parallel_has_conflict(my_new_epr, msg["path_id"]):
+            self.cnt.n_swap_conflict += 1
             return
 
         # msg["swapping_node"] is the node that performed swapping and sent this message.

@@ -14,7 +14,7 @@ from mqns.network.proactive import (
     ProactiveForwarder,
     ProactiveRoutingController,
     QubitAllocationType,
-    RoutingPathSingle,
+    RoutingPath,
     RoutingPathStatic,
 )
 from mqns.network.proactive.message import MultiplexingVector
@@ -194,25 +194,23 @@ def mv_for_flow(flow: tuple[str, str], active_flows: set[tuple[str, str]]):
 
 def build_topology(t_coherence: float, mux: MuxScheme, active_flows: list[tuple[str, str]]) -> Topology:
     # Install paths differ for buffer-space vs statistical
-    install_paths = []
+    install_paths: list[RoutingPath] = []
     if isinstance(mux, MuxSchemeBufferSpace):
         # Explicit static paths with per-hop MVs
-        for idx, flow in enumerate(active_flows):
-            route = ROUTE[flow]
-            mvec = mv_for_flow(flow, set(active_flows))
-            install_paths.append(RoutingPathStatic(route, req_id=idx, path_id=idx, swap=SWAP[flow], m_v=mvec))
+        active_flows_set = set(active_flows)
+        for flow in active_flows:
+            install_paths.append(RoutingPathStatic(ROUTE[flow], m_v=mv_for_flow(flow, active_flows_set), swap=swapping_policy))
     else:
         # Statistical: best-effort usage; no pre-split
         for flow in active_flows:
-            s, d = flow
-            install_paths.append(RoutingPathSingle(s, d, qubit_allocation=QubitAllocationType.DISABLED, swap=swapping_policy))
+            install_paths.append(RoutingPathStatic(ROUTE[flow], m_v=QubitAllocationType.DISABLED, swap=swapping_policy))
 
     def _node(name, cap) -> TopoQNode:
         return {"name": name, "memory": {"decoherence_rate": 1 / t_coherence, "capacity": cap}}
 
     qnodes = (
-        [_node(n, TX_QUBITS) for n in list("ABCD")]
-        + [_node(n, RX_QUBITS) for n in list("KLMIHG")]
+        [_node(n, TX_QUBITS) for n in "ABCD"]
+        + [_node(n, RX_QUBITS) for n in "KLMIHG"]
         + [_node("E", 5 * RX_QUBITS), _node("F", 5 * TX_QUBITS), _node("J", 3 * TX_QUBITS + RX_QUBITS)]
     )
 
@@ -222,9 +220,9 @@ def build_topology(t_coherence: float, mux: MuxScheme, active_flows: list[tuple[
         else:
             return {"node1": n1, "node2": n2, "capacity1": TX_QUBITS, "capacity2": RX_QUBITS, "parameters": {"length": KM20}}
 
-    qchannels = [qch(a, b) for (a, b) in QCHANNELS]
-    cchannels = [TopoCChannel({"node1": a, "node2": b, "parameters": {"length": KM20}}) for (a, b) in CCHANNELS] + [
-        TopoCChannel({"node1": "ctrl", "node2": n, "parameters": {"length": 1.0}}) for n in list("ABCDEFJKLMGHI")
+    qchannels = [qch(a, b) for a, b in QCHANNELS]
+    cchannels = [TopoCChannel({"node1": a, "node2": b, "parameters": {"length": KM20}}) for a, b in CCHANNELS] + [
+        TopoCChannel({"node1": "ctrl", "node2": n, "parameters": {"length": 1.0}}) for n in "ABCDEFJKLMGHI"
     ]
 
     return CustomTopology(
@@ -269,7 +267,10 @@ def run_simulation(t_coherence: float, mux: MuxScheme, seed: int, active_flows: 
             stats.append(_get_rate_fid(flow[0]))
         else:
             stats.append((0, 0))
-    return stats
+
+    total_swap_conflict = sum([node.get_app(ProactiveForwarder).cnt.n_swap_conflict for node in net.nodes])
+
+    return stats, total_swap_conflict
 
 
 # ------------------------------
@@ -287,9 +288,9 @@ for s_idx, (label, flows) in enumerate(SCENARIOS):
         flow_rates = [[] for _ in range(len(FLOW_ORDER))]
         flow_fids = [[] for _ in range(len(FLOW_ORDER))]
         for i in range(args.runs):
-            print(f"{strategy}, {label}, run #{i}")
-            ak, bl, ci, dh, gm = run_simulation(t_cohere, mux, SEED_BASE + i, flows)
-            for idx, (rate, fid) in enumerate([ak, bl, ci, dh, gm]):
+            flow_stats, total_swap_conflict = run_simulation(t_cohere, mux, SEED_BASE + i, flows)
+            print(f"{strategy}, {label}, run #{i}, swap-conflict={total_swap_conflict}")
+            for idx, (rate, fid) in enumerate(flow_stats):
                 flow_rates[idx].append(rate)
                 flow_fids[idx].append(fid)
         for idx in range(len(FLOW_ORDER)):

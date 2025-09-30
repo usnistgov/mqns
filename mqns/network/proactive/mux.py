@@ -126,14 +126,43 @@ class MuxScheme(ABC):
         next_epr: WernerStateEntanglement,
         new_epr: WernerStateEntanglement,
     ) -> None:
+        """
+        Handle a successful swap at the swapping node.
+
+        Args:
+            prev_epr: An EPR with a partner node to the left.
+            next_epr: An EPR with a partner node to the right
+            new_epr: Locally swapped EPR made from prev_epr+next_epr.
+        """
         pass
 
     @abstractmethod
-    def su_parallel_avoid_conflict(self, my_new_epr: WernerStateEntanglement, su_path_id: int) -> bool:
+    def su_parallel_has_conflict(self, my_new_epr: WernerStateEntanglement, su_path_id: int) -> bool:
+        """
+        Determine whether a parallel SWAP_UPDATE has a conflict.
+
+        Args:
+            my_new_epr: Locally swapped EPR.
+            su_path_id: The path_id chosen by another node performing paralleel swapping.
+
+        Returns:
+            If True, a conflict is detected and the SWAP_UPDATE is discarded.
+            Otherwise, the SWAP_UPDATE continues processing.
+        """
         pass
 
     @abstractmethod
     def su_parallel_succeeded(
         self, merged_epr: WernerStateEntanglement, new_epr: WernerStateEntanglement, other_epr: WernerStateEntanglement
     ) -> None:
+        """
+        Handle a successful parallel swap at the recipient of SWAP_UPDATE message.
+
+        See the diagram in `ProactiveForwarder._su_parallel` for an explanation of the arguments.
+
+        Args:
+            merged_epr: Locally merged EPR made from other_epr+new_epr.
+            new_epr: Remotely swapped EPR from the sender of SWAP_UPDATE message.
+            other_epr: An EPR between local and the other partner.
+        """
         pass

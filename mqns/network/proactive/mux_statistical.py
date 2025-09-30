@@ -186,7 +186,7 @@ class MuxSchemeStatistical(MuxSchemeDynamicBase):
         new_epr.tmp_path_ids = intersect_tmp_path_ids(prev_epr, next_epr)
 
     @override
-    def su_parallel_avoid_conflict(self, my_new_epr: WernerStateEntanglement, su_path_id: int) -> bool:
+    def su_parallel_has_conflict(self, my_new_epr: WernerStateEntanglement, su_path_id: int) -> bool:
         assert my_new_epr.tmp_path_ids is not None
         if su_path_id not in my_new_epr.tmp_path_ids:
             log.debug(f"{self.own}: Conflictual parallel swapping in statistical mux -> silently ignore")
