@@ -11,6 +11,7 @@ from mqns.models.epr import BaseEntanglement, WernerStateEntanglement
 from mqns.network.proactive.fib import FibEntry
 from mqns.network.proactive.message import PathInstructions, validate_path_instructions
 from mqns.network.proactive.mux import MuxScheme
+from mqns.network.proactive.select import select_swap_qubit
 from mqns.utils import log
 
 
@@ -167,7 +168,6 @@ class MuxSchemeStatistical(MuxSchemeDynamicBase):
     def find_swap_candidate(
         self, qubit: MemoryQubit, epr: WernerStateEntanglement, fib_entry: FibEntry | None
     ) -> tuple[MemoryQubit, FibEntry] | None:
-        _ = fib_entry
         assert qubit.qchannel is not None
 
         # find qchannels whose qubits may be used with this qubit
@@ -179,18 +179,22 @@ class MuxSchemeStatistical(MuxSchemeDynamicBase):
         }
 
         # find another qubit to swap with
-        mq1, epr1 = next(
+        found = select_swap_qubit(
+            self.fw._select_swap_qubit,
+            qubit,
+            epr,
+            fib_entry,
             self.memory.find(
                 lambda q, v: q.state == QubitState.ELIGIBLE  # in ELIGIBLE state
                 and (q.qchannel is not None and q.qchannel.name in matched_channels)  # assigned to a matched channel
                 and has_intersect_tmp_path_ids(epr.tmp_path_ids, v.tmp_path_ids),  # has overlapping tmp_path_ids
                 has_epr=True,
             ),
-            (None, None),
         )
         # TODO selection algorithm among found qubits
-        if not mq1:
-            return
+        if not found:
+            return None
+        mq1, epr1 = found
         assert isinstance(epr1, WernerStateEntanglement)
 
         chosen_path_id = random.choice(list(intersect_tmp_path_ids(epr, epr1)))

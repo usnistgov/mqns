@@ -1,14 +1,16 @@
 from abc import abstractmethod
+from collections.abc import Iterator
 
 from typing_extensions import override
 
 from mqns.entity.memory import MemoryQubit, PathDirection, QubitState
 from mqns.entity.node import QNode
 from mqns.entity.qchannel import QuantumChannel
-from mqns.models.epr import WernerStateEntanglement
+from mqns.models.epr import BaseEntanglement, WernerStateEntanglement
 from mqns.network.proactive.fib import FibEntry
 from mqns.network.proactive.message import PathInstructions, validate_path_instructions
 from mqns.network.proactive.mux import MuxScheme
+from mqns.network.proactive.select import select_swap_qubit
 from mqns.utils import log
 
 
@@ -19,13 +21,15 @@ class MuxSchemeFibBase(MuxScheme):
     ) -> tuple[MemoryQubit, FibEntry] | None:
         _ = epr
         assert fib_entry is not None
-        mq1 = self.select_eligible_qubit(qubit, fib_entry)
-        if mq1:
-            return mq1, fib_entry
-        return None
+        found = select_swap_qubit(
+            self.fw._select_swap_qubit, qubit, epr, fib_entry, self.list_swap_candidates(qubit, fib_entry)
+        )
+        if not found:
+            return None
+        return found[0], fib_entry
 
     @abstractmethod
-    def select_eligible_qubit(self, mq0: MemoryQubit, fib_entry: FibEntry) -> MemoryQubit | None:
+    def list_swap_candidates(self, mq0: MemoryQubit, fib_entry: FibEntry) -> Iterator[tuple[MemoryQubit, BaseEntanglement]]:
         pass
 
 
@@ -95,22 +99,17 @@ class MuxSchemeBufferSpace(MuxSchemeFibBase):
         self.fw.qubit_is_purif(qubit, fib_entry, neighbor)
 
     @override
-    def select_eligible_qubit(self, mq0: MemoryQubit, fib_entry: FibEntry) -> MemoryQubit | None:
+    def list_swap_candidates(self, mq0: MemoryQubit, fib_entry: FibEntry):
         assert mq0.path_id is not None
         possible_path_ids = {fib_entry.path_id}
 
-        mq1, _ = next(
-            self.memory.find(
-                lambda q, _: q.state == QubitState.ELIGIBLE  # in ELIGIBLE state
-                and q.qchannel != mq0.qchannel  # assigned to a different channel
-                and q.path_id in possible_path_ids  # allocated to the same path_id or another path_id under the same request_id
-                and q.path_direction != mq0.path_direction,  # in the opposite path direction
-                has_epr=True,
-            ),
-            (None, None),
+        return self.memory.find(
+            lambda q, _: q.state == QubitState.ELIGIBLE  # in ELIGIBLE state
+            and q.qchannel != mq0.qchannel  # assigned to a different channel
+            and q.path_id in possible_path_ids  # allocated to the same path_id or another path_id under the same request_id
+            and q.path_direction != mq0.path_direction,  # in the opposite path direction
+            has_epr=True,
         )
-        # TODO selection algorithm among found qubits
-        return mq1
 
     @override
     def swapping_succeeded(

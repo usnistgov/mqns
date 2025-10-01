@@ -1,6 +1,3 @@
-import random
-from collections.abc import Callable
-
 from typing_extensions import override
 
 from mqns.entity.memory import MemoryQubit, QubitState
@@ -9,23 +6,8 @@ from mqns.models.epr import WernerStateEntanglement
 from mqns.network.proactive.fib import FibEntry
 from mqns.network.proactive.mux_buffer_space import MuxSchemeFibBase
 from mqns.network.proactive.mux_statistical import MuxSchemeDynamicBase, has_intersect_tmp_path_ids
+from mqns.network.proactive.select import SelectPath, select_path_random
 from mqns.utils import log
-
-
-def random_path_selector(fibs: list[FibEntry]) -> FibEntry:
-    """
-    Path selection strategy: random allocation.
-    """
-    return random.choice(fibs)
-
-
-def select_weighted_by_swaps(fibs: list[FibEntry]) -> FibEntry:
-    """
-    Path selection strategy: swap-weighted allocation.
-    """
-    # Lower swaps = higher weight
-    weights = [1.0 / (1 + len(e.swap)) for e in fibs]
-    return random.choices(fibs, weights=weights, k=1)[0]
 
 
 class MuxSchemeDynamicEpr(MuxSchemeDynamicBase, MuxSchemeFibBase):
@@ -37,10 +19,10 @@ class MuxSchemeDynamicEpr(MuxSchemeDynamicBase, MuxSchemeFibBase):
         self,
         name="dynamic EPR affection",
         *,
-        path_select_fn: Callable[[list[FibEntry]], FibEntry] = random_path_selector,
+        select_path: SelectPath = select_path_random,
     ):
         super().__init__(name)
-        self.path_select_fn = path_select_fn
+        self.select_path = select_path
 
     @override
     def qubit_is_entangled(self, qubit: MemoryQubit, neighbor: QNode) -> None:
@@ -59,7 +41,7 @@ class MuxSchemeDynamicEpr(MuxSchemeDynamicBase, MuxSchemeFibBase):
             # For ease of implementation, this choice is made at either primary or secondary node,
             # whichever receives the EPR notification earlier.
             fib_entries = [self.fib.get(pid) for pid in possible_path_ids]
-            fib_entry = self.path_select_fn(fib_entries)
+            fib_entry = self.select_path(fib_entries)
             epr.tmp_path_ids = frozenset([fib_entry.path_id])
         else:
             assert len(epr.tmp_path_ids) == 1
@@ -71,20 +53,15 @@ class MuxSchemeDynamicEpr(MuxSchemeDynamicBase, MuxSchemeFibBase):
         self.fw.qubit_is_purif(qubit, fib_entry, neighbor)
 
     @override
-    def select_eligible_qubit(self, mq0: MemoryQubit, fib_entry: FibEntry) -> MemoryQubit | None:
+    def list_swap_candidates(self, mq0: MemoryQubit, fib_entry: FibEntry):
         assert mq0.path_id is None
         possible_path_ids = [fib_entry.path_id]
-        mq1, _ = next(
-            self.memory.find(
-                lambda q, v: q.state == QubitState.ELIGIBLE  # in ELIGIBLE state
-                and q.qchannel != mq0.qchannel  # assigned to a different channel
-                and has_intersect_tmp_path_ids(v.tmp_path_ids, possible_path_ids),  # has compatible path_id
-                has_epr=True,
-            ),
-            (None, None),
+        return self.memory.find(
+            lambda q, v: q.state == QubitState.ELIGIBLE  # in ELIGIBLE state
+            and q.qchannel != mq0.qchannel  # assigned to a different channel
+            and has_intersect_tmp_path_ids(v.tmp_path_ids, possible_path_ids),  # has compatible path_id
+            has_epr=True,
         )
-        # TODO selection algorithm among found qubits
-        return mq1
 
     @override
     def swapping_succeeded(

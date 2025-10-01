@@ -30,6 +30,11 @@ from mqns.network.proactive.fib import Fib, FibEntry
 from mqns.network.proactive.message import InstallPathMsg, PurifResponseMsg, PurifSolicitMsg, SwapUpdateMsg, UninstallPathMsg
 from mqns.network.proactive.mux import MuxScheme
 from mqns.network.proactive.mux_buffer_space import MuxSchemeBufferSpace
+from mqns.network.proactive.select import (
+    SelectPurifQubit,
+    SelectSwapQubit,
+    select_purif_qubit,
+)
 from mqns.network.protocol.event import ManageActiveChannels, QubitEntangledEvent, QubitReleasedEvent
 from mqns.simulator import Simulator
 from mqns.utils import log
@@ -90,6 +95,8 @@ class ProactiveForwarder(Application):
         *,
         ps: float = 1.0,
         mux: MuxScheme = MuxSchemeBufferSpace(),
+        select_purif_qubit: SelectPurifQubit = None,
+        select_swap_qubit: SelectSwapQubit = None,
     ):
         """
         This constructor sets up a node's entanglement forwarding logic in a quantum network.
@@ -109,6 +116,8 @@ class ProactiveForwarder(Application):
         """Probability of successful entanglement swapping."""
         self.mux = deepcopy(mux)
         """Multiplexing scheme."""
+        self._select_purif_qubit = select_purif_qubit
+        self._select_swap_qubit = select_swap_qubit
 
         self.fib = Fib()
         """FIB structure."""
@@ -431,7 +440,11 @@ class ProactiveForwarder(Application):
             log.debug(f"{self.own}: is not primary node for segment {segment_name} purif")
             return
 
-        mq1, _ = next(
+        found = select_purif_qubit(
+            self._select_purif_qubit,
+            qubit,
+            fib_entry,
+            partner,
             self.memory.find(
                 lambda q, v: q.addr != qubit.addr  # not the same qubit
                 and q.state == QubitState.PURIF  # in PURIF state
@@ -440,14 +453,12 @@ class ProactiveForwarder(Application):
                 and q.path_id == fib_entry.path_id,  # on the same path_id
                 has_epr=True,
             ),
-            (None, None),
         )
-        # TODO selection algorithm among found qubits
-        if not mq1:
+        if not found:
             log.debug(f"{self.own}: no candidate EPR for segment {segment_name} purif round {1 + qubit.purif_rounds}")
             return
 
-        self._send_purif_solicit(qubit, mq1, fib_entry, partner)
+        self._send_purif_solicit(qubit, found[0], fib_entry, partner)
 
     def _send_purif_solicit(self, mq0: MemoryQubit, mq1: MemoryQubit, fib_entry: FibEntry, partner: QNode):
         """
