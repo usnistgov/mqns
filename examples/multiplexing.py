@@ -407,6 +407,7 @@ def plot_stacked_aggregate_bars(results: dict, strategy_name: str, title: str):
         bottoms += vals
 
     ax.set_xticks(x, bar_labels)
+    ax.set_xticklabels(bar_labels, rotation=30, ha="right")
     ax.set_ylabel("E2E rate (eps)")
     ax.set_title(title)
     ax.grid(True, axis="y", alpha=0.3)
