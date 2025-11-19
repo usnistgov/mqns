@@ -30,11 +30,7 @@ from mqns.network.proactive.fib import Fib, FibEntry
 from mqns.network.proactive.message import InstallPathMsg, PurifResponseMsg, PurifSolicitMsg, SwapUpdateMsg, UninstallPathMsg
 from mqns.network.proactive.mux import MuxScheme
 from mqns.network.proactive.mux_buffer_space import MuxSchemeBufferSpace
-from mqns.network.proactive.select import (
-    SelectPurifQubit,
-    SelectSwapQubit,
-    select_purif_qubit,
-)
+from mqns.network.proactive.select import MemoryWernerIterator, SelectPurifQubit, SelectSwapQubit, select_purif_qubit
 from mqns.network.protocol.event import ManageActiveChannels, QubitEntangledEvent, QubitReleasedEvent
 from mqns.simulator import Simulator
 from mqns.utils import log
@@ -440,19 +436,20 @@ class ProactiveForwarder(Application):
             log.debug(f"{self.own}: is not primary node for segment {segment_name} purif")
             return
 
+        candidates = self.memory.find(
+            lambda q, v: q.addr != qubit.addr  # not the same qubit
+            and q.state == QubitState.PURIF  # in PURIF state
+            and q.purif_rounds == qubit.purif_rounds  # with same number of purif rounds
+            and partner in (v.src, v.dst)  # with the same partner
+            and q.path_id == fib_entry.path_id,  # on the same path_id
+            has_epr=True,
+        )
         found = select_purif_qubit(
             self._select_purif_qubit,
             qubit,
             fib_entry,
             partner,
-            self.memory.find(
-                lambda q, v: q.addr != qubit.addr  # not the same qubit
-                and q.state == QubitState.PURIF  # in PURIF state
-                and q.purif_rounds == qubit.purif_rounds  # with same number of purif rounds
-                and partner in (v.src, v.dst)  # with the same partner
-                and q.path_id == fib_entry.path_id,  # on the same path_id
-                has_epr=True,
-            ),
+            cast(MemoryWernerIterator, candidates),
         )
         if not found:
             log.debug(f"{self.own}: no candidate EPR for segment {segment_name} purif round {1 + qubit.purif_rounds}")
@@ -632,7 +629,12 @@ class ProactiveForwarder(Application):
             self.consume_and_release(qubit)
             return
 
-        swap_candidate_tuple = self.mux.find_swap_candidate(qubit, epr, fib_entry)
+        swap_candidates = self.memory.find(
+            lambda q, _: q.state == QubitState.ELIGIBLE  # in ELIGIBLE state
+            and q.qchannel != qubit.qchannel,  # assigned to a different channel
+            has_epr=True,
+        )
+        swap_candidate_tuple = self.mux.find_swap_candidate(qubit, epr, fib_entry, cast(MemoryWernerIterator, swap_candidates))
         if swap_candidate_tuple:
             mq1, fib_entry = swap_candidate_tuple
             self.do_swapping(qubit, mq1, fib_entry)

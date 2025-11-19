@@ -1,35 +1,34 @@
 from abc import abstractmethod
-from collections.abc import Iterator
 
 from typing_extensions import override
 
 from mqns.entity.memory import MemoryQubit, PathDirection, QubitState
 from mqns.entity.node import QNode
 from mqns.entity.qchannel import QuantumChannel
-from mqns.models.epr import BaseEntanglement, WernerStateEntanglement
+from mqns.models.epr import WernerStateEntanglement
 from mqns.network.proactive.fib import FibEntry
 from mqns.network.proactive.message import PathInstructions, validate_path_instructions
 from mqns.network.proactive.mux import MuxScheme
-from mqns.network.proactive.select import select_swap_qubit
+from mqns.network.proactive.select import MemoryWernerIterator, select_swap_qubit
 from mqns.utils import log
 
 
 class MuxSchemeFibBase(MuxScheme):
     @override
     def find_swap_candidate(
-        self, qubit: MemoryQubit, epr: WernerStateEntanglement, fib_entry: FibEntry | None
+        self, qubit: MemoryQubit, epr: WernerStateEntanglement, fib_entry: FibEntry | None, input: MemoryWernerIterator
     ) -> tuple[MemoryQubit, FibEntry] | None:
         _ = epr
         assert fib_entry is not None
         found = select_swap_qubit(
-            self.fw._select_swap_qubit, qubit, epr, fib_entry, self.list_swap_candidates(qubit, fib_entry)
+            self.fw._select_swap_qubit, qubit, epr, fib_entry, self.list_swap_candidates(qubit, fib_entry, input)
         )
         if not found:
             return None
         return found[0], fib_entry
 
     @abstractmethod
-    def list_swap_candidates(self, mq0: MemoryQubit, fib_entry: FibEntry) -> Iterator[tuple[MemoryQubit, BaseEntanglement]]:
+    def list_swap_candidates(self, mq0: MemoryQubit, fib_entry: FibEntry, input: MemoryWernerIterator) -> MemoryWernerIterator:
         pass
 
 
@@ -99,16 +98,15 @@ class MuxSchemeBufferSpace(MuxSchemeFibBase):
         self.fw.qubit_is_purif(qubit, fib_entry, neighbor)
 
     @override
-    def list_swap_candidates(self, mq0: MemoryQubit, fib_entry: FibEntry):
+    def list_swap_candidates(self, mq0: MemoryQubit, fib_entry: FibEntry, input: MemoryWernerIterator):
         assert mq0.path_id is not None
         possible_path_ids = {fib_entry.path_id}
 
-        return self.memory.find(
-            lambda q, _: q.state == QubitState.ELIGIBLE  # in ELIGIBLE state
-            and q.qchannel != mq0.qchannel  # assigned to a different channel
-            and q.path_id in possible_path_ids  # allocated to the same path_id or another path_id under the same request_id
-            and q.path_direction != mq0.path_direction,  # in the opposite path direction
-            has_epr=True,
+        return (
+            (q, v)
+            for (q, v) in input
+            if q.path_id in possible_path_ids  # allocated to the same path_id or another path_id under the same request_id
+            and q.path_direction != mq0.path_direction  # in the opposite path direction
         )
 
     @override

@@ -11,7 +11,7 @@ from mqns.models.epr import BaseEntanglement, WernerStateEntanglement
 from mqns.network.proactive.fib import FibEntry
 from mqns.network.proactive.message import PathInstructions, validate_path_instructions
 from mqns.network.proactive.mux import MuxScheme
-from mqns.network.proactive.select import select_swap_qubit
+from mqns.network.proactive.select import MemoryWernerIterator, select_swap_qubit
 from mqns.utils import log
 
 
@@ -166,7 +166,7 @@ class MuxSchemeStatistical(MuxSchemeDynamicBase):
 
     @override
     def find_swap_candidate(
-        self, qubit: MemoryQubit, epr: WernerStateEntanglement, fib_entry: FibEntry | None
+        self, qubit: MemoryQubit, epr: WernerStateEntanglement, fib_entry: FibEntry | None, input: MemoryWernerIterator
     ) -> tuple[MemoryQubit, FibEntry] | None:
         assert qubit.qchannel is not None
 
@@ -179,19 +179,13 @@ class MuxSchemeStatistical(MuxSchemeDynamicBase):
         }
 
         # find another qubit to swap with
-        found = select_swap_qubit(
-            self.fw._select_swap_qubit,
-            qubit,
-            epr,
-            fib_entry,
-            self.memory.find(
-                lambda q, v: q.state == QubitState.ELIGIBLE  # in ELIGIBLE state
-                and (q.qchannel is not None and q.qchannel.name in matched_channels)  # assigned to a matched channel
-                and has_intersect_tmp_path_ids(epr.tmp_path_ids, v.tmp_path_ids),  # has overlapping tmp_path_ids
-                has_epr=True,
-            ),
+        candidates = (
+            (q, v)
+            for (q, v) in input
+            if (q.qchannel is not None and q.qchannel.name in matched_channels)  # assigned to a matched channel
+            and has_intersect_tmp_path_ids(epr.tmp_path_ids, v.tmp_path_ids)  # has overlapping tmp_path_ids
         )
-        # TODO selection algorithm among found qubits
+        found = select_swap_qubit(self.fw._select_swap_qubit, qubit, epr, fib_entry, candidates)
         if not found:
             return None
         mq1, epr1 = found

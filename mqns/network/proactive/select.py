@@ -1,16 +1,18 @@
 import random
 from collections.abc import Callable, Iterator
-from typing import cast
 
 from mqns.entity.memory import MemoryQubit
 from mqns.entity.node import QNode
-from mqns.models.epr import BaseEntanglement, WernerStateEntanglement
+from mqns.models.epr import WernerStateEntanglement
 from mqns.network.proactive.fib import FibEntry
+
+MemoryWernerTuple = tuple[MemoryQubit, WernerStateEntanglement]
+MemoryWernerIterator = Iterator[MemoryWernerTuple]
 
 SelectPurifQubit = (
     Callable[
-        [MemoryQubit, FibEntry, QNode, list[tuple[MemoryQubit, WernerStateEntanglement]]],
-        tuple[MemoryQubit, WernerStateEntanglement],
+        [MemoryQubit, FibEntry, QNode, list[MemoryWernerTuple]],
+        MemoryWernerTuple,
     ]
     | None
 )
@@ -25,9 +27,8 @@ def select_purif_qubit(
     qubit: MemoryQubit,
     fib_entry: FibEntry,
     partner: QNode,
-    candidates: Iterator[tuple[MemoryQubit, BaseEntanglement]],
-) -> tuple[MemoryQubit, WernerStateEntanglement] | None:
-    candidates = cast(Iterator[tuple[MemoryQubit, WernerStateEntanglement]], candidates)
+    candidates: MemoryWernerIterator,
+) -> MemoryWernerTuple | None:
     if fn is None:
         return next(candidates, None)
     l = list(candidates)
@@ -40,16 +41,16 @@ def select_purif_qubit_random(
     qubit: MemoryQubit,
     fib_entry: FibEntry,
     partner: QNode,
-    candidates: list[tuple[MemoryQubit, WernerStateEntanglement]],
-) -> tuple[MemoryQubit, WernerStateEntanglement]:
+    candidates: list[MemoryWernerTuple],
+) -> MemoryWernerTuple:
     _ = qubit, fib_entry, partner
     return random.choice(candidates)
 
 
 SelectSwapQubit = (
     Callable[
-        [MemoryQubit, WernerStateEntanglement, FibEntry | None, list[tuple[MemoryQubit, WernerStateEntanglement]]],
-        tuple[MemoryQubit, WernerStateEntanglement],
+        [MemoryQubit, WernerStateEntanglement, FibEntry | None, list[MemoryWernerTuple]],
+        MemoryWernerTuple,
     ]
     | None
 )
@@ -64,9 +65,8 @@ def select_swap_qubit(
     qubit: MemoryQubit,
     epr: WernerStateEntanglement,
     fib_entry: FibEntry | None,
-    candidates: Iterator[tuple[MemoryQubit, BaseEntanglement]],
-) -> tuple[MemoryQubit, WernerStateEntanglement] | None:
-    candidates = cast(Iterator[tuple[MemoryQubit, WernerStateEntanglement]], candidates)
+    candidates: MemoryWernerIterator,
+) -> MemoryWernerTuple | None:
     if fn is None:
         return next(candidates, None)
     l = list(candidates)
@@ -79,8 +79,8 @@ def select_swap_qubit_random(
     qubit: MemoryQubit,
     epr: WernerStateEntanglement,
     fib_entry: FibEntry | None,
-    candidates: list[tuple[MemoryQubit, WernerStateEntanglement]],
-) -> tuple[MemoryQubit, WernerStateEntanglement]:
+    candidates: list[MemoryWernerTuple],
+) -> MemoryWernerTuple:
     _ = qubit, epr, fib_entry
     return random.choice(candidates)
 
