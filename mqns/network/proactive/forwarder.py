@@ -26,6 +26,7 @@ from mqns.entity.memory import MemoryQubit, PathDirection, QubitState
 from mqns.entity.node import Application, Node, QNode
 from mqns.models.epr import WernerStateEntanglement
 from mqns.network.network import TimingPhase, TimingPhaseEvent
+from mqns.network.proactive.cutoff import CutoffScheme, CutoffSchemeWaitTime
 from mqns.network.proactive.fib import Fib, FibEntry
 from mqns.network.proactive.message import InstallPathMsg, PurifResponseMsg, PurifSolicitMsg, SwapUpdateMsg, UninstallPathMsg
 from mqns.network.proactive.mux import MuxScheme
@@ -90,6 +91,7 @@ class ProactiveForwarder(Application):
         self,
         *,
         ps: float = 1.0,
+        cutoff: CutoffScheme = CutoffSchemeWaitTime(),
         mux: MuxScheme = MuxSchemeBufferSpace(),
         select_purif_qubit: SelectPurifQubit = None,
         select_swap_qubit: SelectSwapQubit = None,
@@ -102,14 +104,16 @@ class ProactiveForwarder(Application):
 
         Args:
             ps: Probability of successful entanglement swapping (default: 1.0).
+            cutoff: EPR age cut-off scheme (default: wait-time).
             mux: Path multiplexing scheme (default: buffer-space).
-            but serving the same S-D request.
         """
         super().__init__()
 
         assert 0.0 <= ps <= 1.0
         self.ps = ps
         """Probability of successful entanglement swapping."""
+        self.cutoff = deepcopy(cutoff)
+        """EPR age cut-off scheme."""
         self.mux = deepcopy(mux)
         """Multiplexing scheme."""
         self._select_purif_qubit = select_purif_qubit
@@ -133,7 +137,7 @@ class ProactiveForwarder(Application):
         """
         SwapUpdates received prior to QubitEntangledEvent.
         Key: MemoryQubit addr.
-        Value: SwapUpdateMsg and FIBEntry.
+        Value: SwapUpdateMsg and FibEntry.
         """
 
         self.parallel_swappings: dict[
@@ -167,6 +171,7 @@ class ProactiveForwarder(Application):
         self.own = self.get_node(node_type=QNode)
         self.memory = self.own.get_memory()
         self.net = self.own.network
+        self.cutoff.fw = self
         self.mux.fw = self
 
     def handle_sync_phase(self, event: TimingPhaseEvent):
@@ -252,7 +257,7 @@ class ProactiveForwarder(Application):
         Process an install_path message containing routing instructions from the controller.
 
         1. Insert FIB entry.
-        2. Identity neighbors and qchannels.
+        2. Identify neighbors and qchannels.
         3. Save the path and neighbors in the multiplexing scheme.
         4. Notify LinkLayer to start elementary EPR generation toward the right neighbor.
         """
@@ -609,7 +614,7 @@ class ProactiveForwarder(Application):
 
         If this is an end node of the path, consume the EPR.
 
-        Otherwise, attempt entanglement swapping:
+        Otherwise, update the EPR age cut-off scheme, and then attempt entanglement swapping:
 
         1. Look for a matching eligible qubit to perform swapping.
         2. Generate a new EPR if successful.
@@ -630,9 +635,12 @@ class ProactiveForwarder(Application):
             self.consume_and_release(qubit)
             return
 
+        self.cutoff.qubit_is_eligible(qubit, fib_entry)
+
         swap_candidates = self.memory.find(
             lambda q, _: q.state == QubitState.ELIGIBLE  # in ELIGIBLE state
-            and q.qchannel != qubit.qchannel,  # assigned to a different channel
+            and q.qchannel != qubit.qchannel  # assigned to a different channel
+            and self.cutoff.filter_swap_candidate(q),
             has_epr=True,
         )
         swap_candidate_tuple = self.mux.find_swap_candidate(qubit, epr, fib_entry, cast(MemoryWernerIterator, swap_candidates))

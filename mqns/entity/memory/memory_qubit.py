@@ -19,7 +19,7 @@
 from enum import Enum, auto
 from typing import TYPE_CHECKING
 
-from mqns.simulator import Event
+from mqns.simulator import Event, Time
 
 if TYPE_CHECKING:
     from mqns.entity.qchannel import QuantumChannel
@@ -120,6 +120,8 @@ class MemoryQubit:
         """Reservation key if qubit is reserved for entanglement, None otherwise"""
         self.purif_rounds = 0
         """Number of purification rounds currently completed by the EPR stored on this qubit"""
+        self.cutoff: tuple[Time, Time] | None = None
+        """Timestamps used by CutoffScheme"""
 
         self._events: dict[type, Event] = {}
 
