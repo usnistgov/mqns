@@ -1,4 +1,5 @@
 from mqns.network.proactive.controller import ProactiveRoutingController
+from mqns.network.proactive.cutoff import CutoffScheme, CutoffSchemeWaitTime, CutoffSchemeWernerAge
 from mqns.network.proactive.forwarder import ProactiveForwarder
 from mqns.network.proactive.mux import MuxScheme
 from mqns.network.proactive.mux_buffer_space import MuxSchemeBufferSpace
@@ -23,6 +24,9 @@ from mqns.network.proactive.select import (
 from mqns.network.protocol.link_layer import LinkLayer
 
 __all__ = [
+    "CutoffScheme",
+    "CutoffSchemeWaitTime",
+    "CutoffSchemeWernerAge",
     "LinkLayer",  # re-export for convenience
     "MuxScheme",
     "MuxSchemeBufferSpace",
