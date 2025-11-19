@@ -1,5 +1,6 @@
 import math
 from collections.abc import Callable
+from copy import deepcopy
 from typing import Any
 
 import pytest
@@ -29,12 +30,12 @@ from mqns.utils import log
 
 init_fidelity = 0.90
 
-qchannel_args = QuantumChannelInitKwargs(
+dflt_qchannel_args = QuantumChannelInitKwargs(
     length=100,  # delay is 0.0005 seconds
     link_arch=LinkArchAlways(LinkArchDimBk()),  # entanglement in 0.002 seconds
 )
 
-cchannel_args = ClassicChannelInitKwargs(
+dflt_cchannel_args = ClassicChannelInitKwargs(
     length=100,  # delay is 0.0005 seconds
 )
 
@@ -65,6 +66,8 @@ def build_linear_network(
     n_nodes: int,
     *,
     qchannel_capacity=1,
+    qchannel_args=dflt_qchannel_args,
+    cchannel_args=dflt_cchannel_args,
     mux: MuxScheme = MuxSchemeBufferSpace(),
     end_time=10.0,
     timing: TimingMode = TimingModeAsync(),
@@ -85,6 +88,8 @@ def build_linear_network(
 def build_dumbbell_network(
     *,
     qchannel_capacity=1,
+    qchannel_args=dflt_qchannel_args,
+    cchannel_args=dflt_cchannel_args,
     mux: MuxScheme = MuxSchemeBufferSpace(),
     end_time=10.0,
     timing: TimingMode = TimingModeAsync(),
@@ -115,6 +120,8 @@ def build_dumbbell_network(
 def build_rect_network(
     *,
     qchannel_capacity=1,
+    qchannel_args=dflt_qchannel_args,
+    cchannel_args=dflt_cchannel_args,
     mux: MuxScheme = MuxSchemeBufferSpace(),
     end_time=10.0,
     timing: TimingMode = TimingModeAsync(),
@@ -481,6 +488,35 @@ def test_swap_mp():
     assert f3.cnt.n_swapped > 4000
     # swapped EPRs are consumed, capacity=8 is twice of qchannel_capacity because there are two paths
     check_e2e_consumed(f1, f4, n_swaps=f2.cnt.n_swapped + f3.cnt.n_swapped, swap_balanced=True, capacity=8)
+
+
+def test_cutoff_waittime():
+    """Test 5-repeater swapping with wait-time cutoff."""
+    qchannel_args = deepcopy(dflt_qchannel_args)
+    qchannel_args["link_arch"] = LinkArchDimBk()
+    net, simulator = build_linear_network(7, qchannel_capacity=1, qchannel_args=qchannel_args, end_time=300)
+    ctrl = net.get_controller().get_app(ProactiveRoutingController)
+    f1 = net.get_node("n1").get_app(ProactiveForwarder)
+    f2 = net.get_node("n2").get_app(ProactiveForwarder)
+    f3 = net.get_node("n3").get_app(ProactiveForwarder)
+    f4 = net.get_node("n4").get_app(ProactiveForwarder)
+    f5 = net.get_node("n5").get_app(ProactiveForwarder)
+    f6 = net.get_node("n6").get_app(ProactiveForwarder)
+    f7 = net.get_node("n7").get_app(ProactiveForwarder)
+
+    install_path(ctrl, RoutingPathSingle("n1", "n7", swap=[3, 0, 1, 0, 2, 0, 3], swap_cutoff=[0.5] * 7))
+    simulator.run()
+
+    for fw in (f1, f2, f3, f4, f5, f6, f7):
+        print(fw.own.name, fw.cnt)
+
+    assert f1.cnt.n_swap_cutoff[0] == 0
+    assert f7.cnt.n_swap_cutoff[0] == 0
+    assert f2.cnt.n_swap_cutoff[1] == 0
+    assert f4.cnt.n_swap_cutoff[1] == 0
+    assert f6.cnt.n_swap_cutoff[1] == 0
+    assert f2.cnt.n_swap_cutoff[0] + f4.cnt.n_swap_cutoff[0] + f6.cnt.n_swap_cutoff[0] > 0
+    assert f1.cnt.n_swap_cutoff[1] + f3.cnt.n_swap_cutoff[1] + f5.cnt.n_swap_cutoff[1] + f7.cnt.n_swap_cutoff[1] > 0
 
 
 def test_purif_link1r():
