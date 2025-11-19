@@ -45,6 +45,12 @@ class ProactiveForwarderCounters:
         """how many entanglements completed i-th purif round (zero-based index)"""
         self.n_eligible = 0
         """how many entanglements completed all purif rounds and became eligible"""
+        self.n_swap_cutoff = [0, 0]
+        """
+        how many eligible entanglements are discarded due to exceeding swap_cutoff
+        [0]: cut-off exceeded locally
+        [1]: cut-off exceeded on partner forwarder
+        """
         self.n_swapped_s = 0
         """how many swaps succeeded sequentially"""
         self.n_swapped_p = 0
@@ -73,7 +79,8 @@ class ProactiveForwarderCounters:
 
     def __repr__(self) -> str:
         return (
-            f"entg={self.n_entg} purif={self.n_purif} eligible={self.n_eligible} "
+            f"entg={self.n_entg} purif={self.n_purif} "
+            f"eligible={self.n_eligible} swap-cutoff={self.n_swap_cutoff} "
             f"swapped={self.n_swapped_s}+{self.n_swapped_p} "
             f"swap-conflict={self.n_swap_conflict} "
             f"consumed={self.n_consumed} (F={self.consumed_avg_fidelity})"
@@ -662,6 +669,8 @@ class ProactiveForwarder(Application):
         assert mq0.addr != mq1.addr
         assert mq0.state == QubitState.ELIGIBLE
         assert mq1.state == QubitState.ELIGIBLE
+        self.cutoff.take_qubit(mq0)
+        self.cutoff.take_qubit(mq1)
 
         # Read both qubits and remove them from memory.
         #
