@@ -19,6 +19,8 @@
 from enum import Enum, auto
 from typing import TYPE_CHECKING
 
+from mqns.simulator import Event
+
 if TYPE_CHECKING:
     from mqns.entity.qchannel import QuantumChannel
 
@@ -119,6 +121,8 @@ class MemoryQubit:
         self.purif_rounds = 0
         """Number of purification rounds currently completed by the EPR stored on this qubit"""
 
+        self._events: dict[type, Event] = {}
+
     def assign(self, ch: "QuantumChannel") -> None:
         self.qchannel = ch
 
@@ -144,12 +148,34 @@ class MemoryQubit:
         if value not in ALLOWED_STATE_TRANSITIONS[self._state]:
             raise ValueError(f"MemoryQubit: unexpected state transition from <{self._state}> to <{value}>; {self}")
         self._state = value
+        if value == QubitState.RELEASE:
+            self._clear_events()
 
     def reset_state(self) -> None:
         """Reset state to RAW and clear associated fields."""
         self._state = QubitState.RAW
         self.active = None
         self.purif_rounds = 0
+        self._clear_events()
+
+    def set_event(self, owner: type, new_event: Event | None) -> None:
+        """
+        Associate an event with the qubit that would be canceled upon entering RELEASE state.
+
+        Args:
+            owner: Owner type, such as `QuantumMemory`. Existing event of the same owner is canceled.
+            new_event: New event to store, or `None` to cancel existing event only.
+        """
+        old_event = self._events.pop(owner, None)
+        if old_event is not None:
+            old_event.cancel()
+        if new_event is not None and not new_event.is_canceled:
+            self._events[owner] = new_event
+
+    def _clear_events(self):
+        for old_event in self._events.values():
+            old_event.cancel()
+        self._events.clear()
 
     def __repr__(self) -> str:
         return (
