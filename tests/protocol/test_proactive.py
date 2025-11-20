@@ -510,13 +510,13 @@ def test_cutoff_waittime():
     for fw in (f1, f2, f3, f4, f5, f6, f7):
         print(fw.own.name, fw.cnt)
 
-    assert f1.cnt.n_swap_cutoff[0] == 0
-    assert f7.cnt.n_swap_cutoff[0] == 0
-    assert f2.cnt.n_swap_cutoff[1] == 0
-    assert f4.cnt.n_swap_cutoff[1] == 0
-    assert f6.cnt.n_swap_cutoff[1] == 0
-    assert f2.cnt.n_swap_cutoff[0] + f4.cnt.n_swap_cutoff[0] + f6.cnt.n_swap_cutoff[0] > 0
-    assert f1.cnt.n_swap_cutoff[1] + f3.cnt.n_swap_cutoff[1] + f5.cnt.n_swap_cutoff[1] + f7.cnt.n_swap_cutoff[1] > 0
+    assert f1.cnt.n_cutoff[0] == 0
+    assert f7.cnt.n_cutoff[0] == 0
+    assert f2.cnt.n_cutoff[1] == 0
+    assert f4.cnt.n_cutoff[1] == 0
+    assert f6.cnt.n_cutoff[1] == 0
+    assert f2.cnt.n_cutoff[0] + f4.cnt.n_cutoff[0] + f6.cnt.n_cutoff[0] > 0
+    assert f1.cnt.n_cutoff[1] + f3.cnt.n_cutoff[1] + f5.cnt.n_cutoff[1] + f7.cnt.n_cutoff[1] > 0
 
 
 def test_purif_link1r():

@@ -28,7 +28,14 @@ from mqns.models.epr import WernerStateEntanglement
 from mqns.network.network import TimingPhase, TimingPhaseEvent
 from mqns.network.proactive.cutoff import CutoffScheme, CutoffSchemeWaitTime
 from mqns.network.proactive.fib import Fib, FibEntry
-from mqns.network.proactive.message import InstallPathMsg, PurifResponseMsg, PurifSolicitMsg, SwapUpdateMsg, UninstallPathMsg
+from mqns.network.proactive.message import (
+    CutoffDiscardMsg,
+    InstallPathMsg,
+    PurifResponseMsg,
+    PurifSolicitMsg,
+    SwapUpdateMsg,
+    UninstallPathMsg,
+)
 from mqns.network.proactive.mux import MuxScheme
 from mqns.network.proactive.mux_buffer_space import MuxSchemeBufferSpace
 from mqns.network.proactive.select import MemoryWernerIterator, SelectPurifQubit, SelectSwapQubit, select_purif_qubit
@@ -45,12 +52,6 @@ class ProactiveForwarderCounters:
         """how many entanglements completed i-th purif round (zero-based index)"""
         self.n_eligible = 0
         """how many entanglements completed all purif rounds and became eligible"""
-        self.n_swap_cutoff = [0, 0]
-        """
-        how many eligible entanglements are discarded due to exceeding swap_cutoff
-        [0]: cut-off exceeded locally
-        [1]: cut-off exceeded on partner forwarder
-        """
         self.n_swapped_s = 0
         """how many swaps succeeded sequentially"""
         self.n_swapped_p = 0
@@ -61,11 +62,25 @@ class ProactiveForwarderCounters:
         """how many entanglements were consumed (either end-to-end or in swap-disabled mode)"""
         self.consumed_sum_fidelity = 0.0
         """sum of fidelity of consumed entanglements"""
+        self.n_cutoff = [0, 0]
+        """
+        how many entanglements are discarded by CutoffScheme
+        [0]: swap_cutoff exceeded locally
+        [1]: swap_cutoff exceeded on partner forwarder
+        [2r+0]: purif_cutoff[r] exceeded locally
+        [2r+1]: purif_cutoff[r] exceeded on partner forwarder
+        """
 
     def increment_n_purif(self, i: int):
         if len(self.n_purif) <= i:
             self.n_purif += [0] * (i + 1 - len(self.n_purif))
         self.n_purif[i] += 1
+
+    def increment_n_cutoff(self, round: int, local: bool):
+        minlen = 2 * (round + 1)
+        if len(self.n_cutoff) < minlen:
+            self.n_cutoff += [0] * (minlen - len(self.n_cutoff))
+        self.n_cutoff[2 * round + (0 if local else 1)] += 1
 
     @property
     def n_swapped(self) -> int:
@@ -79,10 +94,9 @@ class ProactiveForwarderCounters:
 
     def __repr__(self) -> str:
         return (
-            f"entg={self.n_entg} purif={self.n_purif} "
-            f"eligible={self.n_eligible} swap-cutoff={self.n_swap_cutoff} "
+            f"entg={self.n_entg} purif={self.n_purif} eligible={self.n_eligible} "
             f"swapped={self.n_swapped_s}+{self.n_swapped_p} "
-            f"swap-conflict={self.n_swap_conflict} "
+            f"swap-conflict={self.n_swap_conflict} cutoff-discard={self.n_cutoff} "
             f"consumed={self.n_consumed} (F={self.consumed_avg_fidelity})"
         )
 
@@ -364,6 +378,12 @@ class ProactiveForwarder(Application):
             )
 
     CLASSIC_CONTROL_HANDLERS["uninstall_path"] = handle_uninstall_path
+
+    def _handle_cutoff_discard(self, msg: CutoffDiscardMsg, fib_entry: FibEntry):
+        _ = fib_entry
+        self.cutoff.handle_discard(msg)
+
+    CLASSIC_SIGNALING_HANDLERS["CUTOFF_DISCARD"] = _handle_cutoff_discard
 
     def _find_neighbor(self, fib_entry: FibEntry, route_offset: int) -> QNode | None:
         neigh_idx = fib_entry.own_idx + route_offset

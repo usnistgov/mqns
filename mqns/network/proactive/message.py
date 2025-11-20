@@ -141,6 +141,13 @@ class UninstallPathMsg(TypedDict):
     path_id: int
 
 
+class CutoffDiscardMsg(TypedDict):
+    cmd: Literal["CUTOFF_DISCARD"]
+    path_id: int
+    epr: str
+    round: int
+
+
 class PurifMsgBase(TypedDict):
     path_id: int
     purif_node: str
