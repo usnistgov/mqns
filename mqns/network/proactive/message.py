@@ -79,7 +79,7 @@ def make_path_instructions(
 def validate_path_instructions(instructions: PathInstructions) -> None:
     def check_purif_segment(segment_name: str) -> bool:
         try:
-            idx0, idx1 = [route.index(node_name) for node_name in segment_name.split("-")]
+            idx0, idx1 = (route.index(node_name) for node_name in segment_name.split("-"))
             return idx0 < idx1
         except ValueError:
             return False

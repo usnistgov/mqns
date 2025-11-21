@@ -18,7 +18,7 @@
 
 from collections.abc import Iterable
 from copy import deepcopy
-from typing import Any, TypedDict, cast
+from typing import TypedDict, cast
 
 from typing_extensions import NotRequired, override
 
@@ -95,11 +95,8 @@ class Topo(TypedDict):
 
 
 def _qchannel_to_cchannel(qc: TopoQChannel) -> TopoCChannel:
-    parameters = {}
-    for key, value in qc["parameters"].items():
-        if key in ClassicChannelInitKwargs.__annotations__.keys():
-            parameters[key] = value
-    return {"node1": qc["node1"], "node2": qc["node2"], "parameters": cast(Any, parameters)}
+    parameters = dict(((k, v) for k, v in qc["parameters"].items() if k in ClassicChannelInitKwargs.__annotations__))
+    return {"node1": qc["node1"], "node2": qc["node2"], "parameters": cast(ClassicChannelInitKwargs, parameters)}
 
 
 class CustomTopology(Topology):
@@ -171,7 +168,7 @@ class CustomTopology(Topology):
     def add_cchannels(self, *, classic_topo: ClassicTopology = ClassicTopology.Empty, **_):
         if classic_topo == ClassicTopology.Follow:
             assert "cchannels" not in self.topo
-            return self._add_cchannels_from([_qchannel_to_cchannel(qc) for qc in self.topo["qchannels"]])
+            return self._add_cchannels_from((_qchannel_to_cchannel(qc) for qc in self.topo["qchannels"]))
         else:
             assert classic_topo == ClassicTopology.Empty
             assert "cchannels" in self.topo
