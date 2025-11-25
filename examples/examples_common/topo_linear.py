@@ -24,6 +24,7 @@ def build_topology(
     frequency: float = 1e6,  # memory frequency
     p_swap: float = 0.5,
     swap: list[int] | str,
+    swap_cutoff: list[float] | None = None,
 ) -> Topology:
     """
     Build a linear topology consisting of zero or more repeaters.
@@ -48,6 +49,7 @@ def build_topology(
         p_swap: probability of successful entanglement swapping.
         # ProactiveRoutingController
         swap: predefined or explicitly specified swapping order.
+        swap_cutoff: cutoff times.
     """
     if not isinstance(nodes, list):
         assert nodes >= 2, "at least two nodes"
@@ -113,9 +115,10 @@ def build_topology(
         )
         cchannels.append({"node1": node1, "node2": node2, "parameters": {"length": length}})
 
+    path = RoutingPathSingle("S", "D", swap=swap, swap_cutoff=swap_cutoff)
     controller: TopoController = {
         "name": "ctrl",
-        "apps": [ProactiveRoutingController(RoutingPathSingle("S", "D", swap=swap))],
+        "apps": [ProactiveRoutingController(path)],
     }
     for node in nodes:
         cchannels.append({"node1": "ctrl", "node2": node, "parameters": {"length": 1.0}})
