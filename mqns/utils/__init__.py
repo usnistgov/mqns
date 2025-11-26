@@ -15,20 +15,13 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from mqns.utils.log import critical, debug, error, info, install, logger, monitor, warn
+from mqns.utils.logger import log
 from mqns.utils.rnd import get_choice, get_rand, get_randint, set_seed
 
 __all__ = [
-    "logger",
-    "debug",
-    "info",
-    "error",
-    "install",
-    "warn",
-    "critical",
-    "monitor",
-    "set_seed",
+    "get_choice",
     "get_rand",
     "get_randint",
-    "get_choice",
+    "log",
+    "set_seed",
 ]

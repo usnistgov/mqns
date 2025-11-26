@@ -12,7 +12,7 @@ from mqns.network.proactive import ProactiveForwarder
 from mqns.simulator import Simulator
 from mqns.utils import log, set_seed
 
-from examples_common.topo_3_nodes import build_topology
+from examples_common.topo_linear import build_topology
 
 log.set_default_level("CRITICAL")
 
@@ -52,7 +52,12 @@ def run_simulation(t_coherence: float, seed: int):
     s = Simulator(0, sim_duration + 5e-06, accuracy=1000000)
     log.install(s)
 
-    topo = build_topology(t_coherence=t_coherence, channel_qubits=1)
+    topo = build_topology(
+        nodes=["S", "R", "D"],
+        t_coherence=t_coherence,
+        channel_length=[32, 18],
+        swap="swap_1",
+    )
     net = QuantumNetwork(topo=topo)
     net.install(s)
 

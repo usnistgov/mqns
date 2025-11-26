@@ -1,14 +1,12 @@
-import logging
-
 from mqns.network.network import QuantumNetwork
 from mqns.network.proactive import ProactiveForwarder
 from mqns.simulator import Simulator
 from mqns.utils import log, set_seed
 
 from examples_common.stats import gather_etg_decoh
-from examples_common.topo_asymmetric_channel import build_topology
+from examples_common.topo_linear import build_topology
 
-log.logger.setLevel(logging.DEBUG)
+log.set_default_level("DEBUG")
 
 SEED_BASE = 100
 
@@ -20,12 +18,12 @@ s = Simulator(0, sim_duration + 5e-06, accuracy=1000000)
 log.install(s)
 
 topo = build_topology(
-    nodes=["S", "R1", "R2", "D"],
-    mem_capacities=[4, 4, 4, 4],  # number of qubits per node should be enough for qchannels
-    ch_lengths=[32, 18, 10],
-    ch_capacities=[(4, 3), (1, 2), (2, 4)],
+    nodes=4,
+    mem_capacity=4,  # number of qubits per node should be enough for qchannels
     t_coherence=0.01,  # sec
-    swapping_order="swap_2_l2r",
+    channel_length=[32, 18, 10],
+    channel_capacity=[(4, 3), (1, 2), (2, 4)],
+    swap="swap_2_l2r",
 )
 net = QuantumNetwork(topo=topo)
 net.install(s)

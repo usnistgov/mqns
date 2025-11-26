@@ -40,9 +40,7 @@ def _save_channel(l: list[ChannelT], d: dict[tuple[str, str], ChannelT], ch: Cha
     l.append(ch)
     if len(ch.node_list) != 2:
         return
-    a, b = [node.name for node in cast(list[QNode], ch.node_list)]
-    if a > b:
-        a, b = b, a
+    a, b = sorted((node.name for node in cast(list[Node], ch.node_list)))
     d[(a, b)] = ch
 
 
@@ -54,9 +52,7 @@ def _get_channel(l: list[ChannelT], d: dict[tuple[str, str], ChannelT], q: tuple
                 return ch
         raise IndexError(f"channel {name} does not exist")
 
-    a, b = q
-    if a > b:
-        a, b = b, a
+    a, b = sorted(q)
     try:
         return d[(a, b)]
     except KeyError:

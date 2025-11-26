@@ -121,8 +121,8 @@ class BaseEntanglement(ABC, Generic[EntanglementT]):
         self.orig_eprs = cast(list[EntanglementT], orig_eprs)
 
         if update_name:
-            eprs_name_list = [e.name for e in orig_eprs]
-            self.name = _name_hash("-".join(eprs_name_list))
+            epr_names = (e.name for e in orig_eprs)
+            self.name = _name_hash("-".join(epr_names))
 
     @abstractmethod
     def distillation(self, epr: EntanglementT) -> EntanglementT | None:

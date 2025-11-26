@@ -11,7 +11,7 @@ from mqns.network.protocol.event import LinkArchSuccessEvent
 from mqns.simulator import Event, Simulator
 from mqns.utils import log, set_seed
 
-from examples_common.topo_3_nodes import build_topology
+from examples_common.topo_linear import build_topology
 
 
 # Command line arguments
@@ -36,7 +36,13 @@ def run_simulation(num_qubits: int, seed: int):
     s = Simulator(0, sim_duration + 5e-06, accuracy=1000000)
     log.install(s)
 
-    topo = build_topology(t_coherence=0.1, channel_qubits=num_qubits, swapping_order="no_swap")
+    topo = build_topology(
+        nodes=["S", "R", "D"],
+        t_coherence=0.1,
+        channel_length=[32, 18],
+        channel_capacity=num_qubits,
+        swap="no_swap",
+    )
     net = QuantumNetwork(topo=topo)
     net.install(s)
 

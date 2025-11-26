@@ -11,7 +11,7 @@ from mqns.simulator import Simulator
 from mqns.utils import log, set_seed
 
 from examples_common.stats import gather_etg_decoh
-from examples_common.topo_asymmetric_channel import build_topology
+from examples_common.topo_linear import build_topology
 
 
 # Command line arguments
@@ -26,15 +26,15 @@ args = Args().parse_args()
 log.set_default_level("CRITICAL")
 
 SEED_BASE = 100
+N_NODES = 6
+TOTAL_QUBITS = 6
+CHANNEL_LENGTHS: list[float] = [32, 18, 35, 16, 24]
 
 # parameters
 sim_duration = 3
 
 
 def run_simulation(
-    nodes: list[str],
-    mem_capacities: list[int],
-    ch_lengths: list[float],
     ch_capacities: list[tuple[int, int]],
     t_coherence: float,
     swapping_order: str,
@@ -45,12 +45,12 @@ def run_simulation(
     log.install(s)
 
     topo = build_topology(
-        nodes=nodes,
-        mem_capacities=mem_capacities,
-        ch_lengths=ch_lengths,
-        ch_capacities=ch_capacities,
+        nodes=N_NODES,
+        mem_capacity=TOTAL_QUBITS,
         t_coherence=t_coherence,
-        swapping_order=swapping_order,
+        channel_length=CHANNEL_LENGTHS,
+        channel_capacity=ch_capacities,
+        swap=swapping_order,
     )
     net = QuantumNetwork(topo=topo)
     net.install(s)
@@ -75,13 +75,6 @@ ch_capacities_configs = {
 }
 t_cohere_values = [5e-3, 10e-3, 20e-3]
 
-nodes = ["S", "R1", "R2", "R3", "R4", "D"]
-mem_capacities = [6, 6, 6, 6, 6, 6]
-channel_lengths: list[float] = [32, 18, 35, 16, 24]
-TOTAL_QUBITS = 6
-
-SEED_BASE = 100
-
 # Store results: mem_label -> policy -> t_cohere -> list of rates
 results = {
     mem_label: {order: {t: [] for t in t_cohere_values} for order in swapping_order_configs}
@@ -100,9 +93,6 @@ for mem_label, mem_allocs in ch_capacities_configs.items():
                 ch_capacities = mem_allocs
 
                 rate, *_ = run_simulation(
-                    nodes=nodes,
-                    mem_capacities=mem_capacities,
-                    ch_lengths=channel_lengths,
                     ch_capacities=ch_capacities,
                     t_coherence=t_cohere,
                     swapping_order=swapping_config,
