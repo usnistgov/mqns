@@ -34,6 +34,14 @@ class CutoffScheme(ABC):
     def __repr__(self):
         return f"<{self.name}>"
 
+    @classmethod
+    def of(cls, fw: "ProactiveForwarder"):
+        """
+        Retrieve subclass instance from forwarder.
+        """
+        assert isinstance(fw.cutoff, cls)
+        return fw.cutoff
+
     @property
     def own(self) -> QNode:
         return self.fw.own
@@ -100,7 +108,7 @@ class CutoffScheme(ABC):
     def qubit_is_eligible(self, qubit: MemoryQubit, fib_entry: FibEntry | None) -> None:
         """
         Handle a qubit that has become ELIGIBLE for swapping.
-        The qubit is not to be consumed.
+        The qubit would not be consumed.
         """
         pass
 
@@ -112,11 +120,26 @@ class CutoffScheme(ABC):
         pass
 
     @abstractmethod
-    def take_qubit(self, qubit: MemoryQubit) -> None:
+    def before_swap(self, mq0: MemoryQubit, mq1: MemoryQubit | None, fib_entry: FibEntry | None) -> None:
         """
-        Mark a qubit as taken/used in purification or swapping.
+        Handle a pair of qubits before swapping, or one qubits stored for future swapping.
+        This should be invoked in the same time_slot as qubit_is_eligible.
+
+        Args:
+            mq0: Newly eligible qubits.
+            mq1: If None, mq0 is stored; otherwise, mq0-mq1 will swap.
         """
         pass
+
+
+class CutoffSchemeWaitTimeCounters:
+    def __init__(self):
+        self.wait_values: list[int] | None = None
+        """wait time values for waited qubits before swap, in time_slots"""
+
+    def enable_collect_all(self) -> None:
+        """Enable collecting all values for histogram generation."""
+        self.wait_values = []
 
 
 class CutoffSchemeWaitTime(CutoffScheme):
@@ -126,6 +149,8 @@ class CutoffSchemeWaitTime(CutoffScheme):
 
     def __init__(self, name="wait-time"):
         super().__init__(name)
+
+        self.cnt = CutoffSchemeWaitTimeCounters()
 
     @override
     def qubit_is_eligible(self, qubit: MemoryQubit, fib_entry: FibEntry | None) -> None:
@@ -141,20 +166,32 @@ class CutoffSchemeWaitTime(CutoffScheme):
         deadline = now + wait_budget
         qubit.cutoff = (now, deadline)
 
-        discard_event = func_to_event(deadline, self.initiate_discard, qubit, fib_entry)
-        qubit.set_event(CutoffSchemeWaitTime, discard_event)
-        self.simulator.add_event(discard_event)
-
     @override
     def filter_swap_candidate(self, qubit: MemoryQubit) -> bool:
         return qubit.cutoff is None or qubit.cutoff[1] >= self.simulator.tc
 
     @override
-    def take_qubit(self, qubit: MemoryQubit) -> None:
-        if qubit.cutoff is None:
+    def before_swap(self, mq0: MemoryQubit, mq1: MemoryQubit | None, fib_entry: FibEntry | None) -> None:
+        if mq0.cutoff is None:
             return
-        qubit.set_event(CutoffSchemeWaitTime, None)
-        qubit.cutoff = None
+        assert fib_entry is not None
+
+        now, deadline = mq0.cutoff
+        if mq1 is None:
+            discard_event = func_to_event(deadline, self.initiate_discard, mq0, fib_entry)
+            mq0.set_event(CutoffSchemeWaitTime, discard_event)
+            self.simulator.add_event(discard_event)
+            return
+
+        if mq1.cutoff is None:
+            return
+
+        if self.cnt.wait_values is not None:
+            t0, _ = mq1.cutoff
+            self.cnt.wait_values.append((now - t0).time_slot)
+
+        mq1.set_event(CutoffSchemeWaitTime, None)
+        mq1.cutoff = None
 
 
 class CutoffSchemeWernerAge(CutoffScheme):

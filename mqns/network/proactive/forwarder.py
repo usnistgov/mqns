@@ -19,6 +19,7 @@ from collections.abc import Callable
 from copy import deepcopy
 from typing import Any, cast
 
+import numpy as np
 from typing_extensions import override
 
 from mqns.entity.cchannel import ClassicPacket, RecvClassicPacket
@@ -62,6 +63,8 @@ class ProactiveForwarderCounters:
         """how many entanglements were consumed (either end-to-end or in swap-disabled mode)"""
         self.consumed_sum_fidelity = 0.0
         """sum of fidelity of consumed entanglements"""
+        self.consumed_fidelity_values: list[float] | None = None
+        """fidelity values of consumed entanglements, None disables collection"""
         self.n_cutoff = [0, 0]
         """
         how many entanglements are discarded by CutoffScheme
@@ -71,12 +74,23 @@ class ProactiveForwarderCounters:
         [2r+1]: purif_cutoff[r] exceeded on partner forwarder
         """
 
-    def increment_n_purif(self, i: int):
+    def enable_collect_all(self) -> None:
+        """Enable collecting all values for histogram generation."""
+        assert self.n_consumed == 0
+        self.consumed_fidelity_values = []
+
+    def increment_n_purif(self, i: int) -> None:
         if len(self.n_purif) <= i:
             self.n_purif += [0] * (i + 1 - len(self.n_purif))
         self.n_purif[i] += 1
 
-    def increment_n_cutoff(self, round: int, local: bool):
+    def increment_n_consumed(self, fidelity: float) -> None:
+        self.n_consumed += 1
+        self.consumed_sum_fidelity += fidelity
+        if self.consumed_fidelity_values is not None:
+            self.consumed_fidelity_values.append(fidelity)
+
+    def increment_n_cutoff(self, round: int, local: bool) -> None:
         minlen = 2 * (round + 1)
         if len(self.n_cutoff) < minlen:
             self.n_cutoff += [0] * (minlen - len(self.n_cutoff))
@@ -90,7 +104,11 @@ class ProactiveForwarderCounters:
     @property
     def consumed_avg_fidelity(self) -> float:
         """average fidelity of consumed entanglements"""
-        return 0.0 if self.n_consumed == 0 else self.consumed_sum_fidelity / self.n_consumed
+        if self.n_consumed == 0:
+            return 0.0
+        if self.consumed_fidelity_values is None:
+            return self.consumed_sum_fidelity / self.n_consumed
+        return np.mean(self.consumed_fidelity_values).item()
 
     def __repr__(self) -> str:
         return (
@@ -143,7 +161,6 @@ class ProactiveForwarder(Application):
         self.fib = Fib()
         """FIB structure."""
 
-        # event handlers
         self.add_handler(self.handle_sync_phase, TimingPhaseEvent)
         self.add_handler(self.RecvClassicPacketHandler, RecvClassicPacket)
         self.add_handler(self.qubit_is_entangled, QubitEntangledEvent)
@@ -671,9 +688,11 @@ class ProactiveForwarder(Application):
             has_epr=True,
         )
         swap_candidate_tuple = self.mux.find_swap_candidate(qubit, epr, fib_entry, cast(MemoryWernerIterator, swap_candidates))
+        mq1: MemoryQubit | None = None
         if swap_candidate_tuple:
             mq1, fib_entry = swap_candidate_tuple
             self.do_swapping(qubit, mq1, fib_entry)
+        self.cutoff.before_swap(qubit, mq1, fib_entry)
 
     def do_swapping(
         self,
@@ -689,8 +708,6 @@ class ProactiveForwarder(Application):
         assert mq0.addr != mq1.addr
         assert mq0.state == QubitState.ELIGIBLE
         assert mq1.state == QubitState.ELIGIBLE
-        self.cutoff.take_qubit(mq0)
-        self.cutoff.take_qubit(mq1)
 
         # Read both qubits and remove them from memory.
         #
@@ -959,8 +976,7 @@ class ProactiveForwarder(Application):
         assert qm.dst is not None
 
         log.debug(f"{self.own}: consume EPR: {qm.name} -> {qm.src.name}-{qm.dst.name} | F={qm.fidelity}")
-        self.cnt.n_consumed += 1
-        self.cnt.consumed_sum_fidelity += qm.fidelity
+        self.cnt.increment_n_consumed(qm.fidelity)
 
         self.release_qubit(qubit)
 

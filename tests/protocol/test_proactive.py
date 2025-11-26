@@ -3,6 +3,7 @@ from collections.abc import Callable
 from copy import deepcopy
 from typing import Any
 
+import numpy as np
 import pytest
 
 from mqns.entity.cchannel import ClassicChannelInitKwargs
@@ -10,6 +11,7 @@ from mqns.entity.node import Controller
 from mqns.entity.qchannel import LinkArchAlways, LinkArchDimBk, QuantumChannelInitKwargs
 from mqns.network.network import QuantumNetwork, TimingMode, TimingModeAsync, TimingModeSync
 from mqns.network.proactive import (
+    CutoffSchemeWaitTime,
     LinkLayer,
     MuxScheme,
     MuxSchemeBufferSpace,
@@ -337,10 +339,13 @@ def test_swap_1():
     f3 = net.get_node("n3").get_app(ProactiveForwarder)
 
     install_path(ctrl, RoutingPathStatic(["n1", "n2", "n3"], swap=[1, 0, 1]))
+    f3.cnt.enable_collect_all()
     simulator.run()
 
     for fw in (f1, f2, f3):
         print(fw.own.name, fw.cnt)
+    assert f1.cnt.consumed_fidelity_values is None
+    print(np.histogram(f3.cnt.consumed_fidelity_values or [], bins=4))
 
     # entanglements at n2 are immediately eligible because there's no purification
     assert f1.cnt.n_entg + f3.cnt.n_entg == f2.cnt.n_entg == f2.cnt.n_eligible == pytest.approx(8000, abs=5)
@@ -504,6 +509,9 @@ def test_cutoff_waittime():
     f6 = net.get_node("n6").get_app(ProactiveForwarder)
     f7 = net.get_node("n7").get_app(ProactiveForwarder)
 
+    for fw in (f2, f3, f4, f5, f6):
+        CutoffSchemeWaitTime.of(fw).cnt.enable_collect_all()
+
     install_path(ctrl, RoutingPathSingle("n1", "n7", swap=[3, 0, 1, 0, 2, 0, 3], swap_cutoff=[0.5] * 7))
     simulator.run()
 
@@ -517,6 +525,11 @@ def test_cutoff_waittime():
     assert f6.cnt.n_cutoff[1] == 0
     assert f2.cnt.n_cutoff[0] + f4.cnt.n_cutoff[0] + f6.cnt.n_cutoff[0] > 0
     assert f1.cnt.n_cutoff[1] + f3.cnt.n_cutoff[1] + f5.cnt.n_cutoff[1] + f7.cnt.n_cutoff[1] > 0
+
+    for fw in (f2, f3, f4, f5, f6):
+        cutoff = CutoffSchemeWaitTime.of(fw)
+        print(np.histogram(cutoff.cnt.wait_values or [], bins=4))
+        assert fw.cnt.n_eligible / 2 >= len(cutoff.cnt.wait_values or []) >= fw.cnt.n_swapped
 
 
 def test_purif_link1r():
