@@ -55,6 +55,20 @@ class ReservationRequest:
     qchannel: QuantumChannel
 
 
+class LinkLayerCounters:
+    def __init__(self):
+        self.n_etg = 0
+        """how many entanglements generated as the primary node"""
+        self.n_attempts = 0
+        """how many attempts made for successful entanglements"""
+        self.n_decoh = 0
+        """how many qubits decohered"""
+
+    def increment_n_etg(self, attempts: int) -> None:
+        self.n_etg += 1
+        self.n_attempts += attempts
+
+
 class LinkLayer(Application):
     """
     Network function for creating elementary entanglements over qchannels.
@@ -134,10 +148,10 @@ class LinkLayer(Application):
         FIFO queue of reservation requests awaiting for memory qubits.
         """
 
-        self.etg_count = 0
-        """Counter of generated entanglements."""
-        self.decoh_count = 0
-        """Counter of decohered qubits never swapped."""
+        self.cnt = LinkLayerCounters()
+        """
+        Counters.
+        """
 
         # event handlers
         self.add_handler(self.handle_sync_phase, TimingPhaseEvent)
@@ -364,7 +378,6 @@ class LinkLayer(Application):
         epr = WernerStateEntanglement(fidelity=self.init_fidelity, name=uuid.uuid4().hex)
         epr.src = self.own
         epr.dst = next_hop
-        epr.attempts = k
         epr.key = qubit.active
         epr.creation_time = t_epr_creation
 
@@ -384,8 +397,8 @@ class LinkLayer(Application):
             f"times={t_epr_creation},{t_notify_a},{t_notify_b}"
         )
 
-        simulator.add_event(LinkArchSuccessEvent(self.own, epr, t=t_notify_a, by=self))
-        simulator.add_event(LinkArchSuccessEvent(next_hop, epr, t=t_notify_b, by=self))
+        simulator.add_event(LinkArchSuccessEvent(self.own, epr, t=t_notify_a, by=self, attempts=k))
+        simulator.add_event(LinkArchSuccessEvent(next_hop, epr, t=t_notify_b, by=self, attempts=k))
 
     def handle_success_entangle(self, event: LinkArchSuccessEvent):
         assert self.own.timing.is_external()
@@ -395,7 +408,7 @@ class LinkLayer(Application):
         neighbor, is_primary = (epr.dst, True) if epr.src == self.own else (epr.src, False)
         assert neighbor is not None
         if is_primary:
-            self.etg_count += 1
+            self.cnt.increment_n_etg(event.attempts)
 
         log.debug(f"{self.own}: got half-EPR {epr.name} key={epr.key} {'dst' if is_primary else 'src'}={neighbor}")
         assert epr.decoherence_time is None or epr.decoherence_time > self.simulator.tc
@@ -411,7 +424,7 @@ class LinkLayer(Application):
         qubit = event.qubit
         is_decoh = isinstance(event, QubitDecoheredEvent)
         if is_decoh:
-            self.decoh_count += 1
+            self.cnt.n_decoh += 1
             log.debug(f"{self.own}: qubit decohered addr={qubit.addr} old-key={qubit.active}")
         else:
             log.debug(f"{self.own}: qubit released addr={qubit.addr} old-key={qubit.active}")

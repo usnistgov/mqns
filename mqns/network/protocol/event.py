@@ -68,10 +68,12 @@ class LinkArchSuccessEvent(Event):
         t: Time,
         name: str | None = None,
         by: Any = None,
+        attempts: int,
     ):
         super().__init__(t, name, by)
         self.node = node
         self.epr = epr
+        self.attempts = attempts
 
     @override
     def invoke(self) -> None:

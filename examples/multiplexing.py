@@ -273,7 +273,7 @@ def run_simulation(t_coherence: float, mux: MuxScheme, seed: int, active_flows: 
         else:
             stats.append((0, 0))
 
-    total_decoh = sum((node.get_app(LinkLayer).decoh_count for node in net.nodes))
+    total_decoh = sum((node.get_app(LinkLayer).cnt.n_decoh for node in net.nodes))
     total_swap_conflict = sum((node.get_app(ProactiveForwarder).cnt.n_swap_conflict for node in net.nodes))
 
     return stats, total_decoh, total_swap_conflict

@@ -15,7 +15,7 @@ def gather_etg_decoh(net: QuantumNetwork) -> tuple[int, int, float]:
     total_decohered = 0
     for node in net.nodes:
         for ll_app in node.get_apps(LinkLayer):
-            total_etg += ll_app.etg_count
-            total_decohered += ll_app.decoh_count
+            total_etg += ll_app.cnt.n_etg
+            total_decohered += ll_app.cnt.n_decoh
     decoh_ratio = total_decohered / total_etg if total_etg > 0 else 0
     return total_etg, total_decohered, decoh_ratio

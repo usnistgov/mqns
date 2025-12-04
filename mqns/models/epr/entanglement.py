@@ -62,8 +62,6 @@ class BaseEntanglement(ABC, Generic[EntanglementT]):
         """Descriptive name."""
         self.key: str | None = None
         """Reservation key used by LinkLayer."""
-        self.attempts: int | None = None
-        """Number of attempts needed to establish this entanglement in link architecture."""
         self.is_decoherenced = False
         """Whether the entanglement has decohered."""
         self.creation_time: Time | None = None
