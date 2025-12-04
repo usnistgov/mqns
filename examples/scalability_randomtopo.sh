@@ -18,11 +18,12 @@ mkdir -p $OUTDIR
 echo '*' >$OUTDIR/.gitignore
 
 RUNS=5
+SD=3.0
 QC=10
 
 run_network_size() {
   for SEED in $(seq 200 $((200+RUNS))); do
-    python examples/scalability_randomtopo_run.py --seed $SEED --nnodes $1 --nedges $2 --qchannel_capacity $QC --outdir $OUTDIR
+    python examples/scalability_randomtopo_run.py --seed $SEED --nnodes $1 --nedges $2 --sim_duration $SD --qchannel_capacity $QC --outdir $OUTDIR
   done
 }
 

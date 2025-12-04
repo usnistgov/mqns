@@ -1,5 +1,7 @@
 import json
 import os.path
+import sys
+import time
 
 from tap import Tap
 
@@ -18,7 +20,11 @@ from mqns.simulator import Simulator
 from mqns.utils import log, set_seed
 
 """
+This script is typically invoked as part of scalability_randomtopo experiment.
 See scalability_randomtopo.sh for how to run this script.
+
+If --profiling flag is specified, this script instead performs deterministic profiling.
+It prints the profiling statistics to the console, and does not generate any output file.
 """
 
 log.set_default_level("CRITICAL")
@@ -26,15 +32,18 @@ log.set_default_level("CRITICAL")
 
 # Command line arguments
 class Args(Tap):
-    seed: int  # random seed number
+    profiling: bool = False  # enable cProfile mode
+    seed: int = -1  # random seed number
     nnodes: int = 16  # network size - number of nodes
     nedges: int = 20  # network size - number of edges
-    sim_duration: float = 3.0  # simulation duration in seconds
-    qchannel_capacity: int = 100  # quantum channel capacity
-    outdir: str  # output directory
+    sim_duration: float = 1.0  # simulation duration in seconds
+    qchannel_capacity: int = 10  # quantum channel capacity
+    outdir: str = "."  # output directory
 
 
 args = Args().parse_args()
+if args.seed < 0:
+    args.seed = int(time.time())
 
 # parameters
 fiber_alpha = 0.2
@@ -109,7 +118,13 @@ def run_simulation():
             RoutingPathSingle(req.src.name, req.dst.name, qubit_allocation=QubitAllocationType.DISABLED, swap="asap")
         )
 
-    s.run()
+    if args.profiling:
+        import cProfile  # noqa: PLC0415 - cProfile is unavailable on some platforms
+
+        cProfile.runctx("s.run()", globals(), locals(), sort="tottime")
+        sys.exit()
+    else:
+        s.run()
 
     #### get stats: e2e_rate and mean_fidelity
     stats = []
