@@ -15,7 +15,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterable
 from typing import TYPE_CHECKING, Any, TypeVar, cast, overload
 
 from mqns.simulator import Event, Simulator
@@ -28,12 +28,14 @@ EventT = TypeVar("EventT", bound=Event)
 
 
 class Application:
-    """Application can be deployed on the quantum nodes."""
+    """
+    Application deployed on a node.
+    """
 
     def __init__(self):
         self._simulator: Simulator | None = None
         self._node: "Node|None" = None
-        self._dispatch_dict: list[tuple[Sequence[type[Event]], Sequence[Any], Callable[[Event], bool | None]]] = []
+        self._dispatch_table: list[tuple[type[Event], set[Any] | None, Callable[[Event], bool | None]]] = []
 
     def install(self, node: "Node", simulator: Simulator):
         """Install initial events for this Node. Called from Node.install()
@@ -47,65 +49,60 @@ class Application:
         self._node = node
 
     def handle(self, event: Event) -> bool | None:
-        """Process the event on the node.
+        """
+        Dispatch an event in the application.
 
         Args:
-            event (Event): the event
+            event: the event
 
         Return:
-            skip (bool, None): if skip is True, further applications will not handle this event
-
+            skip (bool, None): if True, further applications will not handle this event
         """
         return self._dispatch(event)
 
-    def _dispatch(self, event: Event) -> bool | None:
-        for eventTypeList, byList, handler in self._dispatch_dict:
-            flag_et = False
-            flag_by = False
-            if len(eventTypeList) > 0:
-                for et in eventTypeList:
-                    if isinstance(event, et):
-                        flag_et = True
-            else:
-                flag_et = True
-
-            if len(byList) == 0 or event.by in byList:
-                flag_by = True
-
-            if flag_et and flag_by:
+    def _dispatch(self, event: Event) -> bool:
+        for et, eb, handler in self._dispatch_table:
+            if (isinstance(event, et)) and (eb is None or event.by in eb):
                 skip = handler(event)
                 if skip is True:
                     return skip
         return False
 
     @overload
-    def add_handler(self, handler: Callable[[EventT], bool | None], EventTypeList: type[EventT], ByList: list[Any] = []):
+    def add_handler(
+        self, handler: Callable[[EventT], bool | None], event_type: type[EventT] = Event, event_by: list[Any] | None = None
+    ):
         pass
 
     @overload
     def add_handler(
-        self, handler: Callable[[EventT], bool | None], EventTypeList: list[type[EventT]] = [], ByList: list[Any] = []
+        self, handler: Callable[[EventT], bool | None], event_type: list[type[EventT]], event_by: list[Any] | None = None
     ):
         pass
 
     def add_handler(
         self,
         handler: Callable[[EventT], bool | None],
-        EventTypeList: type[EventT] | list[type[EventT]] = [],
-        ByList: list[Any] = [],
+        event_type: type[EventT] | list[type[EventT]] = Event,
+        event_by: Iterable[Any] | None = None,
     ):
-        """Add a handler function to the dispatcher.
+        """
+        Add an event handler function.
 
         Args:
-            handler: The handler to process the event.
-                It is an object method that accepts the event.
-            EventTypeList: a list of Event Class Type. An empty list meaning to match all events.
-            ByList: a list of Entities, QNodes or Applications, that generates this event.
-                An empty list meaning to match all entities.
-
+            handler: Event handler function.
+            event_type: Event type(s), defaults to all events.
+            event_by: filter by event source entity (`event.by`), defaults to any source.
         """
-        EventTypeList = EventTypeList if isinstance(EventTypeList, list) else [EventTypeList]
-        self._dispatch_dict.append((EventTypeList, ByList, cast(Any, handler)))
+        eb = None if event_by is None else set(event_by)
+        eh = cast(Any, handler)
+        if not isinstance(event_type, list):
+            self._dispatch_table.append((event_type, eb, eh))
+        elif len(event_type) == 0:
+            self._dispatch_table.append((Event, eb, eh))
+        else:
+            for et in event_type:
+                self._dispatch_table.append((et, eb, eh))
 
     @overload
     def get_node(self) -> "Node":
@@ -116,11 +113,12 @@ class Application:
         pass
 
     def get_node(self, *, node_type: type["NodeT"] | None = None) -> "NodeT":
-        """Get the node that runs this application
+        """
+        Retrieve the owner node, optionally asserts its type.
 
-        Returns:
-            the quantum node
-
+        Raises:
+            IndexError - application is not installed.
+            TypeError - owner node has wrong type.
         """
         if self._node is None:
             raise IndexError("application is not in a node")
@@ -130,11 +128,11 @@ class Application:
 
     @property
     def simulator(self) -> Simulator:
-        """Get the simulator
+        """
+        Retrieve the simulator.
 
-        Returns:
-            the simulator
-
+        Raises:
+            IndexError - application is not installed.
         """
         if self._simulator is None:
             raise IndexError("application is not in a simulator")
