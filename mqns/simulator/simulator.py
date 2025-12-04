@@ -18,7 +18,7 @@
 import math
 import time
 from collections import defaultdict
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, overload
 
 from mqns.simulator.event import Event
 from mqns.simulator.pool import DefaultEventPool
@@ -50,7 +50,7 @@ class Simulator:
             accuracy: the number of time slots per second.
         """
         self.accuracy = accuracy
-        ts.default_accuracy = accuracy
+        ts.set_default_accuracy(accuracy)
 
         assert start_second >= 0.0
         self.ts = self.time(sec=start_second)
@@ -61,8 +61,7 @@ class Simulator:
         self.time_spend: float = 0
         """Wallclock time for entire simulation run."""
 
-        self.event_pool = DefaultEventPool(self.ts, self.te)
-        self.status = {}
+        self.event_pool = DefaultEventPool(self.ts.time_slot, None if self.te is None else self.te.time_slot)
         self.total_events = 0
 
         self.watch_event = defaultdict[type[Event], list["Monitor"]](lambda: [])
@@ -71,33 +70,34 @@ class Simulator:
 
     @property
     def tc(self) -> Time:
-        """Current simulator time."""
-        return self.event_pool.tc
+        """Current simulation time."""
+        return self.time(time_slot=self.event_pool.tc)
 
     @property
     def running(self) -> bool:
         """Is the simulator running?"""
         return self._running
 
-    def time(self, time_slot: int | None = None, sec: int | float | None = None) -> Time:
-        """Produce a ``Time`` using either ``time_slot`` or ``sec``
+    @overload
+    def time(self, *, time_slot: int) -> Time:
+        """Produce `Time` from time slot."""
+        pass
 
-        Args:
-            time_slot (Optional[int]): the time slot
-            sec (Optional[float]): the second
-        Returns:
-            the produced ``Time`` object
+    @overload
+    def time(self, *, sec: float) -> Time:
+        """Produce `Time` from seconds."""
+        pass
 
-        """
+    def time(self, *, time_slot: int | None = None, sec: float = math.nan) -> Time:
         if time_slot is not None:
             return Time(time_slot=time_slot, accuracy=self.accuracy)
-        assert sec is not None
         return Time(sec=sec, accuracy=self.accuracy)
 
     def add_event(self, event: Event) -> None:
         """Add an ``event`` into simulator event pool.
         :param event: the inserting event
         """
+        assert event.t.accuracy == self.accuracy
         if self.event_pool.add_event(event):
             self.total_events += 1
 

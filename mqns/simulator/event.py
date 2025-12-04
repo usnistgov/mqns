@@ -57,16 +57,16 @@ class Event(ABC):
         return self._is_canceled
 
     def __eq__(self, other: object) -> bool:
-        return isinstance(other, Event) and self.t == other.t
+        return isinstance(other, Event) and self.t.time_slot == other.t.time_slot
 
     def __ne__(self, other: object) -> bool:
         return not self == other
 
     def __lt__(self, other: "Event") -> bool:
-        return self.t < other.t
+        return self.t.time_slot < other.t.time_slot
 
     def __le__(self, other: "Event") -> bool:
-        return self.t <= other.t
+        return self.t.time_slot <= other.t.time_slot
 
     def __gt__(self, other: "Event") -> bool:
         return not self <= other
