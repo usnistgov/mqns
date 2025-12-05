@@ -1,7 +1,9 @@
 import math
 from collections.abc import Callable
+from copy import deepcopy
 from typing import Any
 
+import numpy as np
 import pytest
 
 from mqns.entity.cchannel import ClassicChannelInitKwargs
@@ -9,6 +11,7 @@ from mqns.entity.node import Controller
 from mqns.entity.qchannel import LinkArchAlways, LinkArchDimBk, QuantumChannelInitKwargs
 from mqns.network.network import QuantumNetwork, TimingMode, TimingModeAsync, TimingModeSync
 from mqns.network.proactive import (
+    CutoffSchemeWaitTime,
     LinkLayer,
     MuxScheme,
     MuxSchemeBufferSpace,
@@ -29,12 +32,12 @@ from mqns.utils import log
 
 init_fidelity = 0.90
 
-qchannel_args = QuantumChannelInitKwargs(
+dflt_qchannel_args = QuantumChannelInitKwargs(
     length=100,  # delay is 0.0005 seconds
     link_arch=LinkArchAlways(LinkArchDimBk()),  # entanglement in 0.002 seconds
 )
 
-cchannel_args = ClassicChannelInitKwargs(
+dflt_cchannel_args = ClassicChannelInitKwargs(
     length=100,  # delay is 0.0005 seconds
 )
 
@@ -65,6 +68,8 @@ def build_linear_network(
     n_nodes: int,
     *,
     qchannel_capacity=1,
+    qchannel_args=dflt_qchannel_args,
+    cchannel_args=dflt_cchannel_args,
     mux: MuxScheme = MuxSchemeBufferSpace(),
     end_time=10.0,
     timing: TimingMode = TimingModeAsync(),
@@ -85,6 +90,8 @@ def build_linear_network(
 def build_dumbbell_network(
     *,
     qchannel_capacity=1,
+    qchannel_args=dflt_qchannel_args,
+    cchannel_args=dflt_cchannel_args,
     mux: MuxScheme = MuxSchemeBufferSpace(),
     end_time=10.0,
     timing: TimingMode = TimingModeAsync(),
@@ -115,6 +122,8 @@ def build_dumbbell_network(
 def build_rect_network(
     *,
     qchannel_capacity=1,
+    qchannel_args=dflt_qchannel_args,
+    cchannel_args=dflt_cchannel_args,
     mux: MuxScheme = MuxSchemeBufferSpace(),
     end_time=10.0,
     timing: TimingMode = TimingModeAsync(),
@@ -257,28 +266,46 @@ def test_path_validation():
 
     route3 = ["n1", "n2", "n3"]
     swap3 = [1, 0, 1]
+    scut3 = [-1, 1000, -1]
     mv3 = [(1, 1)] * 2
 
-    with pytest.raises(ValueError, match="swapping order"):
-        validate_path_instructions({"req_id": 0, "route": [], "swap": [], "purif": {}})
+    with pytest.raises(ValueError, match="route is empty"):
+        validate_path_instructions({"req_id": 0, "route": [], "swap": [], "swap_cutoff": [], "purif": {}})
 
     with pytest.raises(ValueError, match="swapping order"):
-        validate_path_instructions({"req_id": 0, "route": ["n1", "n2", "n3", "n4", "n5"], "swap": [0, 0, 0], "purif": {}})
+        validate_path_instructions(
+            {"req_id": 0, "route": ["n1", "n2", "n3", "n4", "n5"], "swap": swap3, "swap_cutoff": scut3, "purif": {}}
+        )
+
+    with pytest.raises(ValueError, match="swap_cutoff"):
+        validate_path_instructions(
+            {"req_id": 0, "route": route3, "swap": swap3, "swap_cutoff": [-1, 1000, 1000, -1], "purif": {}}
+        )
 
     with pytest.raises(ValueError, match="multiplexing vector"):
-        validate_path_instructions({"req_id": 0, "route": route3, "swap": swap3, "m_v": [(1, 1)] * 3, "purif": {}})
+        validate_path_instructions(
+            {"req_id": 0, "route": route3, "swap": swap3, "swap_cutoff": scut3, "m_v": [(1, 1)] * 3, "purif": {}}
+        )
 
-    with pytest.raises(ValueError, match="purif segment r1-r2"):
-        validate_path_instructions({"req_id": 0, "route": route3, "swap": swap3, "m_v": mv3, "purif": {"r1-r2": 1}})
+    with pytest.raises(ValueError, match="purif segment"):
+        validate_path_instructions(
+            {"req_id": 0, "route": route3, "swap": swap3, "swap_cutoff": scut3, "m_v": mv3, "purif": {"r1-r2": 1}}
+        )
 
-    with pytest.raises(ValueError, match="purif segment n1-n2-n3"):
-        validate_path_instructions({"req_id": 0, "route": route3, "swap": swap3, "m_v": mv3, "purif": {"n1-n2-n3": 1}})
+    with pytest.raises(ValueError, match="purif segment"):
+        validate_path_instructions(
+            {"req_id": 0, "route": route3, "swap": swap3, "swap_cutoff": scut3, "m_v": mv3, "purif": {"n1-n2-n3": 1}}
+        )
 
-    with pytest.raises(ValueError, match="purif segment n2-n2"):
-        validate_path_instructions({"req_id": 0, "route": route3, "swap": swap3, "m_v": mv3, "purif": {"n2-n2": 1}})
+    with pytest.raises(ValueError, match="purif segment"):
+        validate_path_instructions(
+            {"req_id": 0, "route": route3, "swap": swap3, "swap_cutoff": scut3, "m_v": mv3, "purif": {"n2-n2": 1}}
+        )
 
-    with pytest.raises(ValueError, match="purif segment n3-n1"):
-        validate_path_instructions({"req_id": 0, "route": route3, "swap": swap3, "m_v": mv3, "purif": {"n3-n1": 1}})
+    with pytest.raises(ValueError, match="purif segment"):
+        validate_path_instructions(
+            {"req_id": 0, "route": route3, "swap": swap3, "swap_cutoff": scut3, "m_v": mv3, "purif": {"n3-n1": 1}}
+        )
 
 
 def test_no_swap():
@@ -312,10 +339,13 @@ def test_swap_1():
     f3 = net.get_node("n3").get_app(ProactiveForwarder)
 
     install_path(ctrl, RoutingPathStatic(["n1", "n2", "n3"], swap=[1, 0, 1]))
+    f3.cnt.enable_collect_all()
     simulator.run()
 
     for fw in (f1, f2, f3):
         print(fw.own.name, fw.cnt)
+    assert f1.cnt.consumed_fidelity_values is None
+    print(np.histogram(f3.cnt.consumed_fidelity_values or [], bins=4))
 
     # entanglements at n2 are immediately eligible because there's no purification
     assert f1.cnt.n_entg + f3.cnt.n_entg == f2.cnt.n_entg == f2.cnt.n_eligible == pytest.approx(8000, abs=5)
@@ -463,6 +493,43 @@ def test_swap_mp():
     assert f3.cnt.n_swapped > 4000
     # swapped EPRs are consumed, capacity=8 is twice of qchannel_capacity because there are two paths
     check_e2e_consumed(f1, f4, n_swaps=f2.cnt.n_swapped + f3.cnt.n_swapped, swap_balanced=True, capacity=8)
+
+
+def test_cutoff_waittime():
+    """Test 5-repeater swapping with wait-time cutoff."""
+    qchannel_args = deepcopy(dflt_qchannel_args)
+    qchannel_args["link_arch"] = LinkArchDimBk()
+    net, simulator = build_linear_network(7, qchannel_capacity=1, qchannel_args=qchannel_args, end_time=300)
+    ctrl = net.get_controller().get_app(ProactiveRoutingController)
+    f1 = net.get_node("n1").get_app(ProactiveForwarder)
+    f2 = net.get_node("n2").get_app(ProactiveForwarder)
+    f3 = net.get_node("n3").get_app(ProactiveForwarder)
+    f4 = net.get_node("n4").get_app(ProactiveForwarder)
+    f5 = net.get_node("n5").get_app(ProactiveForwarder)
+    f6 = net.get_node("n6").get_app(ProactiveForwarder)
+    f7 = net.get_node("n7").get_app(ProactiveForwarder)
+
+    for fw in (f2, f3, f4, f5, f6):
+        CutoffSchemeWaitTime.of(fw).cnt.enable_collect_all()
+
+    install_path(ctrl, RoutingPathSingle("n1", "n7", swap=[3, 0, 1, 0, 2, 0, 3], swap_cutoff=[0.5] * 7))
+    simulator.run()
+
+    for fw in (f1, f2, f3, f4, f5, f6, f7):
+        print(fw.own.name, fw.cnt)
+
+    assert f1.cnt.n_cutoff[0] == 0
+    assert f7.cnt.n_cutoff[0] == 0
+    assert f2.cnt.n_cutoff[1] == 0
+    assert f4.cnt.n_cutoff[1] == 0
+    assert f6.cnt.n_cutoff[1] == 0
+    assert f2.cnt.n_cutoff[0] + f4.cnt.n_cutoff[0] + f6.cnt.n_cutoff[0] > 0
+    assert f1.cnt.n_cutoff[1] + f3.cnt.n_cutoff[1] + f5.cnt.n_cutoff[1] + f7.cnt.n_cutoff[1] > 0
+
+    for fw in (f2, f3, f4, f5, f6):
+        cutoff = CutoffSchemeWaitTime.of(fw)
+        print(np.histogram(cutoff.cnt.wait_values or [], bins=4))
+        assert fw.cnt.n_eligible / 2 >= len(cutoff.cnt.wait_values or []) >= fw.cnt.n_swapped
 
 
 def test_purif_link1r():

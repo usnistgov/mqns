@@ -7,6 +7,7 @@ from mqns.entity.qchannel import QuantumChannel
 from mqns.models.epr import WernerStateEntanglement
 from mqns.network.proactive.fib import Fib, FibEntry
 from mqns.network.proactive.message import PathInstructions
+from mqns.network.proactive.select import MemoryWernerIterator
 
 if TYPE_CHECKING:
     from mqns.network.proactive.forwarder import ProactiveForwarder
@@ -102,12 +103,17 @@ class MuxScheme(ABC):
 
     @abstractmethod
     def find_swap_candidate(
-        self, qubit: MemoryQubit, epr: WernerStateEntanglement, fib_entry: FibEntry | None
+        self,
+        qubit: MemoryQubit,
+        epr: WernerStateEntanglement,
+        fib_entry: FibEntry | None,
+        input: MemoryWernerIterator,
     ) -> tuple[MemoryQubit, FibEntry] | None:
         """
         Find another qubit to swap with an ELIGIBLE qubit.
 
         Args:
+            input: Candidates iterator. They are in ELIGIBLE state and assigned to a different channel.
             qubit: A qubit in ELIGIBLE state.
             epr: The EPR associated with this qubit. This is not an end-to-end entanglement.
             fib_entry: FIB entry passed to `fw.qubit_is_eligible()`.

@@ -19,6 +19,7 @@ from collections.abc import Callable
 from copy import deepcopy
 from typing import Any, cast
 
+import numpy as np
 from typing_extensions import override
 
 from mqns.entity.cchannel import ClassicPacket, RecvClassicPacket
@@ -26,15 +27,19 @@ from mqns.entity.memory import MemoryQubit, PathDirection, QubitState
 from mqns.entity.node import Application, Node, QNode
 from mqns.models.epr import WernerStateEntanglement
 from mqns.network.network import TimingPhase, TimingPhaseEvent
+from mqns.network.proactive.cutoff import CutoffScheme, CutoffSchemeWaitTime
 from mqns.network.proactive.fib import Fib, FibEntry
-from mqns.network.proactive.message import InstallPathMsg, PurifResponseMsg, PurifSolicitMsg, SwapUpdateMsg, UninstallPathMsg
+from mqns.network.proactive.message import (
+    CutoffDiscardMsg,
+    InstallPathMsg,
+    PurifResponseMsg,
+    PurifSolicitMsg,
+    SwapUpdateMsg,
+    UninstallPathMsg,
+)
 from mqns.network.proactive.mux import MuxScheme
 from mqns.network.proactive.mux_buffer_space import MuxSchemeBufferSpace
-from mqns.network.proactive.select import (
-    SelectPurifQubit,
-    SelectSwapQubit,
-    select_purif_qubit,
-)
+from mqns.network.proactive.select import MemoryWernerIterator, SelectPurifQubit, SelectSwapQubit, select_purif_qubit
 from mqns.network.protocol.event import ManageActiveChannels, QubitEntangledEvent, QubitReleasedEvent
 from mqns.simulator import Simulator
 from mqns.utils import log
@@ -58,11 +63,38 @@ class ProactiveForwarderCounters:
         """how many entanglements were consumed (either end-to-end or in swap-disabled mode)"""
         self.consumed_sum_fidelity = 0.0
         """sum of fidelity of consumed entanglements"""
+        self.consumed_fidelity_values: list[float] | None = None
+        """fidelity values of consumed entanglements, None disables collection"""
+        self.n_cutoff = [0, 0]
+        """
+        how many entanglements are discarded by CutoffScheme
+        [0]: swap_cutoff exceeded locally
+        [1]: swap_cutoff exceeded on partner forwarder
+        [2r+0]: purif_cutoff[r] exceeded locally
+        [2r+1]: purif_cutoff[r] exceeded on partner forwarder
+        """
 
-    def increment_n_purif(self, i: int):
+    def enable_collect_all(self) -> None:
+        """Enable collecting all values for histogram generation."""
+        assert self.n_consumed == 0
+        self.consumed_fidelity_values = []
+
+    def increment_n_purif(self, i: int) -> None:
         if len(self.n_purif) <= i:
             self.n_purif += [0] * (i + 1 - len(self.n_purif))
         self.n_purif[i] += 1
+
+    def increment_n_consumed(self, fidelity: float) -> None:
+        self.n_consumed += 1
+        self.consumed_sum_fidelity += fidelity
+        if self.consumed_fidelity_values is not None:
+            self.consumed_fidelity_values.append(fidelity)
+
+    def increment_n_cutoff(self, round: int, local: bool) -> None:
+        minlen = 2 * (round + 1)
+        if len(self.n_cutoff) < minlen:
+            self.n_cutoff += [0] * (minlen - len(self.n_cutoff))
+        self.n_cutoff[2 * round + (0 if local else 1)] += 1
 
     @property
     def n_swapped(self) -> int:
@@ -72,13 +104,17 @@ class ProactiveForwarderCounters:
     @property
     def consumed_avg_fidelity(self) -> float:
         """average fidelity of consumed entanglements"""
-        return 0.0 if self.n_consumed == 0 else self.consumed_sum_fidelity / self.n_consumed
+        if self.n_consumed == 0:
+            return 0.0
+        if self.consumed_fidelity_values is None:
+            return self.consumed_sum_fidelity / self.n_consumed
+        return np.mean(self.consumed_fidelity_values).item()
 
     def __repr__(self) -> str:
         return (
             f"entg={self.n_entg} purif={self.n_purif} eligible={self.n_eligible} "
             f"swapped={self.n_swapped_s}+{self.n_swapped_p} "
-            f"swap-conflict={self.n_swap_conflict} "
+            f"swap-conflict={self.n_swap_conflict} cutoff-discard={self.n_cutoff} "
             f"consumed={self.n_consumed} (F={self.consumed_avg_fidelity})"
         )
 
@@ -94,6 +130,7 @@ class ProactiveForwarder(Application):
         self,
         *,
         ps: float = 1.0,
+        cutoff: CutoffScheme = CutoffSchemeWaitTime(),
         mux: MuxScheme = MuxSchemeBufferSpace(),
         select_purif_qubit: SelectPurifQubit = None,
         select_swap_qubit: SelectSwapQubit = None,
@@ -106,14 +143,16 @@ class ProactiveForwarder(Application):
 
         Args:
             ps: Probability of successful entanglement swapping (default: 1.0).
+            cutoff: EPR age cut-off scheme (default: wait-time).
             mux: Path multiplexing scheme (default: buffer-space).
-            but serving the same S-D request.
         """
         super().__init__()
 
         assert 0.0 <= ps <= 1.0
         self.ps = ps
         """Probability of successful entanglement swapping."""
+        self.cutoff = deepcopy(cutoff)
+        """EPR age cut-off scheme."""
         self.mux = deepcopy(mux)
         """Multiplexing scheme."""
         self._select_purif_qubit = select_purif_qubit
@@ -122,7 +161,6 @@ class ProactiveForwarder(Application):
         self.fib = Fib()
         """FIB structure."""
 
-        # event handlers
         self.add_handler(self.handle_sync_phase, TimingPhaseEvent)
         self.add_handler(self.RecvClassicPacketHandler, RecvClassicPacket)
         self.add_handler(self.qubit_is_entangled, QubitEntangledEvent)
@@ -137,7 +175,7 @@ class ProactiveForwarder(Application):
         """
         SwapUpdates received prior to QubitEntangledEvent.
         Key: MemoryQubit addr.
-        Value: SwapUpdateMsg and FIBEntry.
+        Value: SwapUpdateMsg and FibEntry.
         """
 
         self.parallel_swappings: dict[
@@ -171,6 +209,7 @@ class ProactiveForwarder(Application):
         self.own = self.get_node(node_type=QNode)
         self.memory = self.own.get_memory()
         self.net = self.own.network
+        self.cutoff.fw = self
         self.mux.fw = self
 
     def handle_sync_phase(self, event: TimingPhaseEvent):
@@ -256,7 +295,7 @@ class ProactiveForwarder(Application):
         Process an install_path message containing routing instructions from the controller.
 
         1. Insert FIB entry.
-        2. Identity neighbors and qchannels.
+        2. Identify neighbors and qchannels.
         3. Save the path and neighbors in the multiplexing scheme.
         4. Notify LinkLayer to start elementary EPR generation toward the right neighbor.
         """
@@ -273,6 +312,7 @@ class ProactiveForwarder(Application):
             route=route,
             own_idx=route.index(self.own.name),
             swap=instructions["swap"],
+            swap_cutoff=[None if t < 0 else simulator.time(time_slot=t) for t in instructions["swap_cutoff"]],
             purif=instructions["purif"],
         )
         self.fib.insert_or_replace(fib_entry)
@@ -355,6 +395,12 @@ class ProactiveForwarder(Application):
             )
 
     CLASSIC_CONTROL_HANDLERS["uninstall_path"] = handle_uninstall_path
+
+    def _handle_cutoff_discard(self, msg: CutoffDiscardMsg, fib_entry: FibEntry):
+        _ = fib_entry
+        self.cutoff.handle_discard(msg)
+
+    CLASSIC_SIGNALING_HANDLERS["CUTOFF_DISCARD"] = _handle_cutoff_discard
 
     def _find_neighbor(self, fib_entry: FibEntry, route_offset: int) -> QNode | None:
         neigh_idx = fib_entry.own_idx + route_offset
@@ -440,19 +486,20 @@ class ProactiveForwarder(Application):
             log.debug(f"{self.own}: is not primary node for segment {segment_name} purif")
             return
 
+        candidates = self.memory.find(
+            lambda q, v: q.addr != qubit.addr  # not the same qubit
+            and q.state == QubitState.PURIF  # in PURIF state
+            and q.purif_rounds == qubit.purif_rounds  # with same number of purif rounds
+            and partner in (v.src, v.dst)  # with the same partner
+            and q.path_id == fib_entry.path_id,  # on the same path_id
+            has_epr=True,
+        )
         found = select_purif_qubit(
             self._select_purif_qubit,
             qubit,
             fib_entry,
             partner,
-            self.memory.find(
-                lambda q, v: q.addr != qubit.addr  # not the same qubit
-                and q.state == QubitState.PURIF  # in PURIF state
-                and q.purif_rounds == qubit.purif_rounds  # with same number of purif rounds
-                and partner in (v.src, v.dst)  # with the same partner
-                and q.path_id == fib_entry.path_id,  # on the same path_id
-                has_epr=True,
-            ),
+            cast(MemoryWernerIterator, candidates),
         )
         if not found:
             log.debug(f"{self.own}: no candidate EPR for segment {segment_name} purif round {1 + qubit.purif_rounds}")
@@ -611,7 +658,7 @@ class ProactiveForwarder(Application):
 
         If this is an end node of the path, consume the EPR.
 
-        Otherwise, attempt entanglement swapping:
+        Otherwise, update the EPR age cut-off scheme, and then attempt entanglement swapping:
 
         1. Look for a matching eligible qubit to perform swapping.
         2. Generate a new EPR if successful.
@@ -632,10 +679,20 @@ class ProactiveForwarder(Application):
             self.consume_and_release(qubit)
             return
 
-        swap_candidate_tuple = self.mux.find_swap_candidate(qubit, epr, fib_entry)
+        self.cutoff.qubit_is_eligible(qubit, fib_entry)
+
+        swap_candidates = self.memory.find(
+            lambda q, _: q.state == QubitState.ELIGIBLE  # in ELIGIBLE state
+            and q.qchannel != qubit.qchannel  # assigned to a different channel
+            and self.cutoff.filter_swap_candidate(q),
+            has_epr=True,
+        )
+        swap_candidate_tuple = self.mux.find_swap_candidate(qubit, epr, fib_entry, cast(MemoryWernerIterator, swap_candidates))
+        mq1: MemoryQubit | None = None
         if swap_candidate_tuple:
             mq1, fib_entry = swap_candidate_tuple
             self.do_swapping(qubit, mq1, fib_entry)
+        self.cutoff.before_swap(qubit, mq1, fib_entry)
 
     def do_swapping(
         self,
@@ -919,8 +976,7 @@ class ProactiveForwarder(Application):
         assert qm.dst is not None
 
         log.debug(f"{self.own}: consume EPR: {qm.name} -> {qm.src.name}-{qm.dst.name} | F={qm.fidelity}")
-        self.cnt.n_consumed += 1
-        self.cnt.consumed_sum_fidelity += qm.fidelity
+        self.cnt.increment_n_consumed(qm.fidelity)
 
         self.release_qubit(qubit)
 

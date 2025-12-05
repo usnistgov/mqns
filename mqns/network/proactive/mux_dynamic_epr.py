@@ -6,7 +6,7 @@ from mqns.models.epr import WernerStateEntanglement
 from mqns.network.proactive.fib import FibEntry
 from mqns.network.proactive.mux_buffer_space import MuxSchemeFibBase
 from mqns.network.proactive.mux_statistical import MuxSchemeDynamicBase, has_intersect_tmp_path_ids
-from mqns.network.proactive.select import SelectPath, select_path_random
+from mqns.network.proactive.select import MemoryWernerIterator, SelectPath, select_path_random
 from mqns.utils import log
 
 
@@ -53,14 +53,13 @@ class MuxSchemeDynamicEpr(MuxSchemeDynamicBase, MuxSchemeFibBase):
         self.fw.qubit_is_purif(qubit, fib_entry, neighbor)
 
     @override
-    def list_swap_candidates(self, mq0: MemoryQubit, fib_entry: FibEntry):
+    def list_swap_candidates(self, mq0: MemoryQubit, fib_entry: FibEntry, input: MemoryWernerIterator):
         assert mq0.path_id is None
         possible_path_ids = [fib_entry.path_id]
-        return self.memory.find(
-            lambda q, v: q.state == QubitState.ELIGIBLE  # in ELIGIBLE state
-            and q.qchannel != mq0.qchannel  # assigned to a different channel
-            and has_intersect_tmp_path_ids(v.tmp_path_ids, possible_path_ids),  # has compatible path_id
-            has_epr=True,
+        return (
+            (q, v)
+            for (q, v) in input
+            if has_intersect_tmp_path_ids(v.tmp_path_ids, possible_path_ids)  # has compatible path_id
         )
 
     @override
