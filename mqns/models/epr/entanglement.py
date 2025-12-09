@@ -76,6 +76,8 @@ class BaseEntanglement(ABC, Generic[EntanglementT]):
         """The other node that holds the other entangled qubit, at the right side of a path."""
         self.ch_index = -1
         """Index of this entanglement in a path, smaller indices are on the left side."""
+        # QuantumMemory.find() performance optimization assumes that ch_index is present in this class
+        # but absent in other QuantumModel implementations.
         self.orig_eprs: list[EntanglementT] = []
         """Elementary entanglements that swapped into this entanglement."""
         self.tmp_path_ids: frozenset[int] | None = None

@@ -17,8 +17,9 @@ from mqns.simulator import Simulator
 
 
 def test_write_and_read_with_path_and_key():
+    ch = QuantumChannel("qc")
     mem = QuantumMemory("mem", capacity=2, decoherence_rate=1)
-    mem.assign(QuantumChannel("qc"), mem.capacity)
+    mem.assign(ch, n=mem.capacity)
     node = QNode("n1")
     node.set_memory(mem)
 
@@ -32,7 +33,7 @@ def test_write_and_read_with_path_and_key():
     key = "n1_peer_0_0"
 
     # First allocate memory with path ID
-    addrs = mem.allocate(0, PathDirection.LEFT, ch_name="qc")
+    addrs = mem.allocate(ch, 0, PathDirection.LEFT)
     assert len(addrs) == 1
     addr = addrs[0]
     mem._storage[addr][0].active = key
@@ -73,7 +74,7 @@ def test_channel_qubit_assignment_and_search():
     assert len(addrs) == 1
 
     # Assigned qubit should now be returned by get_channel_qubits
-    qubits = mem.get_channel_qubits("qch")
+    qubits = mem.get_channel_qubits(ch)
     assert len(qubits) == 1
     q, data = qubits[0]
     assert q.qchannel == ch
@@ -108,8 +109,9 @@ def test_decoherence_event_removes_qubit():
 
 
 def test_memory_clear_and_deallocate():
+    ch = QuantumChannel("qc")
     mem = QuantumMemory("mem", capacity=2, decoherence_rate=1)
-    mem.assign(QuantumChannel("qc"), mem.capacity)
+    mem.assign(ch, n=mem.capacity)
     node = QNode("n4")
     node.set_memory(mem)
 
@@ -123,12 +125,12 @@ def test_memory_clear_and_deallocate():
         q.dst = QNode("peer")
         assert mem.write(q)
 
-    assert mem.is_full()
+    assert mem.count == 2
     mem.clear()
-    assert not mem.is_full()
+    assert mem.count == 0
 
     # Test deallocate
-    addrs = mem.allocate(7, PathDirection.LEFT, ch_name="qc")
+    addrs = mem.allocate(ch, 7, PathDirection.LEFT)
     assert len(addrs) == 1
     addr = addrs[0]
     mem.deallocate(addr)
@@ -137,15 +139,16 @@ def test_memory_clear_and_deallocate():
 
 
 def test_qubit_reservation_behavior():
+    ch = QuantumChannel("qc")
     mem = QuantumMemory("mem", capacity=2, decoherence_rate=1)
-    mem.assign(QuantumChannel("qc"), mem.capacity)
+    mem.assign(ch, n=mem.capacity)
     node = QNode("n5")
     node.set_memory(mem)
 
     sim = Simulator(0, 5)
     node.install(sim)
 
-    addrs = mem.allocate(42, PathDirection.LEFT, ch_name="qc")
+    addrs = mem.allocate(ch, 42, PathDirection.LEFT)
     assert len(addrs) == 1
     addr1 = addrs[0]
     q1 = mem._storage[addr1][0]
@@ -195,15 +198,14 @@ def test_memory_sync_qubit_limited():
 
     q = Qubit(name="q5")
     assert not m.write(q)
-    assert m.is_full()
+    assert m.count == 5
 
     q = m.read("q4")
     assert q is not None
     assert m.count == 4
-    assert not m.is_full()
     q = Qubit(name="q6")
     assert m.write(q)
-    assert m.is_full()
+    assert m.count == 5
     assert m.get("q6", must=True)[0].addr == 3
 
 

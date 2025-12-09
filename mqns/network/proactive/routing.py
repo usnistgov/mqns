@@ -231,11 +231,11 @@ class RoutingPathMulti(RoutingPath):
                 assert shared is not None
 
                 # From node_i
-                full_qubits_a = node_a.get_memory().get_channel_qubits(ch.name)
+                full_qubits_a = node_a.get_memory().get_channel_qubits(ch)
                 qubits_a = len(full_qubits_a) // shared if shared > 0 else len(full_qubits_a)
 
                 # From node_i+1
-                full_qubits_b = node_b.get_memory().get_channel_qubits(ch.name)
+                full_qubits_b = node_b.get_memory().get_channel_qubits(ch)
                 qubits_b = len(full_qubits_b) // shared if shared > 0 else len(full_qubits_b)
 
                 m_v.append((qubits_a, qubits_b))

@@ -78,7 +78,7 @@ class QuantumChannel(BaseChannel[QNode]):
         for node in self.node_list:
             memory = node.get_memory()
             cap = capacity if isinstance(capacity, int) else capacity[node.name]
-            memory.assign(self, cap)
+            memory.assign(self, n=cap)
 
     def send(self, qubit: QuantumModel, next_hop: QNode):
         """Send a qubit to the next_hop

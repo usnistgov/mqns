@@ -61,9 +61,9 @@ class MuxSchemeBufferSpace(MuxSchemeFibBase):
 
         n_qubits = m_v[fib_entry.own_idx + m_v_offset][ch_side]
         if n_qubits == 0:  # 0 means use all qubits assigned to this qchannel
-            n_qubits = len(self.memory.get_channel_qubits(qchannel.name))
+            n_qubits = len(self.memory.get_channel_qubits(qchannel))
 
-        addrs = self.memory.allocate(fib_entry.path_id, direction, ch_name=qchannel.name, n=n_qubits)
+        addrs = self.memory.allocate(qchannel, fib_entry.path_id, direction, n=n_qubits)
         log.debug(f"{self.own}: allocated {direction} qubits: {addrs}")
 
     @override
@@ -75,7 +75,7 @@ class MuxSchemeBufferSpace(MuxSchemeFibBase):
         qchannel: QuantumChannel,
     ) -> None:
         _ = neighbor
-        qubits = self.memory.find(lambda q, _: q.qchannel == qchannel and q.path_id == fib_entry.path_id)
+        qubits = self.memory.find(lambda q, _: q.path_id == fib_entry.path_id, qchannel=qchannel)
         addrs = [q[0].addr for q in qubits]
         self.memory.deallocate(*addrs)
         log.debug(f"{self.own}: deallocated {direction} qubits: {addrs}")

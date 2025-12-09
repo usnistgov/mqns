@@ -70,6 +70,9 @@ def plt_save(*save_to: str | tuple[Figure, str], **kwargs) -> None:
         if filename:
             cast(Figure, fig).savefig(filename, dpi=300, transparent=want_transparent, **kwargs)
 
+    if want_show:
+        plt.show()
+
 
 __all__ = [
     "Axes",

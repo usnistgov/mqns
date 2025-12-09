@@ -125,20 +125,6 @@ class MemoryQubit:
 
         self._events: dict[type, Event] = {}
 
-    def assign(self, ch: "QuantumChannel") -> None:
-        self.qchannel = ch
-
-    def unassign(self) -> None:
-        self.qchannel = None
-
-    def allocate(self, path_id: int, path_direction: PathDirection | None = None) -> None:
-        self.path_id = path_id
-        self.path_direction = path_direction
-
-    def deallocate(self) -> None:
-        self.path_id = None
-        self.path_direction = None
-
     @property
     def state(self) -> QubitState:
         return self._state

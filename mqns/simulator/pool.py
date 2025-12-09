@@ -16,50 +16,56 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import heapq
+import math
 
 from mqns.simulator.event import Event
-from mqns.simulator.ts import Time
 
 
 class DefaultEventPool:
-    """The default implement of the event pool"""
+    """
+    Heap-based event pool.
+    """
 
-    def __init__(self, ts: Time, te: Time | None):
-        self.ts = ts
-        """Event list start time."""
-        self.te = te
-        """Event list end time. None means infinity."""
+    def __init__(self, ts: int, te: int | None):
+        """
+        Constructor.
+
+        Args:
+            ts: Start time slot.
+            te: End time slot.
+        """
         self.tc = ts
-        """Current time."""
+        self.te = math.inf if te is None else te
         self.event_list: list[Event] = []
 
     def add_event(self, event: Event) -> bool:
-        """Insert an event into the pool
+        """
+        Add an event.
 
         Args:
-            event (Event): The inserting event
-        Returns:
-            if the event is inserted successfully
+            event: The event; its time accuracy must be consistent.
 
+        Returns:
+            Whether the event has been inserted.
         """
-        if event.t < self.tc or (self.te is not None and event.t > self.te):
+        if event.t.time_slot < self.tc or event.t.time_slot > self.te:
             return False
 
         heapq.heappush(self.event_list, event)
         return True
 
     def next_event(self) -> Event | None:
-        """Get the next event to be executed
+        """
+        Pop the next event to be executed.
 
         Returns:
-            The next event to be executed
-
+            The next event, or None if the simulation has ended.
         """
         try:
             event = heapq.heappop(self.event_list)
-            self.tc = event.t
+            self.tc = event.t.time_slot
             return event
         except IndexError:
-            if self.te is not None:
-                self.tc = self.te
+            if not math.isinf(self.te):
+                self.tc = int(self.te)
             return None
