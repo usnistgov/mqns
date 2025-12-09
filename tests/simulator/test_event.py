@@ -17,8 +17,8 @@ class NopEventB(Event):
 
 
 def test_event_compare():
-    t1 = Time(sec=1.0)
-    t2 = Time(sec=2.0)
+    t1 = Time.from_sec(1.0)
+    t2 = Time.from_sec(2.0)
 
     e1a = NopEventA(t1)
     e1b = NopEventB(t1)
@@ -42,7 +42,7 @@ class PrintEvent(Event):
 
 
 def test_event_normal():
-    te = PrintEvent(t=Time(sec=1), name="test event")
+    te = PrintEvent(t=Time.from_sec(1), name="test event")
     print(te)
 
     te.invoke()
@@ -56,7 +56,7 @@ def Print():
 
 
 def test_event_simple():
-    te = func_to_event(Time(sec=1), Print, name="test event")
+    te = func_to_event(Time.from_sec(1), Print, name="test event")
     print(te)
 
     te.invoke()

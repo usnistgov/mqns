@@ -97,8 +97,8 @@ class Simulator:
 
     def time(self, *, time_slot: int | None = None, sec: float = math.nan) -> Time:
         if time_slot is not None:
-            return Time(time_slot=time_slot, accuracy=self.accuracy)
-        return Time(sec=sec, accuracy=self.accuracy)
+            return Time(time_slot, accuracy=self.accuracy)
+        return Time.from_sec(sec, accuracy=self.accuracy)
 
     def add_event(self, event: Event) -> None:
         """
