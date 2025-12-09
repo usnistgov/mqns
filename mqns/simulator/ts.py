@@ -15,6 +15,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from typing import final
 
 default_accuracy = 1000000  # {default_accuracy} time slots per second
 
@@ -34,6 +35,7 @@ def _to_time_slot(sec: int | float, accuracy: int) -> int:
     return round(sec * accuracy)
 
 
+@final
 class Time:
     def __init__(self, time_slot: int = 0, sec: int | float = 0, accuracy: int | None = None):
         """Time: the time slot used in the simulator
@@ -102,7 +104,7 @@ class Time:
         Args:
             ts: either a Time object with same accuracy, or a duration number in seconds.
         """
-        if isinstance(ts, Time):
+        if type(ts) is Time:
             assert ts.accuracy == self.accuracy
             time_slot = ts.time_slot
         else:
@@ -116,7 +118,7 @@ class Time:
         Args:
             ts: either a Time object with same accuracy, or a duration number in seconds.
         """
-        if isinstance(ts, Time):
+        if type(ts) is Time:
             assert ts.accuracy == self.accuracy
             time_slot = ts.time_slot
         else:

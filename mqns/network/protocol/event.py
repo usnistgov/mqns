@@ -15,7 +15,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from typing import Any
+from typing import Any, final
 
 from typing_extensions import override
 
@@ -26,6 +26,7 @@ from mqns.models.epr import WernerStateEntanglement
 from mqns.simulator import Event, Time
 
 
+@final
 class ManageActiveChannels(Event):
     """
     Event sent by Forwarder to request LinkLayer to start/stop generating EPRs over a qchannel.
@@ -55,6 +56,7 @@ class ManageActiveChannels(Event):
         self.node.handle(self)
 
 
+@final
 class LinkArchSuccessEvent(Event):
     """
     Event in LinkLayer to notify itself or its neighbor about successful entanglement in link architecture.
@@ -80,6 +82,7 @@ class LinkArchSuccessEvent(Event):
         self.node.handle(self)
 
 
+@final
 class QubitEntangledEvent(Event):
     """
     Event sent by LinkLayer to notify Forwarder about new entangled qubit.
@@ -107,6 +110,7 @@ class QubitEntangledEvent(Event):
         self.node.handle(self)
 
 
+@final
 class QubitDecoheredEvent(Event):
     """
     Event sent by Memory to inform LinkLayer about a decohered qubit.
@@ -124,6 +128,7 @@ class QubitDecoheredEvent(Event):
         self.node.handle(self)
 
 
+@final
 class QubitReleasedEvent(Event):
     """
     Event sent by Forwarder to inform LinkLayer about a released (no longer needed) qubit.

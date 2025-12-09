@@ -16,7 +16,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, final
 
 from typing_extensions import override
 
@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from mqns.entity.memory.memory import QuantumMemory
 
 
+@final
 class MemoryReadRequestEvent(Event):
     """``MemoryReadRequestEvent`` is the event that request a memory read"""
 
@@ -50,6 +51,7 @@ class MemoryReadRequestEvent(Event):
         self.memory.handle(self)
 
 
+@final
 class MemoryReadResponseEvent(Event):
     """``MemoryReadResponseEvent`` is the event that returns the memory read result"""
 
@@ -73,6 +75,7 @@ class MemoryReadResponseEvent(Event):
         self.node.handle(self)
 
 
+@final
 class MemoryWriteRequestEvent(Event):
     """``MemoryWriteRequestEvent`` is the event that request a memory write"""
 
@@ -86,6 +89,7 @@ class MemoryWriteRequestEvent(Event):
         self.memory.handle(self)
 
 
+@final
 class MemoryWriteResponseEvent(Event):
     """``MemoryWriteResponseEvent`` is the event that returns the memory write result"""
 

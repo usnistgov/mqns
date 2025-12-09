@@ -158,7 +158,7 @@ class LinkLayer(Application):
         self.add_handler(self.RecvClassicPacketHandler, RecvClassicPacket)
         self.add_handler(self.handle_manage_active_channels, ManageActiveChannels)
         self.add_handler(self.handle_success_entangle, LinkArchSuccessEvent)
-        self.add_handler(self.handle_decoh_rel, [QubitDecoheredEvent, QubitReleasedEvent])
+        self.add_handler(self.handle_decoh_rel, (QubitDecoheredEvent, QubitReleasedEvent))
 
     @override
     def install(self, node: Node, simulator: Simulator):
@@ -299,7 +299,7 @@ class LinkLayer(Application):
         3. If no available qubit is found, the request is enqueued for future retry (FIFO).
         """
         from_node = cchannel.find_peer(self.own)
-        assert isinstance(from_node, QNode)
+        assert type(from_node) is QNode
         qchannel = self.own.get_qchannel(from_node)
         req = ReservationRequest(msg["key"], msg["path_id"], cchannel, from_node, qchannel)
         if not self.try_accept_reservation(req):
@@ -422,7 +422,7 @@ class LinkLayer(Application):
 
     def handle_decoh_rel(self, event: QubitDecoheredEvent | QubitReleasedEvent) -> bool:
         qubit = event.qubit
-        is_decoh = isinstance(event, QubitDecoheredEvent)
+        is_decoh = type(event) is QubitDecoheredEvent
         if is_decoh:
             self.cnt.n_decoh += 1
             log.debug(f"{self.own}: qubit decohered addr={qubit.addr} old-key={qubit.active}")

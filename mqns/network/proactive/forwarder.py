@@ -520,8 +520,8 @@ class ProactiveForwarder(Application):
         # read qubits to set fidelity at this time
         _, epr0 = self.memory.read(mq0.addr, destructive=False, must=True)
         _, epr1 = self.memory.read(mq1.addr, must=True)
-        assert isinstance(epr0, WernerStateEntanglement)
-        assert isinstance(epr1, WernerStateEntanglement)
+        assert type(epr0) is WernerStateEntanglement
+        assert type(epr1) is WernerStateEntanglement
 
         log.debug(
             f"{self.own}: request purif qubit {mq0.addr} (F={epr0.fidelity}) and "
@@ -566,8 +566,8 @@ class ProactiveForwarder(Application):
         mq0, epr0 = self.memory.read(msg["epr"], destructive=False, must=True)
         mq1, epr1 = self.memory.read(msg["measure_epr"], must=True)
         # TODO: handle the exception case when an EPR is decohered and not found in memory
-        assert isinstance(epr0, WernerStateEntanglement)
-        assert isinstance(epr1, WernerStateEntanglement)
+        assert type(epr0) is WernerStateEntanglement
+        assert type(epr1) is WernerStateEntanglement
 
         for mq in (mq0, mq1):
             assert mq.state == QubitState.PURIF
@@ -631,7 +631,7 @@ class ProactiveForwarder(Application):
         """
         qubit, epr = self.memory.get(msg["epr"], must=True)
         # TODO: handle the exception case when an EPR is decohered and not found in memory
-        assert isinstance(epr, WernerStateEntanglement)
+        assert type(epr) is WernerStateEntanglement
 
         result = msg["result"]
         log.debug(
@@ -674,7 +674,7 @@ class ProactiveForwarder(Application):
             return
 
         _, epr = self.memory.get(qubit.addr, must=True)
-        assert isinstance(epr, WernerStateEntanglement)
+        assert type(epr) is WernerStateEntanglement
         if self.can_consume(fib_entry, epr):
             self.consume_and_release(qubit)
             return
@@ -721,7 +721,7 @@ class ProactiveForwarder(Application):
         next_tuple: tuple[QNode, MemoryQubit, WernerStateEntanglement] | None = None
         for addr in (mq0.addr, mq1.addr):
             qubit, epr = self.memory.read(addr, must=True)
-            assert isinstance(epr, WernerStateEntanglement)
+            assert type(epr) is WernerStateEntanglement
             if epr.dst == self.own:
                 assert epr.src is not None
                 prev_tuple = epr.src, qubit, epr
@@ -971,7 +971,7 @@ class ProactiveForwarder(Application):
         Consume an entangled qubit.
         """
         _, qm = self.memory.read(qubit.addr, must=True)
-        assert isinstance(qm, WernerStateEntanglement)
+        assert type(qm) is WernerStateEntanglement
         assert qm.src is not None
         assert qm.dst is not None
 

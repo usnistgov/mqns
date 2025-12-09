@@ -15,7 +15,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from typing import Any
+from typing import Any, final
 
 from typing_extensions import override
 
@@ -71,6 +71,7 @@ class Timer(Entity):
             raise NotImplementedError
 
 
+@final
 class TimerEvent(Event):
     """TimerEvent is the event that triggers the Timer's `trigger_func`"""
 
