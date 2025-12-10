@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from collections import deque
 from enum import Enum, auto
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, final
 
 from typing_extensions import override
 
@@ -17,6 +17,7 @@ class TimingPhase(Enum):
     INTERNAL = auto()
 
 
+@final
 class TimingPhaseEvent(Event):
     """
     Event that indicates a timing phase change, emitted in SYNC timing mode only.

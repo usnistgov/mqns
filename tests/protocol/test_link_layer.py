@@ -30,7 +30,7 @@ class NetworkLayer(Application):
     def install(self, node: Node, simulator: Simulator):
         super().install(node, simulator)
         self.own = self.get_node(node_type=QNode)
-        self.memory = self.own.get_memory()
+        self.memory = self.own.memory
 
     def handle_entangle(self, event: QubitEntangledEvent):
         qubit, epr = self.memory.read(event.qubit.addr, must=True, destructive=False)

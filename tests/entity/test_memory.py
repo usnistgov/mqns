@@ -21,7 +21,7 @@ def test_write_and_read_with_path_and_key():
     mem = QuantumMemory("mem", capacity=2, decoherence_rate=1)
     mem.assign(ch, n=mem.capacity)
     node = QNode("n1")
-    node.set_memory(mem)
+    node.memory = mem
 
     sim = Simulator(0, 10)
     node.install(sim)
@@ -64,7 +64,7 @@ def test_write_and_read_with_path_and_key():
 def test_channel_qubit_assignment_and_search():
     mem = QuantumMemory("mem", capacity=3, decoherence_rate=1)
     node = QNode("n2")
-    node.set_memory(mem)
+    node.memory = mem
 
     sim = Simulator(0, 10)
     node.install(sim)
@@ -85,7 +85,7 @@ def test_decoherence_event_removes_qubit():
     mem = QuantumMemory("mem", decoherence_rate=1)
 
     node = QNode("n3")
-    node.set_memory(mem)
+    node.memory = mem
 
     sim = Simulator(0, 5)
     node.install(sim)
@@ -113,7 +113,7 @@ def test_memory_clear_and_deallocate():
     mem = QuantumMemory("mem", capacity=2, decoherence_rate=1)
     mem.assign(ch, n=mem.capacity)
     node = QNode("n4")
-    node.set_memory(mem)
+    node.memory = mem
 
     sim = Simulator(0, 5)
     node.install(sim)
@@ -143,7 +143,7 @@ def test_qubit_reservation_behavior():
     mem = QuantumMemory("mem", capacity=2, decoherence_rate=1)
     mem.assign(ch, n=mem.capacity)
     node = QNode("n5")
-    node.set_memory(mem)
+    node.memory = mem
 
     sim = Simulator(0, 5)
     node.install(sim)
@@ -168,7 +168,7 @@ def test_qubit_reservation_behavior():
 def test_memory_sync_qubit():
     m = QuantumMemory("m1")
     n1 = QNode("n1")
-    n1.set_memory(m)
+    n1.memory = m
     q1 = Qubit(name="test_qubit")
 
     s = Simulator(0, 10, 1000)
@@ -186,7 +186,7 @@ def test_memory_sync_qubit():
 def test_memory_sync_qubit_limited():
     m = QuantumMemory("m1", capacity=5)
     n1 = QNode(name="n1")
-    n1.set_memory(m)
+    n1.memory = m
 
     s = Simulator(0, 10, 1000)
     n1.install(s)
@@ -247,7 +247,7 @@ def test_memory_async_qubit():
     n1.add_apps(app)
 
     m = QuantumMemory("m1", delay=0.5)
-    n1.set_memory(m)
+    n1.memory = m
 
     s = Simulator(0, 10, 1000)
     n1.install(s)

@@ -21,7 +21,7 @@ class ChangeDefaultAccuracy:
 def test_time_compare():
     with ChangeDefaultAccuracy(1000000):
         t1 = Time(1)
-        t2 = Time(sec=1.1)
+        t2 = Time.from_sec(1.1)
         t3 = Time()
         t4 = Time(1100000)
 
@@ -33,7 +33,7 @@ def test_time_compare():
     assert t1 != t4
     assert t2 == t4
 
-    t0 = Time(sec=1.1, accuracy=2000)
+    t0 = Time.from_sec(1.1, accuracy=2000)
     assert t2 != t0
     assert pytest.raises(AssertionError, lambda: t3 < t0)
 
@@ -42,14 +42,14 @@ def test_time_compare():
 
 
 def test_time_accuracy():
-    t0 = Time(sec=1.0)
+    t0 = Time.from_sec(1.0)
 
     with ChangeDefaultAccuracy(2000):
-        t1 = Time(sec=1.0)
-        t2 = Time(sec=1.0, accuracy=3000)
+        t1 = Time.from_sec(1.0)
+        t2 = Time.from_sec(1.0, accuracy=3000)
 
-    t3 = Time(sec=1.0)
-    t4 = Time(sec=1.0, accuracy=4000)
+    t3 = Time.from_sec(1.0)
+    t4 = Time.from_sec(1.0, accuracy=4000)
 
     assert t0.sec == pytest.approx(1.0)
     assert t1.sec == pytest.approx(1.0)
@@ -64,25 +64,25 @@ def test_time_accuracy():
 
 
 def test_time_add_sub():
-    t5 = Time(sec=5, accuracy=1000)
+    t5 = Time.from_sec(5, accuracy=1000)
 
     t6a = t5 + 1
     t6b = t5 + 1.0
-    t6c = t5 + Time(sec=1.0, accuracy=1000)
+    t6c = t5 + Time.from_sec(1.0, accuracy=1000)
     assert t6a.sec == pytest.approx(6.0)
     assert t6b.sec == pytest.approx(6.0)
     assert t6c.sec == pytest.approx(6.0)
 
-    assert pytest.raises(AssertionError, lambda: t5 + Time(sec=1.0, accuracy=2000))
+    assert pytest.raises(AssertionError, lambda: t5 + Time.from_sec(1.0, accuracy=2000))
 
     t3a = t5 - 2
     t3b = t5 - 2.0
-    t3c = t5 - Time(sec=2.0, accuracy=1000)
+    t3c = t5 - Time.from_sec(2.0, accuracy=1000)
     assert t3a.sec == pytest.approx(3.0)
     assert t3b.sec == pytest.approx(3.0)
     assert t3c.sec == pytest.approx(3.0)
 
-    assert pytest.raises(AssertionError, lambda: t5 - Time(sec=2.0, accuracy=2000))
+    assert pytest.raises(AssertionError, lambda: t5 - Time.from_sec(2.0, accuracy=2000))
 
 
 def print_msg(msg):
@@ -97,6 +97,6 @@ def test_simulator_time():
     """
     s = Simulator(1, 10, 1000)
     s.run()
-    print_event = func_to_event(Time(sec=1), print_msg, "hello world")
+    print_event = func_to_event(Time.from_sec(1), print_msg, "hello world")
     assert print_event.t is not None
     assert print_event.t.accuracy == 1000

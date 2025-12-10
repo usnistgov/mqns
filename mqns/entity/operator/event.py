@@ -15,7 +15,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, final
 
 from typing_extensions import override
 
@@ -27,6 +27,7 @@ if TYPE_CHECKING:
     from mqns.entity.operator.operator import QuantumOperator
 
 
+@final
 class OperateRequestEvent(Event):
     """``OperateRequestEvent`` is the event that request a operator to handle"""
 
@@ -48,6 +49,7 @@ class OperateRequestEvent(Event):
         self.operator.handle(self)
 
 
+@final
 class OperateResponseEvent(Event):
     """``OperateResponseEvent`` is the event that returns the operating result"""
 

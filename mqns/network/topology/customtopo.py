@@ -133,8 +133,7 @@ class CustomTopology(Topology):
 
             # Assign a new memory
             memory_args = node.get("memory", self.memory_args)
-            m = QuantumMemory(f"{qn.name}.memory", **memory_args)
-            qn.set_memory(m)
+            qn.memory = QuantumMemory(f"{qn.name}.memory", **memory_args)
 
             qnl.append(qn)
             self._save_node(qn)

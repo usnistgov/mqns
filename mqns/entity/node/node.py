@@ -25,49 +25,54 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from typing import TYPE_CHECKING, TypeVar
+from collections import defaultdict
+from typing import TYPE_CHECKING, TypeVar, cast
 
 from typing_extensions import override
 
 from mqns.entity.entity import Entity
-from mqns.entity.node.app import Application
+from mqns.entity.node.app import Application, ApplicationT
 from mqns.simulator import Event, Simulator
 
 if TYPE_CHECKING:
+    from mqns.entity.base_channel import ChannelT
     from mqns.entity.cchannel import ClassicChannel
     from mqns.network.network import QuantumNetwork, TimingMode
-
-ApplicationT = TypeVar("ApplicationT", bound=Application)
 
 
 class Node(Entity):
     """Node is a generic node in the quantum network"""
 
     def __init__(self, name: str, *, apps: list[Application] | None = None):
-        """Args:
-        name (str): the node's name
-        apps (List[Application]): the installing applications.
-
+        """
+        Args:
+            name: node name
+            apps: applications on the node.
         """
         super().__init__(name=name)
         self._network: "QuantumNetwork|None" = None
         self.cchannels: list["ClassicChannel"] = []
+        self._cchannel_by_dst = dict["Node", "ClassicChannel"]()
         self.apps: list[Application] = [] if apps is None else apps
+        self._app_by_type = dict[type, Application]()
 
     @override
     def install(self, simulator: Simulator) -> None:
         """Called from Network.install()"""
         super().install(simulator)
         # initiate sub-entities
-        for cchannel in self.cchannels:
-            from mqns.entity import ClassicChannel  # noqa: PLC0415
+        from mqns.entity import ClassicChannel  # noqa: PLC0415
 
-            assert isinstance(cchannel, ClassicChannel)
-            cchannel.install(simulator)
+        self._install_channels(ClassicChannel, self.cchannels, self._cchannel_by_dst)
 
         # initiate applications
+        apps_by_type = defaultdict[type, list[Application]](lambda: [])
         for app in self.apps:
+            apps_by_type[type(app)].append(app)
             app.install(self, simulator)
+        for typ, apps in apps_by_type.items():
+            if len(apps) == 1:
+                self._app_by_type[typ] = apps[0]
 
     @override
     def handle(self, event: Event) -> None:
@@ -103,8 +108,7 @@ class Node(Entity):
         Retrieve applications of given type.
 
         Args:
-            app_type: the class of app_type
-
+            app_type: Application type/class.
         """
         return [app for app in self.apps if isinstance(app, app_type)]
 
@@ -114,49 +118,52 @@ class Node(Entity):
         There must be exactly one instance of this application.
 
         Args:
-            app_type: the class of app_type
+            app_type: Application type/class.
 
         Raises:
-            IndexError
+            IndexError - application does not exist, or there are multiple instances
         """
-        apps = self.get_apps(app_type)
-        if len(apps) != 1:
-            raise IndexError(f"node {repr(self)} has {len(apps)} instances of {app_type}")
-        return apps[0]
+        return cast(ApplicationT, self._app_by_type[app_type])
+
+    def _add_channel(self, channel: "ChannelT", channels: list["ChannelT"]) -> None:
+        assert self._simulator is None
+        channel.node_list.append(self)
+        channels.append(channel)
+
+    def _install_channels(
+        self, typ: type["ChannelT"], channels: list["ChannelT"], by_neighbor: dict["Node", "ChannelT"]
+    ) -> None:
+        simulator = self.simulator
+        for ch in channels:
+            assert isinstance(ch, typ)
+            for dst in ch.node_list:
+                if dst != self:
+                    by_neighbor[dst] = ch
+            ch.install(simulator)
+
+    @staticmethod
+    def _get_channel(dst: "Node", by_neighbor: dict["Node", "ChannelT"]) -> "ChannelT":
+        return by_neighbor[dst]
 
     def add_cchannel(self, cchannel: "ClassicChannel"):
-        """Add a classic channel in this Node
-
-        Args:
-            cchannel (ClassicChannel): the classic channel
-
+        """
+        Add a classic channel in this Node.
         This function is available prior to calling .install().
         """
-        assert self._simulator is None
-        cchannel.node_list.append(self)
-        self.cchannels.append(cchannel)
+        self._add_channel(cchannel, self.cchannels)
 
     def get_cchannel(self, dst: "Node") -> "ClassicChannel":
-        """Get the classic channel that connects to the `dst`
-
-        Args:
-            dst (Node): the destination
+        """
+        Retrieve the classic channel that connects to `dst`.
 
         Raises:
             IndexError - channel does not exist
         """
-        for cchannel in self.cchannels:
-            if dst in cchannel.node_list and self in cchannel.node_list:
-                return cchannel
-        raise IndexError(f"cchannel from {repr(self)} to {repr(dst)} does not exist")
+        return self._get_channel(dst, self._cchannel_by_dst)
 
     def add_network(self, network: "QuantumNetwork"):
-        """Add a network object to this node.
-        Called from Network.__init__()
-
-        Args:
-            network (mqns.network.network.Network): the network object
-
+        """
+        Assign a network object to this node.
         """
         self._network = network
 

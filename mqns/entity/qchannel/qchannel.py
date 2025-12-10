@@ -25,7 +25,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from typing import Any
+from typing import Any, final
 
 from typing_extensions import Unpack, override
 
@@ -76,9 +76,8 @@ class QuantumChannel(BaseChannel[QNode]):
             OverflowError - insufficient qubits.
         """
         for node in self.node_list:
-            memory = node.get_memory()
             cap = capacity if isinstance(capacity, int) else capacity[node.name]
-            memory.assign(self, n=cap)
+            node.memory.assign(self, n=cap)
 
     def send(self, qubit: QuantumModel, next_hop: QNode):
         """Send a qubit to the next_hop
@@ -111,6 +110,7 @@ class QuantumChannel(BaseChannel[QNode]):
         return "<qchannel " + self.name + ">"
 
 
+@final
 class RecvQubitPacket(Event):
     """The event for a QNode to receive a qubit"""
 

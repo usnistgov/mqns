@@ -1,6 +1,5 @@
 import json
 import os.path
-import sys
 import time
 
 from tap import Tap
@@ -32,7 +31,6 @@ log.set_default_level("CRITICAL")
 
 # Command line arguments
 class Args(Tap):
-    profiling: bool = False  # enable cProfile mode
     seed: int = -1  # random seed number
     nnodes: int = 16  # network size - number of nodes
     nedges: int = 20  # network size - number of edges
@@ -118,13 +116,7 @@ def run_simulation():
             RoutingPathSingle(req.src.name, req.dst.name, qubit_allocation=QubitAllocationType.DISABLED, swap="asap")
         )
 
-    if args.profiling:
-        import cProfile  # noqa: PLC0415 - cProfile is unavailable on some platforms
-
-        cProfile.runctx("s.run()", globals(), locals(), sort="tottime")
-        sys.exit()
-    else:
-        s.run()
+    s.run()
 
     #### get stats: e2e_rate and mean_fidelity
     stats = []

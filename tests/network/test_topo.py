@@ -231,9 +231,9 @@ def test_custom_topo_basic():
     assert net.controller is not None
     assert len(net.all_nodes) == 4
 
-    mA = net.get_node("A").get_memory()
-    mB = net.get_node("B").get_memory()
-    mC = net.get_node("C").get_memory()
+    mA = net.get_node("A").memory
+    mB = net.get_node("B").memory
+    mC = net.get_node("C").memory
 
     qAB = net.get_qchannel("q_A,B")
     qBC = net.get_qchannel("q_B,C")

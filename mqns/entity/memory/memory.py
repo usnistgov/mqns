@@ -257,27 +257,23 @@ class QuantumMemory(Entity):
             qubit.path_id = None
             qubit.path_direction = None
 
-    def _find_by_key(self, key: int | QuantumModel | str) -> int:
-        if isinstance(key, int):
+    def _find_by_key(self, key: int | str) -> int:
+        if type(key) is int:
             return key if key < self.capacity else -1
 
-        if isinstance(key, QuantumModel):
-            for qubit, _ in self.find(lambda _, v: v == key):
-                return qubit.addr
-
-        if isinstance(key, str):
+        if type(key) is str:
             for qubit, _ in self.find(lambda _, v: getattr(v, "name", None) == key):
                 return qubit.addr
 
         return -1
 
     @overload
-    def get(self, key: int | QuantumModel | str, *, must: None = None) -> tuple[MemoryQubit, QuantumModel | None] | None:
+    def get(self, key: int | str, *, must: None = None) -> tuple[MemoryQubit, QuantumModel | None] | None:
         """
         Retrieve a qubit and associated quantum model without removing it.
 
         Args:
-            key: Qubit address or quantum model or EPR name.
+            key: Qubit address or EPR name.
 
         Returns:
             Qubit and associated quantum model, or None if it does not exist.
@@ -285,12 +281,12 @@ class QuantumMemory(Entity):
         pass
 
     @overload
-    def get(self, key: int | QuantumModel | str, *, must: Literal[True]) -> tuple[MemoryQubit, QuantumModel | None]:
+    def get(self, key: int | str, *, must: Literal[True]) -> tuple[MemoryQubit, QuantumModel | None]:
         """
         Retrieve a qubit and associated quantum model without removing it.
 
         Args:
-            key: Qubit address or quantum model or EPR name.
+            key: Qubit address or EPR name.
             must: True.
 
         Returns:
@@ -301,7 +297,7 @@ class QuantumMemory(Entity):
         """
         pass
 
-    def get(self, key: int | QuantumModel | str, *, must: bool | None = None) -> tuple[MemoryQubit, QuantumModel | None] | None:
+    def get(self, key: int | str, *, must: bool | None = None) -> tuple[MemoryQubit, QuantumModel | None] | None:
         idx = self._find_by_key(key)
         if idx != -1:
             return self._storage[idx]
@@ -311,14 +307,12 @@ class QuantumMemory(Entity):
             return None
 
     @overload
-    def read(
-        self, key: int | QuantumModel | str, *, destructive=True, must: None = None
-    ) -> tuple[MemoryQubit, QuantumModel] | None:
+    def read(self, key: int | str, *, destructive=True, must: None = None) -> tuple[MemoryQubit, QuantumModel] | None:
         """
         Read a qubit and set fidelity on associated quantum model.
 
         Args:
-            key: Qubit address or quantum model or EPR name.
+            key: Qubit address or EPR name.
             destructive: If True, remove the quantum model after reading.
 
         Returns:
@@ -327,12 +321,12 @@ class QuantumMemory(Entity):
         pass
 
     @overload
-    def read(self, key: int | QuantumModel | str, *, destructive=True, must: Literal[True]) -> tuple[MemoryQubit, QuantumModel]:
+    def read(self, key: int | str, *, destructive=True, must: Literal[True]) -> tuple[MemoryQubit, QuantumModel]:
         """
         Read a qubit and set fidelity on associated quantum model.
 
         Args:
-            key: Qubit address or quantum model or EPR name.
+            key: Qubit address or EPR name.
             destructive: If True, remove the quantum model after reading.
             must: True.
 
@@ -345,9 +339,7 @@ class QuantumMemory(Entity):
         """
         pass
 
-    def read(
-        self, key: int | QuantumModel | str, *, destructive=True, must: bool | None = None
-    ) -> tuple[MemoryQubit, QuantumModel] | None:
+    def read(self, key: int | str, *, destructive=True, must: bool | None = None) -> tuple[MemoryQubit, QuantumModel] | None:
         addr = self._find_by_key(key)
         if addr == -1:
             if must:
@@ -514,7 +506,7 @@ class QuantumMemory(Entity):
         assert isinstance(qm, BaseEntanglement)
 
         qm.is_decoherenced = True
-        if self.read(qm) is None:
+        if self.read(qm.name) is None:
             return
 
         qubit.state = QubitState.RELEASE

@@ -26,7 +26,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import json
-from typing import Any
+from typing import Any, final
 
 from typing_extensions import Unpack, override
 
@@ -115,6 +115,7 @@ class ClassicChannel(BaseChannel[Node]):
         return "<cchannel " + self.name + ">"
 
 
+@final
 class RecvClassicPacket(Event):
     """The event for a Node to receive a classic packet"""
 

@@ -30,7 +30,7 @@ def _compute_mv(net: QuantumNetwork, route: list[str], qubit_allocation: QubitAl
         case QubitAllocationType.DISABLED:
             return None
         case QubitAllocationType.MIN_CAPACITY:
-            c = [net.get_node(node_name).get_memory().capacity for node_name in route]
+            c = [net.get_node(node_name).memory.capacity for node_name in route]
             c[0] *= 2
             c[-1] *= 2
             q = min(c) // 2
@@ -231,11 +231,11 @@ class RoutingPathMulti(RoutingPath):
                 assert shared is not None
 
                 # From node_i
-                full_qubits_a = node_a.get_memory().get_channel_qubits(ch)
+                full_qubits_a = node_a.memory.get_channel_qubits(ch)
                 qubits_a = len(full_qubits_a) // shared if shared > 0 else len(full_qubits_a)
 
                 # From node_i+1
-                full_qubits_b = node_b.get_memory().get_channel_qubits(ch)
+                full_qubits_b = node_b.memory.get_channel_qubits(ch)
                 qubits_b = len(full_qubits_b) // shared if shared > 0 else len(full_qubits_b)
 
                 m_v.append((qubits_a, qubits_b))

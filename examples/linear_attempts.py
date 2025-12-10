@@ -18,7 +18,6 @@ from examples_common.topo_linear import build_topology
 log.set_default_level("CRITICAL")
 
 SEED_BASE = 100
-sim_duration = 1.0
 
 
 class ChannelResult(TypedDict):
@@ -29,7 +28,7 @@ class ChannelResult(TypedDict):
     Success: float
 
 
-def run_simulation(seed: int, L: list[float], M: int) -> list[ChannelResult]:
+def run_simulation(seed: int, sim_duration: float, L: list[float], M: int) -> list[ChannelResult]:
     """
     Run single simulation.
     Return per-channel results.
@@ -66,14 +65,14 @@ def run_simulation(seed: int, L: list[float], M: int) -> list[ChannelResult]:
     return res
 
 
-def run_row(n_runs: int, L: list[float], M: int) -> list[list[ChannelResult]]:
+def run_row(n_runs: int, sim_duration: float, L: list[float], M: int) -> list[list[ChannelResult]]:
     """
     Run N simulations.
     Return details from single simulations.
     """
     row: list[list[ChannelResult]] = []
     for i in range(n_runs):
-        res = run_simulation(SEED_BASE + i, L, M)
+        res = run_simulation(SEED_BASE + i, sim_duration, L, M)
         row.append(res)
     return row
 
@@ -149,6 +148,7 @@ if __name__ == "__main__":
     class Args(Tap):
         workers: int = 1  # number of workers for parallel execution
         runs: int = 50  # number of trials per parameter set
+        sim_duration: float = 1.0  # simulation duration in seconds
         L: list[float] = [32, 18]  # qchannel lengths (km)
         M: list[int] = [1, 2, 3, 4, 5]  # qchannel capacity
         json: str = ""  # save details as JSON file
@@ -159,7 +159,7 @@ if __name__ == "__main__":
 
     # Simulator loop with process-based parallelism
     with Pool(processes=args.workers) as pool:
-        table = pool.starmap(run_row, itertools.product([args.runs], [args.L], args.M))
+        table = pool.starmap(run_row, itertools.product([args.runs], [args.sim_duration], [args.L], args.M))
 
     if args.json:
         with open(args.json, "w") as file:

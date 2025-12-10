@@ -15,6 +15,8 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import sys
+from collections import defaultdict
 from collections.abc import Callable, Iterable
 from typing import TYPE_CHECKING, Any, TypeVar, cast, overload
 
@@ -35,7 +37,9 @@ class Application:
     def __init__(self):
         self._simulator: Simulator | None = None
         self._node: "Node|None" = None
-        self._dispatch_table: list[tuple[type[Event], set[Any] | None, Callable[[Event], bool | None]]] = []
+        self._dispatch_table = defaultdict[type[Event], list[tuple[set[Any] | None, Callable[[Event], bool | None]]]](
+            lambda: []
+        )
 
     def install(self, node: "Node", simulator: Simulator):
         """Install initial events for this Node. Called from Node.install()
@@ -61,48 +65,36 @@ class Application:
         return self._dispatch(event)
 
     def _dispatch(self, event: Event) -> bool:
-        for et, eb, handler in self._dispatch_table:
-            if (isinstance(event, et)) and (eb is None or event.by in eb):
+        for eb, handler in self._dispatch_table.get(type(event), []):
+            if eb is None or event.by in eb:
                 skip = handler(event)
                 if skip is True:
                     return skip
         return False
 
-    @overload
-    def add_handler(
-        self, handler: Callable[[EventT], bool | None], event_type: type[EventT] = Event, event_by: list[Any] | None = None
-    ):
-        pass
-
-    @overload
-    def add_handler(
-        self, handler: Callable[[EventT], bool | None], event_type: list[type[EventT]], event_by: list[Any] | None = None
-    ):
-        pass
-
     def add_handler(
         self,
         handler: Callable[[EventT], bool | None],
-        event_type: type[EventT] | list[type[EventT]] = Event,
-        event_by: Iterable[Any] | None = None,
+        event_type: type[EventT] | Iterable[type[EventT]],
+        event_by: list[Any] | None = None,
     ):
         """
         Add an event handler function.
 
         Args:
             handler: Event handler function.
-            event_type: Event type(s), defaults to all events.
+            event_type: Event type(s). Each class must be marked `@final`.
             event_by: filter by event source entity (`event.by`), defaults to any source.
         """
+        ets = [event_type] if isinstance(event_type, type) else event_type
         eb = None if event_by is None else set(event_by)
         eh = cast(Any, handler)
-        if not isinstance(event_type, list):
-            self._dispatch_table.append((event_type, eb, eh))
-        elif len(event_type) == 0:
-            self._dispatch_table.append((Event, eb, eh))
-        else:
-            for et in event_type:
-                self._dispatch_table.append((et, eb, eh))
+        for et in cast(Iterable[type[EventT]], ets):
+            # __final__ marker is available since Python 3.11
+            assert sys.version_info[:2] < (3, 11) or getattr(et, "__final__", False) is True, (
+                f"event type {et} must be marked @final"
+            )
+            self._dispatch_table[et].append((eb, eh))
 
     @overload
     def get_node(self) -> "Node":
@@ -137,3 +129,7 @@ class Application:
         if self._simulator is None:
             raise IndexError("application is not in a simulator")
         return self._simulator
+
+
+ApplicationT = TypeVar("ApplicationT", bound=Application)
+"""Represents an application type."""

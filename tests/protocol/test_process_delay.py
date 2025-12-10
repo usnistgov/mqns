@@ -1,14 +1,13 @@
-from typing import Any, cast
+from typing import Any, cast, final
 
 from typing_extensions import override
 
 from mqns.entity.node import Application, Node
 from mqns.network.protocol import NodeProcessDelayApp
-from mqns.simulator.event import Event
-from mqns.simulator.simulator import Simulator
-from mqns.simulator.ts import Time
+from mqns.simulator import Event, Simulator, Time
 
 
+@final
 class ProcessEvent(Event):
     def __init__(self, t: Time, dest: Node, name: str | None = None, by: Any = None):
         super().__init__(t, name=name, by=by)
@@ -22,7 +21,7 @@ class ProcessEvent(Event):
 class ProcessApp(Application):
     def __init__(self):
         super().__init__()
-        self.add_handler(self.EventHandler)
+        self.add_handler(self.EventHandler, ProcessEvent)
 
     def install(self, node: Node, simulator: Simulator):
         super().install(node, simulator)

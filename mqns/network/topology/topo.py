@@ -99,8 +99,7 @@ class Topology(ABC):
 
         """
         for node in nl:
-            memory = QuantumMemory(f"{node.name}.memory", **self.memory_args)
-            node.set_memory(memory)
+            node.memory = QuantumMemory(f"{node.name}.memory", **self.memory_args)
 
     def add_cchannels(
         self, *, classic_topo: ClassicTopology = ClassicTopology.Empty, nl: list[QNode] = [], ll: list[QuantumChannel] = []

@@ -63,7 +63,7 @@ class CutoffScheme(ABC):
 
         # find EPR partner
         _, epr = fw.memory.read(qubit.addr, must=True)
-        assert isinstance(epr, WernerStateEntanglement)
+        assert type(epr) is WernerStateEntanglement
         partner = epr.dst if epr.src == self.own else epr.src
         assert partner is not None
 

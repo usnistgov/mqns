@@ -241,13 +241,12 @@ class QuantumNetwork:
 
         """
         for node in self.nodes:
-            memory = QuantumMemory(
+            node.memory = QuantumMemory(
                 name=f"{node.name}.memory",
                 capacity=capacity,
                 decoherence_rate=decoherence_rate,
                 store_error_model_args=store_error_model_args,
             )
-            node.set_memory(memory)
 
     def build_route(self):
         """Build static route tables for each nodes"""

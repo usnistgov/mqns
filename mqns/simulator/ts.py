@@ -15,16 +15,20 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from typing import final
 
-default_accuracy = 1000000  # {default_accuracy} time slots per second
+default_accuracy = 1000000
+"""
+Default time accuracy, how many time slots per second.
+"""
 
 
 def set_default_accuracy(time_slots: int):
-    """Set the default simulation accuracy
+    """
+    Set the default time accuracy.
 
     Args:
-        time_slots (int): the time slots per second.
-
+        time_slots: how many time slots per second.
     """
     global default_accuracy
     default_accuracy = time_slots
@@ -34,27 +38,39 @@ def _to_time_slot(sec: int | float, accuracy: int) -> int:
     return round(sec * accuracy)
 
 
+@final
 class Time:
-    def __init__(self, time_slot: int = 0, sec: int | float = 0, accuracy: int | None = None):
-        """Time: the time slot used in the simulator
+    """
+    Timestamp or duration used in the simulator.
+    """
+
+    def __init__(self, time_slot: int = 0, *, accuracy: int | None = None):
+        """
+        Construct Time from time slot.
 
         Args:
-            time_slot (int): the time slot
-            sec (float): the timestamp in second
-            accuracy: time slots per second
-
+            time_slot: integer time slot.
+            accuracy: how many time slots per second.
         """
+        self.time_slot = time_slot
         self.accuracy = default_accuracy if accuracy is None else accuracy
-        if time_slot != 0:
-            self.time_slot = time_slot
-        else:
-            self.time_slot = _to_time_slot(sec, self.accuracy)
+
+    @staticmethod
+    def from_sec(sec: float, *, accuracy: int | None = None) -> "Time":
+        """
+        Construct Time from seconds.
+
+        Args:
+            sec: seconds.
+            accuracy: how many time slots per second.
+        """
+        accuracy = default_accuracy if accuracy is None else accuracy
+        return Time(_to_time_slot(sec, accuracy), accuracy=accuracy)
 
     @property
     def sec(self) -> float:
-        """Returns:
-        the timestamp in second
-
+        """
+        Retrieve timestamp/duration in seconds.
         """
         return self.time_slot / self.accuracy
 
@@ -67,7 +83,7 @@ class Time:
         * They have the same accuracy.
         * They have the same time slot.
         """
-        return isinstance(other, Time) and self.accuracy == other.accuracy and self.time_slot == other.time_slot
+        return type(other) is Time and self.accuracy == other.accuracy and self.time_slot == other.time_slot
 
     def __ne__(self, other: object) -> bool:
         return not self == other
@@ -102,7 +118,7 @@ class Time:
         Args:
             ts: either a Time object with same accuracy, or a duration number in seconds.
         """
-        if isinstance(ts, Time):
+        if type(ts) is Time:
             assert ts.accuracy == self.accuracy
             time_slot = ts.time_slot
         else:
@@ -116,7 +132,7 @@ class Time:
         Args:
             ts: either a Time object with same accuracy, or a duration number in seconds.
         """
-        if isinstance(ts, Time):
+        if type(ts) is Time:
             assert ts.accuracy == self.accuracy
             time_slot = ts.time_slot
         else:

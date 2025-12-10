@@ -133,7 +133,7 @@ class MuxSchemeStatistical(MuxSchemeDynamicBase):
             return
 
         _, epr = self.memory.get(qubit.addr, must=True)
-        assert isinstance(epr, WernerStateEntanglement)
+        assert type(epr) is WernerStateEntanglement
 
         log.debug(f"{self.own}: qubit {qubit} has tmp_path_ids {possible_path_ids}")
         if epr.tmp_path_ids is None:
@@ -189,7 +189,7 @@ class MuxSchemeStatistical(MuxSchemeDynamicBase):
         if not found:
             return None
         mq1, epr1 = found
-        assert isinstance(epr1, WernerStateEntanglement)
+        assert type(epr1) is WernerStateEntanglement
 
         chosen_path_id = random.choice(list(intersect_tmp_path_ids(epr, epr1)))
         if self.coordinated_decisions:

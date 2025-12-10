@@ -29,14 +29,15 @@ class QNode(Node):
     """QNode is a quantum node in the quantum network. Inherits Node and add quantum elements."""
 
     def __init__(self, name: str, *, apps: list[Application] | None = None):
-        """Args:
-        name (str): the node's name
-        apps (List[Application]): the installing applications.
-
+        """
+        Args:
+            name: node name
+            apps: applications on the node.
         """
         super().__init__(name=name, apps=apps)
         self.qchannels: list["QuantumChannel"] = []
-        self.memory: "QuantumMemory|None" = None
+        self._qchannel_by_dst = dict[Node, "QuantumChannel"]()
+        self._memory: "QuantumMemory|None" = None
         self.operators: list["QuantumOperator"] = []
 
     def install(self, simulator: Simulator) -> None:
@@ -44,37 +45,36 @@ class QNode(Node):
         # initiate sub-entities
         from mqns.entity import QuantumChannel, QuantumMemory, QuantumOperator  # noqa: PLC0415
 
-        if self.memory is not None:
-            assert isinstance(self.memory, QuantumMemory)
-            self.memory.install(simulator)
-        for qchannel in self.qchannels:
-            assert isinstance(qchannel, QuantumChannel)
-            qchannel.install(simulator)
+        if self._memory is not None:
+            assert isinstance(self._memory, QuantumMemory)
+            self._memory.install(simulator)
         for operator in self.operators:
             assert isinstance(operator, QuantumOperator)
             operator.install(simulator)
 
-    def set_memory(self, memory: "QuantumMemory"):
-        """Add a quantum memory in this QNode
+        self._install_channels(QuantumChannel, self.qchannels, self._qchannel_by_dst)
 
-        Args:
-            memory (Memory): the quantum memory
-
-        This function is available prior to calling .install().
+    @property
+    def memory(self) -> "QuantumMemory":
         """
-        assert self._simulator is None
-        memory.node = self
-        self.memory = memory
-
-    def get_memory(self) -> "QuantumMemory":
-        """Get the memory
+        Retrieve associated QuantumMemory.
 
         Raises:
             IndexError - memory does not exist
         """
-        if self.memory is None:
-            raise IndexError(f"node {repr(self)} does not have memory")
-        return self.memory
+        if self._memory is None:
+            raise IndexError(f"node {self} does not have memory")
+        return self._memory
+
+    @memory.setter
+    def memory(self, value: "QuantumMemory"):
+        """
+        Assign QuantumMemory to this node.
+        This setter is available prior to calling .install().
+        """
+        assert self._simulator is None
+        value.node = self
+        self._memory = value
 
     def add_operator(self, operator: "QuantumOperator"):
         """Add a quantum operator in this node
@@ -89,30 +89,20 @@ class QNode(Node):
         self.operators.append(operator)
 
     def add_qchannel(self, qchannel: "QuantumChannel"):
-        """Add a quantum channel in this QNode
-
-        Args:
-            qchannel (QuantumChannel): the quantum channel
-
+        """
+        Add a quantum channel in this QNode.
         This function is available prior to calling .install().
         """
-        assert self._simulator is None
-        qchannel.node_list.append(self)
-        self.qchannels.append(qchannel)
+        self._add_channel(qchannel, self.qchannels)
 
     def get_qchannel(self, dst: "QNode") -> "QuantumChannel":
-        """Get the quantum channel that connects to the `dst`
-
-        Args:
-            dst (QNode): the destination
+        """
+        Retrieve the quantum channel that connects to `dst`.
 
         Raises:
             IndexError - channel does not exist
         """
-        for qchannel in self.qchannels:
-            if dst in qchannel.node_list and self in qchannel.node_list:
-                return qchannel
-        raise IndexError(f"qchannel from {repr(self)} to {repr(dst)} does not exist")
+        return self._get_channel(dst, self._qchannel_by_dst)
 
     def __repr__(self) -> str:
         return f"<qnode {self.name}>"

@@ -15,6 +15,8 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from typing import final
+
 import numpy as np
 from typing_extensions import override
 
@@ -30,6 +32,7 @@ psi_p: np.ndarray = 1 / np.sqrt(2) * np.array([[0], [1], [1], [0]])
 psi_n: np.ndarray = 1 / np.sqrt(2) * np.array([[0], [1], [-1], [0]])
 
 
+@final
 class MixedStateEntanglement(BaseEntanglement["MixedStateEntanglement"], QuantumModel):
     """
     `MixedStateEntanglement` is a pair of entangled qubits in mixed State with a hidden-variable.

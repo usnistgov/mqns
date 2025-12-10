@@ -15,25 +15,11 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from mqns.entity.node.app import Application
 from mqns.entity.node.node import Node
-from mqns.simulator import Simulator
 
 
 class Controller(Node):
     """Controller computes routing and swapping instructions for quantum routers"""
-
-    def __init__(self, name: str, *, apps: list[Application] | None = None):
-        """Args:
-        name (str): the node's name
-        apps (List[Application]): the installing applications.
-
-        """
-        super().__init__(name=name, apps=apps)
-
-    def install(self, simulator: Simulator) -> None:
-        super().install(simulator)
-        # do other things specific to the controller
 
     def __repr__(self) -> str:
         return f"<controller {self.name}>"

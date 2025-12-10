@@ -15,12 +15,15 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from typing import final
+
 from typing_extensions import override
 
 from mqns.models.core import QuantumModel
 from mqns.models.epr.entanglement import BaseEntanglement
 
 
+@final
 class BellStateEntanglement(BaseEntanglement["BellStateEntanglement"], QuantumModel):
     """`BellStateEntanglement` is the ideal max entangled qubits. Its fidelity is always 1."""
 
