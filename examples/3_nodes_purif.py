@@ -26,14 +26,14 @@ SEED_BASE = 100
 sim_duration = 5
 
 
-def run_simulation(t_coherence: float, seed: int):
+def run_simulation(t_cohere: float, seed: int):
     set_seed(seed)
     s = Simulator(0, sim_duration + 5e-06, accuracy=1000000)
     log.install(s)
 
     topo = build_topology(
         nodes=["S", "R", "D"],
-        t_coherence=t_coherence,
+        t_cohere=t_cohere,
         channel_length=[32, 18],
         channel_capacity=2,
         init_fidelity=0.7,

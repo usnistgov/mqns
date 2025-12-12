@@ -69,49 +69,49 @@ def build_topology(t_coherence: float, p_swap: float, mux: MuxScheme) -> Topolog
                 {
                     "name": "S1",
                     "memory": {
-                        "decoherence_rate": 1 / t_coherence,
+                        "t_cohere": t_cohere,
                         "capacity": 1,
                     },
                 },
                 {
                     "name": "S2",
                     "memory": {
-                        "decoherence_rate": 1 / t_coherence,
+                        "t_cohere": t_cohere,
                         "capacity": 1,
                     },
                 },
                 {
                     "name": "D1",
                     "memory": {
-                        "decoherence_rate": 1 / t_coherence,
+                        "t_cohere": t_cohere,
                         "capacity": 1,
                     },
                 },
                 {
                     "name": "D2",
                     "memory": {
-                        "decoherence_rate": 1 / t_coherence,
+                        "t_cohere": t_cohere,
                         "capacity": 1,
                     },
                 },
                 {
                     "name": "R1",
                     "memory": {
-                        "decoherence_rate": 1 / t_coherence,
+                        "t_cohere": t_cohere,
                         "capacity": 2,
                     },
                 },
                 {
                     "name": "R2",
                     "memory": {
-                        "decoherence_rate": 1 / t_coherence,
+                        "t_cohere": t_cohere,
                         "capacity": 3,
                     },
                 },
                 {
                     "name": "R3",
                     "memory": {
-                        "decoherence_rate": 1 / t_coherence,
+                        "t_cohere": t_cohere,
                         "capacity": 3,
                     },
                 },

@@ -41,7 +41,7 @@ def run_simulation(seed: int, t_cohere: float, t_wait: float):
 
     topo = build_topology(
         nodes=["S", "R", "D"],
-        t_coherence=t_cohere,
+        t_cohere=t_cohere,
         channel_length=[32, 18],
         swap=[1, 0, 1],
         swap_cutoff=[0, t_wait, 0],

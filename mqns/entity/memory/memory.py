@@ -45,6 +45,7 @@ from mqns.models.core import QuantumModel
 from mqns.models.delay import DelayInput, parseDelay
 from mqns.models.epr import BaseEntanglement
 from mqns.simulator import Event, func_to_event
+from mqns.simulator.simulator import Simulator
 
 if TYPE_CHECKING:
     from mqns.entity.qchannel import QuantumChannel
@@ -53,7 +54,7 @@ if TYPE_CHECKING:
 class QuantumMemoryInitKwargs(TypedDict, total=False):
     capacity: int
     delay: DelayInput
-    decoherence_rate: float
+    t_cohere: float
     store_error_model_args: dict
 
 
@@ -70,9 +71,8 @@ class QuantumMemory(Entity):
         Args:
             name: memory name.
             capacity: the capacity of this quantum memory, must be positive.
-            delay: async read/write delay in seconds, or a ``DelayModel``
-            decoherence_rate: decoherence rate passed to `QuantumModel.store_error_model()`.
-                              0 means the memory will never lose coherence.
+            delay: async read/write delay in seconds, or a ``DelayModel``.
+            t_cohere: memory dephasing time in seconds, defaults to 1.0.
             store_error_model_args: parameters passed to `QuantumModel.store_error_model()`.
         """
         super().__init__(name=name)
@@ -89,14 +89,9 @@ class QuantumMemory(Entity):
         """
         self.delay = parseDelay(kwargs.get("delay", 0))
         """Read/write delay, only applicable to async access."""
-        self.decoherence_rate = kwargs.get("decoherence_rate", 0.0)
-        self.store_error_model_args = kwargs.get("store_error_model_args", {})
 
-        assert self.decoherence_rate >= 0.0
-        self.decoherence_delay = None if self.decoherence_rate == 0.0 else 1 / self.decoherence_rate
-        """
-        Inverse of `decoherence_rate`, i.e. duration between EPR creation time and decoherence time in seconds.
-        """
+        self.t_cohere = kwargs.get("t_cohere", 1.0)
+        self.store_error_model_args = kwargs.get("store_error_model_args", {})
 
         assert self.capacity >= 1
         self._storage: list[tuple[MemoryQubit, QuantumModel | None]] = [
@@ -110,6 +105,12 @@ class QuantumMemory(Entity):
         Key is quantum channel assigned to qubits.
         Value is a sorted list of qubit addrs.
         """
+
+    @override
+    def install(self, simulator: Simulator) -> None:
+        super().install(simulator)
+        self.decoherence_delay = simulator.time(sec=self.t_cohere)
+        self.decoherence_rate = 1.0 / self.t_cohere  # TODO #92 change to `2.0/`
 
     @override
     def handle(self, event: Event) -> None:
@@ -407,7 +408,7 @@ class QuantumMemory(Entity):
         self._storage[qubit.addr] = (qubit, qm)
         self._usage += 1
 
-        if isinstance(qm, BaseEntanglement) and self.decoherence_delay:
+        if isinstance(qm, BaseEntanglement):
             qm.decoherence_time = qm.creation_time + self.decoherence_delay
             self._schedule_decohere(qubit, qm)
 

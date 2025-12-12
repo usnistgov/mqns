@@ -82,7 +82,7 @@ def build_linear_network(
         ],
         qchannel_args=qchannel_args,
         cchannel_args=cchannel_args,
-        memory_args={"decoherence_rate": 1 / 5.0, "capacity": 2 * qchannel_capacity},
+        memory_args={"t_cohere": 5.0, "capacity": 2 * qchannel_capacity},
     )
     return build_network_finish(topo, qchannel_capacity, end_time, timing)
 
@@ -114,7 +114,7 @@ def build_dumbbell_network(
         ],
         qchannel_args=qchannel_args,
         cchannel_args=cchannel_args,
-        memory_args={"decoherence_rate": 1 / 5.0, "capacity": 3 * qchannel_capacity},
+        memory_args={"t_cohere": 5.0, "capacity": 3 * qchannel_capacity},
     )
     return build_network_finish(topo, qchannel_capacity, end_time, timing)
 
@@ -143,7 +143,7 @@ def build_rect_network(
         ],
         qchannel_args=qchannel_args,
         cchannel_args=cchannel_args,
-        memory_args={"decoherence_rate": 1 / 5.0, "capacity": 2 * qchannel_capacity},
+        memory_args={"t_cohere": 5.0, "capacity": 2 * qchannel_capacity},
     )
     return build_network_finish(topo, qchannel_capacity, end_time, timing, route=YenRouteAlgorithm(k_paths=2))
 
