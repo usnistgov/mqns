@@ -36,7 +36,6 @@ class NetworkLayer(Application):
         qubit, epr = self.memory.read(event.qubit.addr, must=True, destructive=False)
         assert qubit == event.qubit
         assert isinstance(epr, BaseEntanglement)
-        assert epr.creation_time is not None
         self.entangle.append((event.t.sec, epr.creation_time.sec))
 
         if not isinstance(self.release_after, float):
@@ -69,7 +68,7 @@ def test_basic():
         nodes_apps=[NetworkLayer(), LinkLayer()],
         qchannel_args={"delay": 0.1, "link_arch": LinkArchAlways(LinkArchDimBk())},
         cchannel_args={"delay": 0.1},
-        memory_args={"decoherence_rate": 1 / 4.1},
+        memory_args={"t_cohere": 4.1},
     )
     net = QuantumNetwork(topo=topo, classic_topo=ClassicTopology.Follow)
     net.build_route()
@@ -126,7 +125,7 @@ def test_skip_ahead():
         nodes_apps=[NetworkLayer(), LinkLayer()],
         qchannel_args={"length": 100},
         cchannel_args={"length": 100},
-        memory_args={"decoherence_rate": 1 / 1.0},
+        memory_args={"t_cohere": 1.0},
     )
     net = QuantumNetwork(topo=topo, classic_topo=ClassicTopology.Follow)
     net.build_route()
@@ -165,7 +164,7 @@ def test_timing_mode_sync():
             ],
         },
         nodes_apps=[NetworkLayer(), LinkLayer()],
-        memory_args={"decoherence_rate": 1 / 10.0},
+        memory_args={"t_cohere": 10.0},
     )
     net = QuantumNetwork(topo=topo, classic_topo=ClassicTopology.Follow, timing=TimingModeSync(t_ext=0.6, t_int=0.4))
     net.build_route()

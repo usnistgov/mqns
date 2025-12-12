@@ -19,12 +19,11 @@ from typing import final
 
 from typing_extensions import override
 
-from mqns.models.core import QuantumModel
 from mqns.models.epr.entanglement import BaseEntanglement
 
 
 @final
-class BellStateEntanglement(BaseEntanglement["BellStateEntanglement"], QuantumModel):
+class BellStateEntanglement(BaseEntanglement["BellStateEntanglement"]):
     """`BellStateEntanglement` is the ideal max entangled qubits. Its fidelity is always 1."""
 
     @property

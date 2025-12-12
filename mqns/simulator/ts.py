@@ -44,6 +44,8 @@ class Time:
     Timestamp or duration used in the simulator.
     """
 
+    SENTINEL: "Time"
+
     def __init__(self, time_slot: int = 0, *, accuracy: int | None = None):
         """
         Construct Time from time slot.
@@ -141,3 +143,6 @@ class Time:
 
     def __repr__(self) -> str:
         return str(self.sec)
+
+
+Time.SENTINEL = Time(0, accuracy=0)

@@ -22,7 +22,7 @@ entg_attempt_rate = 50e6  # From fiber max frequency (50 MHz) AND detectors coun
 
 init_fidelity = 0.99
 p_swap = 0.5
-t_coherence = 0.01  # sec
+t_cohere = 0.01  # sec
 
 node_capacity = 4
 
@@ -138,7 +138,7 @@ def build_topology() -> Topology:
             ProactiveForwarder(ps=p_swap),
         ],
         memory_args={
-            "decoherence_rate": 1 / t_coherence,
+            "t_cohere": t_cohere,
             "capacity": node_capacity,
         },
     )

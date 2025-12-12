@@ -36,7 +36,7 @@ sim_duration = 3
 
 def run_simulation(
     ch_capacities: list[tuple[int, int]],
-    t_coherence: float,
+    t_cohere: float,
     swapping_order: str,
     seed: int,
 ):
@@ -47,7 +47,7 @@ def run_simulation(
     topo = build_topology(
         nodes=N_NODES,
         mem_capacity=TOTAL_QUBITS,
-        t_coherence=t_coherence,
+        t_cohere=t_cohere,
         channel_length=CHANNEL_LENGTHS,
         channel_capacity=ch_capacities,
         swap=swapping_order,
@@ -94,7 +94,7 @@ for mem_label, mem_allocs in ch_capacities_configs.items():
 
                 rate, *_ = run_simulation(
                     ch_capacities=ch_capacities,
-                    t_coherence=t_cohere,
+                    t_cohere=t_cohere,
                     swapping_order=swapping_config,
                     seed=seed,
                 )

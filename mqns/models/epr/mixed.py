@@ -18,10 +18,9 @@
 from typing import final
 
 import numpy as np
-from typing_extensions import override
+from typing_extensions import Unpack, override
 
-from mqns.models.core import QuantumModel
-from mqns.models.epr.entanglement import BaseEntanglement
+from mqns.models.epr.entanglement import BaseEntanglement, BaseEntanglementInitKwargs
 from mqns.models.qubit.const import QUBIT_STATE_0, QUBIT_STATE_P
 from mqns.models.qubit.qubit import QState, Qubit
 from mqns.utils import get_rand
@@ -33,7 +32,7 @@ psi_n: np.ndarray = 1 / np.sqrt(2) * np.array([[0], [1], [-1], [0]])
 
 
 @final
-class MixedStateEntanglement(BaseEntanglement["MixedStateEntanglement"], QuantumModel):
+class MixedStateEntanglement(BaseEntanglement["MixedStateEntanglement"]):
     """
     `MixedStateEntanglement` is a pair of entangled qubits in mixed State with a hidden-variable.
 
@@ -49,7 +48,7 @@ class MixedStateEntanglement(BaseEntanglement["MixedStateEntanglement"], Quantum
         b: float | None = None,
         c: float | None = None,
         d: float | None = None,
-        name: str | None = None,
+        **kwargs: Unpack[BaseEntanglementInitKwargs],
     ):
         """Generate an entanglement with certain fidelity
 
@@ -58,10 +57,8 @@ class MixedStateEntanglement(BaseEntanglement["MixedStateEntanglement"], Quantum
             b (float): probability of Psi^+
             c (float): probability of Psi^-
             d (float): probability of Phi^-
-            name (str): the entanglement name
-
         """
-        super().__init__(name=name)
+        super().__init__(**kwargs)
         self.a = fidelity
         self.b = b if b is not None else (1 - fidelity) / 3
         self.c = c if c is not None else (1 - fidelity) / 3

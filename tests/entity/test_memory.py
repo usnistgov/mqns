@@ -26,8 +26,7 @@ def test_write_and_read_with_path_and_key():
     sim = Simulator(0, 10)
     node.install(sim)
 
-    epr = WernerStateEntanglement(name="epr1")
-    epr.creation_time = sim.tc
+    epr = WernerStateEntanglement(name="epr1", creation_time=sim.tc)
     epr.src = node
     epr.dst = QNode("peer")
     key = "n1_peer_0_0"
@@ -44,8 +43,7 @@ def test_write_and_read_with_path_and_key():
     assert result.addr == addr
 
     # Should fail to write another one in the same slot
-    epr2 = WernerStateEntanglement(name="epr2")
-    epr2.creation_time = sim.tc
+    epr2 = WernerStateEntanglement(name="epr2", creation_time=sim.tc)
     epr2.src = node
     epr2.dst = QNode("peer2")
     assert mem.write(epr2, path_id=0, key=key) is None
@@ -90,8 +88,7 @@ def test_decoherence_event_removes_qubit():
     sim = Simulator(0, 5)
     node.install(sim)
 
-    epr = WernerStateEntanglement(name="epr3", fidelity=1.0)
-    epr.creation_time = sim.tc
+    epr = WernerStateEntanglement(name="epr3", fidelity=1.0, creation_time=sim.tc)
     qubit = mem.write(epr)
     assert epr.decoherence_time is not None
 
@@ -119,8 +116,7 @@ def test_memory_clear_and_deallocate():
     node.install(sim)
 
     for i in range(2):
-        q = WernerStateEntanglement(name=f"epr{i}", fidelity=1.0)
-        q.creation_time = sim.tc
+        q = WernerStateEntanglement(name=f"epr{i}", fidelity=1.0, creation_time=sim.tc)
         q.src = node
         q.dst = QNode("peer")
         assert mem.write(q)
@@ -154,8 +150,7 @@ def test_qubit_reservation_behavior():
     q1 = mem._storage[addr1][0]
     q1.active = "n5_n6_42_" + str(addr1)
 
-    epr = WernerStateEntanglement(name="eprX")
-    epr.creation_time = sim.tc
+    epr = WernerStateEntanglement(name="eprX", creation_time=sim.tc)
     epr.src = node
     epr.dst = QNode("n6")
 

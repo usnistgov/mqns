@@ -24,7 +24,7 @@ sim_duration = 3
 t_cohere_values = [0.002, 0.005, 0.01, 0.015, 0.02, 0.025, 0.05, 0.1]
 
 
-def run_simulation(t_coherence: float, seed: int):
+def run_simulation(t_cohere: float, seed: int):
     """Run a simulation with a given coherence time and seed.
 
     This function sets up and executes a simulation using:
@@ -54,7 +54,7 @@ def run_simulation(t_coherence: float, seed: int):
 
     topo = build_topology(
         nodes=["S", "R", "D"],
-        t_coherence=t_coherence,
+        t_cohere=t_cohere,
         channel_length=[32, 18],
         swap="swap_1",
     )

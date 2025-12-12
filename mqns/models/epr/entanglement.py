@@ -28,10 +28,12 @@
 import hashlib
 import uuid
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Generic, TypeVar, cast
+from typing import TYPE_CHECKING, Generic, TypedDict, TypeVar, cast
 
 import numpy as np
+from typing_extensions import Unpack
 
+from mqns.models.core import QuantumModel
 from mqns.models.qubit.const import OPERATOR_PAULI_I, QUBIT_STATE_0, QUBIT_STATE_P
 from mqns.models.qubit.gate import CNOT, H, U, X, Y, Z
 from mqns.models.qubit.qubit import QState, Qubit
@@ -48,28 +50,42 @@ def _name_hash(s1: str) -> str:
 EntanglementT = TypeVar("EntanglementT")
 
 
-class BaseEntanglement(ABC, Generic[EntanglementT]):
+class BaseEntanglementInitKwargs(TypedDict, total=False):
+    name: str | None
+    creation_time: Time
+
+
+class BaseEntanglement(ABC, Generic[EntanglementT], QuantumModel):
     """Base entanglement model."""
 
-    def __init__(self, *, name: str | None = None):
+    def __init__(self, **kwargs: Unpack[BaseEntanglementInitKwargs]):
         """
         Constructor.
 
         Args:
-            name: the entanglement name, defaults to a random string.
+            name: entanglement name, defaults to a random string.
+            creation_time: EPR creation time, defaults to `Time.SENTINEL`.
         """
+        name = kwargs.get("name")
         self.name = uuid.uuid4().hex if name is None else name
         """Descriptive name."""
-        self.key: str | None = None
-        """Reservation key used by LinkLayer."""
+
         self.is_decoherenced = False
         """Whether the entanglement has decohered."""
-        self.creation_time: Time | None = None
-        """Entanglement creation time assigned by LinkLayer or swapping."""
+        self.creation_time = kwargs.get("creation_time", Time.SENTINEL)
+        """
+        Entanglement creation time assigned by LinkLayer or swapping.
+        Time-based operations are unavailable if this is `Time.SENTINEL`.
+        """
         self.decoherence_time: Time | None = None
-        """Entanglement decoherence time assigned by memory or swapping."""
+        """
+        Entanglement decoherence time assigned by memory or swapping.
+        """
         self.read = False
         """Whether the entanglement has been read from the memory by either node."""
+
+        self.key: str | None = None
+        """Reservation key used by LinkLayer."""
         self.src: "QNode|None" = None
         """One node that holds one entangled qubit, at the left side of a path."""
         self.dst: "QNode|None" = None
