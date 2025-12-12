@@ -73,7 +73,7 @@ class ParameterSet:
         self.seed_base = 100
         self.sim_duration = 5.0
         self.channel_qubits = 25
-        self.t_coherence = 0.01  # sec
+        self.t_cohere = 0.01  # sec
 
         self.total_distance = 150  # km
 
@@ -90,7 +90,7 @@ class ParameterSet:
 
         return build_topology(
             nodes=2 + self.number_of_routers,
-            t_coherence=self.t_coherence,
+            t_cohere=self.t_cohere,
             channel_length=distances,
             channel_capacity=self.channel_qubits,
             swap=swap,

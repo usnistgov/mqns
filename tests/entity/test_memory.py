@@ -18,7 +18,7 @@ from mqns.simulator import Simulator
 
 def test_write_and_read_with_path_and_key():
     ch = QuantumChannel("qc")
-    mem = QuantumMemory("mem", capacity=2, decoherence_rate=1)
+    mem = QuantumMemory("mem", capacity=2)
     mem.assign(ch, n=mem.capacity)
     node = QNode("n1")
     node.memory = mem
@@ -60,7 +60,7 @@ def test_write_and_read_with_path_and_key():
 
 
 def test_channel_qubit_assignment_and_search():
-    mem = QuantumMemory("mem", capacity=3, decoherence_rate=1)
+    mem = QuantumMemory("mem", capacity=3)
     node = QNode("n2")
     node.memory = mem
 
@@ -80,7 +80,7 @@ def test_channel_qubit_assignment_and_search():
 
 
 def test_decoherence_event_removes_qubit():
-    mem = QuantumMemory("mem", decoherence_rate=1)
+    mem = QuantumMemory("mem")
 
     node = QNode("n3")
     node.memory = mem
@@ -107,7 +107,7 @@ def test_decoherence_event_removes_qubit():
 
 def test_memory_clear_and_deallocate():
     ch = QuantumChannel("qc")
-    mem = QuantumMemory("mem", capacity=2, decoherence_rate=1)
+    mem = QuantumMemory("mem", capacity=2)
     mem.assign(ch, n=mem.capacity)
     node = QNode("n4")
     node.memory = mem
@@ -136,7 +136,7 @@ def test_memory_clear_and_deallocate():
 
 def test_qubit_reservation_behavior():
     ch = QuantumChannel("qc")
-    mem = QuantumMemory("mem", capacity=2, decoherence_rate=1)
+    mem = QuantumMemory("mem", capacity=2)
     mem.assign(ch, n=mem.capacity)
     node = QNode("n5")
     node.memory = mem

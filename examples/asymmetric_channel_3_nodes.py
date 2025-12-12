@@ -39,7 +39,7 @@ def run_simulation(
     ch_lengths: list[float],
     ch_capacities: list[tuple[int, int]],
     link_architectures: list[LinkArch],
-    t_coherence: float,
+    t_cohere: float,
     seed: int,
 ):
     set_seed(seed)
@@ -49,7 +49,7 @@ def run_simulation(
     topo = build_topology(
         nodes=nodes,
         mem_capacity=mem_capacities,
-        t_coherence=t_coherence,
+        t_cohere=t_cohere,
         channel_length=ch_lengths,
         channel_capacity=ch_capacities,
         link_arch=link_architectures,
@@ -84,7 +84,7 @@ def run_row(
             ch_lengths=ch_lengths,
             ch_capacities=[(total_qubits, left), (right, total_qubits)],
             link_architectures=link_archs,
-            t_coherence=t_cohere,
+            t_cohere=t_cohere,
             seed=SEED_BASE + i,
         )
         rates.append(rate)

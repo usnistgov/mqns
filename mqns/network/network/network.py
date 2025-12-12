@@ -27,7 +27,7 @@
 
 from typing import cast, overload
 
-from mqns.entity import ChannelT, ClassicChannel, Controller, Node, QNode, QuantumChannel, QuantumMemory
+from mqns.entity import ChannelT, ClassicChannel, Controller, Node, QNode, QuantumChannel
 from mqns.network.network.request import Request
 from mqns.network.network.timing import TimingMode, TimingModeAsync
 from mqns.network.route import DijkstraRouteAlgorithm, RouteImpl
@@ -230,23 +230,6 @@ class QuantumNetwork:
 
     def get_cchannel(self, *q: str) -> ClassicChannel:
         return _get_channel(self.cchannels, self._cchannel_by_ends, q)
-
-    def add_memories(self, capacity: int = 0, decoherence_rate: float = 0, store_error_model_args: dict = {}):
-        """Add quantum memories to every nodes in this network
-
-        Args:
-            capacity (int): the capacity of the quantum memory
-            decoherence_rate (float): the decoherence rate
-            store_error_model_args: the arguments for store_error_model
-
-        """
-        for node in self.nodes:
-            node.memory = QuantumMemory(
-                name=f"{node.name}.memory",
-                capacity=capacity,
-                decoherence_rate=decoherence_rate,
-                store_error_model_args=store_error_model_args,
-            )
 
     def build_route(self):
         """Build static route tables for each nodes"""
