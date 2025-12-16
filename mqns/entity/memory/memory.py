@@ -452,7 +452,6 @@ class QuantumMemory(Entity):
 
     def _schedule_decohere(self, qubit: MemoryQubit, epr: BaseEntanglement):
         simulator = self.simulator
-        assert epr.decoherence_time is not None
         assert epr.decoherence_time >= simulator.tc
         event = func_to_event(epr.decoherence_time, self.decohere_qubit, qubit, epr, by=self)
         qubit.set_event(QuantumMemory, event)

@@ -37,27 +37,27 @@ def test_swap_fidelity():
     """
     Validate fidelity calculation after swaps.
     """
-    decoherence_time = micros(1000000)  # 1 second
-    decoherence_rate = 1 / decoherence_time.sec
-    dr = (decoherence_rate, decoherence_rate)
+    mem_dt = micros(1000000)  # memory decoherence time: 1 second
+    mem_dr = 1 / mem_dt.sec  # memory decoherence rate
+    mem_2dr = (mem_dr, mem_dr)  # memory decoherence rate at src and dst
 
-    e1 = WernerStateEntanglement(fidelity=0.99, creation_time=micros(1000))
-    e1.decoherence_time = e1.creation_time + decoherence_time
-    e2 = WernerStateEntanglement(fidelity=0.99, creation_time=micros(2000))
-    e2.decoherence_time = e2.creation_time + decoherence_time
-    e3 = WernerStateEntanglement(fidelity=0.99, creation_time=micros(3000))
-    e3.decoherence_time = e3.creation_time + decoherence_time
+    e1t = micros(1000)
+    e2t = micros(2000)
+    e3t = micros(3000)
+    e1 = WernerStateEntanglement(fidelity=0.99, creation_time=e1t, decoherence_time=e1t + mem_dt, mem_decohere_rate=mem_2dr)
+    e2 = WernerStateEntanglement(fidelity=0.99, creation_time=e2t, decoherence_time=e2t + mem_dt, mem_decohere_rate=mem_2dr)
+    e3 = WernerStateEntanglement(fidelity=0.99, creation_time=e3t, decoherence_time=e3t + mem_dt, mem_decohere_rate=mem_2dr)
 
-    ne1_time = micros(2500)
-    ne1 = WernerStateEntanglement.swap(e1, e2, now=ne1_time, dr0=dr, dr1=dr)
+    ne1t = micros(2500)
+    ne1 = WernerStateEntanglement.swap(e1, e2, now=ne1t)
     assert e1.w == pytest.approx(0.983711102, abs=1e-6)
     assert e2.w == pytest.approx(0.985680493, abs=1e-6)
     assert ne1 is not None
     assert ne1.w == pytest.approx(0.969624844, abs=1e-6)
     assert ne1.fidelity == pytest.approx(0.977218633, abs=1e-6)
 
-    ne2_time = micros(3500)
-    ne2 = WernerStateEntanglement.swap(ne1, e3, now=ne2_time, dr0=dr, dr1=dr)
+    ne2t = micros(3500)
+    ne2 = WernerStateEntanglement.swap(ne1, e3, now=ne2t)
     assert ne1.w == pytest.approx(0.967687533, abs=1e-6)
     assert e3.w == pytest.approx(0.985680493, abs=1e-6)
     assert ne2 is not None

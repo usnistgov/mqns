@@ -728,8 +728,8 @@ class ProactiveForwarder(Application):
         # Make sure both partners are found.
         assert prev_tuple is not None
         assert next_tuple is not None
-        prev_partner, prev_qubit, prev_epr = prev_tuple
-        next_partner, next_qubit, next_epr = next_tuple
+        _, prev_qubit, prev_epr = prev_tuple
+        _, next_qubit, next_epr = next_tuple
 
         # Save ch_index metadata field onto elementary EPR.
         if not prev_epr.orig_eprs:
@@ -738,14 +738,7 @@ class ProactiveForwarder(Application):
             next_epr.ch_index = fib_entry.own_idx
 
         # Attempt the swap.
-        new_epr = WernerStateEntanglement.swap(
-            prev_epr,
-            next_epr,
-            now=simulator.tc,
-            ps=self.ps,
-            dr0=(prev_partner.memory.decoherence_rate, self.own.memory.decoherence_rate),
-            dr1=(self.own.memory.decoherence_rate, next_partner.memory.decoherence_rate),
-        )
+        new_epr = WernerStateEntanglement.swap(prev_epr, next_epr, now=simulator.tc, ps=self.ps)
         log.debug(f"{self.own}: SWAP {'SUCC' if new_epr else 'FAILED'} | {prev_qubit} x {next_qubit}")
 
         if new_epr is not None:  # swapping succeeded
@@ -840,7 +833,7 @@ class ProactiveForwarder(Application):
         simulator = self.simulator
         if (
             new_epr is None  # swapping failed
-            or (new_epr.decoherence_time is not None and new_epr.decoherence_time <= simulator.tc)  # oldest pair decohered
+            or new_epr.decoherence_time <= simulator.tc  # oldest pair decohered
         ):
             if new_epr:
                 log.debug(f"{self.own}: NEW EPR {new_epr} decohered during SU transmissions")
@@ -866,7 +859,7 @@ class ProactiveForwarder(Application):
         Process SWAP_UPDATE message during parallel swapping.
         """
         simulator = self.simulator
-        (shared_epr, other_epr, my_new_epr) = self.parallel_swappings.pop(msg["epr"])
+        shared_epr, other_epr, my_new_epr = self.parallel_swappings.pop(msg["epr"])
         _ = shared_epr
 
         # safety in statistical mux to avoid conflictual swappings on different paths
@@ -886,7 +879,7 @@ class ProactiveForwarder(Application):
 
         if (
             new_epr is None  # swapping failed
-            or (new_epr.decoherence_time is not None and new_epr.decoherence_time <= simulator.tc)  # oldest pair decohered
+            or new_epr.decoherence_time <= simulator.tc  # oldest pair decohered
         ):
             # Determine the "destination".
             if other_epr.dst == self.own:  # destination is to the left of own node

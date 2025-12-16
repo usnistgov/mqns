@@ -94,7 +94,6 @@ def test_decoherence_event_removes_qubit():
 
     epr = scenario.make_epr("epr3")
     qubit = mem.write(epr)
-    assert epr.decoherence_time is not None
 
     assert qubit is not None
     qubit.state = QubitState.ACTIVE
