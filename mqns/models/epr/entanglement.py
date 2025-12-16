@@ -160,7 +160,7 @@ class BaseEntanglement(ABC, Generic[EntanglementT], QuantumModel):
                 epr.read = True
                 epr.store_error_model(
                     (now - epr.creation_time).sec,
-                    max(dr_memories),  # TODO #92 change to `sum`
+                    sum(dr_memories),  # pair dephasing rate is the sum of memory dephasing rates
                 )
 
             if epr.ch_index > -1:
@@ -172,7 +172,7 @@ class BaseEntanglement(ABC, Generic[EntanglementT], QuantumModel):
             epr0,
             epr1,
             name=_name_hash("-".join((e.name for e in orig_eprs))),
-            creation_time=min(epr0.creation_time, epr1.creation_time),  # TODO #92 change to `now`
+            creation_time=now,
             decoherence_time=min(epr0.decoherence_time, epr1.decoherence_time),
             src=epr0.src,
             dst=epr1.dst,

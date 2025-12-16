@@ -110,7 +110,13 @@ class QuantumMemory(Entity):
     def install(self, simulator: Simulator) -> None:
         super().install(simulator)
         self.decoherence_delay = simulator.time(sec=self.t_cohere)
-        self.decoherence_rate = 1.0 / self.t_cohere  # TODO #92 change to `2.0/`
+        """Memory dephasing time."""
+        self.decoherence_rate = 1.0 / self.t_cohere
+        """
+        Memory dephasing rate in Hz.
+        This is the inverse of memory dephasing time.
+        EPR pair dephasing rate is the sum of memory dephasing rates.
+        """
 
     @override
     def handle(self, event: Event) -> None:

@@ -24,22 +24,22 @@ def test_swap_success(monkeypatch: pytest.MonkeyPatch):
     e2 = WernerStateEntanglement(fidelity=0.8, creation_time=micros(2000), decoherence_time=micros(4000))
 
     monkeypatch.setattr("mqns.models.epr.entanglement.get_rand", lambda: 0.1)
-    ne = WernerStateEntanglement.swap(e1, e2, now=micros(2500), ps=1.0)
+    ne = WernerStateEntanglement.swap(e1, e2, now=micros(2500))
 
     assert ne is not None
     assert ne.fidelity < min(e1.fidelity, e2.fidelity)  # swapping reduces fidelity
-    assert ne.creation_time == micros(1000)
+    assert ne.creation_time == micros(2500)
     assert ne.decoherence_time == micros(3000)
     assert not ne.is_decoherenced
 
 
-@pytest.mark.xfail
 def test_swap_fidelity():
     """
     Validate fidelity calculation after swaps.
     """
     decoherence_time = micros(1000000)  # 1 second
     decoherence_rate = 1 / decoherence_time.sec
+    dr = (decoherence_rate, decoherence_rate)
 
     e1 = WernerStateEntanglement(fidelity=0.99, creation_time=micros(1000))
     e1.decoherence_time = e1.creation_time + decoherence_time
@@ -49,21 +49,17 @@ def test_swap_fidelity():
     e3.decoherence_time = e3.creation_time + decoherence_time
 
     ne1_time = micros(2500)
-    e1.store_error_model((ne1_time - e1.creation_time).sec, decoherence_rate)
-    e2.store_error_model((ne1_time - e2.creation_time).sec, decoherence_rate)
+    ne1 = WernerStateEntanglement.swap(e1, e2, now=ne1_time, dr0=dr, dr1=dr)
     assert e1.w == pytest.approx(0.983711102, abs=1e-6)
     assert e2.w == pytest.approx(0.985680493, abs=1e-6)
-    ne1 = WernerStateEntanglement.swap(e1, e2, now=ne1_time, ps=1.0)
     assert ne1 is not None
     assert ne1.w == pytest.approx(0.969624844, abs=1e-6)
     assert ne1.fidelity == pytest.approx(0.977218633, abs=1e-6)
 
     ne2_time = micros(3500)
-    ne1.store_error_model((ne2_time - ne1.creation_time).sec, decoherence_rate)
-    e3.store_error_model((ne2_time - e3.creation_time).sec, decoherence_rate)
+    ne2 = WernerStateEntanglement.swap(ne1, e3, now=ne2_time, dr0=dr, dr1=dr)
     assert ne1.w == pytest.approx(0.967687533, abs=1e-6)
     assert e3.w == pytest.approx(0.985680493, abs=1e-6)
-    ne2 = WernerStateEntanglement.swap(ne1, e3, now=ne2_time, ps=1.0)
     assert ne2 is not None
     assert ne2.w == pytest.approx(0.953830724, abs=1e-6)
     assert ne2.fidelity == pytest.approx(0.965373043, abs=1e-6)
