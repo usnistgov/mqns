@@ -57,20 +57,22 @@ def test_write_and_read_with_path_and_key():
     mem._storage[addr][0].active = key
 
     # Now write with path_id and key
-    qubit = mem.write(epr1, path_id=0, key=key)
+    qubit = mem.write(key, epr1)
     assert qubit is not None
     assert qubit.addr == addr
 
     # Should fail to write another one in the same slot
     epr2 = scenario.make_epr("epr2")
-    assert mem.write(epr2, path_id=0, key=key) is None
+    with pytest.raises(ValueError, match="contains existing data"):
+        mem.write(key, epr2)
 
     # Should be able to read it
     qubit, data = mem.read("epr1", must=WernerStateEntanglement, remove=True)
     assert data.name == "epr1"
     assert mem._usage == 0
 
-    assert pytest.raises(ValueError, lambda: mem.read(qubit.addr, must=WernerStateEntanglement))
+    with pytest.raises(ValueError, match="data at 0 is not"):
+        mem.read(qubit.addr, must=WernerStateEntanglement)
 
 
 def test_channel_qubit_assignment_and_search():
@@ -93,9 +95,8 @@ def test_decoherence_event_removes_qubit():
     mem = scenario.m1
 
     epr = scenario.make_epr("epr3")
-    qubit = mem.write(epr)
+    qubit = mem.write(None, epr)
 
-    assert qubit is not None
     qubit.state = QubitState.ACTIVE
     qubit.state = QubitState.RESERVED
     qubit.state = QubitState.ENTANGLED0
@@ -115,7 +116,7 @@ def test_memory_clear_and_deallocate():
 
     for i in range(2):
         epr = scenario.make_epr(f"epr{i}")
-        assert mem.write(epr)
+        mem.write(None, epr)
 
     assert mem.count == 2
     mem.clear()
@@ -143,9 +144,7 @@ def test_qubit_reservation_behavior():
 
     epr = scenario.make_epr("epr1")
 
-    # Must match on both path_id and key
-    qubit = mem.write(epr, path_id=42, key=q1.active)
-    assert qubit is not None
+    qubit = mem.write(q1.active, epr)
     assert qubit.addr == addr1
 
 
@@ -155,7 +154,7 @@ def test_memory_sync_qubit():
 
     q1 = Qubit(name="test_qubit")
 
-    assert mem.write(q1)
+    mem.write(None, q1)
     assert mem.read("test_qubit") is not None
 
     assert mem.read("nonexistent") is None
@@ -168,18 +167,19 @@ def test_memory_sync_qubit_limited():
 
     for i in range(5):
         q = Qubit(name="q" + str(i + 1))
-        assert mem.write(q)
+        mem.write(None, q)
         assert mem.count == i + 1
 
     q = Qubit(name="q5")
-    assert not mem.write(q)
+    with pytest.raises(IndexError, match="qubit not found"):
+        mem.write(None, q)
     assert mem.count == 5
 
     q = mem.read("q4", remove=True)
     assert q is not None
     assert mem.count == 4
     q = Qubit(name="q6")
-    assert mem.write(q)
+    mem.write(None, q)
     assert mem.count == 5
     assert mem.read("q6", must=True)[0].addr == 3
 

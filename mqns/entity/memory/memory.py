@@ -44,8 +44,7 @@ from mqns.entity.node import QNode
 from mqns.models.core import QuantumModel, QuantumModelT
 from mqns.models.delay import DelayInput, parseDelay
 from mqns.models.epr import BaseEntanglement
-from mqns.simulator import Event, func_to_event
-from mqns.simulator.simulator import Simulator
+from mqns.simulator import Event, Simulator, func_to_event
 
 if TYPE_CHECKING:
     from mqns.entity.qchannel import QuantumChannel
@@ -125,7 +124,7 @@ class QuantumMemory(Entity):
                 MemoryReadResponseEvent(self.node, result, request=event, t=simulator.tc + self.delay.calculate(), by=self)
             )
         elif isinstance(event, MemoryWriteRequestEvent):
-            result = self.write(event.qubit)
+            result = self.write(None, event.qubit)
             simulator.add_event(
                 MemoryWriteResponseEvent(self.node, result, request=event, t=simulator.tc + self.delay.calculate(), by=self)
             )
@@ -261,16 +260,6 @@ class QuantumMemory(Entity):
             qubit.path_id = None
             qubit.path_direction = None
 
-    def _find_by_key(self, key: int | str) -> int:
-        if type(key) is int:
-            return key if key < self.capacity else -1
-
-        if type(key) is str:
-            for qubit, _ in self.find(lambda _, v: getattr(v, "name", None) == key):
-                return qubit.addr
-
-        return -1
-
     @overload
     def read(self, key: int | str, *, must: None = None, remove=False) -> tuple[MemoryQubit, QuantumModel | None] | None:
         """
@@ -327,15 +316,18 @@ class QuantumMemory(Entity):
         pass
 
     def read(self, key: int | str, *, must: bool | type[QuantumModelT] | None = None, set_fidelity=False, remove=False):
-        addr = self._find_by_key(key)
-        if addr == -1:
+        if type(key) is int:
+            qubit, data = self._storage[key]
+        else:
+            qubit, data = next(self.find(lambda _, v: getattr(v, "name", None) == key), (None, None))
+
+        if qubit is None:
             if must:
                 raise IndexError(f"{self}: cannot find {key}")
             return None
 
-        qubit, data = self._storage[addr]
         if must not in (None, True) and type(data) is not must:
-            raise ValueError(f"{self}: data at {addr} is not {must}")
+            raise ValueError(f"{self}: data at {qubit.addr} is not {must}")
 
         if set_fidelity and isinstance(data, BaseEntanglement) and not data.read:
             data.read = True
@@ -343,91 +335,52 @@ class QuantumMemory(Entity):
             data.store_error_model((now - data.creation_time).sec, self.decoherence_rate)
 
         if remove:
+            qubit.set_event(QuantumMemory, None)  # cancel scheduled decoherence event
             self._usage -= 1
-            self._storage[addr] = (qubit, None)
-
-            # cancel scheduled decoherence event
-            qubit.set_event(QuantumMemory, None)
+            self._storage[qubit.addr] = (qubit, None)
 
         return qubit, data
 
-    def write(
-        self, qm: QuantumModel, *, path_id: int | None = None, address: int | None = None, key: str | None = None
-    ) -> MemoryQubit | None:
+    def write(self, key: int | str | None, data: QuantumModel, *, replace=False) -> MemoryQubit:
         """
-        Store a quantum model (e.g., a qubit or an entangled pair) in memory.
-
-        1. Find an unused memory slot that satisfies optional constraints.
-        2. Store and provided quantum model.
-        3. Schedule a decoherence event based on the memory's decoherence rate.
+        Store a quantum model in memory.
 
         Args:
-            qm: The quantum model to store (e.g., an entangled pair).
-            path_id: Constrain by `MemoryQubit.path_id` field (set by `allocate`).
-            address: Constrain by qubit address.
-            key: Constrain by `MemoryQubit.active` field (set in `LinkLayer` reservation).
+            key: Qubit address, `qubit.active` identifier, or `None` for any unused qubit.
+            data: Quantum model to be stored.
+                  If this is an EPR, a decoherence event is scheduled automatically.
+            replace: True allows replacing existing quantum model; False requires qubit to be empty.
 
         Returns:
-            Qubit where the quantum model was stored, or None if no storage available.
+            Qubit where the quantum model is stored.
+
+        Raises:
+            IndexError - qubit not found by `key` or no qubit available.
+            ValueError - `replace=False` but qubit has existing quantum model.
         """
+        if type(key) is int:
+            qubit, old = self._storage[key]
+        elif type(key) is str:
+            qubit, old = next(self.find(lambda q, _: q.active == key), (None, None))
+        else:
+            qubit, old = next(self.find(lambda _, v: v is None), (None, None))
 
-        qubit, _ = next(
-            self.find(
-                lambda q, v: v is None
-                and (path_id is None or q.path_id == path_id)
-                and (address is None or q.addr == address)
-                and (key is None or key == q.active)
-            ),
-            (None, None),
-        )
         if qubit is None:
-            return None
+            raise IndexError("qubit not found")
 
-        self._storage[qubit.addr] = (qubit, qm)
-        self._usage += 1
+        if not replace and old is not None:
+            raise ValueError(f"qubit contains existing data: {old}")
 
-        if isinstance(qm, BaseEntanglement):
-            qm.decoherence_time = qm.creation_time + self.decoherence_delay
-            self._schedule_decohere(qubit, qm)
+        self._storage[qubit.addr] = (qubit, data)
+        if old is None:
+            self._usage += 1
+
+        if isinstance(data, BaseEntanglement):
+            self._schedule_decohere(qubit, data)
+        elif old is not None:
+            qubit.set_event(QuantumMemory, None)  # cancel old decoherence event
 
         return qubit
-
-    def update(self, old_qm: str, new_qm: QuantumModel) -> bool:
-        """
-        Update the data of a stored qubit without resetting its coherence time.
-
-        This method replaces an existing quantum model in memory with a new one,
-        preserving the original decoherence schedule. The old decoherence event is
-        canceled and replaced with a new event for the updated model, but at the
-        same decoherence time.
-
-        Args:
-            old_qm (str): The name of the existing `QuantumModel` to be replaced.
-            new_qm (QuantumModel): The new `QuantumModel` instance to store in its place.
-
-        Returns:
-            bool: True if the update was successful, False if `old_qm` was not found
-                (e.g., already decohered or removed).
-
-        Notes:
-            - If `old_qm` is not found in memory but a pending decoherence event still exists,
-              that event is canceled and removed to avoid inconsistency.
-            - This method does not modify the coherence time or reschedule it—only updates
-              the stored quantum model while maintaining timing integrity.
-        """
-        addr = self._find_by_key(old_qm)
-        if addr == -1:
-            return False
-
-        qubit = self._storage[addr][0]
-        self._storage[addr] = (qubit, new_qm)
-
-        if isinstance(new_qm, BaseEntanglement):
-            self._schedule_decohere(qubit, new_qm)
-        else:
-            qubit.set_event(QuantumMemory, None)
-
-        return True
 
     def clear(self) -> None:
         """Clear all qubits in the memory."""
@@ -448,7 +401,7 @@ class QuantumMemory(Entity):
         Returns:
             A list of memory qubits (along with their `QuantumModel`) that are bound to the specified quantum channel.
         """
-        return list(self.find(lambda q, v: True, qchannel=ch))
+        return list(self.find(lambda *_: True, qchannel=ch))
 
     def _schedule_decohere(self, qubit: MemoryQubit, epr: BaseEntanglement):
         simulator = self.simulator

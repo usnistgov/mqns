@@ -419,7 +419,7 @@ class LinkLayer(Application):
         log.debug(f"{self.own}: got half-EPR {epr.name} key={epr.key} {'dst' if is_primary else 'src'}={neighbor}")
         assert epr.decoherence_time > simulator.tc
 
-        qubit = self.memory.write(epr, key=epr.key)
+        qubit = self.memory.write(epr.key, epr)
         if qubit is None:
             raise Exception(f"{self.own}: Failed to store EPR {epr.name}")
 

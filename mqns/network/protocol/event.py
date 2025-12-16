@@ -22,7 +22,7 @@ from typing_extensions import override
 from mqns.entity.memory import MemoryQubit, QubitState
 from mqns.entity.node import QNode
 from mqns.entity.qchannel import QuantumChannel
-from mqns.models.epr import WernerStateEntanglement
+from mqns.models.epr import BaseEntanglement
 from mqns.simulator import Event, Time
 
 
@@ -65,7 +65,7 @@ class LinkArchSuccessEvent(Event):
     def __init__(
         self,
         node: QNode,
-        epr: WernerStateEntanglement,
+        epr: BaseEntanglement,
         *,
         t: Time,
         name: str | None = None,

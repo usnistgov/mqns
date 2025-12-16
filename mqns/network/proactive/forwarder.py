@@ -584,7 +584,7 @@ class ProactiveForwarder(Application):
         )
 
         if result:
-            self.memory.update(old_qm=epr0.name, new_qm=epr0)
+            self.memory.write(mq0.addr, epr0, replace=True)
             self.cnt.increment_n_purif(mq0.purif_rounds)
             mq0.purif_rounds += 1
             mq0.state = QubitState.PURIF
@@ -639,7 +639,7 @@ class ProactiveForwarder(Application):
             return
 
         # purif succeeded
-        self.memory.update(old_qm=epr.name, new_qm=epr)
+        self.memory.write(qubit.addr, epr, replace=True)
         self.cnt.increment_n_purif(qubit.purif_rounds)
         qubit.purif_rounds += 1
         qubit.state = QubitState.PURIF
@@ -842,9 +842,7 @@ class ProactiveForwarder(Application):
             return
 
         # Update old EPR with new EPR (fidelity and partner).
-        updated = self.memory.update(old_qm=msg["epr"], new_qm=new_epr)
-        if not updated:
-            raise Exception(f"{self.own}: EPR update failed | old={msg['epr']} , new={new_epr}")
+        self.memory.write(qubit.addr, new_epr, replace=True)
 
         if maybe_purif:
             # If own rank is higher than sender rank but lower than new partner rank,
