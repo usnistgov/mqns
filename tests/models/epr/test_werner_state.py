@@ -6,6 +6,11 @@ from mqns.models.qubit.const import QUBIT_STATE_P
 from mqns.simulator import Time
 
 
+def micros(us: int) -> Time:
+    """Produce timestamp in microseconds."""
+    return Time(us, accuracy=1000000)
+
+
 def test_fidelity_conversion():
     e = WernerStateEntanglement()
     assert e.fidelity == pytest.approx(1.0, abs=1e-9)
@@ -14,60 +19,95 @@ def test_fidelity_conversion():
     assert e.fidelity == pytest.approx(0.85, abs=1e-9)
 
 
-def test_swap_success(monkeypatch):
-    e1 = WernerStateEntanglement(fidelity=0.9)
-    e2 = WernerStateEntanglement(fidelity=0.8)
-    e1.creation_time = Time(1, accuracy=1000)
-    e2.creation_time = Time(2, accuracy=1000)
-    e1.decoherence_time = Time(3, accuracy=1000)
-    e2.decoherence_time = Time(4, accuracy=1000)
+def test_swap_success(monkeypatch: pytest.MonkeyPatch):
+    e1 = WernerStateEntanglement(fidelity=0.9, creation_time=micros(1000), decoherence_time=micros(3000))
+    e2 = WernerStateEntanglement(fidelity=0.8, creation_time=micros(2000), decoherence_time=micros(4000))
 
-    monkeypatch.setattr("mqns.models.epr.werner.get_rand", lambda: 0.1)
+    monkeypatch.setattr("mqns.models.epr.entanglement.get_rand", lambda: 0.1)
+    ne = WernerStateEntanglement.swap(e1, e2, now=micros(2500))
 
-    ne = e1.swapping(e2, ps=1.0)
     assert ne is not None
     assert ne.fidelity < min(e1.fidelity, e2.fidelity)  # swapping reduces fidelity
-    assert ne.creation_time == Time(1, accuracy=1000)
-    assert ne.decoherence_time == Time(3, accuracy=1000)
+    assert ne.creation_time == micros(2500)
+    assert ne.decoherence_time == micros(3000)
     assert not ne.is_decoherenced
 
 
-def test_swap_failure(monkeypatch):
-    e1 = WernerStateEntanglement(fidelity=0.9)
-    e2 = WernerStateEntanglement(fidelity=0.8)
-    monkeypatch.setattr("mqns.models.epr.werner.get_rand", lambda: 0.99)
+def test_swap_fidelity():
+    """
+    Validate fidelity calculation after swaps.
+    """
+    decoherence_time = micros(1000000)  # 1 second
+    decoherence_rate = 1 / decoherence_time.sec
+    dr = (decoherence_rate, decoherence_rate)
 
-    ne = e1.swapping(e2, ps=0.5)
+    e1 = WernerStateEntanglement(fidelity=0.99, creation_time=micros(1000))
+    e1.decoherence_time = e1.creation_time + decoherence_time
+    e2 = WernerStateEntanglement(fidelity=0.99, creation_time=micros(2000))
+    e2.decoherence_time = e2.creation_time + decoherence_time
+    e3 = WernerStateEntanglement(fidelity=0.99, creation_time=micros(3000))
+    e3.decoherence_time = e3.creation_time + decoherence_time
+
+    ne1_time = micros(2500)
+    ne1 = WernerStateEntanglement.swap(e1, e2, now=ne1_time, dr0=dr, dr1=dr)
+    assert e1.w == pytest.approx(0.983711102, abs=1e-6)
+    assert e2.w == pytest.approx(0.985680493, abs=1e-6)
+    assert ne1 is not None
+    assert ne1.w == pytest.approx(0.969624844, abs=1e-6)
+    assert ne1.fidelity == pytest.approx(0.977218633, abs=1e-6)
+
+    ne2_time = micros(3500)
+    ne2 = WernerStateEntanglement.swap(ne1, e3, now=ne2_time, dr0=dr, dr1=dr)
+    assert ne1.w == pytest.approx(0.967687533, abs=1e-6)
+    assert e3.w == pytest.approx(0.985680493, abs=1e-6)
+    assert ne2 is not None
+    assert ne2.w == pytest.approx(0.953830724, abs=1e-6)
+    assert ne2.fidelity == pytest.approx(0.965373043, abs=1e-6)
+
+
+def test_swap_failure(monkeypatch: pytest.MonkeyPatch):
+    now = micros(0)
+    decohere = now + 1.0
+    e1 = WernerStateEntanglement(fidelity=0.9, creation_time=now, decoherence_time=decohere)
+    e2 = WernerStateEntanglement(fidelity=0.8, creation_time=now, decoherence_time=decohere)
+
+    monkeypatch.setattr("mqns.models.epr.entanglement.get_rand", lambda: 0.99)
+    ne = WernerStateEntanglement.swap(e1, e2, now=now, ps=0.5)
+
     assert ne is None
     assert e1.is_decoherenced
     assert e2.is_decoherenced
 
 
 def test_swap_decohered_inputs():
-    e1 = WernerStateEntanglement(fidelity=0.9)
-    e2 = WernerStateEntanglement(fidelity=0.8)
+    now = micros(0)
+    decohere = now + 1.0
+    e1 = WernerStateEntanglement(fidelity=0.9, creation_time=now, decoherence_time=decohere)
+    e2 = WernerStateEntanglement(fidelity=0.8, creation_time=now, decoherence_time=decohere)
     e1.is_decoherenced = True
 
-    assert e1.swapping(e2) is None
+    assert WernerStateEntanglement.swap(e1, e2, now=now) is None
 
 
-def test_purify_success(monkeypatch):
+def test_purify_success(monkeypatch: pytest.MonkeyPatch):
     e1 = WernerStateEntanglement(fidelity=0.85)
     e2 = WernerStateEntanglement(fidelity=0.85)
-    monkeypatch.setattr("mqns.models.epr.werner.get_rand", lambda: 0.1)
 
+    monkeypatch.setattr("mqns.models.epr.werner.get_rand", lambda: 0.1)
     assert e1.purify(e2) is True
+
     assert not e1.is_decoherenced
     assert e2.is_decoherenced
     assert e1.fidelity > 0.85
 
 
-def test_purify_failure(monkeypatch):
+def test_purify_failure(monkeypatch: pytest.MonkeyPatch):
     e1 = WernerStateEntanglement(fidelity=0.5)
     e2 = WernerStateEntanglement(fidelity=0.5)
-    monkeypatch.setattr("mqns.models.epr.werner.get_rand", lambda: 0.99)
 
+    monkeypatch.setattr("mqns.models.epr.werner.get_rand", lambda: 0.99)
     assert e1.purify(e2) is False
+
     assert e1.is_decoherenced
     assert e2.is_decoherenced
     assert e1.fidelity == 0

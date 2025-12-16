@@ -17,14 +17,13 @@
 
 from typing import final
 
-from typing_extensions import override
+from typing_extensions import Unpack, override
 
-from mqns.models.core import QuantumModel
-from mqns.models.epr.entanglement import BaseEntanglement
+from mqns.models.epr.entanglement import BaseEntanglement, BaseEntanglementInitKwargs
 
 
 @final
-class BellStateEntanglement(BaseEntanglement["BellStateEntanglement"], QuantumModel):
+class BellStateEntanglement(BaseEntanglement["BellStateEntanglement"]):
     """`BellStateEntanglement` is the ideal max entangled qubits. Its fidelity is always 1."""
 
     @property
@@ -37,15 +36,13 @@ class BellStateEntanglement(BaseEntanglement["BellStateEntanglement"], QuantumMo
     def fidelity(self, value: float):
         assert value == 1.0, "BellStateEntanglement fidelity is always 1"
 
+    @staticmethod
     @override
-    def swapping(self, epr: "BellStateEntanglement", *, name: str | None = None, ps: float = 1) -> "BellStateEntanglement|None":
-        _ = ps
-        ne = BellStateEntanglement(name=name)
-        if self.is_decoherenced or epr.is_decoherenced:
-            return None
-        epr.is_decoherenced = True
-        self.is_decoherenced = True
-        return ne
+    def _make_swapped(
+        epr0: "BellStateEntanglement", epr1: "BellStateEntanglement", **kwargs: Unpack[BaseEntanglementInitKwargs]
+    ):
+        _ = epr0, epr1
+        return BellStateEntanglement(**kwargs)
 
     @override
     def distillation(self, epr: "BellStateEntanglement") -> "BellStateEntanglement":

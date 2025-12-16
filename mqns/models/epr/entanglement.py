@@ -28,14 +28,17 @@
 import hashlib
 import uuid
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Generic, TypeVar, cast
+from typing import TYPE_CHECKING, Generic, TypedDict, TypeVar, cast
 
 import numpy as np
+from typing_extensions import Unpack
 
+from mqns.models.core import QuantumModel
 from mqns.models.qubit.const import OPERATOR_PAULI_I, QUBIT_STATE_0, QUBIT_STATE_P
 from mqns.models.qubit.gate import CNOT, H, U, X, Y, Z
 from mqns.models.qubit.qubit import QState, Qubit
 from mqns.simulator import Time
+from mqns.utils import get_rand
 
 if TYPE_CHECKING:
     from mqns.entity.node import QNode
@@ -45,37 +48,57 @@ def _name_hash(s1: str) -> str:
     return hashlib.sha256(s1.encode()).hexdigest()
 
 
-EntanglementT = TypeVar("EntanglementT")
+EntanglementT = TypeVar("EntanglementT", bound="BaseEntanglement")
 
 
-class BaseEntanglement(ABC, Generic[EntanglementT]):
+class BaseEntanglementInitKwargs(TypedDict, total=False):
+    name: str | None
+    creation_time: Time
+    decoherence_time: Time | None
+    src: "QNode|None"
+    dst: "QNode|None"
+
+
+class BaseEntanglement(ABC, Generic[EntanglementT], QuantumModel):
     """Base entanglement model."""
 
-    def __init__(self, *, name: str | None = None):
+    def __init__(self, **kwargs: Unpack[BaseEntanglementInitKwargs]):
         """
         Constructor.
 
         Args:
-            name: the entanglement name, defaults to a random string.
+            name: entanglement name, defaults to a random string.
+            creation_time: EPR creation time, defaults to `Time.SENTINEL`.
         """
+        name = kwargs.get("name")
         self.name = uuid.uuid4().hex if name is None else name
         """Descriptive name."""
-        self.key: str | None = None
-        """Reservation key used by LinkLayer."""
+
         self.is_decoherenced = False
         """Whether the entanglement has decohered."""
-        self.creation_time: Time | None = None
-        """Entanglement creation time assigned by LinkLayer or swapping."""
-        self.decoherence_time: Time | None = None
-        """Entanglement decoherence time assigned by memory or swapping."""
+        self.creation_time = kwargs.get("creation_time", Time.SENTINEL)
+        """
+        Entanglement creation time assigned by LinkLayer or swapping.
+        Time-based operations are unavailable if this is `Time.SENTINEL`.
+        """
+        self.decoherence_time = kwargs.get("decoherence_time")
+        """
+        Entanglement decoherence time assigned by memory or swapping.
+        """
         self.read = False
         """Whether the entanglement has been read from the memory by either node."""
-        self.src: "QNode|None" = None
+
+        self.key: str | None = None
+        """Reservation key used by LinkLayer."""
+        self.src = kwargs.get("src")
         """One node that holds one entangled qubit, at the left side of a path."""
-        self.dst: "QNode|None" = None
+        self.dst = kwargs.get("dst")
         """The other node that holds the other entangled qubit, at the right side of a path."""
         self.ch_index = -1
-        """Index of this entanglement in a path, smaller indices are on the left side."""
+        """
+        Index of elementary entanglement in a path, smaller indices are on the left side.
+        Negative means this is not an elementary entanglement.
+        """
         # QuantumMemory.find() performance optimization assumes that ch_index is present in this class
         # but absent in other QuantumModel implementations.
         self.orig_eprs: list[EntanglementT] = []
@@ -93,36 +116,79 @@ class BaseEntanglement(ABC, Generic[EntanglementT]):
     def fidelity(self, value: float):
         pass
 
-    @abstractmethod
-    def swapping(self, epr: EntanglementT, *, name: str | None = None, ps: float = 1) -> EntanglementT | None:
+    @classmethod
+    def swap(
+        cls,
+        epr0: EntanglementT,
+        epr1: EntanglementT,
+        *,
+        now: Time,
+        ps=1.0,
+        dr0: tuple[float, float] = (0.0, 0.0),
+        dr1: tuple[float, float] = (0.0, 0.0),
+    ) -> EntanglementT | None:
         """
-        Use `self` and `epr` to perform swapping and distribute a new entanglement.
+        Perform swapping between `epr0` and `epr1`, and distribute a new entanglement.
 
         Args:
-            epr: another entanglement.
-            name: name of the new entanglement.
+            epr0: left entanglement.
+            epr1: right entanglement.
+            now: current timestamp.
             ps: probability of successful swapping.
+            dr0: decoherence rate of memories at epr0.src,dst.
+            dr1: decoherence rate of memories at epr1.src,dst.
 
         Returns:
-            New entanglement.
+            New entanglement, or None if swap failed.
+        """
+
+        assert epr0.decoherence_time is not None
+        assert epr1.decoherence_time is not None
+        assert epr0.dst == epr1.src  # src and dst can be None
+
+        if epr0.is_decoherenced or epr1.is_decoherenced:
+            return None
+
+        if ps < 1.0 and get_rand() >= ps:  # swap failed
+            epr0.is_decoherenced = True
+            epr1.is_decoherenced = True
+            return None
+
+        orig_eprs: list[EntanglementT] = []
+        for epr, dr_memories in ((epr0, dr0), (epr1, dr1)):
+            if not epr.read:
+                epr.read = True
+                epr.store_error_model(
+                    (now - epr.creation_time).sec,
+                    sum(dr_memories),  # pair dephasing rate is the sum of memory dephasing rates
+                )
+
+            if epr.ch_index > -1:
+                orig_eprs.append(epr)
+            else:
+                orig_eprs.extend(cast(list[EntanglementT], epr.orig_eprs))
+
+        ne = cls._make_swapped(
+            epr0,
+            epr1,
+            name=_name_hash("-".join((e.name for e in orig_eprs))),
+            creation_time=now,
+            decoherence_time=min(epr0.decoherence_time, epr1.decoherence_time),
+            src=epr0.src,
+            dst=epr1.dst,
+        )
+        ne.orig_eprs = orig_eprs
+        return ne
+
+    @staticmethod
+    @abstractmethod
+    def _make_swapped(epr0: EntanglementT, epr1: EntanglementT, **kwargs: Unpack[BaseEntanglementInitKwargs]) -> EntanglementT:
+        """
+        Create a new entanglement that is the result of successful swapping between epr0 and epr1.
+        Most properties are provided in kwargs or assigned subsequently.
+        Subclass implementation should calculate the fidelity of new entanglement.
         """
         pass
-
-    def _update_orig_eprs(self, *eprs: "BaseEntanglement", update_name=False) -> None:
-        merged: dict[str, BaseEntanglement] = {}
-        for epr in eprs:
-            if epr.ch_index > -1:  # this is an elementary epr
-                merged[epr.name] = epr
-            else:  # this is not an elementary epr
-                for oe in cast(list[BaseEntanglement], epr.orig_eprs):
-                    merged[oe.name] = oe
-
-        orig_eprs = sorted(merged.values(), key=lambda e: e.ch_index)
-        self.orig_eprs = cast(list[EntanglementT], orig_eprs)
-
-        if update_name:
-            epr_names = (e.name for e in orig_eprs)
-            self.name = _name_hash("-".join(epr_names))
 
     @abstractmethod
     def distillation(self, epr: EntanglementT) -> EntanglementT | None:

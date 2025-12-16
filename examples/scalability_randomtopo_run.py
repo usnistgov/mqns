@@ -51,7 +51,7 @@ frequency = 1e6  # memory frequency
 entg_attempt_rate = 50e6  # From fiber max frequency (50 MHz) AND detectors count rate (60 MHz)
 
 init_fidelity = 0.99
-t_coherence = 5e-3  # 10e-3
+t_cohere = 5e-3  # 10e-3
 
 p_swap = 0.5
 swapping_policy = "asap"
@@ -69,7 +69,7 @@ def build_network() -> QuantumNetwork:
         lines_number=args.nedges,
         qchannel_args={"length": 30},
         cchannel_args={"length": 30},
-        memory_args={"capacity": nqubits, "decoherence_rate": 1 / t_coherence},
+        memory_args={"capacity": nqubits, "t_cohere": t_cohere},
         nodes_apps=[
             LinkLayer(
                 attempt_rate=entg_attempt_rate,

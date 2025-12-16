@@ -89,7 +89,7 @@ class MuxSchemeBufferSpace(MuxSchemeFibBase):
     def qubit_is_entangled(self, qubit: MemoryQubit, neighbor: QNode) -> None:
         if qubit.path_id is None:
             log.debug(f"{self.own}: release entangled qubit {qubit.addr} due to uninstalled path")
-            self.fw.release_qubit(qubit, read=True)
+            self.fw.release_qubit(qubit, need_remove=True)
             return
 
         fib_entry = self.fib.get(qubit.path_id)

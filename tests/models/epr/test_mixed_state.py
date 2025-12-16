@@ -1,18 +1,22 @@
 from mqns.models.epr import MixedStateEntanglement
 from mqns.models.qubit.const import QUBIT_STATE_0
 from mqns.models.qubit.qubit import Qubit
+from mqns.simulator import Time
 
 
 def test_mixed_state():
-    e1 = MixedStateEntanglement(fidelity=0.95, name="e1")
-    e2 = MixedStateEntanglement(fidelity=0.95, name="e2")
-    e3 = e1.swapping(e2)
+    now = Time(0, accuracy=1000000)
+    decohere = now + 5.0
+
+    e1 = MixedStateEntanglement(fidelity=0.95, name="e1", creation_time=now, decoherence_time=decohere)
+    e2 = MixedStateEntanglement(fidelity=0.95, name="e2", creation_time=now, decoherence_time=decohere)
+    e3 = MixedStateEntanglement.swap(e1, e2, now=now)
     assert e3 is not None
     print(e3.fidelity)
 
-    e4 = MixedStateEntanglement(fidelity=0.95, name="e4")
-    e5 = MixedStateEntanglement(fidelity=0.95, name="e5")
-    e6 = e4.swapping(e5)
+    e4 = MixedStateEntanglement(fidelity=0.95, name="e4", creation_time=now, decoherence_time=decohere)
+    e5 = MixedStateEntanglement(fidelity=0.95, name="e5", creation_time=now, decoherence_time=decohere)
+    e6 = MixedStateEntanglement.swap(e4, e5, now=now)
     assert e6 is not None
     print(e6.fidelity)
 

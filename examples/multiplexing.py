@@ -207,7 +207,7 @@ def build_topology(t_coherence: float, mux: MuxScheme, active_flows: list[tuple[
             install_paths.append(RoutingPathStatic(ROUTE[flow], m_v=QubitAllocationType.DISABLED, swap=swapping_policy))
 
     def _node(name, cap) -> TopoQNode:
-        return {"name": name, "memory": {"decoherence_rate": 1 / t_coherence, "capacity": cap}}
+        return {"name": name, "memory": {"t_cohere": t_cohere, "capacity": cap}}
 
     qnodes = (
         [_node(n, TX_QUBITS) for n in "ABCD"]

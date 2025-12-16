@@ -12,7 +12,7 @@ def build_topology(
     *,
     nodes: int | list[str],
     mem_capacity: int | list[int] | None = None,
-    t_coherence: float,
+    t_cohere: float,
     channel_length: float | list[float],
     channel_capacity: int | list[int] | list[tuple[int, int]] | list[int | tuple[int, int]] = 1,
     link_arch: LinkArch | list[LinkArch] = LinkArchDimBkSeq(),
@@ -33,7 +33,7 @@ def build_topology(
         nodes: Number of nodes or list of node names.
         # QuantumMemory
         mem_capacity: Number of memory qubits per node.
-        t_coherence: Memory coherence time in seconds.
+        t_cohere: Memory coherence time in seconds.
         # QuantumChannel
         channel_length: Lengths of qchannels between adjacent nodes.
         channel_capacity: (left, right) qubit allocation per qchannel.
@@ -93,7 +93,7 @@ def build_topology(
             {
                 "name": name,
                 "memory": {
-                    "decoherence_rate": 1 / t_coherence,
+                    "t_cohere": t_cohere,
                     "capacity": mem_capacity,
                 },
             }

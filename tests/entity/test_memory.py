@@ -11,14 +11,14 @@ from mqns.entity.memory import (
 )
 from mqns.entity.node import Application, QNode
 from mqns.entity.qchannel import QuantumChannel
-from mqns.models.epr import BaseEntanglement, WernerStateEntanglement
+from mqns.models.epr import WernerStateEntanglement
 from mqns.models.qubit import Qubit
 from mqns.simulator import Simulator
 
 
 def test_write_and_read_with_path_and_key():
     ch = QuantumChannel("qc")
-    mem = QuantumMemory("mem", capacity=2, decoherence_rate=1)
+    mem = QuantumMemory("mem", capacity=2)
     mem.assign(ch, n=mem.capacity)
     node = QNode("n1")
     node.memory = mem
@@ -26,8 +26,7 @@ def test_write_and_read_with_path_and_key():
     sim = Simulator(0, 10)
     node.install(sim)
 
-    epr = WernerStateEntanglement(name="epr1")
-    epr.creation_time = sim.tc
+    epr = WernerStateEntanglement(name="epr1", creation_time=sim.tc)
     epr.src = node
     epr.dst = QNode("peer")
     key = "n1_peer_0_0"
@@ -44,25 +43,21 @@ def test_write_and_read_with_path_and_key():
     assert result.addr == addr
 
     # Should fail to write another one in the same slot
-    epr2 = WernerStateEntanglement(name="epr2")
-    epr2.creation_time = sim.tc
+    epr2 = WernerStateEntanglement(name="epr2", creation_time=sim.tc)
     epr2.src = node
     epr2.dst = QNode("peer2")
     assert mem.write(epr2, path_id=0, key=key) is None
 
     # Should be able to read it
-    epr1Read = mem.read("epr1")  # destructive reading
-    assert epr1Read is not None
-    qubit, data = epr1Read
-    assert isinstance(data, BaseEntanglement)
+    qubit, data = mem.read("epr1", must=WernerStateEntanglement, remove=True)
     assert data.name == "epr1"
     assert mem._usage == 0
 
-    assert pytest.raises(ValueError, lambda: mem.read(qubit.addr, must=True))
+    assert pytest.raises(ValueError, lambda: mem.read(qubit.addr, must=WernerStateEntanglement))
 
 
 def test_channel_qubit_assignment_and_search():
-    mem = QuantumMemory("mem", capacity=3, decoherence_rate=1)
+    mem = QuantumMemory("mem", capacity=3)
     node = QNode("n2")
     node.memory = mem
 
@@ -82,7 +77,7 @@ def test_channel_qubit_assignment_and_search():
 
 
 def test_decoherence_event_removes_qubit():
-    mem = QuantumMemory("mem", decoherence_rate=1)
+    mem = QuantumMemory("mem")
 
     node = QNode("n3")
     node.memory = mem
@@ -90,8 +85,7 @@ def test_decoherence_event_removes_qubit():
     sim = Simulator(0, 5)
     node.install(sim)
 
-    epr = WernerStateEntanglement(name="epr3", fidelity=1.0)
-    epr.creation_time = sim.tc
+    epr = WernerStateEntanglement(name="epr3", fidelity=1.0, creation_time=sim.tc)
     qubit = mem.write(epr)
     assert epr.decoherence_time is not None
 
@@ -103,14 +97,14 @@ def test_decoherence_event_removes_qubit():
     # Expect it to decohere at t=1.0
     sim.run()
 
-    res = mem.get("epr3")
+    res = mem.read("epr3")
     assert res is None
     assert qubit.state == QubitState.RELEASE
 
 
 def test_memory_clear_and_deallocate():
     ch = QuantumChannel("qc")
-    mem = QuantumMemory("mem", capacity=2, decoherence_rate=1)
+    mem = QuantumMemory("mem", capacity=2)
     mem.assign(ch, n=mem.capacity)
     node = QNode("n4")
     node.memory = mem
@@ -119,8 +113,7 @@ def test_memory_clear_and_deallocate():
     node.install(sim)
 
     for i in range(2):
-        q = WernerStateEntanglement(name=f"epr{i}", fidelity=1.0)
-        q.creation_time = sim.tc
+        q = WernerStateEntanglement(name=f"epr{i}", fidelity=1.0, creation_time=sim.tc)
         q.src = node
         q.dst = QNode("peer")
         assert mem.write(q)
@@ -140,7 +133,7 @@ def test_memory_clear_and_deallocate():
 
 def test_qubit_reservation_behavior():
     ch = QuantumChannel("qc")
-    mem = QuantumMemory("mem", capacity=2, decoherence_rate=1)
+    mem = QuantumMemory("mem", capacity=2)
     mem.assign(ch, n=mem.capacity)
     node = QNode("n5")
     node.memory = mem
@@ -154,8 +147,7 @@ def test_qubit_reservation_behavior():
     q1 = mem._storage[addr1][0]
     q1.active = "n5_n6_42_" + str(addr1)
 
-    epr = WernerStateEntanglement(name="eprX")
-    epr.creation_time = sim.tc
+    epr = WernerStateEntanglement(name="eprX", creation_time=sim.tc)
     epr.src = node
     epr.dst = QNode("n6")
 
@@ -177,9 +169,7 @@ def test_memory_sync_qubit():
     assert m.write(q1)
     assert m.read("test_qubit") is not None
 
-    assert m.get("nonexistent") is None
     assert m.read("nonexistent") is None
-    assert pytest.raises(IndexError, lambda: m.get("nonexistent", must=True))
     assert pytest.raises(IndexError, lambda: m.read("nonexistent", must=True))
 
 
@@ -200,13 +190,13 @@ def test_memory_sync_qubit_limited():
     assert not m.write(q)
     assert m.count == 5
 
-    q = m.read("q4")
+    q = m.read("q4", remove=True)
     assert q is not None
     assert m.count == 4
     q = Qubit(name="q6")
     assert m.write(q)
     assert m.count == 5
-    assert m.get("q6", must=True)[0].addr == 3
+    assert m.read("q6", must=True)[0].addr == 3
 
 
 def test_memory_async_qubit():

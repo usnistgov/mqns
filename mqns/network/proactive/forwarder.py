@@ -518,10 +518,8 @@ class ProactiveForwarder(Application):
             partner: quantum node with which entanglements are shared.
         """
         # read qubits to set fidelity at this time
-        _, epr0 = self.memory.read(mq0.addr, destructive=False, must=True)
-        _, epr1 = self.memory.read(mq1.addr, must=True)
-        assert type(epr0) is WernerStateEntanglement
-        assert type(epr1) is WernerStateEntanglement
+        _, epr0 = self.memory.read(mq0.addr, must=WernerStateEntanglement, set_fidelity=True)
+        _, epr1 = self.memory.read(mq1.addr, must=WernerStateEntanglement, set_fidelity=True, remove=True)
 
         log.debug(
             f"{self.own}: request purif qubit {mq0.addr} (F={epr0.fidelity}) and "
@@ -563,11 +561,9 @@ class ProactiveForwarder(Application):
         """
         # mq0 is the "kept" memory whose fidelity would be increased if purification succeeds
         # mq1 is the "measured" memory that is consumed during purification
-        mq0, epr0 = self.memory.read(msg["epr"], destructive=False, must=True)
-        mq1, epr1 = self.memory.read(msg["measure_epr"], must=True)
+        mq0, epr0 = self.memory.read(msg["epr"], must=WernerStateEntanglement, set_fidelity=True)
+        mq1, epr1 = self.memory.read(msg["measure_epr"], must=WernerStateEntanglement, set_fidelity=True, remove=True)
         # TODO: handle the exception case when an EPR is decohered and not found in memory
-        assert type(epr0) is WernerStateEntanglement
-        assert type(epr1) is WernerStateEntanglement
 
         for mq in (mq0, mq1):
             assert mq.state == QubitState.PURIF
@@ -595,7 +591,7 @@ class ProactiveForwarder(Application):
             self.qubit_is_purif(mq0, fib_entry, primary)
         else:
             # in case of purification failure, release mq0
-            self.release_qubit(mq0, read=True)
+            self.release_qubit(mq0, need_remove=True)
 
         # release mq1; destructive reading is already performed
         self.release_qubit(mq1)
@@ -629,9 +625,8 @@ class ProactiveForwarder(Application):
             fib_entry: FIB entry associated with path_id in the message.
 
         """
-        qubit, epr = self.memory.get(msg["epr"], must=True)
+        qubit, epr = self.memory.read(msg["epr"], must=WernerStateEntanglement)
         # TODO: handle the exception case when an EPR is decohered and not found in memory
-        assert type(epr) is WernerStateEntanglement
 
         result = msg["result"]
         log.debug(
@@ -640,7 +635,7 @@ class ProactiveForwarder(Application):
         )
 
         if not result:  # purif failed
-            self.release_qubit(qubit, read=True)
+            self.release_qubit(qubit, need_remove=True)
             return
 
         # purif succeeded
@@ -673,8 +668,7 @@ class ProactiveForwarder(Application):
             log.debug(f"{self.own}: INT phase is over -> stop swaps")
             return
 
-        _, epr = self.memory.get(qubit.addr, must=True)
-        assert type(epr) is WernerStateEntanglement
+        _, epr = self.memory.read(qubit.addr, must=WernerStateEntanglement)
         if self.can_consume(fib_entry, epr):
             self.consume_and_release(qubit)
             return
@@ -708,6 +702,7 @@ class ProactiveForwarder(Application):
         assert mq0.addr != mq1.addr
         assert mq0.state == QubitState.ELIGIBLE
         assert mq1.state == QubitState.ELIGIBLE
+        simulator = self.simulator
 
         # Read both qubits and remove them from memory.
         #
@@ -720,8 +715,7 @@ class ProactiveForwarder(Application):
         prev_tuple: tuple[QNode, MemoryQubit, WernerStateEntanglement] | None = None
         next_tuple: tuple[QNode, MemoryQubit, WernerStateEntanglement] | None = None
         for addr in (mq0.addr, mq1.addr):
-            qubit, epr = self.memory.read(addr, must=True)
-            assert type(epr) is WernerStateEntanglement
+            qubit, epr = self.memory.read(addr, must=WernerStateEntanglement, remove=True)
             if epr.dst == self.own:
                 assert epr.src is not None
                 prev_tuple = epr.src, qubit, epr
@@ -744,15 +738,18 @@ class ProactiveForwarder(Application):
             next_epr.ch_index = fib_entry.own_idx
 
         # Attempt the swap.
-        new_epr = prev_epr.swapping(epr=next_epr, ps=self.ps)
+        new_epr = WernerStateEntanglement.swap(
+            prev_epr,
+            next_epr,
+            now=simulator.tc,
+            ps=self.ps,
+            dr0=(prev_partner.memory.decoherence_rate, self.own.memory.decoherence_rate),
+            dr1=(self.own.memory.decoherence_rate, next_partner.memory.decoherence_rate),
+        )
         log.debug(f"{self.own}: SWAP {'SUCC' if new_epr else 'FAILED'} | {prev_qubit} x {next_qubit}")
 
         if new_epr is not None:  # swapping succeeded
             self.cnt.n_swapped_s += 1
-
-            # Update properties in newly generated EPR.
-            new_epr.src = prev_partner
-            new_epr.dst = next_partner
 
             # Inform multiplexing scheme.
             self.mux.swapping_succeeded(prev_epr, next_epr, new_epr)
@@ -807,7 +804,7 @@ class ProactiveForwarder(Application):
         new_epr = None if new_epr_name is None else self.remote_swapped_eprs.pop(new_epr_name)
 
         epr_name = msg["epr"]
-        qubit_pair = self.memory.get(epr_name)
+        qubit_pair = self.memory.read(epr_name)
         if qubit_pair is not None:
             qubit, _ = qubit_pair
             if qubit.state == QubitState.ENTANGLED0:
@@ -848,7 +845,7 @@ class ProactiveForwarder(Application):
             if new_epr:
                 log.debug(f"{self.own}: NEW EPR {new_epr} decohered during SU transmissions")
             # Inform LinkLayer that the memory qubit has been released.
-            self.release_qubit(qubit, read=True)
+            self.release_qubit(qubit, need_remove=True)
             return
 
         # Update old EPR with new EPR (fidelity and partner).
@@ -911,35 +908,26 @@ class ProactiveForwarder(Application):
             return
 
         # The swapping_node successfully swapped in parallel with this node.
-        # Merge the two swaps (physically already happened).
-        merged_epr = new_epr.swapping(epr=other_epr)
-
         # Determine the "destination" and "partner".
+        # Merge the two swaps (physically already happened).
+        new_epr.read = True
         if other_epr.dst == self.own:  # destination is to the left of own node
-            if merged_epr is not None:
-                merged_epr.src = other_epr.src
-                merged_epr.dst = new_epr.dst
-            partner = new_epr.dst
-            destination = other_epr.src
+            merged_epr = WernerStateEntanglement.swap(other_epr, new_epr, now=simulator.tc)
+            partner = cast(QNode, new_epr.dst)
+            destination = cast(QNode, other_epr.src)
         else:  # destination is to the right of own node
-            if merged_epr is not None:
-                merged_epr.src = new_epr.src
-                merged_epr.dst = other_epr.dst
-            partner = new_epr.src
-            destination = other_epr.dst
-        assert partner is not None
+            merged_epr = WernerStateEntanglement.swap(new_epr, other_epr, now=simulator.tc)
+            partner = cast(QNode, new_epr.src)
+            destination = cast(QNode, other_epr.dst)
         assert partner.name == msg["partner"]
-        assert destination is not None
 
         if merged_epr is not None:
             self.cnt.n_swapped_p += 1
 
-        # adjust EPR paths for dynamic EPR affectation and statistical mux
-        if merged_epr is not None:
+            # adjust EPR paths for dynamic EPR affectation and statistical mux
             self.mux.su_parallel_succeeded(merged_epr, new_epr, other_epr)
 
-        # Inform the "destination" of the swap result and new "partner".
-        if merged_epr is not None:
+            # Inform the "destination" of the swap result and new "partner".
             destination.get_app(ProactiveForwarder).remote_swapped_eprs[merged_epr.name] = merged_epr
 
         su_msg: SwapUpdateMsg = {
@@ -970,8 +958,7 @@ class ProactiveForwarder(Application):
         """
         Consume an entangled qubit.
         """
-        _, qm = self.memory.read(qubit.addr, must=True)
-        assert type(qm) is WernerStateEntanglement
+        _, qm = self.memory.read(qubit.addr, must=WernerStateEntanglement, set_fidelity=True, remove=True)
         assert qm.src is not None
         assert qm.dst is not None
 
@@ -980,7 +967,7 @@ class ProactiveForwarder(Application):
 
         self.release_qubit(qubit)
 
-    def release_qubit(self, qubit: MemoryQubit, *, read=False):
+    def release_qubit(self, qubit: MemoryQubit, *, need_remove=False):
         """
         Release a qubit.
 
@@ -989,8 +976,8 @@ class ProactiveForwarder(Application):
         """
         simulator = self.simulator
 
-        if read:
-            self.memory.read(qubit.addr)
+        if need_remove:
+            self.memory.read(qubit.addr, remove=True)
 
         qubit.state = QubitState.RELEASE
         simulator.add_event(QubitReleasedEvent(self.own, qubit, t=simulator.tc, by=self))

@@ -39,7 +39,7 @@ def run_simulation(seed: int, sim_duration: float, L: list[float], M: int) -> li
 
     topo = build_topology(
         nodes=len(L) + 1,
-        t_coherence=0.1,
+        t_cohere=0.1,
         channel_length=L,
         channel_capacity=M,
         swap=[0] * (len(L) + 1),

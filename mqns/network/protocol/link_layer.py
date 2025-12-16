@@ -375,11 +375,10 @@ class LinkLayer(Application):
         t_notify_a = simulator.tc + (d_epr_creation + d_notify_a)
         t_notify_b = simulator.tc + (d_epr_creation + d_notify_b)
 
-        epr = WernerStateEntanglement(fidelity=self.init_fidelity, name=uuid.uuid4().hex)
+        epr = WernerStateEntanglement(fidelity=self.init_fidelity, creation_time=t_epr_creation)
         epr.src = self.own
         epr.dst = next_hop
         epr.key = qubit.active
-        epr.creation_time = t_epr_creation
 
         # If the network uses SYNC timing mode but the successful attempt would exceed the current EXTERNAL phase,
         # the EPR would not arrive in time, and therefore is not scheduled.

@@ -29,10 +29,9 @@
 from typing import overload
 
 import numpy as np
-from typing_extensions import override
+from typing_extensions import Unpack, override
 
-from mqns.models.core import QuantumModel
-from mqns.models.epr.entanglement import BaseEntanglement
+from mqns.models.epr.entanglement import BaseEntanglement, BaseEntanglementInitKwargs
 from mqns.models.qubit.const import QUBIT_STATE_0, QUBIT_STATE_P
 from mqns.models.qubit.qubit import QState, Qubit
 from mqns.utils import get_rand
@@ -52,21 +51,21 @@ _w_0 = _fidelity_to_w(0.0)
 _w_1 = _fidelity_to_w(1.0)
 
 
-class WernerStateEntanglement(BaseEntanglement["WernerStateEntanglement"], QuantumModel):
+class WernerStateEntanglement(BaseEntanglement["WernerStateEntanglement"]):
     """A pair of entangled qubits in Werner State with a hidden-variable."""
 
     @overload
-    def __init__(self, *, fidelity: float = 1.0, name: str | None = None):
+    def __init__(self, *, fidelity: float = 1.0, **kwargs: Unpack[BaseEntanglementInitKwargs]):
         """Construct with fidelity."""
         pass
 
     @overload
-    def __init__(self, *, w: float, name: str | None = None):
+    def __init__(self, *, w: float, **kwargs: Unpack[BaseEntanglementInitKwargs]):
         """Construct with Werner parameter."""
         pass
 
-    def __init__(self, *, fidelity: float | None = None, w: float = _w_1, name: str | None = None):
-        super().__init__(name=name)
+    def __init__(self, *, fidelity: float | None = None, w: float = _w_1, **kwargs: Unpack[BaseEntanglementInitKwargs]):
+        super().__init__(**kwargs)
         self.w = _fidelity_to_w(fidelity) if fidelity is not None else w
         """Werner parameter."""
         assert _w_0 <= self.w <= _w_1
@@ -80,40 +79,12 @@ class WernerStateEntanglement(BaseEntanglement["WernerStateEntanglement"], Quant
         assert 0.0 <= value <= 1.0
         self.w = _fidelity_to_w(value)
 
+    @staticmethod
     @override
-    def swapping(
-        self, epr: "WernerStateEntanglement", *, name: str | None = None, ps: float = 1
-    ) -> "WernerStateEntanglement|None":
-        """
-        Use `self` and `epr` to perform swapping and distribute a new entanglement.
-
-        Args:
-            epr: another entanglement.
-            name: name of the new entanglement, defaults to a hash of the elementary origin EPR names.
-            ps: probability of successful swapping.
-
-        Returns:
-            New entanglement.
-        """
-        if self.is_decoherenced or epr.is_decoherenced:
-            return None
-
-        if ps < 1.0 and get_rand() >= ps:  # swap failed
-            epr.is_decoherenced = True
-            self.is_decoherenced = True
-            return None
-
-        ne = WernerStateEntanglement(name=name, w=self.w * epr.w)
-        ne._update_orig_eprs(self, epr, update_name=(name is None))
-
-        # set decoherence time and creation time to the earlier among the two pairs
-        assert self.decoherence_time is not None
-        assert epr.decoherence_time is not None
-        ne.decoherence_time = min(self.decoherence_time, epr.decoherence_time)
-        assert self.creation_time is not None
-        assert epr.creation_time is not None
-        ne.creation_time = min(self.creation_time, epr.creation_time)
-        return ne
+    def _make_swapped(
+        epr0: "WernerStateEntanglement", epr1: "WernerStateEntanglement", **kwargs: Unpack[BaseEntanglementInitKwargs]
+    ):
+        return WernerStateEntanglement(w=epr0.w * epr1.w, **kwargs)
 
     @override
     def distillation(self, epr: "WernerStateEntanglement") -> "WernerStateEntanglement|None":
@@ -203,7 +174,7 @@ class WernerStateEntanglement(BaseEntanglement["WernerStateEntanglement"], Quant
             f"is_decoherenced={self.is_decoherenced}, "
             f"src={self.src}, dst={self.dst}, "
             f"ch_index={self.ch_index}, "
-            f"orig_eprs={[e.name if hasattr(e, 'name') else repr(e) for e in self.orig_eprs]}), "
+            f"orig_eprs={[e.name for e in self.orig_eprs]}), "
             f"creation_time={self.creation_time}, "
             f"decoherence_time={self.decoherence_time}), "
             f"tmp_path_ids={self.tmp_path_ids})"

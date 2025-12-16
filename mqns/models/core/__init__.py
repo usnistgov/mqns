@@ -15,6 +15,9 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from mqns.models.core.backend import QuantumModel
+from mqns.models.core.backend import QuantumModel, QuantumModelT
 
-__all__ = ["QuantumModel"]
+__all__ = [
+    "QuantumModel",
+    "QuantumModelT",
+]

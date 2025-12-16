@@ -85,7 +85,7 @@ class MuxSchemeDynamicBase(MuxScheme):
         possible_path_ids = self.qchannel_paths_map.get(qubit.qchannel.name, [])
         if not possible_path_ids:
             log.debug(f"{self.own}: release entangled qubit {qubit.addr} due to uninstalled path")
-            self.fw.release_qubit(qubit, read=True)
+            self.fw.release_qubit(qubit, need_remove=True)
 
         return possible_path_ids
 
@@ -132,8 +132,7 @@ class MuxSchemeStatistical(MuxSchemeDynamicBase):
         if not possible_path_ids:  # all paths on the channel have been uninstalled
             return
 
-        _, epr = self.memory.get(qubit.addr, must=True)
-        assert type(epr) is WernerStateEntanglement
+        _, epr = self.memory.read(qubit.addr, must=WernerStateEntanglement)
 
         log.debug(f"{self.own}: qubit {qubit} has tmp_path_ids {possible_path_ids}")
         if epr.tmp_path_ids is None:

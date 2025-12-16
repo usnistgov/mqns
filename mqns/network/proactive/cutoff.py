@@ -62,8 +62,7 @@ class CutoffScheme(ABC):
         fw = self.fw
 
         # find EPR partner
-        _, epr = fw.memory.read(qubit.addr, must=True)
-        assert type(epr) is WernerStateEntanglement
+        _, epr = fw.memory.read(qubit.addr, must=WernerStateEntanglement, set_fidelity=True, remove=True)
         partner = epr.dst if epr.src == self.own else epr.src
         assert partner is not None
 
@@ -93,7 +92,7 @@ class CutoffScheme(ABC):
         round = msg["round"]
 
         # find qubit
-        qm_tuple = fw.memory.read(epr_name)
+        qm_tuple = fw.memory.read(epr_name, remove=True)
         if qm_tuple is None:
             log.debug(f"{self.own}: remote cutoff discard epr={epr_name} not exist")
             return
