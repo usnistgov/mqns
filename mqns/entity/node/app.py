@@ -76,7 +76,7 @@ class Application:
         self,
         handler: Callable[[EventT], bool | None],
         event_type: type[EventT] | Iterable[type[EventT]],
-        event_by: list[Any] | None = None,
+        event_by: Iterable[Any] | None = None,
     ):
         """
         Add an event handler function.
@@ -104,7 +104,7 @@ class Application:
     def get_node(self, *, node_type: type["NodeT"]) -> "NodeT":
         pass
 
-    def get_node(self, *, node_type: type["NodeT"] | None = None) -> "NodeT":
+    def get_node(self, *, node_type: type["NodeT"] | None = None):
         """
         Retrieve the owner node, optionally asserts its type.
 

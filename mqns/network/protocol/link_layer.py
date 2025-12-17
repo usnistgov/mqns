@@ -246,7 +246,7 @@ class LinkLayer(Application):
             - Qubit reservations are spaced out in time using a fixed `attempt_rate`.
 
         """
-        qubits = self.memory.get_channel_qubits(qchannel)
+        qubits = list(self.memory.find(lambda *_: True, qchannel=qchannel))
         log.debug(f"{self.own}: {qchannel.name} has assigned qubits: {qubits}")
         for qb, data in qubits:
             if qb.path_id != path_id or qb.state != QubitState.RAW:
@@ -356,6 +356,8 @@ class LinkLayer(Application):
             qubit: The memory qubit used for this attempt.
         """
         simulator = self.simulator
+        mem_a = self.memory
+        mem_b = next_hop.memory
 
         # Calculate which attempt would succeed.
         p = qchannel.link_arch.success_prob(
@@ -375,9 +377,14 @@ class LinkLayer(Application):
         t_notify_a = simulator.tc + (d_epr_creation + d_notify_a)
         t_notify_b = simulator.tc + (d_epr_creation + d_notify_b)
 
-        epr = WernerStateEntanglement(fidelity=self.init_fidelity, creation_time=t_epr_creation)
-        epr.src = self.own
-        epr.dst = next_hop
+        epr = WernerStateEntanglement(
+            fidelity=self.init_fidelity,
+            creation_time=t_epr_creation,
+            decoherence_time=t_epr_creation + min(mem_a.decoherence_delay, mem_b.decoherence_delay),
+            src=self.own,
+            dst=next_hop,
+            mem_decohere_rate=(mem_a.decoherence_rate, mem_b.decoherence_rate),
+        )
         epr.key = qubit.active
 
         # If the network uses SYNC timing mode but the successful attempt would exceed the current EXTERNAL phase,
@@ -410,9 +417,9 @@ class LinkLayer(Application):
             self.cnt.increment_n_etg(event.attempts)
 
         log.debug(f"{self.own}: got half-EPR {epr.name} key={epr.key} {'dst' if is_primary else 'src'}={neighbor}")
-        assert epr.decoherence_time is None or epr.decoherence_time > self.simulator.tc
+        assert epr.decoherence_time > simulator.tc
 
-        qubit = self.memory.write(epr, key=epr.key)
+        qubit = self.memory.write(epr.key, epr)
         if qubit is None:
             raise Exception(f"{self.own}: Failed to store EPR {epr.name}")
 

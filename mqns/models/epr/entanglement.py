@@ -54,9 +54,10 @@ EntanglementT = TypeVar("EntanglementT", bound="BaseEntanglement")
 class BaseEntanglementInitKwargs(TypedDict, total=False):
     name: str | None
     creation_time: Time
-    decoherence_time: Time | None
+    decoherence_time: Time
     src: "QNode|None"
     dst: "QNode|None"
+    mem_decohere_rate: tuple[float, float]
 
 
 class BaseEntanglement(ABC, Generic[EntanglementT], QuantumModel):
@@ -67,8 +68,12 @@ class BaseEntanglement(ABC, Generic[EntanglementT], QuantumModel):
         Constructor.
 
         Args:
-            name: entanglement name, defaults to a random string.
-            creation_time: EPR creation time, defaults to `Time.SENTINEL`.
+            name: Entanglement name, defaults to a random string.
+            creation_time: EPR creation time point, defaults to `Time.SENTINEL`.
+            decoherence_time: Qubits decoherence time point, defaults to `Time.SENTINEL`.
+            src: Left node that holds one entangled qubit.
+            dst: Right node that holds one entangled qubit.
+            mem_decohere_rate: Memory decoherence rate at src and dst, defaults to (0.0,0.0).
         """
         name = kwargs.get("name")
         self.name = uuid.uuid4().hex if name is None else name
@@ -78,12 +83,13 @@ class BaseEntanglement(ABC, Generic[EntanglementT], QuantumModel):
         """Whether the entanglement has decohered."""
         self.creation_time = kwargs.get("creation_time", Time.SENTINEL)
         """
-        Entanglement creation time assigned by LinkLayer or swapping.
-        Time-based operations are unavailable if this is `Time.SENTINEL`.
+        EPR creation time point assigned by LinkLayer or swapping.
+        Some operations are unavailable if this is `Time.SENTINEL`.
         """
-        self.decoherence_time = kwargs.get("decoherence_time")
+        self.decoherence_time = kwargs.get("decoherence_time", Time.SENTINEL)
         """
-        Entanglement decoherence time assigned by memory or swapping.
+        EPR decoherence time point assigned by memory or swapping.
+        Some operations are unavailable if this is `Time.SENTINEL`.
         """
         self.read = False
         """Whether the entanglement has been read from the memory by either node."""
@@ -94,13 +100,14 @@ class BaseEntanglement(ABC, Generic[EntanglementT], QuantumModel):
         """One node that holds one entangled qubit, at the left side of a path."""
         self.dst = kwargs.get("dst")
         """The other node that holds the other entangled qubit, at the right side of a path."""
+        self.mem_decohere_rate = kwargs.get("mem_decohere_rate", (0.0, 0.0))
+        """Memory decoherence rate in Hz at src and dst."""
+
         self.ch_index = -1
         """
         Index of elementary entanglement in a path, smaller indices are on the left side.
         Negative means this is not an elementary entanglement.
         """
-        # QuantumMemory.find() performance optimization assumes that ch_index is present in this class
-        # but absent in other QuantumModel implementations.
         self.orig_eprs: list[EntanglementT] = []
         """Elementary entanglements that swapped into this entanglement."""
         self.tmp_path_ids: frozenset[int] | None = None
@@ -116,6 +123,11 @@ class BaseEntanglement(ABC, Generic[EntanglementT], QuantumModel):
     def fidelity(self, value: float):
         pass
 
+    @property
+    def decoherence_rate(self) -> float:
+        """Pair decoherence rate in Hz"""
+        return sum(self.mem_decohere_rate)
+
     @classmethod
     def swap(
         cls,
@@ -124,8 +136,6 @@ class BaseEntanglement(ABC, Generic[EntanglementT], QuantumModel):
         *,
         now: Time,
         ps=1.0,
-        dr0: tuple[float, float] = (0.0, 0.0),
-        dr1: tuple[float, float] = (0.0, 0.0),
     ) -> EntanglementT | None:
         """
         Perform swapping between `epr0` and `epr1`, and distribute a new entanglement.
@@ -135,15 +145,11 @@ class BaseEntanglement(ABC, Generic[EntanglementT], QuantumModel):
             epr1: right entanglement.
             now: current timestamp.
             ps: probability of successful swapping.
-            dr0: decoherence rate of memories at epr0.src,dst.
-            dr1: decoherence rate of memories at epr1.src,dst.
 
         Returns:
             New entanglement, or None if swap failed.
         """
 
-        assert epr0.decoherence_time is not None
-        assert epr1.decoherence_time is not None
         assert epr0.dst == epr1.src  # src and dst can be None
 
         if epr0.is_decoherenced or epr1.is_decoherenced:
@@ -155,13 +161,10 @@ class BaseEntanglement(ABC, Generic[EntanglementT], QuantumModel):
             return None
 
         orig_eprs: list[EntanglementT] = []
-        for epr, dr_memories in ((epr0, dr0), (epr1, dr1)):
+        for epr in (epr0, epr1):
             if not epr.read:
                 epr.read = True
-                epr.store_error_model(
-                    (now - epr.creation_time).sec,
-                    sum(dr_memories),  # pair dephasing rate is the sum of memory dephasing rates
-                )
+                epr.store_error_model((now - epr.creation_time).sec, epr.decoherence_rate)
 
             if epr.ch_index > -1:
                 orig_eprs.append(epr)
@@ -176,6 +179,7 @@ class BaseEntanglement(ABC, Generic[EntanglementT], QuantumModel):
             decoherence_time=min(epr0.decoherence_time, epr1.decoherence_time),
             src=epr0.src,
             dst=epr1.dst,
+            mem_decohere_rate=(epr0.mem_decohere_rate[0], epr1.mem_decohere_rate[1]),
         )
         ne.orig_eprs = orig_eprs
         return ne
@@ -246,6 +250,4 @@ class BaseEntanglement(ABC, Generic[EntanglementT], QuantumModel):
         return q2
 
     def __repr__(self) -> str:
-        if self.name is not None:
-            return "<epr " + self.name + ">"
-        return super().__repr__()
+        return "<epr " + self.name + ">"

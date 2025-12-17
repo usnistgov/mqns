@@ -32,7 +32,7 @@ class MuxSchemeDynamicEpr(MuxSchemeDynamicBase, MuxSchemeFibBase):
 
         # TODO: if paths have different swap policies
         #       -> consider only paths for which this qubit may be eligible ??
-        _, epr = self.memory.read(qubit.addr, must=WernerStateEntanglement)
+        _, epr = self.memory.read(qubit.addr, has=WernerStateEntanglement)
 
         if epr.tmp_path_ids is None:
             # In principle, a random path_id is chosen for each elementary EPR during EPR generation.

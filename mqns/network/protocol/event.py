@@ -19,10 +19,10 @@ from typing import Any, final
 
 from typing_extensions import override
 
-from mqns.entity.memory import MemoryQubit, QubitState
+from mqns.entity.memory import MemoryQubit, QuantumMemory, QubitState
 from mqns.entity.node import QNode
 from mqns.entity.qchannel import QuantumChannel
-from mqns.models.epr import WernerStateEntanglement
+from mqns.models.epr import BaseEntanglement
 from mqns.simulator import Event, Time
 
 
@@ -65,7 +65,7 @@ class LinkArchSuccessEvent(Event):
     def __init__(
         self,
         node: QNode,
-        epr: WernerStateEntanglement,
+        epr: BaseEntanglement,
         *,
         t: Time,
         name: str | None = None,
@@ -116,16 +116,26 @@ class QubitDecoheredEvent(Event):
     Event sent by Memory to inform LinkLayer about a decohered qubit.
     """
 
-    def __init__(self, node: QNode, qubit: MemoryQubit, *, t: Time, name: str | None = None, by: Any = None):
+    def __init__(
+        self,
+        memory: QuantumMemory,
+        qubit: MemoryQubit,
+        epr: BaseEntanglement,
+        *,
+        t: Time,
+        name: str | None = None,
+        by: Any = None,
+    ):
         super().__init__(t, name, by)
-        self.node = node
+        self.memory = memory
         self.qubit = qubit
-        assert self.qubit.state == QubitState.RELEASE
+        self.epr = epr
 
     @override
     def invoke(self) -> None:
-        assert self.qubit.state == QubitState.RELEASE
-        self.node.handle(self)
+        if self.memory.handle_decohere_qubit(self.qubit, self.epr):
+            assert self.qubit.state == QubitState.RELEASE
+            self.memory.node.handle(self)
 
 
 @final

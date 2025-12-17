@@ -17,12 +17,9 @@
 
 
 from enum import Enum, auto
-from typing import TYPE_CHECKING
 
+from mqns.entity.qchannel import QuantumChannel
 from mqns.simulator import Event, Time
-
-if TYPE_CHECKING:
-    from mqns.entity.qchannel import QuantumChannel
 
 
 class QubitState(Enum):
@@ -92,22 +89,28 @@ ALLOWED_STATE_TRANSITIONS: dict[QubitState, tuple[QubitState, ...]] = {
 
 
 class PathDirection(Enum):
-    LEFT = auto()
-    RIGHT = auto()
+    L = auto()
+    """
+    Path direction LEFT: qubit is assigned to a channel that connects to the left side neighbor.
+    """
+    R = auto()
+    """
+    Path direction RIGHT: qubit is assigned to a channel that connects to the right side neighbor.
+    """
 
 
 class MemoryQubit:
     """An addressable qubit in memory, with a lifecycle."""
 
     def __init__(self, addr: int):
-        """Args:
-        addr (int): address of this qubit in memory
-
+        """
+        Args:
+            addr: address of this qubit in memory
         """
         self.addr = addr
         """Address index in QuantumMemory."""
 
-        self.qchannel: "QuantumChannel|None" = None
+        self.qchannel: QuantumChannel | None = None
         """qchannel to which qubit is assigned to (currently only at topology creation time)"""
         self.path_id: int | None = None
         """Optional path ID to which qubit is allocated"""

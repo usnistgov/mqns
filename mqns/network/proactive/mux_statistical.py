@@ -132,7 +132,7 @@ class MuxSchemeStatistical(MuxSchemeDynamicBase):
         if not possible_path_ids:  # all paths on the channel have been uninstalled
             return
 
-        _, epr = self.memory.read(qubit.addr, must=WernerStateEntanglement)
+        _, epr = self.memory.read(qubit.addr, has=WernerStateEntanglement)
 
         log.debug(f"{self.own}: qubit {qubit} has tmp_path_ids {possible_path_ids}")
         if epr.tmp_path_ids is None:

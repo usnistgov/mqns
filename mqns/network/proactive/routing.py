@@ -230,13 +230,11 @@ class RoutingPathMulti(RoutingPath):
                 shared = qchannel_use_count.get(ch.name)
                 assert shared is not None
 
-                # From node_i
-                full_qubits_a = node_a.memory.get_channel_qubits(ch)
-                qubits_a = len(full_qubits_a) // shared if shared > 0 else len(full_qubits_a)
-
-                # From node_i+1
-                full_qubits_b = node_b.memory.get_channel_qubits(ch)
-                qubits_b = len(full_qubits_b) // shared if shared > 0 else len(full_qubits_b)
+                qubits_a = sum(1 for _ in node_a.memory.find(lambda *_: True, qchannel=ch))
+                qubits_b = sum(1 for _ in node_b.memory.find(lambda *_: True, qchannel=ch))
+                if shared > 0:
+                    qubits_a //= shared
+                    qubits_b //= shared
 
                 m_v.append((qubits_a, qubits_b))
 

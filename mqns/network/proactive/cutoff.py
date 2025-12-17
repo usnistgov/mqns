@@ -62,7 +62,7 @@ class CutoffScheme(ABC):
         fw = self.fw
 
         # find EPR partner
-        _, epr = fw.memory.read(qubit.addr, must=WernerStateEntanglement, set_fidelity=True, remove=True)
+        _, epr = fw.memory.read(qubit.addr, has=WernerStateEntanglement, set_fidelity=True, remove=True)
         partner = epr.dst if epr.src == self.own else epr.src
         assert partner is not None
 

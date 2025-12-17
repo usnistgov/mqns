@@ -1,5 +1,5 @@
 from mqns.entity.node import Application, QNode
-from mqns.entity.qchannel import QuantumChannel, QubitLossChannel, RecvQubitPacket
+from mqns.entity.qchannel import QuantumChannel, RecvQubitPacket
 from mqns.models.qubit import Qubit
 from mqns.simulator import Event, Simulator, func_to_event
 
@@ -77,9 +77,3 @@ def test_qchannel_bandwidth():
     a1, a2 = setup_and_run(l1)
     assert a1.count == 400
     assert a2.count == 40
-
-
-def test_qubit_loss_channel():
-    l1 = QubitLossChannel(name="loss_channel_1", p_init=0.1, attenuation_rate=0.02, length=100)
-    a1, a2 = setup_and_run(l1)
-    print(l1.drop_rate, a1.count, a2.count)

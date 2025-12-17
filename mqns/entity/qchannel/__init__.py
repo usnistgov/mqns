@@ -25,7 +25,6 @@ from mqns.entity.qchannel.link_arch import (
     LinkArchSim,
     LinkArchSr,
 )
-from mqns.entity.qchannel.losschannel import QubitLossChannel
 from mqns.entity.qchannel.qchannel import QuantumChannel, QuantumChannelInitKwargs, RecvQubitPacket
 
 __all__ = [
@@ -39,6 +38,5 @@ __all__ = [
     "NextHopNotConnectionException",
     "QuantumChannel",
     "QuantumChannelInitKwargs",
-    "QubitLossChannel",
     "RecvQubitPacket",
 ]
