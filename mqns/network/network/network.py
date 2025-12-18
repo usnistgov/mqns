@@ -27,7 +27,10 @@
 
 from typing import cast, overload
 
-from mqns.entity import ChannelT, ClassicChannel, Controller, Node, QNode, QuantumChannel
+from mqns.entity.base_channel import ChannelT
+from mqns.entity.cchannel import ClassicChannel
+from mqns.entity.node import Controller, Node, QNode
+from mqns.entity.qchannel import QuantumChannel
 from mqns.network.network.request import Request
 from mqns.network.network.timing import TimingMode, TimingModeAsync
 from mqns.network.route import DijkstraRouteAlgorithm, RouteImpl

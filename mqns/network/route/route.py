@@ -21,7 +21,7 @@ from typing import Generic
 import numpy as np
 from scipy.sparse import csr_matrix
 
-from mqns.entity import ChannelT, NodeT
+from mqns.entity.base_channel import ChannelT, NodeT
 
 MetricFunc = Callable[[ChannelT], float]
 """Callback function that returns the edge cost of a channel."""

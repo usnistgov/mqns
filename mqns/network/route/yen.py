@@ -19,7 +19,8 @@
 import numpy as np
 from scipy.sparse.csgraph import yen
 
-from mqns.network.route.route import ChannelT, MetricFunc, NodeT, RouteImpl, make_csr
+from mqns.entity.base_channel import ChannelT, NodeT
+from mqns.network.route.route import MetricFunc, RouteImpl, make_csr
 
 
 class YenRouteAlgorithm(RouteImpl[NodeT, ChannelT]):

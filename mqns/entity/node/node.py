@@ -59,7 +59,7 @@ class Node(Entity):
         """Called from Network.install()"""
         super().install(simulator)
         # initiate sub-entities
-        from mqns.entity import ClassicChannel  # noqa: PLC0415
+        from mqns.entity.cchannel import ClassicChannel  # noqa: PLC0415
 
         self._install_channels(ClassicChannel, self.cchannels, self._cchannel_by_dst)
 

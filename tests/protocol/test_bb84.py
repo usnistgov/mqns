@@ -1,6 +1,8 @@
 import numpy as np
 
-from mqns.entity import ClassicChannel, QNode, QuantumChannel
+from mqns.entity.cchannel import ClassicChannel
+from mqns.entity.node import QNode
+from mqns.entity.qchannel import QuantumChannel
 from mqns.network.protocol import BB84RecvApp, BB84SendApp
 from mqns.simulator import Simulator
 

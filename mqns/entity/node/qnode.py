@@ -22,7 +22,9 @@ from mqns.entity.node.node import Node
 from mqns.simulator import Simulator
 
 if TYPE_CHECKING:
-    from mqns.entity import QuantumChannel, QuantumMemory, QuantumOperator
+    from mqns.entity.memory import QuantumMemory
+    from mqns.entity.operator import QuantumOperator
+    from mqns.entity.qchannel import QuantumChannel
 
 
 class QNode(Node):
@@ -43,7 +45,9 @@ class QNode(Node):
     def install(self, simulator: Simulator) -> None:
         super().install(simulator)
         # initiate sub-entities
-        from mqns.entity import QuantumChannel, QuantumMemory, QuantumOperator  # noqa: PLC0415
+        from mqns.entity.memory import QuantumMemory  # noqa: PLC0415
+        from mqns.entity.operator import QuantumOperator  # noqa: PLC0415
+        from mqns.entity.qchannel import QuantumChannel  # noqa: PLC0415
 
         if self._memory is not None:
             assert isinstance(self._memory, QuantumMemory)

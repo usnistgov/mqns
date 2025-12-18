@@ -4,7 +4,7 @@ import time
 
 from tap import Tap
 
-from mqns.entity import Controller
+from mqns.entity.node import Controller
 from mqns.network.network import QuantumNetwork
 from mqns.network.proactive import (
     LinkLayer,

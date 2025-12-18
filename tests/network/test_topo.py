@@ -3,7 +3,9 @@ from typing import cast
 
 import pytest
 
-from mqns.entity import ClassicChannel, QNode, QuantumChannel
+from mqns.entity.cchannel import ClassicChannel
+from mqns.entity.node import QNode
+from mqns.entity.qchannel import QuantumChannel
 from mqns.network.network import QuantumNetwork
 from mqns.network.topology import (
     BasicTopology,

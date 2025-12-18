@@ -20,7 +20,8 @@ from typing import Any
 import numpy as np
 from scipy.sparse.csgraph import dijkstra
 
-from mqns.network.route.route import ChannelT, MetricFunc, NodeT, RouteImpl, make_csr
+from mqns.entity.base_channel import ChannelT, NodeT
+from mqns.network.route.route import MetricFunc, RouteImpl, make_csr
 
 
 class DijkstraRouteAlgorithm(RouteImpl[NodeT, ChannelT]):

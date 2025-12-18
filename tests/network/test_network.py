@@ -1,4 +1,4 @@
-from mqns.entity import Application, Controller
+from mqns.entity.node import Application, Controller
 from mqns.network.network import QuantumNetwork, TimingModeSync, TimingPhase, TimingPhaseEvent
 from mqns.network.topology import BasicTopology
 from mqns.simulator import Simulator
