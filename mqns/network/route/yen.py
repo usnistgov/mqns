@@ -16,17 +16,24 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
+from typing import override
+
 import numpy as np
 from scipy.sparse.csgraph import yen
 
 from mqns.entity.base_channel import ChannelT, NodeT
-from mqns.network.route.route import MetricFunc, RouteImpl, make_csr
+from mqns.network.route.route import MetricFunc, RouteAlgorithm, RouteQueryResult, make_csr
 
 
-class YenRouteAlgorithm(RouteImpl[NodeT, ChannelT]):
-    """This is the Yen's algorithm implementation"""
+class YenRouteAlgorithm(RouteAlgorithm[NodeT, ChannelT]):
+    """
+    Yen's algorithm.
 
-    def __init__(self, name: str = "yen", metric_func: MetricFunc | None = None, k_paths: int = 3) -> None:
+    This is implemented with SciPy's csgraph Yen's algorithm on a CSR adjacency.
+    Up to self.k_paths pahrs are computred for each (src, dst) pair.
+    """
+
+    def __init__(self, name="yen", metric_func: MetricFunc | None = None, k_paths: int = 3) -> None:
         """
         Args:
             name: Name of the routing algorithm (default: "yen").
@@ -35,27 +42,12 @@ class YenRouteAlgorithm(RouteImpl[NodeT, ChannelT]):
             k_paths: Number of shortest paths to compute for each (src, dst) pair.
                 Default is 3.
         """
-        self.name = name
+        super().__init__(name, metric_func)
         self.k_paths = k_paths
         self.route_table: dict[NodeT, dict[NodeT, list[tuple[float, list[NodeT]]]]] = {}
 
-        if metric_func is None:
-            self.metric_func = lambda _: 1  # hop count
-            self.unweighted = True
-        else:
-            self.metric_func = metric_func
-            self.unweighted = False
-
+    @override
     def build(self, nodes: list[NodeT], channels: list[ChannelT]):
-        """
-        Build the routing table using SciPy's csgraph Yen's algorithm on a CSR adjacency.
-        Up to self.k_paths pahrs are computred for each (src, dst) pair.
-
-        Args:
-            nodes: a list of quantum nodes or classic nodes
-            channels: a list of quantum channels or classic channels
-        """
-
         # build adjacency matrix
         csr_adj = make_csr(nodes, channels, self.metric_func)
 
@@ -109,10 +101,11 @@ class YenRouteAlgorithm(RouteImpl[NodeT, ChannelT]):
 
                 self.route_table[src][dst] = route_list
 
-    def query(self, src: NodeT, dest: NodeT) -> list[tuple[float, NodeT, list[NodeT]]]:
-        paths = self.route_table.get(src, {}).get(dest, [])
-        results = []
+    @override
+    def query(self, src: NodeT, dst: NodeT) -> list[RouteQueryResult]:
+        paths = self.route_table.get(src, {}).get(dst, [])
+        results: list[RouteQueryResult] = []
         for metric, path in paths:
             if len(path) > 1:
-                results.append((metric, path[1], list(reversed(path))))
+                results.append(RouteQueryResult(metric, path[1], list(reversed(path))))
         return results

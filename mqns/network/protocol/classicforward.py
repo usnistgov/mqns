@@ -17,7 +17,7 @@
 
 from mqns.entity.cchannel import RecvClassicPacket
 from mqns.entity.node import Application
-from mqns.network.route import RouteImpl
+from mqns.network.route import RouteAlgorithm
 
 
 class ClassicPacketForwardApp(Application):
@@ -25,10 +25,10 @@ class ClassicPacketForwardApp(Application):
     and allow nodes to forward classic packets to the destination.
     """
 
-    def __init__(self, route: RouteImpl):
-        """Args:
-        route (RouteImpl): a route implement
-
+    def __init__(self, route: RouteAlgorithm):
+        """
+        Args:
+            route: routing algorithm
         """
         super().__init__()
         self.route = route

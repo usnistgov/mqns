@@ -15,8 +15,9 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from abc import ABC, abstractmethod
 from collections.abc import Callable
-from typing import Generic
+from typing import Generic, NamedTuple
 
 import numpy as np
 from scipy.sparse import csr_matrix
@@ -61,32 +62,48 @@ def make_csr(
     return csr_matrix((data, (rows, cols)), shape=(n, n))
 
 
-class RouteImpl(Generic[NodeT, ChannelT]):
-    """This is the route protocol interface"""
+class RouteQueryResult(NamedTuple, Generic[NodeT]):
+    metric: float
+    next_hop: NodeT
+    route: list[NodeT]
 
-    def __init__(self, name: str = "route") -> None:
+
+class RouteAlgorithm(ABC, Generic[NodeT, ChannelT]):
+    """
+    Represents a routing algorithm that computes routes between two nodes in a network.
+    """
+
+    def __init__(self, name: str, metric_func: MetricFunc | None = None) -> None:
         self.name = name
 
+        if metric_func is None:
+            self.metric_func = lambda _: 1  # hop count
+            self.unweighted = True
+        else:
+            self.metric_func = metric_func
+            self.unweighted = False
+
+    @abstractmethod
     def build(self, nodes: list[NodeT], channels: list[ChannelT]) -> None:
-        """Build static route tables for each nodes
-
-        Args:
-            nodes: a list of quantum nodes or classic nodes
-            channels: a list of quantum channels or classic channels
-
         """
-        raise NotImplementedError
-
-    def query(self, src: NodeT, dest: NodeT) -> list[tuple[float, NodeT, list[NodeT]]]:
-        """Query the metric, nexthop and the path
+        Build static route tables.
 
         Args:
-            src: the source node
-            dest: the destination node
+            nodes: a list of quantum nodes or classic nodes.
+            channels: a list of quantum channels or classic channels.
+        """
+        pass
+
+    @abstractmethod
+    def query(self, src: NodeT, dst: NodeT) -> list[RouteQueryResult[NodeT]]:
+        """
+        Query the metric, next-hop and the path.
+
+        Args:
+            src: the source node.
+            dst: the destination node.
 
         Returns:
             A list of route paths. The result should be sorted by priority.
-            The element is a tuple containing: metric, the next-hop and the whole path.
-
         """
-        raise NotImplementedError
+        pass

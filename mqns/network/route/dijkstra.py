@@ -15,46 +15,35 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from typing import Any
+from typing import Any, override
 
 import numpy as np
 from scipy.sparse.csgraph import dijkstra
 
 from mqns.entity.base_channel import ChannelT, NodeT
-from mqns.network.route.route import MetricFunc, RouteImpl, make_csr
+from mqns.network.route.route import MetricFunc, RouteAlgorithm, RouteQueryResult, make_csr
 
 
-class DijkstraRouteAlgorithm(RouteImpl[NodeT, ChannelT]):
-    """This is the Dijkstra algorithm implementation"""
+class DijkstraRouteAlgorithm(RouteAlgorithm[NodeT, ChannelT]):
+    """
+    Dijkstra algorithm.
 
-    INF = np.inf
+    This is implemented with SciPy's csgraph Dijkstra on a CSR adjacency.
+    """
 
-    def __init__(self, name: str = "dijkstra", metric_func: MetricFunc | None = None) -> None:
+    @override
+    def __init__(self, name="dijkstra", metric_func: MetricFunc | None = None) -> None:
         """
         Args:
             name: Name of the routing algorithm (default: "dijkstra").
             metric_func: Function returning the metric (weight) for each channel.
                 Defaults to a constant function m(l) = 1.
         """
-        self.name = name
+        super().__init__(name, metric_func)
         self.route_table: dict[NodeT, dict[NodeT, tuple[float, list[NodeT]]]] = {}
 
-        if metric_func is None:
-            self.metric_func = lambda _: 1  # hop count
-            self.unweighted = True
-        else:
-            self.metric_func = metric_func
-            self.unweighted = False
-
+    @override
     def build(self, nodes: list[NodeT], channels: list[ChannelT]):
-        """
-        Build the routing table using SciPy's csgraph Dijkstra on a CSR adjacency.
-
-        Args:
-            nodes: a list of quantum nodes or classic nodes
-            channels: a list of quantum channels or classic channels
-        """
-
         # build adjacency matrix
         csr_adj = make_csr(nodes, channels, self.metric_func)
 
@@ -91,18 +80,19 @@ class DijkstraRouteAlgorithm(RouteImpl[NodeT, ChannelT]):
 
                 hop = dist[src_idx, dst_idx]
                 if np.isinf(hop):  # Unreachable
-                    dest_entry[dst_node] = [self.INF, [dst_node]]
+                    dest_entry[dst_node] = [np.inf, [dst_node]]
                 else:
                     path_nodes = _reconstruct_path(src_idx, dst_idx)
                     dest_entry[dst_node] = [hop, path_nodes]
 
             self.route_table[src_node] = dest_entry
 
-    def query(self, src: NodeT, dest: NodeT) -> list[tuple[float, NodeT, list[NodeT]]]:
+    @override
+    def query(self, src: NodeT, dst: NodeT) -> list[RouteQueryResult]:
         ls = self.route_table.get(src, None)
         if ls is None:
             return []
-        le = ls.get(dest, None)
+        le = ls.get(dst, None)
         if le is None:
             return []
         try:
@@ -114,6 +104,6 @@ class DijkstraRouteAlgorithm(RouteImpl[NodeT, ChannelT]):
                 return []
             else:
                 next_hop = path[1]
-                return [(metric, next_hop, path)]
+                return [RouteQueryResult(metric, next_hop, path)]
         except Exception:
             return []

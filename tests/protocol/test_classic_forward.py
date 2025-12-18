@@ -2,13 +2,13 @@ from mqns.entity.cchannel import ClassicPacket, RecvClassicPacket
 from mqns.entity.node import Application, Node
 from mqns.network.network import QuantumNetwork
 from mqns.network.protocol.classicforward import ClassicPacketForwardApp
-from mqns.network.route import DijkstraRouteAlgorithm, RouteImpl
+from mqns.network.route import DijkstraRouteAlgorithm, RouteAlgorithm
 from mqns.network.topology import ClassicTopology, LinearTopology
 from mqns.simulator import Simulator, func_to_event
 
 
 class SendApp(Application):
-    def __init__(self, dest: Node, route: RouteImpl, send_rate=1):
+    def __init__(self, dest: Node, route: RouteAlgorithm, send_rate=1):
         super().__init__()
         self.dest = dest
         self.route = route

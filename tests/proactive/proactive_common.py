@@ -15,7 +15,7 @@ from mqns.network.proactive import (
     RoutingPath,
 )
 from mqns.network.protocol.event import QubitEntangledEvent
-from mqns.network.route import RouteImpl, YenRouteAlgorithm
+from mqns.network.route import RouteAlgorithm, YenRouteAlgorithm
 from mqns.network.topology import ClassicTopology, GridTopology, LinearTopology, Topology, TopologyInitKwargs, TreeTopology
 from mqns.simulator import Simulator, func_to_event
 from mqns.utils import log
@@ -65,7 +65,7 @@ def _build_network_finish(
     topo: Topology,
     d: BuildNetworkArgs,
     *,
-    route: RouteImpl | None = None,
+    route: RouteAlgorithm | None = None,
 ):
     qchannel_capacity = d.get("qchannel_capacity", 1)
 
