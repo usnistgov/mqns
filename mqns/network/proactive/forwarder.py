@@ -17,10 +17,9 @@
 
 from collections.abc import Callable
 from copy import deepcopy
-from typing import Any, cast
+from typing import Any, cast, override
 
 import numpy as np
-from typing_extensions import override
 
 from mqns.entity.cchannel import ClassicPacket, RecvClassicPacket
 from mqns.entity.memory import MemoryQubit, PathDirection, QubitState

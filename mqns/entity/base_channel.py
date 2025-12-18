@@ -1,6 +1,4 @@
-from typing import Generic, TypedDict, TypeVar
-
-from typing_extensions import Unpack, override
+from typing import Generic, TypedDict, TypeVar, Unpack, override
 
 from mqns.entity.entity import Entity
 from mqns.entity.node import NodeT

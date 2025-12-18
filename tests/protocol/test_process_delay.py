@@ -1,6 +1,4 @@
-from typing import Any, cast, final
-
-from typing_extensions import override
+from typing import Any, cast, final, override
 
 from mqns.entity.node import Application, Node
 from mqns.network.protocol import NodeProcessDelayApp

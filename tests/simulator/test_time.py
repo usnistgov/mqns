@@ -1,8 +1,6 @@
 import pytest
 
-from mqns.simulator.event import func_to_event
-from mqns.simulator.simulator import Simulator
-from mqns.simulator.ts import Time, set_default_accuracy
+from mqns.simulator import Simulator, Time, func_to_event, set_default_accuracy
 
 
 class ChangeDefaultAccuracy:

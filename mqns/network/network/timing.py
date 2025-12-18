@@ -1,9 +1,7 @@
 from abc import ABC, abstractmethod
 from collections import deque
 from enum import Enum, auto
-from typing import TYPE_CHECKING, Any, final
-
-from typing_extensions import override
+from typing import TYPE_CHECKING, Any, final, override
 
 from mqns.simulator import Event, Time, func_to_event
 from mqns.utils import log

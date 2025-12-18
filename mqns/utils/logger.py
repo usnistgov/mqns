@@ -18,9 +18,7 @@
 import os
 import sys
 from logging import Logger, LoggerAdapter, StreamHandler, getLogger
-from typing import TYPE_CHECKING, Literal, cast
-
-from typing_extensions import override
+from typing import TYPE_CHECKING, Literal, cast, override
 
 if TYPE_CHECKING:
     from mqns.simulator import Simulator

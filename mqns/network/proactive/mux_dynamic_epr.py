@@ -1,4 +1,4 @@
-from typing_extensions import override
+from typing import override
 
 from mqns.entity.memory import MemoryQubit, QubitState
 from mqns.entity.node import QNode

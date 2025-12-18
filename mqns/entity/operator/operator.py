@@ -16,8 +16,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from collections.abc import Callable
-
-from typing_extensions import override
+from typing import override
 
 from mqns.entity.entity import Entity
 from mqns.entity.node.qnode import QNode

@@ -18,10 +18,9 @@
 import uuid
 from collections import deque
 from dataclasses import dataclass
-from typing import Literal, TypedDict, cast
+from typing import Literal, TypedDict, cast, override
 
 import numpy as np
-from typing_extensions import override
 
 from mqns.entity.cchannel import ClassicChannel, ClassicPacket, RecvClassicPacket
 from mqns.entity.memory import MemoryQubit, QuantumMemory, QubitState

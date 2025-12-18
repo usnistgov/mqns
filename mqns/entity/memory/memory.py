@@ -28,9 +28,7 @@
 import heapq
 import itertools
 from collections.abc import Callable, Iterable, Iterator
-from typing import Any, Literal, TypedDict, overload
-
-from typing_extensions import Unpack, override
+from typing import Any, Literal, TypedDict, Unpack, overload, override
 
 from mqns.entity.entity import Entity
 from mqns.entity.memory.event import (

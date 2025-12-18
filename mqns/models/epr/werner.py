@@ -26,10 +26,9 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-from typing import overload
+from typing import Unpack, overload, override
 
 import numpy as np
-from typing_extensions import Unpack, override
 
 from mqns.models.epr.entanglement import BaseEntanglement, BaseEntanglementInitKwargs
 from mqns.models.qubit.const import QUBIT_STATE_0, QUBIT_STATE_P

@@ -17,9 +17,7 @@
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from typing import Any
-
-from typing_extensions import override
+from typing import Any, override
 
 from mqns.simulator.ts import Time
 

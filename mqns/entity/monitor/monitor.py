@@ -16,10 +16,9 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, override
 
 import pandas as pd
-from typing_extensions import override
 
 from mqns.entity.entity import Entity
 from mqns.simulator import Event, Simulator, Time

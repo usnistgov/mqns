@@ -28,10 +28,9 @@
 import hashlib
 import uuid
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Generic, TypedDict, TypeVar, cast
+from typing import TYPE_CHECKING, Generic, TypedDict, TypeVar, Unpack, cast
 
 import numpy as np
-from typing_extensions import Unpack
 
 from mqns.models.core import QuantumModel
 from mqns.models.qubit.const import OPERATOR_PAULI_I, QUBIT_STATE_0, QUBIT_STATE_P

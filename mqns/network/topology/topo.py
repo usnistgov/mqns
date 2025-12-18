@@ -29,9 +29,7 @@ import itertools
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from enum import Enum
-from typing import TypedDict
-
-from typing_extensions import Unpack
+from typing import TypedDict, Unpack
 
 from mqns.entity.cchannel import ClassicChannel, ClassicChannelInitKwargs
 from mqns.entity.memory import QuantumMemory, QuantumMemoryInitKwargs

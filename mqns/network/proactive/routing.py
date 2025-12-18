@@ -3,8 +3,7 @@ from collections import defaultdict
 from collections.abc import Iterator
 from enum import Enum, auto
 from itertools import pairwise
-
-from typing_extensions import override
+from typing import override
 
 from mqns.network.network import QuantumNetwork
 from mqns.network.proactive.message import MultiplexingVector, PathInstructions, make_path_instructions

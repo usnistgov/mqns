@@ -16,9 +16,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-from typing import TYPE_CHECKING, Any, final
-
-from typing_extensions import override
+from typing import TYPE_CHECKING, Any, final, override
 
 from mqns.entity.memory.memory_qubit import MemoryQubit
 from mqns.entity.node import QNode

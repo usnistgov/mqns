@@ -25,9 +25,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from typing import Any, final
-
-from typing_extensions import Unpack, override
+from typing import Any, Unpack, final, override
 
 from mqns.entity.base_channel import BaseChannel, BaseChannelInitKwargs
 from mqns.entity.node import QNode

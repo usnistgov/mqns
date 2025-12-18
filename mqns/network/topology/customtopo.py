@@ -18,9 +18,7 @@
 
 from collections.abc import Iterable
 from copy import deepcopy
-from typing import TypedDict, cast
-
-from typing_extensions import NotRequired, override
+from typing import NotRequired, TypedDict, cast, override
 
 from mqns.entity.cchannel import ClassicChannel, ClassicChannelInitKwargs
 from mqns.entity.memory import QuantumMemory, QuantumMemoryInitKwargs

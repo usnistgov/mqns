@@ -26,9 +26,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import json
-from typing import Any, final
-
-from typing_extensions import Unpack, override
+from typing import Any, Unpack, final, override
 
 from mqns.entity.base_channel import BaseChannel, BaseChannelInitKwargs
 from mqns.entity.node import Node

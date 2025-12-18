@@ -16,9 +16,9 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import math
+from typing import Unpack, override
 
 import numpy as np
-from typing_extensions import Unpack, override
 
 from mqns.entity.node import QNode
 from mqns.entity.qchannel import QuantumChannel

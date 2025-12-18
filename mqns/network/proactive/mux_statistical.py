@@ -1,8 +1,7 @@
 import random
 from collections import defaultdict
 from collections.abc import Iterable, Set
-
-from typing_extensions import override
+from typing import override
 
 from mqns.entity.memory import MemoryQubit, PathDirection, QubitState
 from mqns.entity.node import QNode

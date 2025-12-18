@@ -1,7 +1,6 @@
-from typing_extensions import override
+from typing import override
 
-from mqns.simulator.event import Event, func_to_event
-from mqns.simulator.ts import Time
+from mqns.simulator import Event, Time, func_to_event
 
 
 class NopEventA(Event):

@@ -1,6 +1,4 @@
-from typing import Any
-
-from typing_extensions import override
+from typing import Any, override
 
 from mqns.entity.cchannel import ClassicChannel, ClassicPacket, RecvClassicPacket
 from mqns.entity.node import Node

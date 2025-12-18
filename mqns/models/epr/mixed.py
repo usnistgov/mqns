@@ -15,10 +15,9 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from typing import final
+from typing import Unpack, final, override
 
 import numpy as np
-from typing_extensions import Unpack, override
 
 from mqns.models.epr.entanglement import BaseEntanglement, BaseEntanglementInitKwargs
 from mqns.models.qubit.const import QUBIT_STATE_0, QUBIT_STATE_P

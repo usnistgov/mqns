@@ -1,8 +1,6 @@
 import math
 from collections import defaultdict
-from typing import cast
-
-from typing_extensions import override
+from typing import cast, override
 
 from mqns.simulator import Event, Simulator, Time
 
