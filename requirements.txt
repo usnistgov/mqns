@@ -1,10 +1,10 @@
 build
 Cython==0.29.28
 matplotlib>=3.4.0,<4
-numpy<2.0
-pandas[performance,plot]==2.*
-pytest==8.*
-scipy==1.15.3
-setuptools>=64
+numpy>=2.3.5,<3
+pandas[plot]>=2.3.3,<3
+pytest>=9.0.2,<10
+scipy>=1.16.3,<2
+setuptools>=80
 typed-argument-parser>=1.10.1,<2
-typing-extensions>=4.14.0,<5
+typing-extensions>=4.15.0,<5
