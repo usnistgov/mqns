@@ -93,7 +93,7 @@ def test_simulator_time():
     check whether the accuracy of subsequent events will be automatically synchronized with the simulator
     without special modification.
     """
-    s = Simulator(1, 10, 1000)
+    s = Simulator(1, 10, accuracy=1000)
     s.run()
     print_event = func_to_event(Time.from_sec(1), print_msg, "hello world")
     assert print_event.t is not None

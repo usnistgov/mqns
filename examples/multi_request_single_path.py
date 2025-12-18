@@ -171,7 +171,7 @@ def run_simulation(t_coherence: float, p_swap: float, mux: MuxScheme, seed: int)
     log.install(s)
 
     topo = build_topology(t_coherence, p_swap, mux)
-    net = QuantumNetwork(topo=topo)
+    net = QuantumNetwork(topo)
     net.install(s)
 
     s.run()

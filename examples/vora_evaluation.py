@@ -135,7 +135,7 @@ def run_simulation(p: ParameterSet, seed: int) -> tuple[float, float]:
     log.install(s)
 
     topo = p.build_topology()
-    net = QuantumNetwork(topo=topo)
+    net = QuantumNetwork(topo)
 
     net.install(s)
     s.run()

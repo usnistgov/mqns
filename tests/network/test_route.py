@@ -4,7 +4,7 @@ from mqns.network.topology import CustomTopology, LinearTopology
 
 
 def test_dijkstra():
-    net = QuantumNetwork(topo=LinearTopology(4), route=DijkstraRouteAlgorithm())
+    net = QuantumNetwork(LinearTopology(4), route=DijkstraRouteAlgorithm())
     net.build_route()
 
     n1 = net.get_node("n1")
@@ -52,7 +52,7 @@ def test_yen():
             "controller": {"name": "ctrl", "apps": []},
         }
     )
-    net = QuantumNetwork(topo=topo, route=YenRouteAlgorithm(k_paths=3))
+    net = QuantumNetwork(topo, route=YenRouteAlgorithm(k_paths=3))
     net.build_route()
 
     node_s = net.get_node("S")

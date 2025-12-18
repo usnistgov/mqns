@@ -52,7 +52,7 @@ def run_simulation(
         channel_capacity=ch_capacities,
         swap=swapping_order,
     )
-    net = QuantumNetwork(topo=topo)
+    net = QuantumNetwork(topo)
     net.install(s)
 
     s.run()

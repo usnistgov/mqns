@@ -25,7 +25,7 @@ topo = build_topology(
     channel_capacity=[(4, 3), (1, 2), (2, 4)],
     swap="swap_2_l2r",
 )
-net = QuantumNetwork(topo=topo)
+net = QuantumNetwork(topo)
 net.install(s)
 
 s.run()

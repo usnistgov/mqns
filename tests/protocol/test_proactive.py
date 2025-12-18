@@ -52,7 +52,7 @@ def build_network_finish(
 ):
     topo.controller = Controller("ctrl", apps=[ProactiveRoutingController()])
 
-    net = QuantumNetwork(topo=topo, classic_topo=ClassicTopology.Follow, route=route, timing=timing)
+    net = QuantumNetwork(topo, classic_topo=ClassicTopology.Follow, route=route, timing=timing)
     for qchannel in net.qchannels:
         qchannel.assign_memory_qubits(capacity=qchannel_capacity)
     topo.connect_controller(net.nodes)

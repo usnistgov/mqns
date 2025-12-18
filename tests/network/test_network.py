@@ -19,9 +19,9 @@ class SyncCheckApp(Application):
 def test_timing_mode_sync():
     topo = BasicTopology(2, nodes_apps=[SyncCheckApp()])
     topo.controller = Controller("ctrl", apps=[SyncCheckApp()])
-    net = QuantumNetwork(topo=topo, timing=TimingModeSync(t_ext=4, t_int=1))
+    net = QuantumNetwork(topo, timing=TimingModeSync(t_ext=4, t_int=1))
 
-    simulator = Simulator(start_second=0.0, end_second=29.9)
+    simulator = Simulator(0.0, 29.9)
     net.install(simulator)
     simulator.run()
 

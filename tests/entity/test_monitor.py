@@ -79,7 +79,7 @@ def make_monitor(
 
 
 def test_monitor_empty():
-    simulator = Simulator(0, 10, 1000)
+    simulator = Simulator(0, 10, accuracy=1000)
     sp, rp = build_network(simulator)
     m = make_monitor(simulator, sp, rp, enable_timed=False, enable_event=False)
 
@@ -92,7 +92,7 @@ def test_monitor_empty():
 
 
 def test_monitor_time_only():
-    simulator = Simulator(0, 10, 1000)
+    simulator = Simulator(0, 10, accuracy=1000)
     sp, rp = build_network(simulator)
     m = make_monitor(simulator, sp, rp, enable_attributions=False)
 
@@ -107,7 +107,7 @@ def test_monitor_time_only():
 
 
 def test_monitor_full_finite():
-    simulator = Simulator(0, 10, 1000)
+    simulator = Simulator(0, 10, accuracy=1000)
     sp, rp = build_network(simulator)
     m = make_monitor(simulator, sp, rp)
 
@@ -127,7 +127,7 @@ def test_monitor_full_finite():
 
 
 def test_monitor_full_continuous():
-    simulator = Simulator(0, math.inf, 1000)
+    simulator = Simulator(0, math.inf, accuracy=1000)
     sp, rp = build_network(simulator)
     m = make_monitor(simulator, sp, rp)
 

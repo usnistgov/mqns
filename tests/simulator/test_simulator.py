@@ -27,7 +27,7 @@ class StopEvent(SimpleEvent):
 
 def test_simulator_run():
     SimpleEvent.invoke_count.clear()
-    simulator = Simulator(0, 15, 1000)
+    simulator = Simulator(0, 15, accuracy=1000)
     assert simulator.total_events == 0
 
     e = SimpleEvent(simulator.time(sec=1), name="t0")
@@ -64,7 +64,7 @@ def test_simulator_run():
 
 def do_test_stop(*, te: float):
     SimpleEvent.invoke_count.clear()
-    simulator = Simulator(0, te, 1000)
+    simulator = Simulator(0, te, accuracy=1000)
 
     e = StopEvent(simulator.time(sec=9.5), name="s0", simulator=simulator)
     simulator.add_event(e)

@@ -232,7 +232,7 @@ def test_memory_async_qubit():
     m = QuantumMemory("m1", delay=0.5)
     n1.memory = m
 
-    s = Simulator(0, 10, 1000)
+    s = Simulator(0, 10, accuracy=1000)
     n1.install(s)
 
     q1 = Qubit(name="q1")

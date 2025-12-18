@@ -16,7 +16,7 @@ def test_operator_sync():
 
     n1.add_operator(o1)
 
-    s = Simulator(0, 10, 1000)
+    s = Simulator(0, 10, accuracy=1000)
     n1.install(s)
 
     qubit = Qubit()
@@ -47,7 +47,7 @@ def test_operator_async():
     a1 = RecvOperateApp()
     n1.add_apps(a1)
 
-    s = Simulator(0, 10, 1000)
+    s = Simulator(0, 10, accuracy=1000)
     n1.install(s)
 
     qubit = Qubit()

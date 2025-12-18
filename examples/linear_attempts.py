@@ -44,7 +44,7 @@ def run_simulation(seed: int, sim_duration: float, L: list[float], M: int) -> li
         channel_capacity=M,
         swap=[0] * (len(L) + 1),
     )
-    net = QuantumNetwork(topo=topo)
+    net = QuantumNetwork(topo)
     net.install(s)
 
     s.run()
