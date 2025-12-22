@@ -1,7 +1,7 @@
 import configparser
+import itertools
 import json
 import os.path
-import random
 import threading
 import time
 from typing import cast
@@ -12,16 +12,22 @@ from sequence.topology.node import QuantumRouter
 from sequence.topology.router_net_topo import RouterNetTopo
 from tap import Tap
 
+from mqns.network.network import QuantumNetwork, Request
+from mqns.network.topology import ClassicTopology, RandomTopology
 from mqns.utils import set_seed
 
 from sequence_detail.resource_reservation import create_rules
 from sequence_detail.scalability_randomtopo import (
     EntanglementRequestApp,
-    Request,
     ResetApp,
-    create_random_quantum_network,
     set_parameters,
 )
+
+"""
+This script is part of scalability_randomtopo experiment for comparison with SeQUeNCe simulator.
+It can be invoked in the same way as mqns/examples/scalability_randomtopo_run.py .
+The topology and end-to-end entanglement requests are generated MQNS, and then converted to SeQUeNCe.
+"""
 
 
 # Command line arguments
@@ -76,45 +82,95 @@ frequency = 50e6
 """)
 
 
-def build_network(basename: str) -> tuple[RouterNetTopo, list[QuantumRouter]]:
-    filename = os.path.join(args.outdir, f"{basename}.topo.json")
+def convert_network(net: QuantumNetwork) -> dict:
+    """
+    Convert MQNS network topology into SeQUeNCe network topology.
+    """
 
-    create_random_quantum_network(
-        num_nodes=args.nnodes,
-        num_edges=args.nedges,
-        edge_length=30000,
-        stop_time=stop_t,
-        output_file=filename,
-    )
+    nodes = [
+        {
+            "name": node.name,
+            "type": "QuantumRouter",
+            "seed": 0,
+            "memo_size": 2000,
+        }
+        for node in net.nodes
+    ]
+
+    qconnections = [
+        {
+            "node1": ch.node_list[0].name,
+            "node2": ch.node_list[1].name,
+            "distance": 30000,
+            "attenuation": 0.0002,
+            "type": "meet_in_the_middle",
+        }
+        for ch in net.qchannels
+    ]
+
+    cchannels: list[dict] = []
+    for src, dst in itertools.product(net.nodes, net.nodes):
+        if src == dst:
+            continue
+        metric, _, _ = net.query_route(src, dst)[0]
+        cchannels.append(
+            {
+                "source": src.name,
+                "destination": dst.name,
+                "distance": 30000 * int(metric),
+            }
+        )
+
+    return {
+        "nodes": nodes,
+        "qconnections": qconnections,
+        "cchannels": cchannels,
+        "is_parallel": False,
+        "stop_time": stop_t,
+    }
+
+
+def build_network(basename: str, net: QuantumNetwork) -> tuple[RouterNetTopo, list[QuantumRouter]]:
+    """
+    Build SeQUeNCe network topology that matches MQNS network topology.
+    """
+
+    filename = os.path.join(args.outdir, f"{basename}.topo.json")
+    network_json = convert_network(net)
+    with open(filename, "w") as f:
+        json.dump(network_json, f)
+
     topo = RouterNetTopo(filename)
     set_parameters(topo, common_config)
     ResourceReservationProtocol.create_rules = create_rules
-    Reservation.link_capacity = args.qchannel_capacity
-    Reservation.swapping_order = "ASAP"
+    setattr(Reservation, "link_capacity", args.qchannel_capacity)
+    setattr(Reservation, "swapping_order", "ASAP")
 
     routers = cast(list[QuantumRouter], topo.get_nodes_by_type(RouterNetTopo.QUANTUM_ROUTER))
     for router in routers:
-        router.network_manager.network_routers = routers
+        setattr(router.network_manager, "network_routers", routers)
         for CNT in COUNTER_NAMES:
             setattr(router, CNT, 0)
 
     return topo, routers
 
 
-def random_requests(routers: list[QuantumRouter], num_requests: int) -> list[Request]:
-    routers = routers.copy()
-    random.shuffle(routers)
-    requests: list[Request] = []
-    for _ in range(num_requests):
-        assert len(routers) >= 2
-        src_node, dst_node = routers.pop(), routers.pop()
-        app_src = EntanglementRequestApp(src_node, dst_node.name)
-        app_dst = ResetApp(dst_node, src_node.name)
-        requests.append((app_src, app_dst))
-    return requests
+def convert_request(routers: list[QuantumRouter], request: Request) -> tuple[EntanglementRequestApp, ResetApp]:
+    """
+    Convert MQNS src-dst request into a pair of applications in SeQUeNCe.
+    """
+    src_node = next((r for r in routers if r.name == request.src.name))
+    dst_node = next((r for r in routers if r.name == request.dst.name))
+    return (
+        EntanglementRequestApp(src_node, dst_node.name),
+        ResetApp(dst_node, src_node.name),
+    )
 
 
-def start_requests(requests: list[Request]) -> None:
+def start_requests(requests: list[tuple[EntanglementRequestApp, ResetApp]]) -> None:
+    """
+    Start a pair of applications for src-dst request.
+    """
     for app_src, app_dst in requests:
         app_src.start(app_dst.node.name, start_t, stop_t, memo_size=1, fidelity=0.1)
         app_dst.set(start_t, stop_t)
@@ -125,11 +181,22 @@ def run_simulation(basename: str) -> dict:
     set_seed(args.seed)
 
     # Generate random topology.
-    topo, routers = build_network(basename)
+    net = QuantumNetwork(
+        topo=RandomTopology(
+            nodes_number=args.nnodes,
+            lines_number=args.nedges,
+        ),
+        classic_topo=ClassicTopology.Follow,
+    )
+    net.build_route()
 
     # Generate random requests, proportional to network size.
     num_requests = max(2, int(args.nnodes / 10))
-    requests = random_requests(routers, num_requests)
+    net.random_requests(num_requests, min_hops=2, max_hops=5)
+
+    # Build the same topology and requests in SeQUeNCe.
+    topo, routers = build_network(basename, net)
+    requests = [convert_request(routers, req) for req in net.requests]
 
     # Initialize timeline and initialize request applications.
     tl = topo.get_timeline()

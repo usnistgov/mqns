@@ -1,8 +1,3 @@
-import heapq
-import json
-import os
-import random
-
 import numpy as np
 from sequence.app.request_app import RequestApp
 from sequence.components.memory import Memory
@@ -17,8 +12,6 @@ from sequence.message import Message
 from sequence.resource_management.memory_manager import MemoryInfo
 from sequence.topology.node import QuantumRouter
 from sequence.topology.router_net_topo import RouterNetTopo
-
-M = 2000
 
 
 def _EntanglementGenerationA_entanglement_succeed(self):
@@ -318,125 +311,6 @@ class ResetApp:
 
     def get_throughput(self) -> float:
         return self.memory_counter / (self.end_t - self.start_t) * 1e12
-
-
-type Request = tuple[EntanglementRequestApp, ResetApp]
-
-
-def dijkstra_hop_distances(adj):
-    """Compute shortest path lengths (in hops) between all pairs."""
-    n = len(adj)
-    dist = [[float("inf")] * n for _ in range(n)]
-    for src in range(n):
-        dist[src][src] = 0
-        heap = [(0, src)]
-        while heap:
-            d, u = heapq.heappop(heap)
-            if d > dist[src][u]:
-                continue
-            for v in range(n):
-                if adj[u][v]:
-                    if dist[src][v] > d + 1:
-                        dist[src][v] = d + 1
-                        heapq.heappush(heap, (dist[src][v], v))
-    return dist
-
-
-def create_random_quantum_network(
-    num_nodes: int, num_edges: int, edge_length: int, stop_time: int, output_file: str, attenuation=0.0002
-):
-    """
-    Create a random connected topology compatible with SeQUeNCe, matching MQNS.RandomTopology.
-
-    Args:
-        num_nodes (int): total number of quantum routers
-        avg_degree (float): desired average node degree (e.g., 2.5)
-        edge_length (float): average physical span of the network (used for scaling link distances)
-        output_file (str): JSON path to save topology
-        attenuation (float): attenuation coefficient (default 0.0002)
-    """
-    os.makedirs(os.path.dirname(output_file), exist_ok=True)
-
-    # -----------------------------------
-    # 1. Initialize node names
-    # -----------------------------------
-    nodes = [f"r{i}" for i in range(num_nodes)]
-    N = len(nodes)
-
-    target_edges = num_edges
-
-    # adjacency matrix
-    adj = [[0] * N for _ in range(N)]
-    qconnections = []
-
-    # -----------------------------------
-    # 2. Build a random spanning tree to ensure connectivity
-    # -----------------------------------
-    for i in range(1, N):
-        j = random.randint(0, i - 1)
-        adj[i][j] = adj[j][i] = 1
-        qconnections.append(
-            {
-                "node1": nodes[i],
-                "node2": nodes[j],
-                "distance": edge_length,
-                "attenuation": attenuation,
-                "type": "meet_in_the_middle",
-            }
-        )
-
-    # -----------------------------------
-    # 3. Add random extra edges until we reach target_edges
-    # -----------------------------------
-    while len(qconnections) < target_edges:
-        a, b = random.sample(range(N), 2)
-        if adj[a][b] == 0:
-            adj[a][b] = adj[b][a] = 1
-            qconnections.append(
-                {
-                    "node1": nodes[a],
-                    "node2": nodes[b],
-                    "distance": edge_length,
-                    "attenuation": attenuation,
-                    "type": "meet_in_the_middle",
-                }
-            )
-
-    # -----------------------------------
-    # 4. Classical connections mirror quantum ones
-    # -----------------------------------
-    # --- Compute hop-based shortest paths ---
-    hop_distances = dijkstra_hop_distances(adj)
-
-    # --- Classical channels: full mesh ---
-    cconnections = []
-    for i in range(N):
-        for j in range(i + 1, N):
-            hops = hop_distances[i][j]
-            # Reflect hop distance as length * hops
-            cconnections.append(
-                {
-                    "node1": nodes[i],
-                    "node2": nodes[j],
-                    "distance": hops * edge_length,  # classical distance ~ hop count × quantum edge length
-                }
-            )
-
-    # -----------------------------------
-    # 5. Build the network JSON
-    # -----------------------------------
-    network = {
-        "nodes": [{"name": name, "type": "QuantumRouter", "seed": 0, "memo_size": M} for name in nodes],
-        "qconnections": qconnections,
-        "cconnections": cconnections,
-        "is_parallel": False,
-        "stop_time": stop_time,
-    }
-
-    with open(output_file, "w") as f:
-        json.dump(network, f, indent=2)
-
-    return network
 
 
 def set_parameters(topology: RouterNetTopo, config):
