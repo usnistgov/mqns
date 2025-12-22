@@ -79,7 +79,6 @@ frequency = 50e6
 def build_network(basename: str) -> tuple[RouterNetTopo, list[QuantumRouter]]:
     filename = os.path.join(args.outdir, f"{basename}.topo.json")
 
-    # Generate random topology.
     create_random_quantum_network(
         num_nodes=args.nnodes,
         num_edges=args.nedges,
@@ -93,15 +92,11 @@ def build_network(basename: str) -> tuple[RouterNetTopo, list[QuantumRouter]]:
     Reservation.link_capacity = args.qchannel_capacity
     Reservation.swapping_order = "ASAP"
 
-    # Let routers know each other.
-    # Initialize counters.
     routers = cast(list[QuantumRouter], topo.get_nodes_by_type(RouterNetTopo.QUANTUM_ROUTER))
     for router in routers:
         router.network_manager.network_routers = routers
         for CNT in COUNTER_NAMES:
             setattr(router, CNT, 0)
-
-    # Populate random requests.
 
     return topo, routers
 
@@ -126,17 +121,23 @@ def start_requests(requests: list[Request]) -> None:
 
 
 def run_simulation(basename: str) -> dict:
+    # Assign random seed.
     set_seed(args.seed)
 
+    # Generate random topology.
     topo, routers = build_network(basename)
+
+    # Generate random requests, proportional to network size.
     num_requests = max(2, int(args.nnodes / 10))
     requests = random_requests(routers, num_requests)
 
+    # Initialize timeline and initialize request applications.
     tl = topo.get_timeline()
     tl.stop_time = stop_t
     tl.init()
     start_requests(requests)
 
+    # Enforce maximum wall-clock time limit.
     timeout_occurred = [False]
     timeout_cancel = threading.Event()
 
@@ -147,12 +148,14 @@ def run_simulation(basename: str) -> dict:
 
     timeout_thread = threading.Thread(target=stop_timeline_after_timeout, daemon=True)
 
+    # Run the simulation timeline.
     trs = time.time()
     timeout_thread.start()
     tl.run()
     timeout_cancel.set()
     tre = time.time()
 
+    # Collect wall-clock duration and per-router counters.
     d: dict = {
         "time_spent": tre - trs,
         "sim_progress": (tl.time - start_t) / (stop_t - start_t) if timeout_occurred[0] else 1.0,

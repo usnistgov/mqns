@@ -95,35 +95,34 @@ def build_network() -> QuantumNetwork:
 
 
 def run_simulation():
+    # Assign random seed.
     set_seed(args.seed)
     s = Simulator(0, args.sim_duration + 5e-06, accuracy=1000000)
     log.install(s)
 
+    # Generate random topology.
     net = build_network()
     net.install(s)
 
-    # select random S-D pairs
-    ctrl = net.get_controller().get_app(ProactiveRoutingController)
-
-    # number of requests is proportional to network size
+    # Generate random requests, proportional to network size.
     num_requests = max(2, int(args.nnodes / 10))
-
-    # Time to generate requests
     net.random_requests(num_requests, min_hops=2, max_hops=5)
 
+    # Install paths for requests.
+    ctrl = net.get_controller().get_app(ProactiveRoutingController)
     for req in net.requests:
         ctrl.install_path(
             RoutingPathSingle(req.src.name, req.dst.name, qubit_allocation=QubitAllocationType.DISABLED, swap="asap")
         )
 
+    # Run the simulation.
     s.run()
 
-    #### get stats: e2e_rate and mean_fidelity
+    # Collect per-request statistics and wall-clock duration.
     stats = []
     for req in net.requests:
         fw = req.src.get_app(ProactiveForwarder)
         stats.append((fw.cnt.n_consumed / args.sim_duration, fw.cnt.consumed_avg_fidelity))
-
     return stats, s.time_spend
 
 
