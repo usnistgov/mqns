@@ -5,8 +5,10 @@ from typing import Any, TypedDict, Unpack
 import pytest
 
 from mqns.entity.cchannel import ClassicChannelInitKwargs
+from mqns.entity.memory import QubitState
 from mqns.entity.node import Application, Controller
 from mqns.entity.qchannel import LinkArchAlways, LinkArchDimBk, QuantumChannelInitKwargs
+from mqns.models.epr import WernerStateEntanglement
 from mqns.network.network import QuantumNetwork, TimingMode, TimingModeAsync
 from mqns.network.proactive import (
     LinkLayer,
@@ -16,6 +18,7 @@ from mqns.network.proactive import (
     ProactiveRoutingController,
     RoutingPath,
 )
+from mqns.network.protocol.event import QubitEntangledEvent
 from mqns.network.route import RouteImpl, YenRouteAlgorithm
 from mqns.network.topology import ClassicTopology, GridTopology, LinearTopology, Topology, TopologyInitKwargs, TreeTopology
 from mqns.simulator import Simulator, func_to_event
@@ -36,6 +39,7 @@ class BuildNetworkArgs(TypedDict, total=False):
     qchannel_capacity: int  # quantum channel capacity, defaults to 1
     qchannel_args: QuantumChannelInitKwargs
     cchannel_args: ClassicChannelInitKwargs
+    ps: float  # probability of successful swap, defaults to 0.5
     mux: MuxScheme  # multiplexing scheme, defaults to buffer-space
     end_time: float  # simulation end time, defaults to 10.0 seconds
     timing: TimingMode  # network timing mode, defaults to ASYNC
@@ -48,7 +52,7 @@ def _make_topo_args(d: BuildNetworkArgs, *, memory_capacity_factor: int) -> Topo
     nodes_apps: list[Application] = []
     if d.get("has_link_layer", True):
         nodes_apps.append(LinkLayer(init_fidelity=d.get("init_fidelity", 0.90)))
-    nodes_apps.append(ProactiveForwarder(ps=0.5, mux=d.get("mux", MuxSchemeBufferSpace())))
+    nodes_apps.append(ProactiveForwarder(ps=d.get("ps", 0.5), mux=d.get("mux", MuxSchemeBufferSpace())))
 
     return TopologyInitKwargs(
         nodes_apps=nodes_apps,
@@ -148,6 +152,42 @@ def install_path(
 
     if t_uninstall is not None:
         simulator.add_event(func_to_event(simulator.time(sec=t_uninstall), ctrl.uninstall_path, rp))
+
+
+def provide_entanglements(
+    *etgs: tuple[float, ProactiveForwarder, ProactiveForwarder],
+    fidelity=0.99,
+):
+    """
+    Provide elementary entanglement(s) to the forwarders.
+
+    Args:
+        etgs: entanglement creation time, forwarder on left side, forwarder on right side.
+        fidelity: initial fidelity.
+    """
+    for t, src, dst in etgs:
+        simulator = src.simulator
+        ch = src.own.get_qchannel(dst.own)
+        _, d_notify_a, d_notify_b = ch.link_arch.delays(
+            1,
+            reset_time=0.0,
+            tau_l=ch.delay_model.calculate(),
+            tau_0=0.0,
+        )
+        t_creation = simulator.time(sec=t)
+        epr = WernerStateEntanglement(
+            fidelity=fidelity,
+            creation_time=t_creation,
+            decoherence_time=t_creation + min(src.memory.decoherence_delay, dst.memory.decoherence_delay),
+            src=src.own,
+            dst=dst.own,
+            mem_decohere_rate=(src.memory.decoherence_rate, dst.memory.decoherence_rate),
+        )
+        for node, neighbor, d_notify in (src, dst, d_notify_a), (dst, src, d_notify_b):
+            q, _ = next(node.memory.find(lambda _, v: v is None, qchannel=ch))
+            node.memory.write(q.addr, epr)
+            q._state = QubitState.ENTANGLED0
+            simulator.add_event(QubitEntangledEvent(node.own, neighbor.own, q, t=t_creation + d_notify))
 
 
 class CheckUnchanged:
