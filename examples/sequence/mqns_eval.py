@@ -1,19 +1,15 @@
-from src.simulate_mqsn_eval import simulate, create_random_quantum_network
-from src.utils.utils import generate_sim_id
-import os, configparser, csv
+import configparser
+import csv
+import os
 
-config_path = os.path.join('data', 'configs', 'common_parameters.ini')
+from src.simulate_mqsn_eval import simulate
+from src.utils.utils import generate_sim_id
+
+config_path = os.path.join("data", "configs", "common_parameters.ini")
 common_parameters = configparser.ConfigParser()
 common_parameters.read(config_path)
 
-network_sizes: list[tuple[int, int]] = [
-    (16, 20),
-    (32, 40),
-    (64, 80),
-    (128, 160),
-    (256, 320),
-    (512, 640)
-]
+network_sizes: list[tuple[int, int]] = [(16, 20), (32, 40), (64, 80), (128, 160), (256, 320), (512, 640)]
 
 
 # parameters
@@ -29,7 +25,7 @@ init_fidelity = 0.99
 t_coherence = 5e-3  # 10e-3
 
 p_swap = 0.5
-swapping_policy = 'ASAP'
+swapping_policy = "ASAP"
 
 nqubits = 2000  # large enough to support qchannel capacity in random topology
 ##########
@@ -51,14 +47,15 @@ with open(output_file, mode="w", newline="") as f:
 for nr, ne in network_sizes:
     # number of requests is proportional to network size
     num_requests = max(2, int(nr / 10))
-    params = (f'{t_coherence}', # Coherence time in ms (same for all memories and for all nodes)
-            nr, # Number of Routers
-            ne, # Number of Edges
-            qchannel_capacity, # Memory Capacities per qchannel
-            edge_length, # Edge length in meters
-            swapping_policy, # Swapping Order (Explicit order ['r1', 'r2', ...] Or 'ASAP')
-            0.1# Target Fidelity
-            )
+    params = (
+        f"{t_coherence}",  # Coherence time in ms (same for all memories and for all nodes)
+        nr,  # Number of Routers
+        ne,  # Number of Edges
+        qchannel_capacity,  # Memory Capacities per qchannel
+        edge_length,  # Edge length in meters
+        swapping_policy,  # Swapping Order (Explicit order ['r1', 'r2', ...] Or 'ASAP')
+        0.1,  # Target Fidelity
+    )
     simulation_id = generate_sim_id(params)
     exec_time = simulate(simulation_id, *params, common_parameters)
     print(f"Finished ({nr}, {ne}) in {exec_time:.2f} seconds")
@@ -67,5 +64,3 @@ for nr, ne in network_sizes:
     with open(output_file, mode="a", newline="") as f:
         writer = csv.writer(f)
         writer.writerow([nr, ne, exec_time, 0])
-
-
