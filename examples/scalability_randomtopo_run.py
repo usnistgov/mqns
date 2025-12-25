@@ -94,41 +94,43 @@ def build_network() -> QuantumNetwork:
     return net
 
 
-def run_simulation():
+def run_simulation() -> dict:
+    # Assign random seed.
     set_seed(args.seed)
     s = Simulator(0, args.sim_duration + 5e-06, accuracy=1000000)
     log.install(s)
 
+    # Generate random topology.
     net = build_network()
     net.install(s)
 
-    # select random S-D pairs
-    ctrl = net.get_controller().get_app(ProactiveRoutingController)
-
-    # number of requests is proportional to network size
+    # Generate random requests, proportional to network size.
     num_requests = max(2, int(args.nnodes / 10))
-
-    # Time to generate requests
     net.random_requests(num_requests, min_hops=2, max_hops=5)
 
+    # Install paths for requests.
+    ctrl = net.get_controller().get_app(ProactiveRoutingController)
     for req in net.requests:
         ctrl.install_path(
             RoutingPathSingle(req.src.name, req.dst.name, qubit_allocation=QubitAllocationType.DISABLED, swap="asap")
         )
 
+    # Run the simulation.
     s.run()
 
-    #### get stats: e2e_rate and mean_fidelity
-    stats = []
+    # Collect wall-clock duration and per-request statistics.
+    stats = dict[str, tuple[float, float]]()
     for req in net.requests:
         fw = req.src.get_app(ProactiveForwarder)
-        stats.append((fw.cnt.n_consumed / args.sim_duration, fw.cnt.consumed_avg_fidelity))
-
-    return stats, s.time_spend
+        stats[f"{req.src.name}-{req.dst.name}"] = fw.cnt.n_consumed / args.sim_duration, fw.cnt.consumed_avg_fidelity
+    return {
+        "time_spent": s.time_spend,
+        "requests": stats,
+    }
 
 
 if __name__ == "__main__":
-    path_stats, time_spent = run_simulation()
-    filename = f"{args.qchannel_capacity}-{args.nnodes}-{args.nedges}-{args.seed}.json"
-    with open(os.path.join(args.outdir, filename), "w") as file:
-        json.dump({"path_stats": path_stats, "time_spent": time_spent}, file)
+    basename = f"{args.qchannel_capacity}-{args.nnodes}-{args.nedges}-{args.seed}"
+    result = run_simulation()
+    with open(os.path.join(args.outdir, f"{basename}.json"), "w") as file:
+        json.dump(result, file)

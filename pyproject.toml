@@ -31,4 +31,7 @@ lint.ignore = [
   "PLR2004",
   "PLW0603",
 ]
-lint.isort.known-local-folder = ["examples_common"]
+lint.isort.known-local-folder = [
+  "examples_common",
+  "sequence_detail",
+]
