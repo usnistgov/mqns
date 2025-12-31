@@ -38,7 +38,7 @@ from mqns.network.proactive.message import (
 )
 from mqns.network.proactive.mux import MuxScheme
 from mqns.network.proactive.mux_buffer_space import MuxSchemeBufferSpace
-from mqns.network.proactive.select import SelectPurifQubit, SelectSwapQubit, select_purif_qubit
+from mqns.network.proactive.select import SelectPurifQubit, SelectSwapQubit, call_select_purif_qubit
 from mqns.network.protocol.event import ManageActiveChannels, QubitEntangledEvent, QubitReleasedEvent
 from mqns.simulator import Simulator
 from mqns.utils import log
@@ -493,7 +493,7 @@ class ProactiveForwarder(Application):
             and q.path_id == fib_entry.path_id,  # on the same path_id
             has=WernerStateEntanglement,
         )
-        found = select_purif_qubit(self._select_purif_qubit, qubit, fib_entry, partner, candidates)
+        found = call_select_purif_qubit(self._select_purif_qubit, qubit, fib_entry, partner, candidates)
         if not found:
             log.debug(f"{self.own}: no candidate EPR for segment {segment_name} purif round {1 + qubit.purif_rounds}")
             return
@@ -956,7 +956,8 @@ class ProactiveForwarder(Application):
         Release a qubit.
 
         Args:
-            read: whether to perform a destructive read.
+            need_remove: whether to remove the data associated with the qubit.
+                         This should be set to True unless .read(remove=True) is already performed.
         """
         simulator = self.simulator
 

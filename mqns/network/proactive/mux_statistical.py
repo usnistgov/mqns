@@ -10,7 +10,7 @@ from mqns.models.epr import BaseEntanglement, WernerStateEntanglement
 from mqns.network.proactive.fib import FibEntry
 from mqns.network.proactive.message import PathInstructions, validate_path_instructions
 from mqns.network.proactive.mux import MuxScheme
-from mqns.network.proactive.select import MemoryWernerIterator, select_swap_qubit
+from mqns.network.proactive.select import MemoryWernerIterator, call_select_swap_qubit
 from mqns.utils import log
 
 
@@ -183,7 +183,7 @@ class MuxSchemeStatistical(MuxSchemeDynamicBase):
             if (q.qchannel is not None and q.qchannel.name in matched_channels)  # assigned to a matched channel
             and has_intersect_tmp_path_ids(epr.tmp_path_ids, v.tmp_path_ids)  # has overlapping tmp_path_ids
         )
-        found = select_swap_qubit(self.fw._select_swap_qubit, qubit, epr, fib_entry, candidates)
+        found = call_select_swap_qubit(self.fw._select_swap_qubit, qubit, epr, fib_entry, candidates)
         if not found:
             return None
         mq1, epr1 = found

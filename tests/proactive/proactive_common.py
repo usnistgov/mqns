@@ -127,6 +127,8 @@ def build_rect_network(
         n1---n2
         |     |
         n3---n4
+
+    The network uses Yen routing algorithm with 2 paths.
     """
     topo = GridTopology(
         (2, 2),
@@ -166,6 +168,8 @@ def provide_entanglements(
         fidelity: initial fidelity.
     """
     for t, src, dst in etgs:
+        if t < 0:
+            continue
         simulator = src.simulator
         ch = src.own.get_qchannel(dst.own)
         _, d_notify_a, d_notify_b = ch.link_arch.delays(

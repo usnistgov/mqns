@@ -8,7 +8,7 @@ from mqns.models.epr import WernerStateEntanglement
 from mqns.network.proactive.fib import FibEntry
 from mqns.network.proactive.message import PathInstructions, validate_path_instructions
 from mqns.network.proactive.mux import MuxScheme
-from mqns.network.proactive.select import MemoryWernerIterator, select_swap_qubit
+from mqns.network.proactive.select import MemoryWernerIterator, call_select_swap_qubit
 from mqns.utils import log
 
 
@@ -19,7 +19,7 @@ class MuxSchemeFibBase(MuxScheme):
     ) -> tuple[MemoryQubit, FibEntry] | None:
         _ = epr
         assert fib_entry is not None
-        found = select_swap_qubit(
+        found = call_select_swap_qubit(
             self.fw._select_swap_qubit, qubit, epr, fib_entry, self.list_swap_candidates(qubit, fib_entry, input)
         )
         if not found:

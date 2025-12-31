@@ -295,6 +295,7 @@ class QuantumMemory(Entity):
 
         Raises:
             IndexError - qubit not found.
+            ValueError - no quantum information is stored.
         """
         pass
 

@@ -14,7 +14,6 @@ from mqns.network.proactive import (
     ProactiveRoutingController,
     QubitAllocationType,
     RoutingPathSingle,
-    select_path_swap_weighted,
 )
 from mqns.network.topology import CustomTopology, Topology
 from mqns.simulator import Simulator
@@ -195,7 +194,7 @@ t_cohere_values = [5e-3, 10e-3, 20e-3]
 strategies: dict[str, MuxScheme] = {
     "Statistical Mux.": MuxSchemeStatistical(),
     "Random Alloc.": MuxSchemeDynamicEpr(),
-    "Swap-weighted Alloc.": MuxSchemeDynamicEpr(select_path=select_path_swap_weighted),
+    "Swap-weighted Alloc.": MuxSchemeDynamicEpr(select_path=MuxSchemeDynamicEpr.SelectPath_swap_weighted),
 }
 
 

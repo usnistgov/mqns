@@ -22,7 +22,7 @@ None means selecting the first candidate.
 """
 
 
-def select_purif_qubit(
+def call_select_purif_qubit(
     fn: SelectPurifQubit,
     qubit: MemoryQubit,
     fib_entry: FibEntry,
@@ -60,7 +60,7 @@ None means selecting the first candidate.
 """
 
 
-def select_swap_qubit(
+def call_select_swap_qubit(
     fn: SelectSwapQubit,
     qubit: MemoryQubit,
     epr: WernerStateEntanglement,
@@ -83,25 +83,3 @@ def select_swap_qubit_random(
 ) -> MemoryWernerTuple:
     _ = qubit, epr, fib_entry
     return random.choice(candidates)
-
-
-SelectPath = Callable[[list[FibEntry]], FibEntry]
-"""
-Path selection strategy, used in MuxSchemeDynamicEpr.
-"""
-
-
-def select_path_random(fibs: list[FibEntry]) -> FibEntry:
-    """
-    Path selection strategy: random allocation.
-    """
-    return random.choice(fibs)
-
-
-def select_path_swap_weighted(fibs: list[FibEntry]) -> FibEntry:
-    """
-    Path selection strategy: swap-weighted allocation.
-    """
-    # Lower swaps = higher weight
-    weights = [1.0 / (1 + len(e.swap)) for e in fibs]
-    return random.choices(fibs, weights=weights, k=1)[0]
