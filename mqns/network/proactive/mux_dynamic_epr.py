@@ -1,6 +1,6 @@
 import random
 from collections.abc import Callable
-from typing import cast, override
+from typing import override
 
 from mqns.entity.memory import MemoryQubit, QubitState
 from mqns.entity.node import QNode
@@ -25,7 +25,7 @@ def _select_path_swap_weighted(epr: WernerStateEntanglement, fib: Fib, path_ids:
     return random.choices(entries, weights=weights, k=1)[0]
 
 
-class MuxSchemeDynamicEpr(MuxSchemeDynamicBase, MuxSchemeFibBase):
+class MuxSchemeDynamicEpr(MuxSchemeFibBase, MuxSchemeDynamicBase):
     """
     Dynamic EPR Affection multiplexing scheme.
     """
@@ -58,13 +58,15 @@ class MuxSchemeDynamicEpr(MuxSchemeDynamicBase, MuxSchemeFibBase):
         self,
         name="dynamic EPR affection",
         *,
+        select_swap_qubit: MuxSchemeFibBase.SelectSwapQubit | None = None,
         select_path: SelectPath = SelectPath_random,
     ):
         """
         Args:
+            select_swap_qubit: Function to select a qubit to swap with, default is first.
             select_path: Function to select a path for an entangled qubit, default is random.
         """
-        super().__init__(name)
+        super().__init__(name, select_swap_qubit)
         self._select_path = select_path
 
     @override
@@ -83,7 +85,7 @@ class MuxSchemeDynamicEpr(MuxSchemeDynamicBase, MuxSchemeFibBase):
             # For ease of implementation, this choice is made at either primary or secondary node,
             # whichever receives the EPR notification earlier.
             selected_path = self._select_path(epr, self.fib, possible_path_ids)
-            fib_entry = selected_path if selected_path is FibEntry else self.fib.get(cast(int, selected_path))
+            fib_entry = selected_path if type(selected_path) is FibEntry else self.fib.get(selected_path)
             epr.tmp_path_ids = frozenset([fib_entry.path_id])
         else:
             assert len(epr.tmp_path_ids) == 1

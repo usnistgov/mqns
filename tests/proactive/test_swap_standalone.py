@@ -10,7 +10,10 @@ from mqns.models.epr import WernerStateEntanglement
 from mqns.network.network import TimingModeSync
 from mqns.network.proactive import (
     Fib,
+    MemoryWernerTuple,
+    MuxScheme,
     MuxSchemeDynamicEpr,
+    MuxSchemeStatistical,
     ProactiveForwarder,
     ProactiveRoutingController,
     QubitAllocationType,
@@ -20,10 +23,11 @@ from mqns.network.proactive import (
 from mqns.simulator import func_to_event
 
 from .proactive_common import (
-    build_dumbbell_network,
     build_linear_network,
     build_rect_network,
+    build_tree_network,
     install_path,
+    print_fw_counters,
     provide_entanglements,
 )
 
@@ -50,9 +54,7 @@ def test_3_disabled():
         (1.002, f2, f3),
     )
     simulator.run()
-
-    for fw in (f1, f2, f3):
-        print(fw.own.name, fw.cnt)
+    print_fw_counters(net)
 
     assert f1.cnt.n_consumed == 1
     assert f2.cnt.n_consumed == 2
@@ -107,9 +109,7 @@ def test_4_sync(t_ext: float, expected: tuple[int, int, int, int]):
         (1.001, f3, f4),
     )
     simulator.run()
-
-    for fw in (f1, f2, f3, f4):
-        print(fw.own.name, fw.cnt)
+    print_fw_counters(net)
 
     assert (f1.cnt.n_consumed, f2.cnt.n_swapped, f3.cnt.n_swapped, f4.cnt.n_consumed) == expected
 
@@ -139,9 +139,7 @@ def test_4_asap(arrival_ms: tuple[int, int, int], n_swapped_p: int):
         (1 + arrival_ms[2] / 1000, f3, f4),
     )
     simulator.run()
-
-    for fw in (f1, f2, f3, f4):
-        print(fw.own.name, fw.cnt)
+    print_fw_counters(net)
 
     assert f1.cnt.n_consumed == 1 == f4.cnt.n_consumed
     assert f2.cnt.n_swapped_s == 1 == f3.cnt.n_swapped_s
@@ -192,9 +190,7 @@ def test_5_asap(
         (1 + arrival_ms[3] / 1000, f4, f5),
     )
     simulator.run()
-
-    for fw in (f1, f2, f3, f4, f5):
-        print(fw.own.name, fw.cnt)
+    print_fw_counters(net)
 
     assert f1.cnt.n_consumed == n_consumed == f5.cnt.n_consumed
     assert (f2.cnt.n_swapped_s, f3.cnt.n_swapped_s, f4.cnt.n_swapped_s) == n_swapped_s
@@ -230,9 +226,7 @@ def test_5_sequential(swap: list[int], arrival_ms: tuple[int, int, int, int]):
         (1 + arrival_ms[3] / 1000, f4, f5),
     )
     simulator.run()
-
-    for fw in (f1, f2, f3, f4, f5):
-        print(fw.own.name, fw.cnt)
+    print_fw_counters(net)
 
     assert f1.cnt.n_consumed == 1 == f5.cnt.n_consumed
     assert (f2.cnt.n_swapped_s, f3.cnt.n_swapped_s, f4.cnt.n_swapped_s) == (1, 1, 1)
@@ -250,7 +244,7 @@ def test_5_sequential(swap: list[int], arrival_ms: tuple[int, int, int, int]):
     ],
 )
 def test_rect_multipath(has_etg: tuple[int, int, int, int], n_swapped: tuple[int, int], n_consumed: int):
-    """Test swapping in rectangular network with a multi-path request."""
+    """Test swapping in rectangular topology with a multi-path request."""
     net, simulator = build_rect_network(ps=1.0, has_link_layer=False)
     ctrl = net.get_controller().get_app(ProactiveRoutingController)
     f1 = net.get_node("n1").get_app(ProactiveForwarder)
@@ -273,12 +267,29 @@ def test_rect_multipath(has_etg: tuple[int, int, int, int], n_swapped: tuple[int
         (1.002 if has_etg[3] else -1, f3, f4),
     )
     simulator.run()
-
-    for fw in (f1, f2, f3, f4):
-        print(fw.own.name, fw.cnt)
+    print_fw_counters(net)
 
     assert f1.cnt.n_consumed == n_consumed == f4.cnt.n_consumed
     assert (f2.cnt.n_swapped, f3.cnt.n_swapped) == n_swapped
+
+
+def prepare_tree_network(
+    *,
+    height=2,
+    paths: list[tuple[str, str]] = [  # suitable for height=2
+        ("n4", "n6"),  # n4-n2-n1-n3-n6
+        ("n5", "n7"),  # n5-n2-n1-n3-n7
+    ],
+    mux: MuxScheme,
+):
+    net, simulator = build_tree_network(height=height, ps=1.0, has_link_layer=False, mux=mux)
+    ctrl = net.get_controller().get_app(ProactiveRoutingController)
+
+    rps = [RoutingPathSingle(src, dst, qubit_allocation=QubitAllocationType.DISABLED, swap="asap") for src, dst in paths]
+    for rp in rps:
+        install_path(ctrl, rp)
+
+    return net, simulator, (node.get_app(ProactiveForwarder) for node in net.nodes), rps
 
 
 @pytest.mark.parametrize(
@@ -300,8 +311,8 @@ def test_rect_multipath(has_etg: tuple[int, int, int, int], n_swapped: tuple[int
         (1.007, (1, 0), (0, 0)),
     ],
 )
-def test_dumbbell_dynepr(t_edge_etg: float, selected_path: tuple[int, int], n_consumed: tuple[int, int]):
-    """Test MuxSchemeDynamicEpr in dumbbell network."""
+def test_tree2_dynepr(t_edge_etg: float, selected_path: tuple[int, int], n_consumed: tuple[int, int]):
+    """Test MuxSchemeDynamicEpr in tree (height=2) topology."""
 
     def select_path(epr: WernerStateEntanglement, fib: Fib, path_ids: list[int]) -> int:
         _ = fib
@@ -314,26 +325,9 @@ def test_dumbbell_dynepr(t_edge_etg: float, selected_path: tuple[int, int], n_co
             chosen = (rp0.path_id, rp1.path_id)[selected_path[1]]
         return chosen
 
-    net, simulator = build_dumbbell_network(
-        ps=1.0,
-        has_link_layer=False,
-        mux=MuxSchemeDynamicEpr(select_path=select_path),
+    net, simulator, [f1, f2, f3, f4, f5, f6, f7], [rp0, rp1] = prepare_tree_network(
+        mux=MuxSchemeDynamicEpr(select_path=select_path)
     )
-    ctrl = net.get_controller().get_app(ProactiveRoutingController)
-    f1 = net.get_node("n1").get_app(ProactiveForwarder)
-    f2 = net.get_node("n2").get_app(ProactiveForwarder)
-    f3 = net.get_node("n3").get_app(ProactiveForwarder)
-    f4 = net.get_node("n4").get_app(ProactiveForwarder)
-    f6 = net.get_node("n6").get_app(ProactiveForwarder)
-    f5 = net.get_node("n5").get_app(ProactiveForwarder)
-    f7 = net.get_node("n7").get_app(ProactiveForwarder)
-
-    # n4-n2-n1-n3-n6
-    rp0 = RoutingPathSingle("n4", "n6", qubit_allocation=QubitAllocationType.DISABLED, swap="asap")
-    install_path(ctrl, rp0)
-    # n5-n2-n1-n3-n7
-    rp1 = RoutingPathSingle("n5", "n7", qubit_allocation=QubitAllocationType.DISABLED, swap="asap")
-    install_path(ctrl, rp1)
 
     provide_entanglements(
         (t_edge_etg, f4, f2),
@@ -344,9 +338,101 @@ def test_dumbbell_dynepr(t_edge_etg: float, selected_path: tuple[int, int], n_co
         (1.005, f1, f3),
     )
     simulator.run()
-
-    for fw in (f1, f2, f3, f4, f5, f6, f7):
-        print(fw.own.name, fw.cnt)
+    print_fw_counters(net)
 
     assert f4.cnt.n_consumed == n_consumed[0] == f6.cnt.n_consumed
     assert f5.cnt.n_consumed == n_consumed[1] == f7.cnt.n_consumed
+
+
+@pytest.mark.parametrize(
+    ("t_edge_etg", "selected_qubit", "selected_path_1", "n_consumed"),
+    [
+        # 1. Edge entanglements arrive first.
+        # 2. Center entanglements arrive next:
+        #    n2 chooses n4-n2 on path 0 to swap with n2-n1.
+        #    n3 chooses n3-n6 on path 0 to swap with n1-n3.
+        #    n1 can choose either FIB entry without affecting outcome.
+        # 3. Path 0 should get end-to-end entanglement.
+        ((1.001, 1.001, 1.001, 1.001), (0, 0), 0, (1, 0)),
+        ((1.001, 1.001, 1.001, 1.001), (0, 0), 1, (1, 0)),
+        # 1. Edge entanglements arrive first.
+        # 2. Center entanglements arrive next:
+        #    n2 chooses n4-n2 on path 0 to swap with n2-n1.
+        #    n3 chooses n3-n6 on path 1 to swap with n1-n3.
+        #    n1 can choose either FIB entry without affecting outcome.
+        # 3. Neither path could get end-to-end entanglement.
+        ((1.001, 1.001, 1.001, 1.001), (0, 1), 0, (0, 0)),
+        ((1.001, 1.001, 1.001, 1.001), (0, 1), 1, (0, 0)),
+        # 1. Center entanglements arrive first.
+        # 2. Path 1 edge entanglements arrive next:
+        #    n2 and n3 each has only one matching center entanglement to swap with edge entanglement;
+        #    each has only one matching FIB entry.
+        #    n1 can choose either FIB entry without affecting outcome.
+        # 3. Path 0 edge entanglements arrive last, but neither n2 nor n3 can swap them.
+        # 4. Path 1 should get end-to-end entanglement.
+        ((1.009, 1.007, 1.009, 1.007), (9, 9), 0, (0, 1)),
+        ((1.009, 1.007, 1.009, 1.007), (9, 9), 1, (0, 1)),
+        # 1. Center entanglements arrive first.
+        # 2. n4-n2 on path 0 and n3-n7 on path 1 edge entanglements arrive next:
+        #    n2 and n3 each has only one matching center entanglement to swap with edge entanglement.
+        #    n1 can choose either FIB entry without affecting outcome.
+        # 3. n5-n2 on path 1 and n3-n6 on path 0 edge entanglements arrive last, but neither n2 nor n3 can swap them.
+        # 4. Neither path could get end-to-end entanglement.
+        ((1.009, 1.007, 1.007, 1.009), (9, 9), 0, (0, 0)),
+        ((1.009, 1.007, 1.007, 1.009), (9, 9), 1, (0, 0)),
+        # `9` means the selection callback shouldn't have been invoked with two candidates.
+    ],
+)
+def test_tree2_statistical(
+    t_edge_etg: tuple[float, float, float, float],
+    selected_qubit: tuple[int, int],
+    selected_path_1: int,
+    n_consumed: tuple[int, int],
+):
+    """Test MuxSchemeStatistical in tree (height=2) topology."""
+
+    def select_qubit(fw: ProactiveForwarder, mt0: MemoryWernerTuple, candidates: list[MemoryWernerTuple]) -> MemoryWernerTuple:
+        _ = mt0
+        if len(candidates) != 2:
+            chosen = candidates[0]
+        elif fw is f2:  # n2-n1 choosing between n4-n2 and n5-n2
+            partner = (f4, f5)[selected_qubit[0]]
+            chosen = next((mt1 for mt1 in candidates if mt1[1].src is partner.own))
+        elif fw is f3:  # n1-n3 choosing between n3-n6 and n3-n7
+            partner = (f6, f7)[selected_qubit[1]]
+            chosen = next((mt1 for mt1 in candidates if mt1[1].dst is partner.own))
+        else:
+            raise RuntimeError()
+        return chosen
+
+    def select_path(
+        fw: ProactiveForwarder, epr0: WernerStateEntanglement, epr1: WernerStateEntanglement, path_ids: list[int]
+    ) -> int:
+        _ = epr0, epr1
+        if len(path_ids) != 2:
+            chosen = path_ids[0]
+        elif fw is f1:  # n1 choosing for n2-n1-n3 swap
+            chosen = (rp0.path_id, rp1.path_id)[selected_path_1]
+        else:
+            # In all other nodes, only one FIB entry is matched after choosing qubit.
+            raise RuntimeError()
+        return chosen
+
+    net, simulator, [f1, f2, f3, f4, f5, f6, f7], [rp0, rp1] = prepare_tree_network(
+        mux=MuxSchemeStatistical(select_swap_qubit=select_qubit, select_path=select_path)
+    )
+
+    provide_entanglements(
+        (t_edge_etg[0], f4, f2),
+        (t_edge_etg[1], f5, f2),
+        (t_edge_etg[2], f3, f6),
+        (t_edge_etg[3], f3, f7),
+        (1.003, f2, f1),
+        (1.005, f1, f3),
+    )
+    simulator.run()
+    print_fw_counters(net)
+
+    assert f4.cnt.n_consumed == n_consumed[0] == f6.cnt.n_consumed
+    assert f5.cnt.n_consumed == n_consumed[1] == f7.cnt.n_consumed
+    assert f2.cnt.n_swap_conflict + f1.cnt.n_swap_conflict + f3.cnt.n_swap_conflict == (2 if sum(n_consumed) == 0 else 0)

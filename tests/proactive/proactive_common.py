@@ -98,20 +98,39 @@ def build_linear_network(
     return _build_network_finish(topo, kwargs)
 
 
-def build_dumbbell_network(
+def build_tree_network(
+    height=2,
     **kwargs: Unpack[BuildNetworkArgs],
 ) -> tuple[QuantumNetwork, Simulator]:
     """
-    Build the following topology:
+    If height==2, build the following topology:
 
         n4           n6
         |            |
         +n2---n1---n3+
         |            |
         n5           n7
+
+    If height==3, build the following topology:
+
+             n8           n12
+             |            |
+        n9---n4           n6---n13
+             |            |
+             +n2---n1---n3+
+             |            |
+        n10--n5           n7---n14
+             |            |
+             n11          n15
     """
+    if height == 2:
+        nnodes = 7
+    elif height == 3:
+        nnodes = 15
+    else:
+        raise ValueError("unsupported height")
     topo = TreeTopology(
-        nodes_number=7,
+        nodes_number=nnodes,
         children_number=2,
         **_make_topo_args(kwargs, memory_capacity_factor=3),
     )
@@ -135,6 +154,12 @@ def build_rect_network(
         **_make_topo_args(kwargs, memory_capacity_factor=2),
     )
     return _build_network_finish(topo, kwargs, route=YenRouteAlgorithm(k_paths=2))
+
+
+def print_fw_counters(net: QuantumNetwork):
+    for node in net.nodes:
+        fw = node.get_app(ProactiveForwarder)
+        print(node.name, fw.cnt)
 
 
 def install_path(

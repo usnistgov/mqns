@@ -38,7 +38,7 @@ from mqns.network.proactive.message import (
 )
 from mqns.network.proactive.mux import MuxScheme
 from mqns.network.proactive.mux_buffer_space import MuxSchemeBufferSpace
-from mqns.network.proactive.select import SelectPurifQubit, SelectSwapQubit, call_select_purif_qubit
+from mqns.network.proactive.select import SelectPurifQubit, call_select_purif_qubit
 from mqns.network.protocol.event import ManageActiveChannels, QubitEntangledEvent, QubitReleasedEvent
 from mqns.simulator import Simulator
 from mqns.utils import log
@@ -132,7 +132,6 @@ class ProactiveForwarder(Application):
         cutoff: CutoffScheme = CutoffSchemeWaitTime(),
         mux: MuxScheme = MuxSchemeBufferSpace(),
         select_purif_qubit: SelectPurifQubit = None,
-        select_swap_qubit: SelectSwapQubit = None,
     ):
         """
         This constructor sets up a node's entanglement forwarding logic in a quantum network.
@@ -155,7 +154,6 @@ class ProactiveForwarder(Application):
         self.mux = deepcopy(mux)
         """Multiplexing scheme."""
         self._select_purif_qubit = select_purif_qubit
-        self._select_swap_qubit = select_swap_qubit
 
         self.fib = Fib()
         """FIB structure."""

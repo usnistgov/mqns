@@ -1,7 +1,7 @@
 import random
 from collections import defaultdict
-from collections.abc import Iterable, Set
-from typing import override
+from collections.abc import Callable, Iterable, Set
+from typing import TYPE_CHECKING, override
 
 from mqns.entity.memory import MemoryQubit, PathDirection, QubitState
 from mqns.entity.node import QNode
@@ -10,8 +10,11 @@ from mqns.models.epr import BaseEntanglement, WernerStateEntanglement
 from mqns.network.proactive.fib import FibEntry
 from mqns.network.proactive.message import PathInstructions, validate_path_instructions
 from mqns.network.proactive.mux import MuxScheme
-from mqns.network.proactive.select import MemoryWernerIterator, call_select_swap_qubit
+from mqns.network.proactive.select import MemoryWernerIterator, MemoryWernerTuple
 from mqns.utils import log
+
+if TYPE_CHECKING:
+    from mqns.network.proactive.forwarder import ProactiveForwarder
 
 
 def has_intersect_tmp_path_ids(epr0: Set[int] | None, epr1: Iterable[int] | None) -> bool:
@@ -94,14 +97,26 @@ class MuxSchemeStatistical(MuxSchemeDynamicBase):
     Statistical multiplexing scheme.
     """
 
+    SelectSwapQubit = Callable[["ProactiveForwarder", MemoryWernerTuple, list[MemoryWernerTuple]], MemoryWernerTuple]
+
+    SelectSwapQubit_random: SelectSwapQubit = lambda _fw, _mt, candidates: random.choice(candidates)
+
+    SelectPath = Callable[["ProactiveForwarder", WernerStateEntanglement, WernerStateEntanglement, list[int]], int | FibEntry]
+
+    SelectPath_random: SelectPath = lambda _fw, _e0, _e1, candidates: random.choice(candidates)
+
     def __init__(
         self,
         name="statistical multiplexing",
         *,
+        select_swap_qubit: SelectSwapQubit | None = None,
+        select_path: SelectPath = SelectPath_random,
         coordinated_decisions=False,
     ):
         """
         Args:
+            select_swap_qubit: Function to select a qubit to swap with, default is first.
+            select_path: Function to select a FIB entry for signaling after swap, default is random.
             coordinated_decisions:
                 If True, during a parallel swap, the path_id chosen at one node for selecting swap candidates
                 is instantly visible at other nodes. This behavior is physically unrealistic. It is implemented
@@ -110,6 +125,8 @@ class MuxSchemeStatistical(MuxSchemeDynamicBase):
                 and then discards unusable entanglements due to conflictual swap decisions.
         """
         super().__init__(name)
+        self._select_swap_qubit = select_swap_qubit
+        self._select_path = select_path
         self.coordinated_decisions = coordinated_decisions
 
     @override
@@ -183,17 +200,27 @@ class MuxSchemeStatistical(MuxSchemeDynamicBase):
             if (q.qchannel is not None and q.qchannel.name in matched_channels)  # assigned to a matched channel
             and has_intersect_tmp_path_ids(epr.tmp_path_ids, v.tmp_path_ids)  # has overlapping tmp_path_ids
         )
-        found = call_select_swap_qubit(self.fw._select_swap_qubit, qubit, epr, fib_entry, candidates)
-        if not found:
+        mt1 = self._select_swap_candidate((qubit, epr), candidates)
+        if mt1 is None:
             return None
-        mq1, epr1 = found
+        mq1, epr1 = mt1
         assert type(epr1) is WernerStateEntanglement
 
-        chosen_path_id = random.choice(list(intersect_tmp_path_ids(epr, epr1)))
+        # select a FIB entry to guide swap updates
+        selected_path = self._select_path(self.fw, epr, epr1, list(intersect_tmp_path_ids(epr, epr1)))
+        fib_entry = selected_path if type(selected_path) is FibEntry else self.fib.get(selected_path)
         if self.coordinated_decisions:
-            epr.tmp_path_ids = epr1.tmp_path_ids = frozenset([chosen_path_id])
-        fib_entry = self.fib.get(chosen_path_id)
+            epr.tmp_path_ids = epr1.tmp_path_ids = frozenset([fib_entry.path_id])
         return mq1, fib_entry
+
+    def _select_swap_candidate(self, mt0: MemoryWernerTuple, candidates: MemoryWernerIterator) -> MemoryWernerTuple | None:
+        if self._select_swap_qubit is None:
+            return next(candidates, None)
+
+        l = list(candidates)
+        if len(l) == 0:
+            return None
+        return self._select_swap_qubit(self.fw, mt0, l)
 
     @override
     def swapping_succeeded(

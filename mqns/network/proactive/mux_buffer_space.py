@@ -1,5 +1,7 @@
+import random
 from abc import abstractmethod
-from typing import override
+from collections.abc import Callable
+from typing import TYPE_CHECKING, override
 
 from mqns.entity.memory import MemoryQubit, PathDirection, QubitState
 from mqns.entity.node import QNode
@@ -8,23 +10,39 @@ from mqns.models.epr import WernerStateEntanglement
 from mqns.network.proactive.fib import FibEntry
 from mqns.network.proactive.message import PathInstructions, validate_path_instructions
 from mqns.network.proactive.mux import MuxScheme
-from mqns.network.proactive.select import MemoryWernerIterator, call_select_swap_qubit
+from mqns.network.proactive.select import MemoryWernerIterator, MemoryWernerTuple
 from mqns.utils import log
+
+if TYPE_CHECKING:
+    from mqns.network.proactive.forwarder import ProactiveForwarder
 
 
 class MuxSchemeFibBase(MuxScheme):
+    SelectSwapQubit = Callable[["ProactiveForwarder", MemoryWernerTuple, FibEntry, list[MemoryWernerTuple]], MemoryWernerTuple]
+
+    SelectSwapQubit_random: SelectSwapQubit = lambda _fw, _mt, _fe, candidates: random.choice(candidates)
+
+    def __init__(self, name: str, select_swap_qubit: SelectSwapQubit | None):
+        super().__init__(name)
+        self._select_swap_qubit = select_swap_qubit
+
     @override
     def find_swap_candidate(
         self, qubit: MemoryQubit, epr: WernerStateEntanglement, fib_entry: FibEntry | None, input: MemoryWernerIterator
     ) -> tuple[MemoryQubit, FibEntry] | None:
         _ = epr
         assert fib_entry is not None
-        found = call_select_swap_qubit(
-            self.fw._select_swap_qubit, qubit, epr, fib_entry, self.list_swap_candidates(qubit, fib_entry, input)
-        )
-        if not found:
+
+        candidates = self.list_swap_candidates(qubit, fib_entry, input)
+        if self._select_swap_qubit is None:
+            mt1 = next(candidates, None)
+            return None if mt1 is None else (mt1[0], fib_entry)
+
+        candidates = list(candidates)
+        if len(candidates) == 0:
             return None
-        return found[0], fib_entry
+        mt1 = self._select_swap_qubit(self.fw, (qubit, epr), fib_entry, candidates)
+        return mt1[0], fib_entry
 
     @abstractmethod
     def list_swap_candidates(self, mq0: MemoryQubit, fib_entry: FibEntry, input: MemoryWernerIterator) -> MemoryWernerIterator:
@@ -36,8 +54,17 @@ class MuxSchemeBufferSpace(MuxSchemeFibBase):
     Buffer-Space multiplexing scheme.
     """
 
-    def __init__(self, name="buffer-space multiplexing"):
-        super().__init__(name)
+    def __init__(
+        self,
+        name="buffer-space multiplexing",
+        *,
+        select_swap_qubit: MuxSchemeFibBase.SelectSwapQubit | None = None,
+    ):
+        """
+        Args:
+            select_swap_qubit: Function to select a qubit to swap with, default is first.
+        """
+        super().__init__(name, select_swap_qubit)
 
     @override
     def validate_path_instructions(self, instructions: PathInstructions) -> None:

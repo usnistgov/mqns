@@ -14,7 +14,6 @@ from mqns.network.proactive import (
     QubitAllocationType,
     RoutingPath,
     RoutingPathStatic,
-    select_swap_qubit_random,
 )
 from mqns.network.proactive.message import MultiplexingVector
 from mqns.network.topology.customtopo import CustomTopology, TopoCChannel, Topology, TopoQChannel, TopoQNode
@@ -244,7 +243,6 @@ def build_topology(t_cohere: float, mux: MuxScheme, active_flows: list[tuple[str
             ProactiveForwarder(
                 ps=p_swap,
                 mux=mux,
-                select_swap_qubit=select_swap_qubit_random,
             ),
         ],
     )
@@ -282,8 +280,13 @@ def run_simulation(t_cohere: float, mux: MuxScheme, seed: int, active_flows: lis
 # ------------------------------
 # Strategies
 STRATEGIES: dict[str, MuxScheme] = {
-    "Statistical": MuxSchemeStatistical(coordinated_decisions=True),
-    "Buffer-Space": MuxSchemeBufferSpace(),
+    "Statistical": MuxSchemeStatistical(
+        select_swap_qubit=MuxSchemeStatistical.SelectSwapQubit_random,
+        coordinated_decisions=True,
+    ),
+    "Buffer-Space": MuxSchemeBufferSpace(
+        select_swap_qubit=MuxSchemeBufferSpace.SelectSwapQubit_random,
+    ),
 }
 
 # results[strategy][scenario_idx][flow_idx]
