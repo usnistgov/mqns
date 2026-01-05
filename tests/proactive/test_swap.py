@@ -32,7 +32,7 @@ from .proactive_common import (
 
 def test_3_disabled():
     """Test swap disabled mode."""
-    net, simulator = build_linear_network(3, ps=1.0, has_link_layer=False)
+    net, simulator = build_linear_network(3, ps=1.0)
     f1 = net.get_node("n1").get_app(ProactiveForwarder)
     f2 = net.get_node("n2").get_app(ProactiveForwarder)
     f3 = net.get_node("n3").get_app(ProactiveForwarder)
@@ -91,7 +91,7 @@ def test_3_disabled():
 def test_4_sync(t_ext: float, expected: tuple[int, int, int, int]):
     """Test TimingModeSync in 4-node topology."""
     timing = TimingModeSync(t_ext=t_ext, t_int=0.010000 - t_ext)
-    net, simulator = build_linear_network(4, ps=1.0, has_link_layer=False, timing=timing)
+    net, simulator = build_linear_network(4, ps=1.0, timing=timing)
     f1 = net.get_node("n1").get_app(ProactiveForwarder)
     f2 = net.get_node("n2").get_app(ProactiveForwarder)
     f3 = net.get_node("n3").get_app(ProactiveForwarder)
@@ -120,7 +120,7 @@ def test_4_sync(t_ext: float, expected: tuple[int, int, int, int]):
 )
 def test_4_asap(etg_ms: tuple[int, int, int], n_swapped_p: int):
     """Test SWAP-ASAP in 4-node topology with various entanglement arrival orders."""
-    net, simulator = build_linear_network(4, ps=1.0, has_link_layer=False)
+    net, simulator = build_linear_network(4, ps=1.0)
     f1 = net.get_node("n1").get_app(ProactiveForwarder)
     f2 = net.get_node("n2").get_app(ProactiveForwarder)
     f3 = net.get_node("n3").get_app(ProactiveForwarder)
@@ -167,7 +167,7 @@ def test_5_asap(
     n_consumed: int,
 ):
     """Test SWAP-ASAP in 5-node topology with various entanglement arrival orders."""
-    net, simulator = build_linear_network(5, ps=1.0, has_link_layer=False)
+    net, simulator = build_linear_network(5, ps=1.0)
     f1 = net.get_node("n1").get_app(ProactiveForwarder)
     f2 = net.get_node("n2").get_app(ProactiveForwarder)
     f3 = net.get_node("n3").get_app(ProactiveForwarder)
@@ -203,7 +203,7 @@ def test_5_asap(
 )
 def test_5_sequential(swap: list[int], etg_ms: tuple[int, int, int, int]):
     """Test sequential swap orders with various entanglement arrival orders."""
-    net, simulator = build_linear_network(5, ps=1.0, has_link_layer=False)
+    net, simulator = build_linear_network(5, ps=1.0)
     f1 = net.get_node("n1").get_app(ProactiveForwarder)
     f2 = net.get_node("n2").get_app(ProactiveForwarder)
     f3 = net.get_node("n3").get_app(ProactiveForwarder)
@@ -237,7 +237,7 @@ def test_5_sequential(swap: list[int], etg_ms: tuple[int, int, int, int]):
 )
 def test_rect_multipath(has_etg: tuple[int, int, int, int], n_swapped: tuple[int, int], n_consumed: int):
     """Test swapping in rectangular topology with a multi-path request."""
-    net, simulator = build_rect_network(ps=1.0, has_link_layer=False)
+    net, simulator = build_rect_network(ps=1.0)
     f1 = net.get_node("n1").get_app(ProactiveForwarder)
     f2 = net.get_node("n2").get_app(ProactiveForwarder)
     f3 = net.get_node("n3").get_app(ProactiveForwarder)
@@ -296,7 +296,7 @@ def test_tree2_dynepr(t_edge_etg: float, selected_path: tuple[int, int], n_consu
             chosen = (rp0.path_id, rp1.path_id)[selected_path[1]]
         return chosen
 
-    net, simulator = build_tree_network(ps=1.0, has_link_layer=False, mux=MuxSchemeDynamicEpr(select_path=select_path))
+    net, simulator = build_tree_network(ps=1.0, mux=MuxSchemeDynamicEpr(select_path=select_path))
     f1, f2, f3, f4, f5, f6, f7 = (node.get_app(ProactiveForwarder) for node in net.nodes)
 
     # n4-n2-n1-n3-n6
@@ -394,7 +394,7 @@ def test_tree2_statistical(
         return chosen
 
     net, simulator = build_tree_network(
-        ps=1.0, has_link_layer=False, mux=MuxSchemeStatistical(select_swap_qubit=select_qubit, select_path=select_path)
+        ps=1.0, mux=MuxSchemeStatistical(select_swap_qubit=select_qubit, select_path=select_path)
     )
     f1, f2, f3, f4, f5, f6, f7 = (node.get_app(ProactiveForwarder) for node in net.nodes)
 
@@ -437,7 +437,7 @@ def test_tree2_statistical(
 )
 def test_3_waittime(etg_sec: tuple[float, float], n_cutoff: tuple[int, int]):
     """Test CutoffSchemeWaitTime in 3-node topology."""
-    net, simulator = build_linear_network(3, ps=1.0, has_link_layer=False, end_time=1.010)
+    net, simulator = build_linear_network(3, ps=1.0, end_time=1.010)
     f1 = net.get_node("n1").get_app(ProactiveForwarder)
     f2 = net.get_node("n2").get_app(ProactiveForwarder)
     f3 = net.get_node("n3").get_app(ProactiveForwarder)

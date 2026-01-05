@@ -52,7 +52,7 @@ def force_purify_outcome(monkeypatch: pytest.MonkeyPatch, *success: bool):
 def test_link_rounds(monkeypatch: pytest.MonkeyPatch, n_rounds: int, purif_success: list[int], n_purif: list[int]):
     """Test multi-round purification on a single link with various purification outcomes."""
     n_etg = 2**n_rounds
-    net, simulator = build_linear_network(2, ps=1.0, qchannel_capacity=n_etg, has_link_layer=False)
+    net, simulator = build_linear_network(2, ps=0.0, qchannel_capacity=n_etg)
     f1 = net.get_node("n1").get_app(ProactiveForwarder)
     f2 = net.get_node("n2").get_app(ProactiveForwarder)
 
@@ -71,7 +71,7 @@ def test_link_rounds(monkeypatch: pytest.MonkeyPatch, n_rounds: int, purif_succe
 
 def test_4_l2r(monkeypatch: pytest.MonkeyPatch):
     """Test multi-segment purification on 4-node topology with l2r swapping order."""
-    net, simulator = build_linear_network(4, ps=1.0, qchannel_capacity=8, has_link_layer=False)
+    net, simulator = build_linear_network(4, ps=1.0, qchannel_capacity=8)
     f1 = net.get_node("n1").get_app(ProactiveForwarder)
     f2 = net.get_node("n2").get_app(ProactiveForwarder)
     f3 = net.get_node("n3").get_app(ProactiveForwarder)

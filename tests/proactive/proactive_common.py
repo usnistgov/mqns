@@ -39,15 +39,15 @@ class BuildNetworkArgs(TypedDict, total=False):
     mux: MuxScheme  # multiplexing scheme, defaults to buffer-space
     end_time: float  # simulation end time, defaults to 10.0 seconds
     timing: TimingMode  # network timing mode, defaults to ASYNC
-    has_link_layer: bool  # whether to include full LinkLayer application, defaults to True
-    init_fidelity: float  # initial fidelity, defaults to 0.90
+    has_link_layer: bool  # whether to include full LinkLayer application, defaults to False
+    init_fidelity: float  # initial fidelity, defaults to 0.99
 
 
 def _make_topo_args(d: BuildNetworkArgs, *, memory_capacity_factor: int) -> TopologyInitKwargs:
     qchannel_capacity = d.get("qchannel_capacity", 1)
     nodes_apps: list[Application] = []
-    if d.get("has_link_layer", True):
-        nodes_apps.append(LinkLayer(init_fidelity=d.get("init_fidelity", 0.90)))
+    if d.get("has_link_layer", False):
+        nodes_apps.append(LinkLayer(init_fidelity=d.get("init_fidelity", 0.99)))
     nodes_apps.append(ProactiveForwarder(ps=d.get("ps", 0.5), mux=d.get("mux", MuxSchemeBufferSpace())))
 
     return TopologyInitKwargs(
