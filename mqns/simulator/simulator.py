@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING, overload
 
 from mqns.simulator.event import Event
 from mqns.simulator.pool import DefaultEventPool
-from mqns.simulator.ts import Time, default_accuracy, set_default_accuracy
+from mqns.simulator.time import Time, default_accuracy, set_default_accuracy
 from mqns.utils import log
 
 try:

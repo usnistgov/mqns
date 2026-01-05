@@ -17,6 +17,12 @@
 
 from mqns.simulator.event import Event, func_to_event
 from mqns.simulator.simulator import Simulator
-from mqns.simulator.ts import Time, set_default_accuracy
+from mqns.simulator.time import Time, set_default_accuracy
 
-__all__ = ["Time", "set_default_accuracy", "Event", "func_to_event", "Simulator"]
+__all__ = [
+    "Event",
+    "func_to_event",
+    "set_default_accuracy",
+    "Simulator",
+    "Time",
+]

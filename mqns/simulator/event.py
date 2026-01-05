@@ -19,7 +19,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 from typing import Any, override
 
-from mqns.simulator.ts import Time
+from mqns.simulator.time import Time
 
 
 class Event(ABC):

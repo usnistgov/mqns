@@ -17,6 +17,7 @@
 
 from mqns.utils.logger import log
 from mqns.utils.rnd import get_choice, get_rand, get_randint, set_seed
+from mqns.utils.timeout import WallClockTimeout
 
 __all__ = [
     "get_choice",
@@ -24,4 +25,5 @@ __all__ = [
     "get_randint",
     "log",
     "set_seed",
+    "WallClockTimeout",
 ]
