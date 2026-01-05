@@ -26,7 +26,7 @@ from mqns.utils import log
 
 dflt_qchannel_args = QuantumChannelInitKwargs(
     length=100,  # delay is 0.0005 seconds
-    link_arch=LinkArchAlways(LinkArchDimBk()),  # entanglement in 0.002 seconds
+    link_arch=LinkArchAlways(LinkArchDimBk()),  # etg creation in 0.001 seconds and arrival in 0.002 seconds
 )
 
 dflt_cchannel_args = ClassicChannelInitKwargs(
@@ -163,22 +163,25 @@ def print_fw_counters(net: QuantumNetwork):
 
 
 def install_path(
-    ctrl: ProactiveRoutingController,
+    net: QuantumNetwork,
     rp: RoutingPath,
     *,
     t_install: float | None = 0.0,
     t_uninstall: float | None = None,
-):
+) -> RoutingPath:
     """
     Install and/or uninstall a routing path at specific times.
     """
-    simulator = ctrl.own.simulator
+    simulator = net.simulator
+    ctrl = net.get_controller().get_app(ProactiveRoutingController)
 
     if t_install is not None:
         simulator.add_event(func_to_event(simulator.time(sec=t_install), ctrl.install_path, rp))
 
     if t_uninstall is not None:
         simulator.add_event(func_to_event(simulator.time(sec=t_uninstall), ctrl.uninstall_path, rp))
+
+    return rp
 
 
 def provide_entanglements(

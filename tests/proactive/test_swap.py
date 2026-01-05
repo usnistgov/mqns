@@ -11,11 +11,9 @@ from mqns.network.network import TimingModeSync
 from mqns.network.proactive import (
     Fib,
     MemoryWernerTuple,
-    MuxScheme,
     MuxSchemeDynamicEpr,
     MuxSchemeStatistical,
     ProactiveForwarder,
-    ProactiveRoutingController,
     QubitAllocationType,
     RoutingPathMulti,
     RoutingPathSingle,
@@ -35,13 +33,11 @@ from .proactive_common import (
 def test_3_disabled():
     """Test swap disabled mode."""
     net, simulator = build_linear_network(3, ps=1.0, has_link_layer=False)
-    ctrl = net.get_controller().get_app(ProactiveRoutingController)
     f1 = net.get_node("n1").get_app(ProactiveForwarder)
     f2 = net.get_node("n2").get_app(ProactiveForwarder)
     f3 = net.get_node("n3").get_app(ProactiveForwarder)
 
-    rp = RoutingPathSingle("n1", "n3", swap=[0, 0, 0])
-    install_path(ctrl, rp)
+    rp = install_path(net, RoutingPathSingle("n1", "n3", swap=[0, 0, 0]))
 
     def check_fib_entries():
         for fw in (f1, f2, f3):
@@ -96,13 +92,12 @@ def test_4_sync(t_ext: float, expected: tuple[int, int, int, int]):
     """Test TimingModeSync in 4-node topology."""
     timing = TimingModeSync(t_ext=t_ext, t_int=0.010000 - t_ext)
     net, simulator = build_linear_network(4, ps=1.0, has_link_layer=False, timing=timing)
-    ctrl = net.get_controller().get_app(ProactiveRoutingController)
     f1 = net.get_node("n1").get_app(ProactiveForwarder)
     f2 = net.get_node("n2").get_app(ProactiveForwarder)
     f3 = net.get_node("n3").get_app(ProactiveForwarder)
     f4 = net.get_node("n4").get_app(ProactiveForwarder)
 
-    install_path(ctrl, RoutingPathSingle("n1", "n4", swap=[2, 0, 1, 2]))
+    install_path(net, RoutingPathSingle("n1", "n4", swap=[2, 0, 1, 2]))
     provide_entanglements(
         (1.001, f1, f2),
         (1.001, f2, f3),
@@ -126,13 +121,12 @@ def test_4_sync(t_ext: float, expected: tuple[int, int, int, int]):
 def test_4_asap(arrival_ms: tuple[int, int, int], n_swapped_p: int):
     """Test SWAP-ASAP in 4-node topology with various entanglement arrival orders."""
     net, simulator = build_linear_network(4, ps=1.0, has_link_layer=False)
-    ctrl = net.get_controller().get_app(ProactiveRoutingController)
     f1 = net.get_node("n1").get_app(ProactiveForwarder)
     f2 = net.get_node("n2").get_app(ProactiveForwarder)
     f3 = net.get_node("n3").get_app(ProactiveForwarder)
     f4 = net.get_node("n4").get_app(ProactiveForwarder)
 
-    install_path(ctrl, RoutingPathSingle("n1", "n4", swap=[1, 0, 0, 1]))
+    install_path(net, RoutingPathSingle("n1", "n4", swap=[1, 0, 0, 1]))
     provide_entanglements(
         (1 + arrival_ms[0] / 1000, f1, f2),
         (1 + arrival_ms[1] / 1000, f2, f3),
@@ -174,7 +168,6 @@ def test_5_asap(
 ):
     """Test SWAP-ASAP in 5-node topology with various entanglement arrival orders."""
     net, simulator = build_linear_network(5, ps=1.0, has_link_layer=False)
-    ctrl = net.get_controller().get_app(ProactiveRoutingController)
     f1 = net.get_node("n1").get_app(ProactiveForwarder)
     f2 = net.get_node("n2").get_app(ProactiveForwarder)
     f3 = net.get_node("n3").get_app(ProactiveForwarder)
@@ -182,7 +175,7 @@ def test_5_asap(
     f5 = net.get_node("n5").get_app(ProactiveForwarder)
     f3.ps = ps3
 
-    install_path(ctrl, RoutingPathSingle("n1", "n5", swap=[1, 0, 0, 0, 1]))
+    install_path(net, RoutingPathSingle("n1", "n5", swap=[1, 0, 0, 0, 1]))
     provide_entanglements(
         (1 + arrival_ms[0] / 1000, f1, f2),
         (1 + arrival_ms[1] / 1000, f2, f3),
@@ -211,14 +204,13 @@ def test_5_asap(
 def test_5_sequential(swap: list[int], arrival_ms: tuple[int, int, int, int]):
     """Test sequential swap orders with various entanglement arrival orders."""
     net, simulator = build_linear_network(5, ps=1.0, has_link_layer=False)
-    ctrl = net.get_controller().get_app(ProactiveRoutingController)
     f1 = net.get_node("n1").get_app(ProactiveForwarder)
     f2 = net.get_node("n2").get_app(ProactiveForwarder)
     f3 = net.get_node("n3").get_app(ProactiveForwarder)
     f4 = net.get_node("n4").get_app(ProactiveForwarder)
     f5 = net.get_node("n5").get_app(ProactiveForwarder)
 
-    install_path(ctrl, RoutingPathSingle("n1", "n5", swap=swap))
+    install_path(net, RoutingPathSingle("n1", "n5", swap=swap))
     provide_entanglements(
         (1 + arrival_ms[0] / 1000, f1, f2),
         (1 + arrival_ms[1] / 1000, f2, f3),
@@ -246,14 +238,12 @@ def test_5_sequential(swap: list[int], arrival_ms: tuple[int, int, int, int]):
 def test_rect_multipath(has_etg: tuple[int, int, int, int], n_swapped: tuple[int, int], n_consumed: int):
     """Test swapping in rectangular topology with a multi-path request."""
     net, simulator = build_rect_network(ps=1.0, has_link_layer=False)
-    ctrl = net.get_controller().get_app(ProactiveRoutingController)
     f1 = net.get_node("n1").get_app(ProactiveForwarder)
     f2 = net.get_node("n2").get_app(ProactiveForwarder)
     f3 = net.get_node("n3").get_app(ProactiveForwarder)
     f4 = net.get_node("n4").get_app(ProactiveForwarder)
 
-    rp = RoutingPathMulti("n1", "n4", swap=[1, 0, 1])
-    install_path(ctrl, rp)
+    rp = install_path(net, RoutingPathMulti("n1", "n4", swap=[1, 0, 1]))
 
     def check_fib_entries():
         routes = {"-".join(f1.fib.get(path_id).route) for path_id in (rp.path_id, rp.path_id + 1)}
@@ -271,25 +261,6 @@ def test_rect_multipath(has_etg: tuple[int, int, int, int], n_swapped: tuple[int
 
     assert f1.cnt.n_consumed == n_consumed == f4.cnt.n_consumed
     assert (f2.cnt.n_swapped, f3.cnt.n_swapped) == n_swapped
-
-
-def prepare_tree_network(
-    *,
-    height=2,
-    paths: list[tuple[str, str]] = [  # suitable for height=2
-        ("n4", "n6"),  # n4-n2-n1-n3-n6
-        ("n5", "n7"),  # n5-n2-n1-n3-n7
-    ],
-    mux: MuxScheme,
-):
-    net, simulator = build_tree_network(height=height, ps=1.0, has_link_layer=False, mux=mux)
-    ctrl = net.get_controller().get_app(ProactiveRoutingController)
-
-    rps = [RoutingPathSingle(src, dst, qubit_allocation=QubitAllocationType.DISABLED, swap="asap") for src, dst in paths]
-    for rp in rps:
-        install_path(ctrl, rp)
-
-    return net, simulator, (node.get_app(ProactiveForwarder) for node in net.nodes), rps
 
 
 @pytest.mark.parametrize(
@@ -325,9 +296,13 @@ def test_tree2_dynepr(t_edge_etg: float, selected_path: tuple[int, int], n_consu
             chosen = (rp0.path_id, rp1.path_id)[selected_path[1]]
         return chosen
 
-    net, simulator, [f1, f2, f3, f4, f5, f6, f7], [rp0, rp1] = prepare_tree_network(
-        mux=MuxSchemeDynamicEpr(select_path=select_path)
-    )
+    net, simulator = build_tree_network(ps=1.0, has_link_layer=False, mux=MuxSchemeDynamicEpr(select_path=select_path))
+    f1, f2, f3, f4, f5, f6, f7 = (node.get_app(ProactiveForwarder) for node in net.nodes)
+
+    # n4-n2-n1-n3-n6
+    rp0 = install_path(net, RoutingPathSingle("n4", "n6", qubit_allocation=QubitAllocationType.DISABLED, swap="asap"))
+    # n5-n2-n1-n3-n7
+    rp1 = install_path(net, RoutingPathSingle("n5", "n7", qubit_allocation=QubitAllocationType.DISABLED, swap="asap"))
 
     provide_entanglements(
         (t_edge_etg, f4, f2),
@@ -418,9 +393,15 @@ def test_tree2_statistical(
             raise RuntimeError()
         return chosen
 
-    net, simulator, [f1, f2, f3, f4, f5, f6, f7], [rp0, rp1] = prepare_tree_network(
-        mux=MuxSchemeStatistical(select_swap_qubit=select_qubit, select_path=select_path)
+    net, simulator = build_tree_network(
+        ps=1.0, has_link_layer=False, mux=MuxSchemeStatistical(select_swap_qubit=select_qubit, select_path=select_path)
     )
+    f1, f2, f3, f4, f5, f6, f7 = (node.get_app(ProactiveForwarder) for node in net.nodes)
+
+    # n4-n2-n1-n3-n6
+    rp0 = install_path(net, RoutingPathSingle("n4", "n6", qubit_allocation=QubitAllocationType.DISABLED, swap="asap"))
+    # n5-n2-n1-n3-n7
+    rp1 = install_path(net, RoutingPathSingle("n5", "n7", qubit_allocation=QubitAllocationType.DISABLED, swap="asap"))
 
     provide_entanglements(
         (t_edge_etg[0], f4, f2),
@@ -436,3 +417,42 @@ def test_tree2_statistical(
     assert f4.cnt.n_consumed == n_consumed[0] == f6.cnt.n_consumed
     assert f5.cnt.n_consumed == n_consumed[1] == f7.cnt.n_consumed
     assert f2.cnt.n_swap_conflict + f1.cnt.n_swap_conflict + f3.cnt.n_swap_conflict == (2 if sum(n_consumed) == 0 else 0)
+
+
+@pytest.mark.parametrize(
+    ("arrival_sec", "n_cutoff"),
+    [
+        # n1-n2 arrives at t=1.005, n2-n3 arrives at t=1.006, swapped.
+        ((1.004, 1.005), (0, 0)),
+        ((1.005, 1.004), (0, 0)),
+        # n1-n2 arrives at t=1.006 and is discarded at t=1.008.
+        # n2-n3 arrives at t=1.009.
+        ((1.005, 1.008), (1, 0)),
+        ((1.008, 1.005), (0, 1)),
+        # n1-n2 arrives at t=1.003 and is discarded at t=1.005.
+        # n2-n3 arrives at t=1.006 and is discarded at t=1.008.
+        ((1.002, 1.005), (1, 1)),
+        ((1.005, 1.002), (1, 1)),
+    ],
+)
+def test_3_waittime(arrival_sec: tuple[float, float], n_cutoff: tuple[int, int]):
+    """Test CutoffSchemeWaitTime in 3-node topology."""
+    net, simulator = build_linear_network(3, ps=1.0, has_link_layer=False, end_time=1.010)
+    f1 = net.get_node("n1").get_app(ProactiveForwarder)
+    f2 = net.get_node("n2").get_app(ProactiveForwarder)
+    f3 = net.get_node("n3").get_app(ProactiveForwarder)
+
+    install_path(net, RoutingPathSingle("n1", "n3", swap=[1, 0, 1], swap_cutoff=[0, 0.002, 0]))
+    provide_entanglements(
+        (arrival_sec[0], f1, f2),
+        (arrival_sec[1], f2, f3),
+    )
+    simulator.run()
+    print_fw_counters(net)
+
+    assert f1.cnt.n_cutoff == [0, n_cutoff[0]]
+    assert f2.cnt.n_cutoff == [sum(n_cutoff), 0]
+    assert f3.cnt.n_cutoff == [0, n_cutoff[1]]
+    n_swapped = 1 - max(n_cutoff)
+    assert f2.cnt.n_swapped == n_swapped
+    assert f1.cnt.n_consumed == n_swapped == f3.cnt.n_consumed

@@ -4,28 +4,19 @@ Test suite for purification in proactive forwarding, integrated with LinkLayer.
 
 import pytest
 
-from mqns.network.proactive import (
-    ProactiveForwarder,
-    ProactiveRoutingController,
-    RoutingPathStatic,
-)
+from mqns.network.proactive import ProactiveForwarder, RoutingPathStatic
 
-from .proactive_common import (
-    build_linear_network,
-    check_e2e_consumed,
-    install_path,
-)
+from .proactive_common import build_linear_network, check_e2e_consumed, install_path
 
 
 def test_purif_link1r():
     """Test 1-round purification on each link."""
     net, simulator = build_linear_network(3, qchannel_capacity=2)
-    ctrl = net.get_controller().get_app(ProactiveRoutingController)
     f1 = net.get_node("n1").get_app(ProactiveForwarder)
     f2 = net.get_node("n2").get_app(ProactiveForwarder)
     f3 = net.get_node("n3").get_app(ProactiveForwarder)
 
-    install_path(ctrl, RoutingPathStatic(["n1", "n2", "n3"], swap=[1, 0, 1], purif={"n1-n2": 1, "n2-n3": 1}))
+    install_path(net, RoutingPathStatic(["n1", "n2", "n3"], swap=[1, 0, 1], purif={"n1-n2": 1, "n2-n3": 1}))
     simulator.run()
 
     for fw in (f1, f2, f3):
@@ -48,12 +39,11 @@ def test_purif_link1r():
 def test_purif_link2r():
     """Test 2-round purification on each link."""
     net, simulator = build_linear_network(3, qchannel_capacity=4)
-    ctrl = net.get_controller().get_app(ProactiveRoutingController)
     f1 = net.get_node("n1").get_app(ProactiveForwarder)
     f2 = net.get_node("n2").get_app(ProactiveForwarder)
     f3 = net.get_node("n3").get_app(ProactiveForwarder)
 
-    install_path(ctrl, RoutingPathStatic(["n1", "n2", "n3"], swap=[1, 0, 1], purif={"n1-n2": 2, "n2-n3": 2}))
+    install_path(net, RoutingPathStatic(["n1", "n2", "n3"], swap=[1, 0, 1], purif={"n1-n2": 2, "n2-n3": 2}))
     simulator.run()
 
     for fw in (f1, f2, f3):
@@ -80,12 +70,11 @@ def test_purif_link2r():
 def test_purif_ee2r():
     """Test 2-round purification between two end nodes."""
     net, simulator = build_linear_network(3, qchannel_capacity=4)
-    ctrl = net.get_controller().get_app(ProactiveRoutingController)
     f1 = net.get_node("n1").get_app(ProactiveForwarder)
     f2 = net.get_node("n2").get_app(ProactiveForwarder)
     f3 = net.get_node("n3").get_app(ProactiveForwarder)
 
-    install_path(ctrl, RoutingPathStatic(["n1", "n2", "n3"], swap=[1, 0, 1], purif={"n1-n3": 2}))
+    install_path(net, RoutingPathStatic(["n1", "n2", "n3"], swap=[1, 0, 1], purif={"n1-n3": 2}))
     simulator.run()
 
     for fw in (f1, f2, f3):
