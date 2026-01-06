@@ -67,8 +67,8 @@ class QuantumNetwork:
 
     def __init__(
         self,
-        *,
         topo: Topology | None = None,
+        *,
         classic_topo: ClassicTopology | None = None,
         route: RouteImpl | None = None,
         timing: TimingMode = TimingModeAsync(),

@@ -46,7 +46,7 @@ def run_simulation(seed: int, t_cohere: float, t_wait: float):
         swap=[1, 0, 1],
         swap_cutoff=[0, t_wait, 0],
     )
-    net = QuantumNetwork(topo=topo)
+    net = QuantumNetwork(topo)
     net.install(s)
 
     fwS = net.get_node("S").get_app(ProactiveForwarder)

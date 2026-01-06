@@ -58,7 +58,7 @@ def run_simulation(t_cohere: float, seed: int):
         channel_length=[32, 18],
         swap="swap_1",
     )
-    net = QuantumNetwork(topo=topo)
+    net = QuantumNetwork(topo)
     net.install(s)
 
     s.run()

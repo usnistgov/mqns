@@ -14,7 +14,6 @@ from mqns.network.proactive import (
     QubitAllocationType,
     RoutingPath,
     RoutingPathStatic,
-    select_swap_qubit_random,
 )
 from mqns.network.proactive.message import MultiplexingVector
 from mqns.network.topology.customtopo import CustomTopology, TopoCChannel, Topology, TopoQChannel, TopoQNode
@@ -193,7 +192,7 @@ def mv_for_flow(flow: tuple[str, str], active_flows: set[tuple[str, str]]):
     return mv
 
 
-def build_topology(t_coherence: float, mux: MuxScheme, active_flows: list[tuple[str, str]]) -> Topology:
+def build_topology(t_cohere: float, mux: MuxScheme, active_flows: list[tuple[str, str]]) -> Topology:
     # Install paths differ for buffer-space vs statistical
     install_paths: list[RoutingPath] = []
     if isinstance(mux, MuxSchemeBufferSpace):
@@ -244,19 +243,18 @@ def build_topology(t_coherence: float, mux: MuxScheme, active_flows: list[tuple[
             ProactiveForwarder(
                 ps=p_swap,
                 mux=mux,
-                select_swap_qubit=select_swap_qubit_random,
             ),
         ],
     )
 
 
-def run_simulation(t_coherence: float, mux: MuxScheme, seed: int, active_flows: list[tuple[str, str]]):
+def run_simulation(t_cohere: float, mux: MuxScheme, seed: int, active_flows: list[tuple[str, str]]):
     set_seed(seed)
     s = Simulator(0, sim_duration + 5e-06, accuracy=1000000)
     log.install(s)
 
-    topo = build_topology(t_coherence, mux, active_flows)
-    net = QuantumNetwork(topo=topo)
+    topo = build_topology(t_cohere, mux, active_flows)
+    net = QuantumNetwork(topo)
     net.install(s)
     s.run()
 
@@ -282,8 +280,13 @@ def run_simulation(t_coherence: float, mux: MuxScheme, seed: int, active_flows: 
 # ------------------------------
 # Strategies
 STRATEGIES: dict[str, MuxScheme] = {
-    "Statistical": MuxSchemeStatistical(coordinated_decisions=True),
-    "Buffer-Space": MuxSchemeBufferSpace(),
+    "Statistical": MuxSchemeStatistical(
+        select_swap_qubit=MuxSchemeStatistical.SelectSwapQubit_random,
+        coordinated_decisions=True,
+    ),
+    "Buffer-Space": MuxSchemeBufferSpace(
+        select_swap_qubit=MuxSchemeBufferSpace.SelectSwapQubit_random,
+    ),
 }
 
 # results[strategy][scenario_idx][flow_idx]

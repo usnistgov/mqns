@@ -85,7 +85,7 @@ def build_network() -> QuantumNetwork:
     topo.controller = Controller("ctrl", apps=[ProactiveRoutingController()])
 
     # Default: Dijkstra with hop count metric
-    net = QuantumNetwork(topo=topo, classic_topo=ClassicTopology.Follow)
+    net = QuantumNetwork(topo, classic_topo=ClassicTopology.Follow)
     topo.connect_controller(net.nodes)
 
     for qchannel in net.qchannels:

@@ -17,10 +17,12 @@
 
 from collections.abc import Callable, Iterator, Set
 from dataclasses import dataclass
+from typing import final
 
 from mqns.simulator import Time
 
 
+@final
 @dataclass(frozen=True)
 class FibEntry:
     path_id: int

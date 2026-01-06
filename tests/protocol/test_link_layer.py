@@ -33,7 +33,7 @@ class NetworkLayer(Application):
         self.memory = self.own.memory
 
     def handle_entangle(self, event: QubitEntangledEvent):
-        qubit, epr = self.memory.read(event.qubit.addr, must=WernerStateEntanglement, set_fidelity=True)
+        qubit, epr = self.memory.read(event.qubit.addr, has=WernerStateEntanglement, set_fidelity=True)
         assert qubit == event.qubit
         self.entangle.append((event.t.sec, epr.creation_time.sec))
 
@@ -69,7 +69,7 @@ def test_basic():
         cchannel_args={"delay": 0.1},
         memory_args={"t_cohere": 4.1},
     )
-    net = QuantumNetwork(topo=topo, classic_topo=ClassicTopology.Follow)
+    net = QuantumNetwork(topo, classic_topo=ClassicTopology.Follow)
     net.build_route()
     net.get_qchannel("n1", "n2").assign_memory_qubits(capacity=1)
 
@@ -126,7 +126,7 @@ def test_skip_ahead():
         cchannel_args={"length": 100},
         memory_args={"t_cohere": 1.0},
     )
-    net = QuantumNetwork(topo=topo, classic_topo=ClassicTopology.Follow)
+    net = QuantumNetwork(topo, classic_topo=ClassicTopology.Follow)
     net.build_route()
     net.get_qchannel("n1", "n2").assign_memory_qubits(capacity=1)
 
@@ -165,7 +165,7 @@ def test_timing_mode_sync():
         nodes_apps=[NetworkLayer(), LinkLayer()],
         memory_args={"t_cohere": 10.0},
     )
-    net = QuantumNetwork(topo=topo, classic_topo=ClassicTopology.Follow, timing=TimingModeSync(t_ext=0.6, t_int=0.4))
+    net = QuantumNetwork(topo, classic_topo=ClassicTopology.Follow, timing=TimingModeSync(t_ext=0.6, t_int=0.4))
     net.build_route()
 
     simulator = Simulator(0.0, 10.0)

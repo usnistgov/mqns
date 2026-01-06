@@ -5,7 +5,7 @@ from mqns.simulator import Simulator, Time
 
 
 def test_timer():
-    s = Simulator(0, 10, 1000)
+    s = Simulator(0, 10, accuracy=1000)
 
     trigger_times: list[Time] = []
 

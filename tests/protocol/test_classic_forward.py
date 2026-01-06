@@ -59,7 +59,7 @@ def test_classic_forward():
 
     topo = LinearTopology(nodes_number=10, qchannel_args={"delay": 0.1}, cchannel_args={"delay": 0.1})
 
-    net = QuantumNetwork(topo=topo, classic_topo=ClassicTopology.Follow)
+    net = QuantumNetwork(topo, classic_topo=ClassicTopology.Follow)
 
     # build quantum routing table
     net.build_route()

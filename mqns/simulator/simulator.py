@@ -48,6 +48,7 @@ class Simulator:
         self,
         start_second: float = default_start_second,
         end_second: float = default_end_second,
+        *,
         accuracy: int = default_accuracy,
     ):
         """

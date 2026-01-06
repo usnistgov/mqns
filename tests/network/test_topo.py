@@ -37,7 +37,7 @@ def test_empty_net():
 
 
 def test_basic_topo():
-    net = QuantumNetwork(topo=BasicTopology(6))
+    net = QuantumNetwork(BasicTopology(6))
 
     assert len(net.nodes) == 6
     for i, node in enumerate(net.nodes):
@@ -50,7 +50,7 @@ def test_linear_topo():
     """
     1---2---3---4
     """
-    net = QuantumNetwork(topo=LinearTopology(4))
+    net = QuantumNetwork(LinearTopology(4))
 
     assert len(net.nodes) == 4
     for i, node in enumerate(net.nodes):
@@ -69,7 +69,7 @@ def test_grid_topo_square():
     |   |   |
     7---8---9
     """
-    net = QuantumNetwork(topo=GridTopology(9))
+    net = QuantumNetwork(GridTopology(9))
 
     assert len(net.nodes) == 9
     assert len(net.qchannels) == 12
@@ -99,7 +99,7 @@ def test_grid_topo_rectangle():
     |   |   |   |
     5---6---7---8
     """
-    net = QuantumNetwork(topo=GridTopology((2, 4)))
+    net = QuantumNetwork(GridTopology((2, 4)))
 
     assert len(net.nodes) == 8
     assert len(net.qchannels) == 10
@@ -122,7 +122,7 @@ def test_grid_topo_rectangle():
 
 
 def test_random_topo():
-    net = QuantumNetwork(topo=RandomTopology(100, 400))
+    net = QuantumNetwork(RandomTopology(100, 400))
 
     assert len(net.nodes) == 100
     assert len(net.qchannels) == 400
@@ -141,7 +141,7 @@ def test_tree_topo():
        +--3--+
              +--7
     """
-    net = QuantumNetwork(topo=TreeTopology(7, 2))
+    net = QuantumNetwork(TreeTopology(7, 2))
 
     assert len(net.nodes) == 7
     assert len(net.qchannels) == 6
@@ -160,25 +160,25 @@ def test_tree_topo():
 
 
 def test_waxman_topo():
-    net = QuantumNetwork(topo=WaxmanTopology(10, size=1000, alpha=0.5, beta=0.5))
+    net = QuantumNetwork(WaxmanTopology(10, size=1000, alpha=0.5, beta=0.5))
     assert len(net.nodes) == 10
 
 
 def test_classical_empty():
-    net = QuantumNetwork(topo=GridTopology(9), classic_topo=ClassicTopology.Empty)
+    net = QuantumNetwork(GridTopology(9), classic_topo=ClassicTopology.Empty)
     assert len(net.cchannels) == 0
 
 
 def test_classical_all():
     n = 9
-    net = QuantumNetwork(topo=GridTopology(n), classic_topo=ClassicTopology.All)
+    net = QuantumNetwork(GridTopology(n), classic_topo=ClassicTopology.All)
 
     cchannels = collect_channels(net, net.cchannels)
     assert len(cchannels) == n * (n - 1) // 2
 
 
 def test_classical_follow():
-    net = QuantumNetwork(topo=GridTopology(9), classic_topo=ClassicTopology.Follow)
+    net = QuantumNetwork(GridTopology(9), classic_topo=ClassicTopology.Follow)
 
     qchannels = collect_channels(net, net.qchannels)
     cchannels = collect_channels(net, net.cchannels)
@@ -193,7 +193,7 @@ def test_custom_topo_empty():
             "cchannels": [],
         }
     )
-    net = QuantumNetwork(topo=topo)
+    net = QuantumNetwork(topo)
     net.install(Simulator())
 
     assert len(net.nodes) == 0
@@ -224,7 +224,7 @@ def test_custom_topo_basic():
             },
         }
     )
-    net = QuantumNetwork(topo=topo)
+    net = QuantumNetwork(topo)
     net.install(Simulator())
 
     assert len(net.nodes) == 3
@@ -268,4 +268,4 @@ def test_custom_topo_low_memory():
         }
     )
     with pytest.raises(OverflowError, match="insufficient qubits"):
-        _ = QuantumNetwork(topo=topo)
+        _ = QuantumNetwork(topo)

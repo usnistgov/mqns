@@ -150,7 +150,7 @@ log.install(s)
 
 topo = build_topology()
 net = QuantumNetwork(
-    topo=topo,
+    topo,
     route=YenRouteAlgorithm(),  # Yen's algo is set here!
 )
 net.install(s)

@@ -55,7 +55,7 @@ def run_simulation(
         link_arch=link_architectures,
         swap="swap_1",
     )
-    net = QuantumNetwork(topo=topo)
+    net = QuantumNetwork(topo)
     net.install(s)
 
     s.run()
