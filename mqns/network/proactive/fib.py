@@ -19,6 +19,7 @@ from collections.abc import Callable, Iterator, Set
 from dataclasses import dataclass
 from typing import final
 
+from mqns.network.proactive.message import SwapSequence
 from mqns.simulator import Time
 
 
@@ -33,7 +34,7 @@ class FibEntry:
     """List of nodes traversed by the path."""
     own_idx: int
     """Index of own node within the route."""
-    swap: list[int]
+    swap: SwapSequence
     """Swap sequence."""
     swap_cutoff: list[Time | None]
     """Swap cutoff times."""

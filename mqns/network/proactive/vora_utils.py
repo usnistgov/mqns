@@ -54,7 +54,7 @@ def tree2order(tree):
     return order
 
 
-def merge_close(numbers, relative_threshold_percent=0.5):
+def merge_close(numbers: list[float], relative_threshold_percent=0.5) -> list[float]:
     # Group relatively close elements, replace them with average
     if not numbers:
         return []
@@ -108,9 +108,9 @@ def merge_close(numbers, relative_threshold_percent=0.5):
     return result
 
 
-def get_Bq(N, q=0.5):
+def get_Bq(N: int, q=0.5):
     # get Binomial coeffs
-    fname = "B_q" + str(q) + "_N" + str(N) + ".pkl"
+    fname = os.path.join(os.path.dirname(__file__), ".vora_cache", f"B_q{q}_N{N}.pkl")
     if os.path.exists(fname):
         Bq = pickle.load(open(fname, "rb"))
         return Bq
@@ -312,7 +312,17 @@ def s_tr(tree, names=""):
     return tree_str
 
 
-def voraswap(C, p=1, q=0.5, prnt=False, cutoff=0.9995, Bq=None, Ts=1, names=""):
+def voraswap(
+    C: list[int],
+    p: float | list[float] = 1,
+    q: float | list[float] = 0.5,
+    *,
+    prnt=False,
+    cutoff=0.9995,
+    Bq: np.ndarray,
+    Ts: float = 1,
+    names="",
+):
     """Compare GREEDYSWAP vs. a BALANCEDTREE, and return:
     - EXT:      expected thruput
     - order:    swapping order

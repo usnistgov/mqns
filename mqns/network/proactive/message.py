@@ -2,6 +2,7 @@ from typing import Literal, NotRequired, TypedDict
 
 from mqns.simulator import Time
 
+SwapSequence = list[int]
 MultiplexingVector = list[tuple[int, int]]
 
 
@@ -18,7 +19,7 @@ class PathInstructions(TypedDict):
     There must a qchannel and a cchannel between adjacent nodes.
     """
 
-    swap: list[int]
+    swap: SwapSequence
     """
     Swap sequence: nonnegative integers to control swapping order.
 
@@ -76,7 +77,7 @@ class PathInstructions(TypedDict):
 def make_path_instructions(
     req_id: int,
     route: list[str],
-    swap: list[int],
+    swap: SwapSequence,
     swap_cutoff: list[Time | None] | None,
     m_v: MultiplexingVector | None,
     purif: dict[str, int],

@@ -6,7 +6,7 @@ from itertools import pairwise
 from typing import override
 
 from mqns.network.network import QuantumNetwork
-from mqns.network.proactive.message import MultiplexingVector, PathInstructions, make_path_instructions
+from mqns.network.proactive.message import MultiplexingVector, PathInstructions, SwapSequence, make_path_instructions
 from mqns.network.proactive.swap_sequence import parse_swap_sequence
 from mqns.simulator import Simulator, Time
 from mqns.utils import log
@@ -115,7 +115,7 @@ class RoutingPathStatic(RoutingPath):
         *,
         req_id: int | None = None,
         path_id: int | None = None,
-        swap: list[int] | str,
+        swap: SwapSequence | str,
         swap_cutoff: list[float] | None = None,
         m_v: MultiplexingVector | QubitAllocationType = QubitAllocationType.FOLLOW_QCHANNEL,
         purif: dict[str, int] = {},
@@ -152,7 +152,7 @@ class RoutingPathSingle(RoutingPath):
         req_id: int | None = None,
         path_id: int | None = None,
         qubit_allocation=QubitAllocationType.FOLLOW_QCHANNEL,
-        swap: list[int] | str,
+        swap: SwapSequence | str,
         swap_cutoff: list[float] | None = None,
         purif: dict[str, int] = {},
     ):
@@ -193,7 +193,7 @@ class RoutingPathMulti(RoutingPath):
         *,
         req_id: int | None = None,
         path_id: int | None = None,
-        swap: list[int] | str,
+        swap: SwapSequence | str,
         swap_cutoff: list[float] | None = None,
         purif: dict[str, int] = {},
     ):

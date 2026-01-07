@@ -26,9 +26,11 @@ from mqns.network.proactive.select import (
     SelectPurifQubit,
     select_purif_qubit_random,
 )
+from mqns.network.proactive.swap_sequence import compute_vora_swap_sequence, parse_swap_sequence
 from mqns.network.protocol.link_layer import LinkLayer
 
 __all__ = [
+    "compute_vora_swap_sequence",
     "CutoffScheme",
     "CutoffSchemeWaitTime",
     "CutoffSchemeWaitTimeCounters",
@@ -42,6 +44,7 @@ __all__ = [
     "MuxSchemeBufferSpace",
     "MuxSchemeDynamicEpr",
     "MuxSchemeStatistical",
+    "parse_swap_sequence",
     "ProactiveForwarder",
     "ProactiveForwarderCounters",
     "ProactiveRoutingController",
