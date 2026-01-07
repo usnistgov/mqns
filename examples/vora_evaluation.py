@@ -1,5 +1,6 @@
 import itertools
-import sys
+import json
+import os.path
 from collections.abc import Callable
 from copy import deepcopy
 from multiprocessing import Pool, freeze_support
@@ -10,7 +11,7 @@ import pandas as pd
 from tap import Tap
 
 from mqns.network.network import QuantumNetwork
-from mqns.network.proactive import ProactiveForwarder
+from mqns.network.proactive import ProactiveForwarder, compute_vora_swap_sequence
 from mqns.network.topology.topo import Topology
 from mqns.simulator import Simulator
 from mqns.utils import log, set_seed
@@ -72,7 +73,7 @@ class ParameterSet:
     def __init__(self):
         self.seed_base = 100
         self.sim_duration = 5.0
-        self.channel_qubits = 25
+        self.qchannel_capacity = 25
         self.t_cohere = 0.01  # sec
 
         self.total_distance = 150  # km
@@ -83,6 +84,17 @@ class ParameterSet:
         self.distance_proportion: str
         self.swapping_config: str
 
+    def clone_with(self, number_of_routers: int, distance_proportion: str, swapping_config: str) -> "ParameterSet":
+        p = deepcopy(self)
+        p.number_of_routers = number_of_routers
+        p.distance_proportion = distance_proportion
+        p.swapping_config = swapping_config
+        return p
+
+    @property
+    def t_cohere_ns(self) -> int:
+        return int(self.t_cohere * 1e9)
+
     def build_topology(self) -> Topology:
         distances = self.compute_distances()
         swap = self.get_swap_sequence()
@@ -92,7 +104,7 @@ class ParameterSet:
             nodes=2 + self.number_of_routers,
             t_cohere=self.t_cohere,
             channel_length=distances,
-            channel_capacity=self.channel_qubits,
+            channel_capacity=self.qchannel_capacity,
             swap=swap,
         )
 
@@ -101,6 +113,9 @@ class ParameterSet:
         weights = DISTANCE_PROPORTION_WEIGHTS[self.distance_proportion](n_segments)
         sum_weight = sum(weights)
         return [self.total_distance * w / sum_weight for w in weights]
+
+    def to_linear_attempts_csv_filename(self, train_qchannel_capacity=1) -> str:
+        return f"{self.number_of_routers}-{self.distance_proportion}-{train_qchannel_capacity}.csv"
 
     def get_swap_sequence(self) -> str | list[int]:
         if self.swapping_config != "vora":
@@ -111,21 +126,30 @@ class ParameterSet:
         return [sd_rank] + so + [sd_rank]
 
 
-def train_attempts_row(p: ParameterSet, num_routers: int, dist_prop: str) -> str:
+def vora_train_row(p: ParameterSet, num_routers: int, dist_prop: str) -> str:
     """
     Generate linear_attempts.py command line for collecting training data for the given topology.
     """
-    p = deepcopy(p)
-    p.number_of_routers = num_routers
-    p.distance_proportion = dist_prop
-    p.swapping_config = "no_swap"
+    p = p.clone_with(num_routers, dist_prop, "no_swap")
 
     distances = p.compute_distances()
     L = " ".join([str(d) for d in distances])
-    filename = f"{num_routers}-{dist_prop}-{p.channel_qubits}"
-    return (
-        f"python linear_attempts.py --runs {p.n_runs} --L {L} --M {p.channel_qubits} "
-        f"--json $OUTDIR/{filename}.json --csv $OUTDIR/{filename}.csv\n"
+    filename = p.to_linear_attempts_csv_filename()
+    return f"python linear_attempts.py --runs {p.n_runs} --L {L} --M 1 --csv $OUTDIR/{filename}"
+
+
+def vora_regen_row(p: ParameterSet, num_routers: int, dist_prop: str, indir: str) -> list[int]:
+    """
+    Regenerate vora swapping order from the output of linear_attempts.py.
+    """
+    p = p.clone_with(num_routers, dist_prop, "no_swap")
+    data = pd.read_csv(os.path.join(indir, p.to_linear_attempts_csv_filename()))
+    return compute_vora_swap_sequence(
+        lengths=list(data["L"]),
+        attempts=list(data["Attempts rate"]),
+        success=list(data["Success rate"]),
+        t_cohere=p.t_cohere,
+        qchannel_capacity=p.qchannel_capacity,
     )
 
 
@@ -150,10 +174,7 @@ def run_row(p: ParameterSet, num_routers: int, dist_prop: str, swap_conf: str) -
     """
     Run simulations for one parameter set.
     """
-    p = deepcopy(p)
-    p.number_of_routers = num_routers
-    p.distance_proportion = dist_prop
-    p.swapping_config = swap_conf
+    p = p.clone_with(num_routers, dist_prop, swap_conf)
 
     entanglements: list[float] = []
     expired: list[float] = []
@@ -249,28 +270,42 @@ if __name__ == "__main__":
     freeze_support()
     p = ParameterSet()
 
-    # Command line arguments
     class Args(Tap):
-        train_attempts: bool = False  # generate training script for linear_attempts.py
+        vora_train: bool = False  # generate training script for vora swapping sequences
+        vora_regen: str = ""  # regenerate vora swapping sequences from training data directory
         workers: int = 1  # number of workers for parallel execution
         runs: int = p.n_runs  # number of trials per parameter set
         sim_duration: float = p.sim_duration  # simulation duration in seconds
-        channel_qubits: int = p.channel_qubits  # qchannel capacity
+        qchannel_capacity: int = p.qchannel_capacity  # qchannel capacity
         csv: str = ""  # save results as CSV file
         plt: str = ""  # save plot as image file
 
     args = Args().parse_args()
     p.n_runs = args.runs
     p.sim_duration = args.sim_duration
-    p.channel_qubits = args.channel_qubits
+    p.qchannel_capacity = args.qchannel_capacity
 
-    if args.train_attempts:
-        script = (train_attempts_row(*a) for a in itertools.product([p], NUM_ROUTERS_OPTIONS, DIST_PROPORTIONS))
-        sys.stdout.writelines(script)
-        sys.exit()
+    if args.vora_train:
+        script = itertools.chain(
+            (vora_train_row(*a) for a in itertools.product([p], NUM_ROUTERS_OPTIONS, DIST_PROPORTIONS)),
+            [
+                f"python vora_evaluation.py --vora_regen $OUTDIR --qchannel_capacity {p.qchannel_capacity}"
+                f" >$OUTDIR/voraswap.json\n"
+            ],
+        )
+        print("\n".join(script))
 
-    # Simulator loop with process-based parallelism
-    with Pool(processes=args.workers) as pool:
-        results = pool.starmap(run_row, itertools.product([p], NUM_ROUTERS_OPTIONS, DIST_PROPORTIONS, SWAP_CONFIGS))
+    elif args.vora_regen:
+        d: dict = {
+            f"{n}-{d}": vora_regen_row(p, n, d, indir=args.vora_regen)
+            for n, d in itertools.product(NUM_ROUTERS_OPTIONS, DIST_PROPORTIONS)
+        }
+        d["t_cohere_ns"] = p.t_cohere_ns
+        d["qchannel_capacity"] = p.qchannel_capacity
+        print(json.dumps(d))
 
-    save_results(results, save_csv=args.csv, save_plt=args.plt)
+    else:
+        with Pool(processes=args.workers) as pool:
+            results = pool.starmap(run_row, itertools.product([p], NUM_ROUTERS_OPTIONS, DIST_PROPORTIONS, SWAP_CONFIGS))
+
+        save_results(results, save_csv=args.csv, save_plt=args.plt)
