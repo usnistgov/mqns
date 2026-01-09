@@ -4,8 +4,13 @@ The scenario is described in "Towards Optimal Orders for Entanglement Swapping i
 https://doi.org/10.48550/arXiv.2504.14040 , Section V-D.
 
 The path has an end-to-end distance of 150 km.
-There are 3, 4, or 5 repeaters along the path, with the distances among them allocated with different weights
-as described in `DISTANCE_PROPORTION_WEIGHTS` below.
+There are 3, 4, or 5 repeaters along the path, with the distances among them allocated with different weights:
+
+* Uniform: all qchannels have the same length.
+* Increasing: first qchannel has length `d0`; link i has length `(2i+1)d0`.
+* Decreasing: reverse of Increasing.
+* Mid-bottleneck: middle qchannel(s) are 1.2 times longer than all other qchannels.
+
 There are 25 memory pairs for each link, and the memory coherence time is 10 ms.
 
 Entanglement swapping orders under comparison are:
@@ -15,22 +20,22 @@ Entanglement swapping orders under comparison are:
 * baln: swap in balanced tree.
 * vora: swap order generated with vora algorithm based on training data.
 
-`vora_evaluation.voraswap.json` contains precomputed vora swapping orders for the paths used in this script.
+``vora_evaluation.voraswap.json`` contains precomputed vora swapping orders for the paths used in this script.
 It is only compatible with the total distance, number of memory pairs, and memory coherence time mentioned above.
-To alter these parameters, you must use `--vora_train` flag to re-generate the vora swapping orders,
-and then use `--vora_load` flag to load the new data file containing vora swapping orders,
+To alter these parameters, you must use ``--vora_train`` flag to re-generate the vora swapping orders,
+and then use ``--vora_load`` flag to load the new data file containing vora swapping orders::
 
-Example:
-```
-python vora_evaluation.py --vora_train --runs 1000 --total_distance 150 --t_cohere 0.010 --qchannel_capacity 25
-# This command prints a script that calls linear_attempts.py to generate training data,
-# which is then fed back to vora_evaluation.py --vora_regen to compute the vora swapping orders.
-# Review the script, set OUTDIR variable, and then run the script.
+    # Start the training with --vora_train flag.
+    python vora_evaluation.py --vora_train \\
+        --runs 1000 --total_distance 150 --t_cohere 0.010 --qchannel_capacity 25
+    # This command prints a script that calls linear_attempts.py to generate training data,
+    # which is then fed back to vora_evaluation.py --vora_regen to compute the vora swapping orders.
+    # Review the script, set OUTDIR variable, and then run the script.
 
-python vora_evaluation.py --vora_load voraswap.json --total_distance 150 --t_cohere 0.010 --qchannel_capacity 25 \\
-                          --csv result.csv --plt result.png
-# Now you can load the new data file with matching parameters.
-```
+    # Now you can load the new data file with --vora_load flag and matching parameters.
+    python vora_evaluation.py --vora_load voraswap.json \\
+        --total_distance 150 --t_cohere 0.010 --qchannel_capacity 25 \\
+        --csv result.csv --plt result.png
 """
 
 import copy
@@ -77,11 +82,6 @@ DISTANCE_PROPORTION_WEIGHTS: dict[str, Callable[[int], list[float]]] = {
 }
 """
 For each distance proportion, function to generate relative weights of qchannel lengths, given number of qchannel segments.
-
-Uniform: all qchannels have the same length.
-Increasing: first qchannel has length `d0`; link i has length `(2i+1)d0`.
-Decreasing: reverse of Increasing.
-Mid-bottleneck: middle qchannel(s) are 1.2 times longer than all other qchannels.
 """
 
 

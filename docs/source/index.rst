@@ -26,3 +26,4 @@ Contents
 
    intro
    reference/mqns
+   examples

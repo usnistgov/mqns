@@ -57,7 +57,7 @@ ch_S2_R2 = 10
 ch_R3_D2 = 10
 
 
-def build_topology(t_coherence: float, p_swap: float, mux: MuxScheme) -> Topology:
+def build_topology(t_cohere: float, p_swap: float, mux: MuxScheme) -> Topology:
     """
     Defines the topology with globally declared simulation parameters.
     """
@@ -164,12 +164,12 @@ def build_topology(t_coherence: float, p_swap: float, mux: MuxScheme) -> Topolog
     )
 
 
-def run_simulation(t_coherence: float, p_swap: float, mux: MuxScheme, seed: int):
+def run_simulation(t_cohere: float, p_swap: float, mux: MuxScheme, seed: int):
     set_seed(seed)
     s = Simulator(0, sim_duration + 5e-06, accuracy=1000000)
     log.install(s)
 
-    topo = build_topology(t_coherence, p_swap, mux)
+    topo = build_topology(t_cohere, p_swap, mux)
     net = QuantumNetwork(topo)
     net.install(s)
 
@@ -208,12 +208,7 @@ for strategy, mux in strategies.items():
         for i in range(args.runs):
             print(f"{strategy}, T_cohere={t_cohere:.3f}, run #{i}")
             seed = SEED_BASE + i
-            (rate1, fid1), (rate2, fid2) = run_simulation(
-                t_coherence=t_cohere,
-                p_swap=p_swap,
-                mux=mux,
-                seed=seed,
-            )
+            (rate1, fid1), (rate2, fid2) = run_simulation(t_cohere, p_swap, mux, seed)
             path_rates[0].append(rate1)
             path_rates[1].append(rate2)
             path_fids[0].append(fid1)

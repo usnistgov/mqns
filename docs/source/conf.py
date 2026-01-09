@@ -4,6 +4,7 @@ import os.path
 import sys
 
 mqns_root = os.path.join(os.path.dirname(__file__), "../..")
+sys.path.insert(0, os.path.join(mqns_root, "examples"))
 sys.path.insert(0, mqns_root)
 
 # -- Project information

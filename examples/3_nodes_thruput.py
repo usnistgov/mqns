@@ -1,3 +1,16 @@
+"""
+Simulate 3-node linear topology and report end-to-end throughput.
+
+This script sets up and executes simulations using:
+
+* A generated topology based with varying qubit coherence time,
+* A quantum network with Dijkstra-based routing algorithm, and asynchronous timing mode,
+* A seeded random number generator.
+
+After simulation, it reports the number of successful entanglement generations per second.
+The statistics can be saved and plotted.
+"""
+
 import itertools
 from multiprocessing import Pool, freeze_support
 from typing import Any
@@ -27,18 +40,8 @@ t_cohere_values = [0.002, 0.005, 0.01, 0.015, 0.02, 0.025, 0.05, 0.1]
 def run_simulation(t_cohere: float, seed: int):
     """Run a simulation with a given coherence time and seed.
 
-    This function sets up and executes a simulation using:
-      - A generated topology based on the specified qubit coherence time,
-      - A quantum network with Dijkstra-based routing algorithm, and asynchronous timing mode,
-      - A seeded random number generator.
-
-    After simulation, it gathers statistics including:
-      - Total number of successful entanglement generations,
-      - Total number of decohered qubits,
-      - End-to-end entanglement rate between source node "S" and destination node "D".
-
     Args:
-        t_coherence (float): Qubit coherence time (in seconds), used to define memory decoherence rate.
+        t_cohere (float): Qubit coherence time (in seconds), used to define memory decoherence rate.
         seed (int): Seed for the random number generator.
 
     Returns:

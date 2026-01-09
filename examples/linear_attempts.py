@@ -1,3 +1,22 @@
+"""
+This script simulates a linear network without swapping and reports per-link statistics.
+
+The network consists of one or more quantum channels.
+The quantum channel lengths can be specified with `-L` flags.
+
+One or more memory pairs are assigned to each channel.
+The number of memory pairs can be specified with `-M` flags.
+If multiple numbers are specified, they will be simulated in separate scenarios.
+
+The following statistics are gathered for each quantum channel:
+
+* Attempts rate: how many entanglements are attempted per second.
+* Entanglement rate: how many entanglements are established per second.
+* Success rate: Entanglement rate divided by Attempts rate.
+
+The results are saved as JSON (every simulation run), CSV (mean and stdev per scenario), and plots.
+"""
+
 import itertools
 import json
 from multiprocessing import Pool, freeze_support

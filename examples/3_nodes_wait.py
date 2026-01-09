@@ -1,3 +1,8 @@
+"""
+This script runs a single repeater with active fidelity enforcement via T_wait.
+It gathers statistics of the end-to-end rate and fidelity.
+"""
+
 import itertools
 from multiprocessing import Pool, freeze_support
 from typing import Any, TypedDict, cast
@@ -13,11 +18,6 @@ from mqns.utils import log, set_seed
 
 from examples_common.plotting import Axes1D, SubFigure1D, plt, plt_save
 from examples_common.topo_linear import build_topology
-
-"""
-This script runs a single repeater with active fidelity enforcement via T_wait.
-It gathers statistics of the end-to-end rate and fidelity.
-"""
 
 log.set_default_level("CRITICAL")
 

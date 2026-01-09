@@ -1,14 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# The scalability_randomtopo scripts measure how simulation performance and outcomes scale as the
-# network size increases. A random topology is used with an average node degree of 2.5.
-# For each network size, the number of entanglement requests is chosen to be proportional to the
-# number of nodes, with 20% of nodes involved in src-dst requests (plus intermediate nodes).
-# Proactive forwarding is used with Statistical multiplexing and SWAP-ASAP swapping policy.
-# Each simulation reports execution time, along with other metrics for verification.
-#
-# This bash script demonstrates how to invoke the Python scripts.
+# This bash script demonstrates how to invoke the Python scripts related to scalability_randomtopo experiment.
 # If invoked as is, the whole process would take multiple days.
 # To speed up the evaluation, you can arrange scalability_randomtopo_run.py to run in parallel
 # with proper CPU isolation, and then run scalability_randomtopo_plot.py to plot the diagrams.
