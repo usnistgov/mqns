@@ -23,10 +23,9 @@ from typing import Literal, TypedDict, cast, override
 import numpy as np
 
 from mqns.entity.cchannel import ClassicChannel, ClassicPacket, RecvClassicPacket
-from mqns.entity.memory import MemoryQubit, QuantumMemory, QubitState
+from mqns.entity.memory import MemoryQubit, QubitState
 from mqns.entity.node import Application, Node, QNode
 from mqns.entity.qchannel import QuantumChannel
-from mqns.models.epr import WernerStateEntanglement
 from mqns.network.network import TimingPhase, TimingPhaseEvent
 from mqns.network.protocol.event import (
     LinkArchSuccessEvent,
@@ -86,9 +85,8 @@ class LinkLayer(Application):
         tau_0: float = 0.0,
         init_fidelity: float = 0.99,
     ):
-        """This constructor sets up the entanglement generation layer of a quantum node with key hardware parameters.
-        It also initializes data structures for managing quantum channels, entanglement attempts,
-        and synchronization.
+        """
+        Constructor.
 
         Args:
             attempt_rate: max entanglement attempts per second (default: 1e6) (currently ineffective).
@@ -100,7 +98,6 @@ class LinkLayer(Application):
             init_fidelity: fidelity of generated entangled pairs (default: 0.99).
 
         """
-
         super().__init__()
 
         self.attempt_interval = 1 / attempt_rate
@@ -118,12 +115,7 @@ class LinkLayer(Application):
         self.init_fidelity = init_fidelity
         """Fidelity of generated entangled pairs."""
 
-        self.own: QNode
-        """Quantum node that owns this LinkLayer."""
-        self.memory: QuantumMemory
-        """Quantum memory of the node."""
-
-        self.active_channels = dict[tuple[QuantumChannel, int | None], tuple[QNode, int]]()
+        self.active_channels: dict[tuple[QuantumChannel, int | None], tuple[QNode, int]] = {}
         """
         Active quantum channels and paths where own node is the primary (on the left side).
         Key is qchannel and optional path_id.
@@ -164,7 +156,11 @@ class LinkLayer(Application):
     def install(self, node: Node, simulator: Simulator):
         super().install(node, simulator)
         self.own = self.get_node(node_type=QNode)
+        """Quantum node that owns this LinkLayer."""
         self.memory = self.own.memory
+        """Quantum memory of the node."""
+        self.epr_type = self.own.network.epr_type
+        """Network-wide entanglement type."""
 
     def handle_sync_phase(self, event: TimingPhaseEvent):
         """
@@ -377,14 +373,14 @@ class LinkLayer(Application):
         t_notify_a = simulator.tc + (d_epr_creation + d_notify_a)
         t_notify_b = simulator.tc + (d_epr_creation + d_notify_b)
 
-        epr = WernerStateEntanglement(
-            fidelity=self.init_fidelity,
+        epr = self.epr_type(
             creation_time=t_epr_creation,
             decoherence_time=t_epr_creation + min(mem_a.decoherence_delay, mem_b.decoherence_delay),
             src=self.own,
             dst=next_hop,
             mem_decohere_rate=(mem_a.decoherence_rate, mem_b.decoherence_rate),
         )
+        epr.fidelity = self.init_fidelity
         epr.key = qubit.active
 
         # If the network uses SYNC timing mode but the successful attempt would exceed the current EXTERNAL phase,

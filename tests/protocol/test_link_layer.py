@@ -3,7 +3,11 @@ import pytest
 from mqns.entity.memory import QubitState
 from mqns.entity.node import Application, Node, QNode
 from mqns.entity.qchannel import LinkArchAlways, LinkArchDimBk
-from mqns.models.epr import WernerStateEntanglement
+from mqns.models.epr import (
+    Entanglement,
+    MixedStateEntanglement,
+    WernerStateEntanglement,
+)
 from mqns.network.network import QuantumNetwork, TimingModeSync
 from mqns.network.protocol.event import (
     ManageActiveChannels,
@@ -31,10 +35,11 @@ class NetworkLayer(Application):
         super().install(node, simulator)
         self.own = self.get_node(node_type=QNode)
         self.memory = self.own.memory
+        self.epr_type = self.own.network.epr_type
 
     def handle_entangle(self, event: QubitEntangledEvent):
-        qubit, epr = self.memory.read(event.qubit.addr, has=WernerStateEntanglement, set_fidelity=True)
-        assert qubit == event.qubit
+        qubit, epr = self.memory.read(event.qubit.addr, has=self.epr_type)
+        assert qubit is event.qubit
         self.entangle.append((event.t.sec, epr.creation_time.sec))
 
         if not isinstance(self.release_after, float):
@@ -61,7 +66,14 @@ def manage_active_channel(simulator: Simulator, t: float, src: NetworkLayer, dst
     )
 
 
-def test_basic():
+@pytest.mark.parametrize(
+    "epr_type",
+    [
+        WernerStateEntanglement,
+        MixedStateEntanglement,
+    ],
+)
+def test_basic(epr_type: type[Entanglement]):
     topo = LinearTopology(
         nodes_number=2,
         nodes_apps=[NetworkLayer(), LinkLayer()],
@@ -69,7 +81,7 @@ def test_basic():
         cchannel_args={"delay": 0.1},
         memory_args={"t_cohere": 4.1},
     )
-    net = QuantumNetwork(topo, classic_topo=ClassicTopology.Follow)
+    net = QuantumNetwork(topo, classic_topo=ClassicTopology.Follow, epr_type=epr_type)
     net.build_route()
     net.get_qchannel("n1", "n2").assign_memory_qubits(capacity=1)
 

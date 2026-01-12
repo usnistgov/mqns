@@ -26,7 +26,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-from typing import Unpack, overload, override
+from typing import Unpack, final, overload, override
 
 import numpy as np
 
@@ -48,6 +48,7 @@ _w_0 = _fidelity_to_w(0.0)
 _w_1 = _fidelity_to_w(1.0)
 
 
+@final
 class WernerStateEntanglement(Entanglement["WernerStateEntanglement"]):
     """A pair of entangled qubits in Werner State with a hidden-variable."""
 

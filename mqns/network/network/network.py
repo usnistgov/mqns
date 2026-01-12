@@ -31,9 +31,10 @@ from mqns.entity.base_channel import ChannelT
 from mqns.entity.cchannel import ClassicChannel
 from mqns.entity.node import Controller, Node, QNode
 from mqns.entity.qchannel import QuantumChannel
+from mqns.models.epr import Entanglement, WernerStateEntanglement
 from mqns.network.network.request import Request
 from mqns.network.network.timing import TimingMode, TimingModeAsync
-from mqns.network.route import DijkstraRouteAlgorithm, RouteAlgorithm
+from mqns.network.route import DijkstraRouteAlgorithm, RouteAlgorithm, RouteQueryResult
 from mqns.network.topology import ClassicTopology, Topology
 from mqns.simulator import Simulator
 from mqns.utils import get_randint
@@ -72,6 +73,7 @@ class QuantumNetwork:
         classic_topo: ClassicTopology | None = None,
         route: RouteAlgorithm | None = None,
         timing: TimingMode = TimingModeAsync(),
+        epr_type: type[Entanglement] = WernerStateEntanglement,
     ):
         """
         Args:
@@ -79,26 +81,35 @@ class QuantumNetwork:
             classic_topo: classic topology parameter, passed to topology builder.
             route: routing algorithm, defaults to dijkstra.
             timing: network-wide application timing mode.
+            epr_type: network-wide entanglement type.
         """
+        assert getattr(epr_type, "__final__", False) is True, f"entanglement type {epr_type} must be marked @final"
+
         self.timing = timing
+        """Network-wide application timing mode."""
+        self.epr_type = epr_type
+        """Network-wide entanglement type."""
 
         self.controller: Controller | None = None
+        """Controller node."""
         self.nodes: list[QNode] = []
+        """List of quantum nodes."""
         self._node_by_name: dict[str, QNode] = {}
         self.qchannels: list[QuantumChannel] = []
+        """List of quantum channels."""
         self._qchannel_by_ends: dict[tuple[str, str], QuantumChannel] = {}
         self.cchannels: list[ClassicChannel] = []
+        """List of classic channels."""
         self._cchannel_by_ends: dict[tuple[str, str], ClassicChannel] = {}
 
         if topo is not None:
             self._populate_from_topo(topo, classic_topo)
 
         self.route: RouteAlgorithm = DijkstraRouteAlgorithm() if route is None else route
+        """Routing algorithm."""
 
         self.requests: list[Request] = []
-        """
-        Requested end-to-end entanglements.
-        """
+        """Requested end-to-end entanglements."""
 
     def _populate_from_topo(self, topo: Topology, classic_topo: ClassicTopology | None):
         nodes, qchannels = topo.build()
@@ -117,6 +128,12 @@ class QuantumNetwork:
         if topo.controller:
             self.set_controller(topo.controller)
 
+    def _ensure_not_installed(self) -> None:
+        """
+        Assert that this entity has not been installed into a simulator.
+        """
+        assert not hasattr(self, "simulator"), "function only available prior to self.install()"
+
     def install(self, simulator: Simulator):
         """
         Install all nodes (including channels, memories and applications) in this network
@@ -126,6 +143,7 @@ class QuantumNetwork:
 
         """
         self.simulator = simulator
+        """Simulator instance."""
 
         self.all_nodes: list[Node] = []
         """A collection of quantum nodes and the controller (if present)."""
@@ -141,6 +159,7 @@ class QuantumNetwork:
         """
         Add a QNode into this network.
         """
+        self._ensure_not_installed()
         assert node.name not in self._node_by_name, f"duplicate node name {node.name}"
         self.nodes.append(node)
         self._node_by_name[node.name] = node
@@ -162,6 +181,7 @@ class QuantumNetwork:
         """
         Set the controller of this network.
         """
+        self._ensure_not_installed()
         self.controller = controller
         controller.add_network(self)
 
@@ -180,6 +200,7 @@ class QuantumNetwork:
         """
         Add a QuantumChannel into this network.
         """
+        self._ensure_not_installed()
         _save_channel(self.qchannels, self._qchannel_by_ends, qchannel)
 
     @overload
@@ -209,6 +230,7 @@ class QuantumNetwork:
         """
         Add a ClassicChannel into this network.
         """
+        self._ensure_not_installed()
         _save_channel(self.cchannels, self._cchannel_by_ends, cchannel)
 
     @overload
@@ -238,7 +260,7 @@ class QuantumNetwork:
         """Build static route tables for each nodes"""
         self.route.build(self.nodes, self.qchannels)
 
-    def query_route(self, src: QNode, dest: QNode) -> list[tuple[float, QNode, list[QNode]]]:
+    def query_route(self, src: QNode, dest: QNode) -> list[RouteQueryResult[QNode]]:
         """Query the metric, nexthop and the path
 
         Args:
