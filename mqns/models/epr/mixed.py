@@ -95,36 +95,22 @@ class MixedStateEntanglement(Entanglement["MixedStateEntanglement"]):
         )
 
     @override
-    def distillation(self, epr: "MixedStateEntanglement"):
-        """Use `self` and `epr` to perform distillation and distribute a new entanglement.
-        Using BBPSSW protocol.
-
-        Args:
-            epr (Entanglement): another entanglement
-            name (str): the name of the new entanglement
-        Returns:
-            the new distributed entanglement
-
+    def _do_purify(self, epr1: "MixedStateEntanglement") -> bool:
         """
-        ne = MixedStateEntanglement()
-        if self.is_decoherenced or epr.is_decoherenced:
-            ne.is_decoherenced = True
-            ne.fidelity = 0
-            return
-        epr.is_decoherenced = True
-        self.is_decoherenced = True
-        p_succ = (self.a + self.d) * (epr.a + epr.d) + (self.b + self.c) * (epr.c + epr.b)
-
+        Perform distillation using BBPSSW protocol.
+        """
+        p_succ = (self.a + self.d) * (epr1.a + epr1.d) + (self.b + self.c) * (epr1.c + epr1.b)
         if get_rand() > p_succ:
-            ne.is_decoherenced = True
-            ne.fidelity = 0
-            return
-        ne.a = (self.a * epr.a + self.d * epr.d) / p_succ
-        ne.b = (self.b * epr.b + self.c * epr.c) / p_succ
-        ne.c = (self.b * epr.c + self.c * epr.b) / p_succ
-        ne.d = (self.a * epr.d + self.d * epr.a) / p_succ
-        ne._normalize()
-        return ne
+            return False
+
+        self.a, self.b, self.c, self.d = (
+            (self.a * epr1.a + self.d * epr1.d) / p_succ,
+            (self.b * epr1.b + self.c * epr1.c) / p_succ,
+            (self.b * epr1.c + self.c * epr1.b) / p_succ,
+            (self.a * epr1.d + self.d * epr1.a) / p_succ,
+        )
+        self._normalize()
+        return True
 
     @override
     def store_error_model(self, t: float = 0, decoherence_rate: float = 0, **kwargs):

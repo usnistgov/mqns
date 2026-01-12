@@ -127,9 +127,12 @@ class Entanglement(ABC, Generic[EntanglementT], QuantumModel):
         """Pair decoherence rate in Hz"""
         return sum(self.mem_decohere_rate)
 
-    @classmethod
+    def _mark_decoherenced(self) -> None:
+        """Mark the EPR as decoherenced."""
+        self.is_decoherenced = True
+
+    @staticmethod
     def swap(
-        cls,
         epr0: EntanglementT,
         epr1: EntanglementT,
         *,
@@ -149,14 +152,17 @@ class Entanglement(ABC, Generic[EntanglementT], QuantumModel):
             New entanglement, or None if swap failed.
         """
 
-        assert epr0.dst == epr1.src  # src and dst can be None
+        assert type(epr0) is type(epr1)
+        assert epr0.dst == epr1.src  # it's okay for src and dst to be None
 
         if epr0.is_decoherenced or epr1.is_decoherenced:
+            epr0._mark_decoherenced()
+            epr1._mark_decoherenced()
             return None
 
         if ps < 1.0 and get_rand() >= ps:  # swap failed
-            epr0.is_decoherenced = True
-            epr1.is_decoherenced = True
+            epr0._mark_decoherenced()
+            epr1._mark_decoherenced()
             return None
 
         orig_eprs: list[EntanglementT] = []
@@ -170,7 +176,7 @@ class Entanglement(ABC, Generic[EntanglementT], QuantumModel):
             else:
                 orig_eprs.extend(cast(list[EntanglementT], epr.orig_eprs))
 
-        ne = cls._make_swapped(
+        ne = type(epr0)._make_swapped(
             epr0,
             epr1,
             name=_name_hash("-".join((e.name for e in orig_eprs))),
@@ -193,17 +199,38 @@ class Entanglement(ABC, Generic[EntanglementT], QuantumModel):
         """
         pass
 
-    @abstractmethod
-    def distillation(self, epr: EntanglementT) -> EntanglementT | None:
+    def purify(self, epr1: EntanglementT, *, now: Time) -> bool:
         """
-        Use `self` and `epr` to perform distillation/purification and distribute a new entanglement.
+        Perform purification on `self` consuming `epr1`.
 
         Args:
-            epr: another entanglement.
+            self: kept entanglement.
+            epr1: consumed entanglement.
+            now: current timestamp.
 
         Returns:
-            New entanglement.
+            Whether successful.
         """
+
+        assert type(self) is type(epr1)
+        assert (self.src, self.dst) == (epr1.src, epr1.dst)  # it's okay for src and dst to be None
+
+        if self.is_decoherenced or epr1.is_decoherenced:
+            self._mark_decoherenced()
+            epr1._mark_decoherenced()
+            return False
+
+        _ = now
+        ok = self._do_purify(epr1)
+
+        if not ok:
+            self._mark_decoherenced()
+        epr1._mark_decoherenced()
+
+        return ok
+
+    @abstractmethod
+    def _do_purify(self, epr1: EntanglementT) -> bool:
         pass
 
     def to_qubits(self) -> list[Qubit]:

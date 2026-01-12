@@ -24,7 +24,7 @@ import numpy as np
 from mqns.entity.cchannel import ClassicPacket, RecvClassicPacket
 from mqns.entity.memory import MemoryQubit, PathDirection, QubitState
 from mqns.entity.node import Application, Node, QNode
-from mqns.models.epr import WernerStateEntanglement
+from mqns.models.epr import Entanglement, WernerStateEntanglement
 from mqns.network.network import TimingPhase, TimingPhaseEvent
 from mqns.network.proactive.cutoff import CutoffScheme, CutoffSchemeWaitTime
 from mqns.network.proactive.fib import Fib, FibEntry
@@ -551,6 +551,8 @@ class ProactiveForwarder(Application):
             it may immediately become eligible and thus available for swaps or end-to-end consumption,
             even if the PURIF_RESPONSE message has not arrived at the primary node.
         """
+        simulator = self.simulator
+
         # mq0 is the "kept" memory whose fidelity would be increased if purification succeeds
         # mq1 is the "measured" memory that is consumed during purification
         mq0, epr0 = self.memory.read(msg["epr"], has=WernerStateEntanglement, set_fidelity=True)
@@ -569,7 +571,7 @@ class ProactiveForwarder(Application):
         )
 
         # perform purification between EPRs
-        result = epr0.purify(epr1)
+        result = epr0.purify(epr1, now=simulator.tc)
         log.debug(
             f"{self.own}: purif {'succeeded' if result else 'failed'} on qubit {mq0.addr} (F={epr0.fidelity}) "
             + f"for round {1 + mq0.purif_rounds} with primary {primary.name}"
@@ -730,7 +732,7 @@ class ProactiveForwarder(Application):
             next_epr.ch_index = fib_entry.own_idx
 
         # Attempt the swap.
-        new_epr = WernerStateEntanglement.swap(prev_epr, next_epr, now=simulator.tc, ps=self.ps)
+        new_epr = Entanglement.swap(prev_epr, next_epr, now=simulator.tc, ps=self.ps)
         log.debug(f"{self.own}: SWAP {'SUCC' if new_epr else 'FAILED'} | {prev_qubit} x {next_qubit}")
 
         if new_epr is not None:  # swapping succeeded
@@ -895,11 +897,11 @@ class ProactiveForwarder(Application):
         # Merge the two swaps (physically already happened).
         new_epr.read = True
         if other_epr.dst == self.own:  # destination is to the left of own node
-            merged_epr = WernerStateEntanglement.swap(other_epr, new_epr, now=simulator.tc)
+            merged_epr = Entanglement.swap(other_epr, new_epr, now=simulator.tc)
             partner = cast(QNode, new_epr.dst)
             destination = cast(QNode, other_epr.src)
         else:  # destination is to the right of own node
-            merged_epr = WernerStateEntanglement.swap(new_epr, other_epr, now=simulator.tc)
+            merged_epr = Entanglement.swap(new_epr, other_epr, now=simulator.tc)
             partner = cast(QNode, new_epr.src)
             destination = cast(QNode, other_epr.dst)
         assert partner.name == msg["partner"]

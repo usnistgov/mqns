@@ -24,17 +24,15 @@ def test_mixed_state(monkeypatch: pytest.MonkeyPatch):
 
     monkeypatch.setattr("mqns.models.epr.mixed.get_rand", lambda: 0.0)
 
-    e7 = e3.distillation(e6)
-    assert e7 is not None
-    assert e7.fidelity == pytest.approx(0.929080, abs=1e-6)
+    assert e3.purify(e6, now=now) is True
+    assert e3.fidelity == pytest.approx(0.929080, abs=1e-6)
 
     e8 = MixedStateEntanglement(fidelity=0.95, name="e8")
-    e9 = e7.distillation(e8)
-    assert e9 is not None
-    assert (e9.a, e9.b, e9.c, e9.d) == pytest.approx((9.183907e-1, 8.179613e-5, 8.179613e-5, 8.144570e-2), rel=1e-6)
+    assert e3.purify(e8, now=now) is True
+    assert (e3.a, e3.b, e3.c, e3.d) == pytest.approx((9.183907e-1, 8.179613e-5, 8.179613e-5, 8.144570e-2), rel=1e-6)
 
     q_in = Qubit(QUBIT_STATE_0)
-    q_out = e9.teleportion(q_in)
+    q_out = e3.teleportion(q_in)
     assert q_out.state.rho.shape == (2, 2)
     assert q_out.state.rho[0] == pytest.approx([9.998364e-1, 0], rel=1e-6)
     assert q_out.state.rho[1] == pytest.approx([0, 1.635922e-4], rel=1e-6)

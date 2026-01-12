@@ -41,11 +41,6 @@ class BellStateEntanglement(Entanglement["BellStateEntanglement"]):
         return BellStateEntanglement(**kwargs)
 
     @override
-    def distillation(self, epr: "BellStateEntanglement") -> "BellStateEntanglement":
-        ne = BellStateEntanglement()
-        if self.is_decoherenced or epr.is_decoherenced:
-            ne.is_decoherenced = True
-            ne.fidelity = 0
-        epr.is_decoherenced = True
-        self.is_decoherenced = True
-        return ne
+    def _do_purify(self, epr1: "BellStateEntanglement") -> bool:
+        _ = epr1
+        return True

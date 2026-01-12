@@ -78,6 +78,11 @@ class WernerStateEntanglement(Entanglement["WernerStateEntanglement"]):
         assert 0.0 <= value <= 1.0
         self.w = _fidelity_to_w(value)
 
+    @override
+    def _mark_decoherenced(self) -> None:
+        self.is_decoherenced = True
+        self.w = _w_0
+
     @staticmethod
     @override
     def _make_swapped(
@@ -86,33 +91,14 @@ class WernerStateEntanglement(Entanglement["WernerStateEntanglement"]):
         return WernerStateEntanglement(w=epr0.w * epr1.w, **kwargs)
 
     @override
-    def distillation(self, epr: "WernerStateEntanglement") -> "WernerStateEntanglement|None":
-        _ = epr
-        raise NotImplementedError()
-
-    def purify(self, epr: "WernerStateEntanglement") -> bool:
+    def _do_purify(self, epr1: "WernerStateEntanglement") -> bool:
         """
-        Use `self` and `epr` to perform distillation and update this entanglement.
-        Using Bennett 96 protocol and estimate lower bound.
-
-        Args:
-            epr: another entanglement.
-
-        Returns:
-            Whether purification succeeded.
+        Perform distillation using Bennett 96 protocol and estimate lower bound.
         """
-        if self.is_decoherenced or epr.is_decoherenced:
-            self.is_decoherenced = True
-            self.w = _w_0
-            return False
-
-        epr.is_decoherenced = True
-        fmin = min(self.fidelity, epr.fidelity)
+        fmin = min(self.fidelity, epr1.fidelity)
         expr1 = fmin**2 + 5 / 9 * (1 - fmin) ** 2 + 2 / 3 * fmin * (1 - fmin)
 
         if get_rand() > expr1:
-            self.is_decoherenced = True
-            self.w = _w_0
             return False
 
         self.fidelity = (fmin**2 + (1 - fmin) ** 2 / 9) / expr1
