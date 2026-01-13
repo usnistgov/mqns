@@ -202,7 +202,7 @@ def provide_entanglements(
         if t < 0:
             continue
         simulator = src.simulator
-        ch = src.own.get_qchannel(dst.own)
+        ch = src.node.get_qchannel(dst.node)
         _, d_notify_a, d_notify_b = ch.link_arch.delays(
             1,
             reset_time=0.0,
@@ -214,12 +214,12 @@ def provide_entanglements(
             fidelity=fidelity,
             creation_time=t_creation,
             decoherence_time=t_creation + min(src.memory.decoherence_delay, dst.memory.decoherence_delay),
-            src=src.own,
-            dst=dst.own,
+            src=src.node,
+            dst=dst.node,
             mem_decohere_rate=(src.memory.decoherence_rate, dst.memory.decoherence_rate),
         )
         for node, neighbor, d_notify in (src, dst, d_notify_a), (dst, src, d_notify_b):
             q, _ = next(node.memory.find(lambda _, v: v is None, qchannel=ch))
             node.memory.write(q.addr, epr)
             q._state = QubitState.ENTANGLED0
-            simulator.add_event(QubitEntangledEvent(node.own, neighbor.own, q, t=t_creation + d_notify))
+            simulator.add_event(QubitEntangledEvent(node.node, neighbor.node, q, t=t_creation + d_notify))

@@ -26,7 +26,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from collections import defaultdict
-from typing import TYPE_CHECKING, TypeVar, cast, override
+from typing import TYPE_CHECKING, cast, override
 
 from mqns.entity.entity import Entity
 from mqns.entity.node.app import Application, ApplicationT
@@ -44,14 +44,15 @@ class Node(Entity):
     def __init__(self, name: str, *, apps: list[Application] | None = None):
         """
         Args:
-            name: node name
+            name: node name.
             apps: applications on the node.
         """
-        super().__init__(name=name)
-        self._network: "QuantumNetwork|None" = None
+        super().__init__(name)
         self.cchannels: list["ClassicChannel"] = []
+        """Classic channels connected to this node."""
         self._cchannel_by_dst = dict["Node", "ClassicChannel"]()
         self.apps: list[Application] = [] if apps is None else apps
+        """Applications on this node."""
         self._app_by_type = dict[type, Application]()
 
     @override
@@ -67,7 +68,7 @@ class Node(Entity):
         apps_by_type = defaultdict[type, list[Application]](lambda: [])
         for app in self.apps:
             apps_by_type[type(app)].append(app)
-            app.install(self, simulator)
+            app.install(self)
         for typ, apps in apps_by_type.items():
             if len(apps) == 1:
                 self._app_by_type[typ] = apps[0]
@@ -124,20 +125,19 @@ class Node(Entity):
         return cast(ApplicationT, self._app_by_type[app_type])
 
     def _add_channel(self, channel: "ChannelT", channels: list["ChannelT"]) -> None:
-        assert self._simulator is None
+        self.ensure_not_installed()
         channel.node_list.append(self)
         channels.append(channel)
 
     def _install_channels(
         self, typ: type["ChannelT"], channels: list["ChannelT"], by_neighbor: dict["Node", "ChannelT"]
     ) -> None:
-        simulator = self.simulator
         for ch in channels:
             assert isinstance(ch, typ)
             for dst in ch.node_list:
                 if dst != self:
                     by_neighbor[dst] = ch
-            ch.install(simulator)
+            ch.install(self.simulator)
 
     @staticmethod
     def _get_channel(dst: "Node", by_neighbor: dict["Node", "ChannelT"]) -> "ChannelT":
@@ -163,19 +163,8 @@ class Node(Entity):
         """
         Assign a network object to this node.
         """
-        self._network = network
-
-    @property
-    def network(self) -> "QuantumNetwork":
-        """
-        Return the QuantumNetwork that this node belongs to.
-
-        Raises:
-            IndexError - network does not exist
-        """
-        if self._network is None:
-            raise IndexError(f"node {repr(self)} is not in a network")
-        return self._network
+        self.network = network
+        """Quantum network that contains this node."""
 
     @property
     def timing(self) -> "TimingMode":
@@ -186,7 +175,3 @@ class Node(Entity):
 
     def __repr__(self) -> str:
         return f"<node {self.name}>"
-
-
-NodeT = TypeVar("NodeT", bound=Node)
-"""Type argument for Node or its subclass."""

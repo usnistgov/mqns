@@ -17,6 +17,7 @@
 
 import hashlib
 import random
+from typing import override
 
 import numpy as np
 
@@ -25,7 +26,7 @@ from mqns.entity.node import Application, Node, QNode
 from mqns.entity.qchannel import QuantumChannel, RecvQubitPacket
 from mqns.models.qubit import Qubit
 from mqns.models.qubit.const import BASIS_X, BASIS_Z, QUBIT_STATE_0, QUBIT_STATE_1, QUBIT_STATE_N, QUBIT_STATE_P
-from mqns.simulator import Simulator, func_to_event
+from mqns.simulator import func_to_event
 from mqns.utils.rnd import get_choice, get_rand
 
 
@@ -38,7 +39,7 @@ class QubitWithError(Qubit):
         self.state.operate(operator=operation)
 
 
-class BB84SendApp(Application):
+class BB84SendApp(Application[QNode]):
     def __init__(
         self,
         dest: QNode,
@@ -106,16 +107,16 @@ class BB84SendApp(Application):
 
         self.add_handler(self.handleClassicPacket, RecvClassicPacket, [self.cchannel])
 
-    def install(self, node: Node, simulator: Simulator):
-        assert isinstance(node, QNode)
-        super().install(node, simulator)
+    @override
+    def install(self, node: Node):
+        self._application_install(node, QNode)
 
         time_list = []
-        time_list.append(simulator.ts)
+        time_list.append(self.simulator.ts)
 
-        t = simulator.ts
+        t = self.simulator.ts
         event = func_to_event(t, self.send_qubit, by=self)
-        simulator.add_event(event)
+        self.simulator.add_event(event)
         # while t <= simulator.te:
         #     time_list.append(t)
         #     t = t + simulator.time(sec = 1 / self.send_rate)
@@ -153,15 +154,13 @@ class BB84SendApp(Application):
 
         packet = ClassicPacket(
             msg={"packet_class": "check_basis", "id": id, "basis": basis_src, "ret": self.measure_list[id]},
-            src=self._node,
+            src=self.node,
             dest=self.dest,
         )
         self.cchannel.send(packet, next_hop=self.dest)
         return True
 
     def send_qubit(self):
-        simulator = self.simulator
-
         # randomly generate a qubit
         state = get_choice([QUBIT_STATE_0, QUBIT_STATE_1, QUBIT_STATE_P, QUBIT_STATE_N])
         qubit = QubitWithError(state=state)
@@ -180,9 +179,9 @@ class BB84SendApp(Application):
         #  basis: {basis_msg} , ret: {ret}")
         self.qchannel.send(qubit=qubit, next_hop=self.dest)
 
-        t = simulator.tc + 1 / self.send_rate
+        t = self.simulator.tc + 1 / self.send_rate
         event = func_to_event(t, self.send_qubit, by=self)
-        simulator.add_event(event)
+        self.simulator.add_event(event)
 
     def recv_error_estimate_packet(self, event: RecvClassicPacket):
         """BB84SendApp recv error estimate packet,and send error_estimate_reply packet.
@@ -249,7 +248,7 @@ class BB84SendApp(Application):
                 "error_rate": self.cur_error_rate,
                 "real_bit_index_for_cascade": real_bit_index_for_cascade,
             },
-            src=self._node,
+            src=self.node,
             dest=self.dest,
         )
         self.cchannel.send(packet, next_hop=self.dest)
@@ -289,7 +288,7 @@ class BB84SendApp(Application):
 
         # send cascade_reply packet
         packet = ClassicPacket(
-            msg={"packet_class": "cascade_reply", "parity_answer": parity_answer}, src=self._node, dest=self.dest
+            msg={"packet_class": "cascade_reply", "parity_answer": parity_answer}, src=self.node, dest=self.dest
         )
         self.cchannel.send(packet, next_hop=self.dest)
         return True
@@ -312,15 +311,11 @@ class BB84SendApp(Application):
         if hash_key != recv_hash_key:
             # cascade fail
             pa_flag = False
-            packet = ClassicPacket(
-                msg={"packet_class": "check_error_reply", "pa_flag": pa_flag}, src=self._node, dest=self.dest
-            )
+            packet = ClassicPacket(msg={"packet_class": "check_error_reply", "pa_flag": pa_flag}, src=self.node, dest=self.dest)
         else:
             # cascade succeed
             pa_flag = True
-            packet = ClassicPacket(
-                msg={"packet_class": "check_error_reply", "pa_flag": pa_flag}, src=self._node, dest=self.dest
-            )
+            packet = ClassicPacket(msg={"packet_class": "check_error_reply", "pa_flag": pa_flag}, src=self.node, dest=self.dest)
         self.cchannel.send(packet, next_hop=self.dest)
         return True
 
@@ -350,7 +345,7 @@ class BB84SendApp(Application):
         return True
 
 
-class BB84RecvApp(Application):
+class BB84RecvApp(Application[QNode]):
     def __init__(
         self,
         src: QNode,
@@ -469,7 +464,7 @@ class BB84RecvApp(Application):
         # log.info(f"[{self._simulator.current_time}] recv qubit {qubit.id}, \
         # basis: {basis_msg}, ret: {ret}")
         packet = ClassicPacket(
-            msg={"packet_class": "check_basis", "id": qubit.id, "basis": basis_msg}, src=self._node, dest=self.src
+            msg={"packet_class": "check_basis", "id": qubit.id, "basis": basis_msg}, src=self.node, dest=self.src
         )
         self.cchannel.send(packet, next_hop=self.src)
 
@@ -505,7 +500,7 @@ class BB84RecvApp(Application):
                 "bit_for_estimate": list(bit_for_estimate.values()),
                 "bit_index_for_cascade": list(self.post_processing_key.keys()),
             },
-            src=self._node,
+            src=self.node,
             dest=self.src,
         )
         self.cchannel.send(packet, next_hop=self.src)
@@ -564,7 +559,7 @@ class BB84RecvApp(Application):
                 "round_change_flag": False,
                 "shuffle_index": [],
             },
-            src=self._node,
+            src=self.node,
             dest=self.src,
         )
         self.cchannel.send(packet, next_hop=self.src)
@@ -650,12 +645,12 @@ class BB84RecvApp(Application):
                     "round_change_flag": round_change_flag,
                     "shuffle_index": shuffle_index,
                 },
-                src=self._node,
+                src=self.node,
                 dest=self.src,
             )
         else:
             # check error
-            packet = ClassicPacket(msg={"packet_class": "check_error_ask", "hash_key": hash_key}, src=self._node, dest=self.src)
+            packet = ClassicPacket(msg={"packet_class": "check_error_ask", "hash_key": hash_key}, src=self.node, dest=self.src)
         self.cchannel.send(packet, next_hop=self.src)
         return True
 
@@ -687,7 +682,7 @@ class BB84RecvApp(Application):
                     "first_row": first_row,
                     "first_col": first_col,
                 },
-                src=self._node,
+                src=self.node,
                 dest=self.src,
             )
             self.using_post_processing = False
@@ -702,7 +697,7 @@ class BB84RecvApp(Application):
                     "first_row": first_row,
                     "first_col": first_col,
                 },
-                src=self._node,
+                src=self.node,
                 dest=self.src,
             )
             self.using_post_processing = False

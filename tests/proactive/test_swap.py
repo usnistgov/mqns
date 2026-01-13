@@ -289,10 +289,10 @@ def test_tree2_dynepr(t_edge_etg: float, selected_path: tuple[int, int], n_consu
         _ = fib
         if len(path_ids) != 2:
             chosen = path_ids[0]
-        elif epr.src is f2.own:  # n2-n1
+        elif epr.src is f2.node:  # n2-n1
             chosen = (rp0.path_id, rp1.path_id)[selected_path[0]]
         else:  # n1-n3
-            assert epr.src is f1.own
+            assert epr.src is f1.node
             chosen = (rp0.path_id, rp1.path_id)[selected_path[1]]
         return chosen
 
@@ -372,10 +372,10 @@ def test_tree2_statistical(
             chosen = candidates[0]
         elif fw is f2:  # n2-n1 choosing between n4-n2 and n5-n2
             partner = (f4, f5)[selected_qubit[0]]
-            chosen = next((mt1 for mt1 in candidates if mt1[1].src is partner.own))
+            chosen = next((mt1 for mt1 in candidates if mt1[1].src is partner.node))
         elif fw is f3:  # n1-n3 choosing between n3-n6 and n3-n7
             partner = (f6, f7)[selected_qubit[1]]
-            chosen = next((mt1 for mt1 in candidates if mt1[1].dst is partner.own))
+            chosen = next((mt1 for mt1 in candidates if mt1[1].dst is partner.node))
         else:
             raise RuntimeError()
         return chosen

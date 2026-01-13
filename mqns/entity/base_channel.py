@@ -65,22 +65,22 @@ class BaseChannel(Entity, Generic[NodeT]):
         self._next_send_time = simulator.ts
 
     def _send(self, *, packet_repr: str, packet_len: int, next_hop: NodeT) -> tuple[bool, Time]:
-        simulator = self.simulator
+        now = self.simulator.tc
 
         if next_hop not in self.node_list:
             raise NextHopNotConnectionException(f"{self}: not connected to {next_hop}")
 
         if self.bandwidth != 0:
-            send_time = max(self._next_send_time, simulator.tc)
+            send_time = max(self._next_send_time, now)
 
-            if self.max_buffer_size != 0 and send_time > simulator.tc + self.max_buffer_size / self.bandwidth:
+            if self.max_buffer_size != 0 and send_time > now + self.max_buffer_size / self.bandwidth:
                 # buffer is overflow
                 log.debug(f"{self}: drop {packet_repr} due to overflow")
                 return True, Time()
 
             self._next_send_time = send_time + packet_len / self.bandwidth
         else:
-            send_time = simulator.tc
+            send_time = now
 
         # random drop
         if self.drop_rate > 0 and get_rand() < self.drop_rate:

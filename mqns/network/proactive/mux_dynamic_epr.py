@@ -91,7 +91,7 @@ class MuxSchemeDynamicEpr(MuxSchemeFibBase, MuxSchemeDynamicBase):
             assert len(epr.tmp_path_ids) == 1
             fib_entry = self.fib.get(next(epr.tmp_path_ids.__iter__()))
 
-        log.debug(f"{self.own}: qubit {qubit} has selected path_id {fib_entry.path_id}")
+        log.debug(f"{self.node}: qubit {qubit} has selected path_id {fib_entry.path_id}")
 
         qubit.state = QubitState.PURIF
         self.fw.qubit_is_purif(qubit, fib_entry, neighbor)
@@ -117,7 +117,7 @@ class MuxSchemeDynamicEpr(MuxSchemeFibBase, MuxSchemeDynamicBase):
     def su_parallel_has_conflict(self, my_new_epr: Entanglement, su_path_id: int) -> bool:
         assert my_new_epr.tmp_path_ids is not None
         if su_path_id not in my_new_epr.tmp_path_ids:
-            raise Exception(f"{self.own}: Unexpected conflictual parallel swapping")
+            raise Exception(f"{self.node}: Unexpected conflictual parallel swapping")
         return False
 
     @override

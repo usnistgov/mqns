@@ -84,15 +84,13 @@ class Monitor(Entity):
 
     @override
     def handle(self, event: Event) -> None:
-        simulator = self.simulator
-
-        self.records["time"].append(simulator.tc.sec)
+        self.records["time"].append(self.simulator.tc.sec)
         for name, calculate_func in self.attributions:
-            self.records[name].append(calculate_func(simulator, self.network, event))
+            self.records[name].append(calculate_func(self.simulator, self.network, event))
 
         if isinstance(event, MonitorEvent) and event.period is not None:
             event.t += event.period
-            simulator.add_event(event)
+            self.simulator.add_event(event)
 
     def get_data(self) -> pd.DataFrame:
         """
@@ -120,7 +118,7 @@ class Monitor(Entity):
             m.add_attribution("count", lambda s,network,e: network.nodes[-1].name)
 
         """
-        assert self._simulator is None
+        self.ensure_not_installed()
         self.attributions.append((name, calculate_func))
         self.records[name] = []
 
@@ -128,7 +126,7 @@ class Monitor(Entity):
         """
         Watch the initial status before the simulation starts.
         """
-        assert self._simulator is None
+        self.ensure_not_installed()
         self.watch_at_start = True
 
     def at_finish(self) -> None:
@@ -137,7 +135,7 @@ class Monitor(Entity):
 
         This does not work in a continuous simulation or if the simulation is stopped with `Simulator.stop()`.
         """
-        assert self._simulator is None
+        self.ensure_not_installed()
         self.watch_at_finish = True
 
     def at_period(self, period_time: float) -> None:
@@ -152,7 +150,7 @@ class Monitor(Entity):
             m.at_period(3)
 
         """
-        assert self._simulator is None
+        self.ensure_not_installed()
         assert period_time > 0
         self.watch_period.append(period_time)
 
@@ -168,5 +166,5 @@ class Monitor(Entity):
             m.at_event(RecvQubitPacket)
 
         """
-        assert self._simulator is None
+        self.ensure_not_installed()
         self.watch_event.append(event_type)

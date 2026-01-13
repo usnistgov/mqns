@@ -112,18 +112,14 @@ class QuantumMemory(Entity):
 
     @override
     def handle(self, event: Event) -> None:
-        simulator = self.simulator
-
         if isinstance(event, MemoryReadRequestEvent):
             result = self.read(event.key)  # will not update fidelity
-            simulator.add_event(
-                MemoryReadResponseEvent(self.node, result, request=event, t=simulator.tc + self.delay.calculate(), by=self)
-            )
+            t = self.simulator.tc + self.delay.calculate()
+            self.simulator.add_event(MemoryReadResponseEvent(self.node, result, request=event, t=t, by=self))
         elif isinstance(event, MemoryWriteRequestEvent):
             result = self.write(None, event.qubit)
-            simulator.add_event(
-                MemoryWriteResponseEvent(self.node, result, request=event, t=simulator.tc + self.delay.calculate(), by=self)
-            )
+            t = self.simulator.tc + self.delay.calculate()
+            self.simulator.add_event(MemoryWriteResponseEvent(self.node, result, request=event, t=t, by=self))
 
     @property
     def count(self) -> int:
@@ -414,12 +410,11 @@ class QuantumMemory(Entity):
     def _schedule_decohere(self, qubit: MemoryQubit, epr: Entanglement):
         from mqns.network.protocol.event import QubitDecoheredEvent  # noqa: PLC0415
 
-        simulator = self.simulator
-        assert epr.decoherence_time >= simulator.tc
+        assert epr.decoherence_time >= self.simulator.tc
 
         event = QubitDecoheredEvent(self, qubit, epr, t=epr.decoherence_time)
         qubit.set_event(QuantumMemory, event)
-        simulator.add_event(event)
+        self.simulator.add_event(event)
 
     def handle_decohere_qubit(self, qubit: MemoryQubit, epr: Entanglement) -> bool:
         """

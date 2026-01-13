@@ -16,10 +16,10 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from mqns.entity.node import Application, Node
-from mqns.simulator import Event, Simulator
+from mqns.simulator import Event
 
 
-class NodeProcessDelayApp(Application):
+class NodeProcessDelayApp(Application[Node]):
     """This application will add an addition delay whenever the node received an event.
     It is used to represent the processing delay on quantum nodes.
     """
@@ -36,17 +36,12 @@ class NodeProcessDelayApp(Application):
         self.delay_event_list = delay_event_list
         self.wait_rehandle_event_list = []
 
-    def install(self, node: Node, simulator: Simulator):
-        super().install(node, simulator)
-
     def check_in_delay_event_list(self, event) -> bool:
         if self.delay_event_list is None:
             return True
         return isinstance(event, self.delay_event_list)
 
     def handle(self, event: Event) -> bool:
-        simulator = self.simulator
-
         if not self.check_in_delay_event_list(event):
             return False
 
@@ -58,9 +53,9 @@ class NodeProcessDelayApp(Application):
         # add to list
         self.wait_rehandle_event_list.append(event)
         # get the delay time
-        t = simulator.tc + self.delay
+        t = self.simulator.tc + self.delay
         # reset event's occur time
         event.t = t
         event.by = self
-        simulator.add_event(event)
+        self.simulator.add_event(event)
         return True

@@ -1,3 +1,5 @@
+from typing import override
+
 from mqns.entity.cchannel import ClassicPacket, RecvClassicPacket
 from mqns.entity.node import Application, Node
 from mqns.network.network import QuantumNetwork
@@ -7,41 +9,40 @@ from mqns.network.topology import ClassicTopology, LinearTopology
 from mqns.simulator import Simulator, func_to_event
 
 
-class SendApp(Application):
+class SendApp(Application[Node]):
     def __init__(self, dest: Node, route: RouteAlgorithm, send_rate=1):
         super().__init__()
         self.dest = dest
         self.route = route
         self.send_rate = send_rate
 
-    def install(self, node: Node, simulator: Simulator):
-        super().install(node, simulator)
-        simulator.add_event(func_to_event(simulator.ts, self.send_packet, by=self))
+    @override
+    def install(self, node):
+        self._application_install(node, Node)
+        self.simulator.add_event(func_to_event(self.simulator.ts, self.send_packet, by=self))
 
     def send_packet(self):
-        simulator = self.simulator
+        packet = ClassicPacket(msg=f"Hello,world from {self.node}", src=self.node, dest=self.dest)
 
-        packet = ClassicPacket(msg=f"Hello,world from {self.get_node()}", src=self.get_node(), dest=self.dest)
-
-        route_result = self.route.query(self.get_node(), self.dest)
+        route_result = self.route.query(self.node, self.dest)
         if len(route_result) <= 0 or len(route_result[0]) <= 1:
             raise RuntimeError("not found next hop")
         next_hop = route_result[0][1]
-        cchannel = self.get_node().get_cchannel(next_hop)
+        cchannel = self.node.get_cchannel(next_hop)
 
         # send the classic packet
         cchannel.send(packet=packet, next_hop=next_hop)
 
         # calculate the next sending time
-        t = simulator.tc + 1 / self.send_rate
+        t = self.simulator.tc + 1 / self.send_rate
 
         # insert the next send event to the simulator
         event = func_to_event(t, self.send_packet, by=self)
-        simulator.add_event(event)
+        self.simulator.add_event(event)
 
 
 # the receiving application
-class RecvApp(Application):
+class RecvApp(Application[Node]):
     def __init__(self):
         super().__init__()
         self.add_handler(self.RecvClassicPacketHandler, RecvClassicPacket)
@@ -49,7 +50,7 @@ class RecvApp(Application):
     def RecvClassicPacketHandler(self, event: RecvClassicPacket):
         packet = event.packet
         msg = packet.get()
-        output = f"{self.get_node()} recv packet: {msg} from {packet.src}->{packet.dest}"
+        output = f"{self.node} recv packet: {msg} from {packet.src}->{packet.dest}"
         print(output)
         assert output == "<qnode n10> recv packet: Hello,world from <qnode n1> from <qnode n1>-><qnode n10>"
 

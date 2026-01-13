@@ -16,11 +16,11 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from mqns.entity.cchannel import RecvClassicPacket
-from mqns.entity.node import Application
+from mqns.entity.node import Application, Node
 from mqns.network.route import RouteAlgorithm
 
 
-class ClassicPacketForwardApp(Application):
+class ClassicPacketForwardApp(Application[Node]):
     """This application will generate routing table for classic networks
     and allow nodes to forward classic packets to the destination.
     """
@@ -36,21 +36,20 @@ class ClassicPacketForwardApp(Application):
 
     def handleClassicPacket(self, event: RecvClassicPacket):
         packet = event.packet
-        self_node = self.get_node()
 
         dst = packet.dest
-        if dst == self_node:
+        if dst == self.node:
             # The destination is this node, return to let later application to handle this packet
             return False
 
         # If destination is not this node, forward this packet
-        route_result = self.route.query(self.get_node(), dst)
+        route_result = self.route.query(self.node, dst)
         if len(route_result) <= 0 or len(route_result[0]) <= 1:
             # no routing result or error format, drop this packet
             return True
         next_hop = route_result[0][1]
         try:
-            cchannel = self_node.get_cchannel(next_hop)
+            cchannel = self.node.get_cchannel(next_hop)
         except IndexError:
             # not found the classic channel, drop the packet
             return True

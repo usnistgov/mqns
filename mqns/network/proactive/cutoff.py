@@ -40,12 +40,12 @@ class CutoffScheme(ABC):
         return fw.cutoff
 
     @property
-    def own(self) -> QNode:
-        return self.fw.own
+    def node(self) -> QNode:
+        return self.fw.node
 
     @property
     def simulator(self) -> Simulator:
-        return self.own.simulator
+        return self.node.simulator
 
     def initiate_discard(self, qubit: MemoryQubit, fib_entry: FibEntry, *, round=-1):
         """
@@ -60,10 +60,10 @@ class CutoffScheme(ABC):
 
         # find EPR partner
         _, epr = fw.memory.read(qubit.addr, has=self.fw.epr_type, set_fidelity=True, remove=True)
-        partner = epr.dst if epr.src == self.own else epr.src
+        partner = epr.dst if epr.src == self.node else epr.src
         assert partner is not None
 
-        log.debug(f"{self.own}: local cutoff discard epr={epr.name} addr={qubit.addr} round={round} partner={partner.name}")
+        log.debug(f"{self.node}: local cutoff discard epr={epr.name} addr={qubit.addr} round={round} partner={partner.name}")
 
         # discard primary qubit
         fw.cnt.increment_n_cutoff(round, True)
@@ -91,10 +91,10 @@ class CutoffScheme(ABC):
         # find qubit
         qm_tuple = fw.memory.read(epr_name, remove=True)
         if qm_tuple is None:
-            log.debug(f"{self.own}: remote cutoff discard epr={epr_name} not exist")
+            log.debug(f"{self.node}: remote cutoff discard epr={epr_name} not exist")
             return
         qubit, _ = qm_tuple
-        log.debug(f"{self.own}: remote cutoff discard epr={epr_name} addr={qubit.addr} round={round}")
+        log.debug(f"{self.node}: remote cutoff discard epr={epr_name} addr={qubit.addr} round={round}")
 
         # discard secondary qubit
         fw.cnt.increment_n_cutoff(round, False)

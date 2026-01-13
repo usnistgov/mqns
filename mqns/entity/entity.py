@@ -31,22 +31,15 @@ class Entity(ABC):
         """
         Args:
             name: the name of this entity.
-
         """
         self.name = name
-        self._simulator: Simulator | None = None
+        """Entity name."""
 
-    @property
-    def simulator(self) -> Simulator:
+    def ensure_not_installed(self) -> None:
         """
-        Return the Simulator that this entity belongs to.
-
-        Raises:
-            IndexError - simulator does not exist
+        Assert that this entity has not been installed into a simulator.
         """
-        if self._simulator is None:
-            raise IndexError(f"{self} is not in a simulator")
-        return self._simulator
+        assert not hasattr(self, "simulator"), "function only available prior to self.install()"
 
     def install(self, simulator: Simulator) -> None:
         """
@@ -57,9 +50,10 @@ class Entity(ABC):
             simulator: the simulator.
 
         """
-        assert self._simulator is None or self._simulator == simulator
+        assert not hasattr(self, "simulator") or self.simulator is simulator
         assert not simulator.running
-        self._simulator = simulator
+        self.simulator = simulator
+        """Global simulator instance."""
 
     @abstractmethod
     def handle(self, event: Event) -> None:

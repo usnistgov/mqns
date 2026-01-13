@@ -16,17 +16,18 @@ class ProcessEvent(Event):
         self.dest.handle(self)
 
 
-class ProcessApp(Application):
+class ProcessApp(Application[Node]):
     def __init__(self):
         super().__init__()
         self.add_handler(self.EventHandler, ProcessEvent)
 
-    def install(self, node: Node, simulator: Simulator):
-        super().install(node, simulator)
+    @override
+    def install(self, node):
+        self._application_install(node, Node)
 
         for i in range(0, 10):
-            t = simulator.time(sec=i)
-            event = ProcessEvent(t=t, dest=self.get_node(), by=self)
+            t = self.simulator.time(sec=i)
+            event = ProcessEvent(t=t, dest=self.node, by=self)
             self.simulator.add_event(event)
 
     def EventHandler(self, event: Event) -> bool | None:

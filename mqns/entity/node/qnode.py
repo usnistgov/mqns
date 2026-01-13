@@ -36,8 +36,9 @@ class QNode(Node):
             name: node name
             apps: applications on the node.
         """
-        super().__init__(name=name, apps=apps)
+        super().__init__(name, apps=apps)
         self.qchannels: list["QuantumChannel"] = []
+        """Quantum channels connected to this node."""
         self._qchannel_by_dst = dict[Node, "QuantumChannel"]()
         self._memory: "QuantumMemory|None" = None
         self.operators: list["QuantumOperator"] = []
@@ -76,7 +77,7 @@ class QNode(Node):
         Assign QuantumMemory to this node.
         This setter is available prior to calling .install().
         """
-        assert self._simulator is None
+        self.ensure_not_installed()
         value.node = self
         self._memory = value
 
@@ -84,11 +85,11 @@ class QNode(Node):
         """Add a quantum operator in this node
 
         Args:
-            operator (QuantumOperator): the quantum operator
+            operator: the quantum operator
 
         This function is available prior to calling .install().
         """
-        assert self._simulator is None
+        self.ensure_not_installed()
         operator.set_own(self)
         self.operators.append(operator)
 

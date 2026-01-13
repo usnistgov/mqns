@@ -193,7 +193,7 @@ def test_memory_sync_qubit_limited():
 
 
 def test_memory_async_qubit():
-    class MemoryReadResponseApp(Application):
+    class MemoryReadResponseApp(Application[QNode]):
         def __init__(self):
             super().__init__()
             self.add_handler(self.handleMemoryRead, MemoryReadResponseEvent)

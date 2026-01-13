@@ -15,42 +15,54 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import sys
+from abc import ABC
 from collections import defaultdict
 from collections.abc import Callable, Iterable
-from typing import TYPE_CHECKING, Any, TypeVar, cast, overload
+from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast
 
-from mqns.simulator import Event, Simulator
+from mqns.simulator import Event, EventT
 
 if TYPE_CHECKING:
-    from mqns.entity.node.node import Node, NodeT
-
-EventT = TypeVar("EventT", bound=Event)
-"""Represents an event type."""
+    from mqns.entity.node.node import Node
 
 
-class Application:
+NodeT = TypeVar("NodeT", bound="Node")
+"""Type argument for Node or its subclass."""
+
+
+class Application(ABC, Generic[NodeT]):
     """
     Application deployed on a node.
+
+    ``NodeT`` parameter indicates which ``Node`` subclass is required for installing this application.
     """
 
     def __init__(self):
-        self._simulator: Simulator | None = None
-        self._node: "Node|None" = None
         self._dispatch_table = defaultdict[type[Event], list[tuple[set[Any] | None, Callable[[Event], bool | None]]]](
             lambda: []
         )
 
-    def install(self, node: "Node", simulator: Simulator):
-        """Install initial events for this Node. Called from Node.install()
-
-        Args:
-            node (Node): the node that will run this application
-            simulator (Simulator): the simulator
-
+    def install(self, node: "Node"):
         """
-        self._simulator = simulator
-        self._node = node
+        Install this application onto the node.
+
+        Base class implementation does not verify ``node`` matches ``NodeT`` type.
+        If ``NodeT`` is a subclass such as ``QNode``, subclass should override this method to
+        invoke ``self._application_install()`` with an appropriate ``node_type``.
+        """
+        from mqns.entity.node.node import Node  # noqa: PLC0415
+
+        self._application_install(node, cast(Any, Node))
+
+    def _application_install(self, node: "Node", node_type: type[NodeT]) -> None:
+        """
+        Part of ``install`` method logic.
+        """
+        self.simulator = node.simulator
+        """Global simulator instance."""
+        assert isinstance(node, node_type)
+        self.node: NodeT = node
+        """Node that owns this application."""
 
     def handle(self, event: Event) -> bool | None:
         """
@@ -90,45 +102,8 @@ class Application:
         eb = None if event_by is None else set(event_by)
         eh = cast(Any, handler)
         for et in cast(Iterable[type[EventT]], ets):
-            # __final__ marker is available since Python 3.11
-            assert sys.version_info[:2] < (3, 11) or getattr(et, "__final__", False) is True, (
-                f"event type {et} must be marked @final"
-            )
+            assert getattr(et, "__final__", False) is True, f"event type {et} must be marked @final"
             self._dispatch_table[et].append((eb, eh))
-
-    @overload
-    def get_node(self) -> "Node":
-        pass
-
-    @overload
-    def get_node(self, *, node_type: type["NodeT"]) -> "NodeT":
-        pass
-
-    def get_node(self, *, node_type: type["NodeT"] | None = None):
-        """
-        Retrieve the owner node, optionally asserts its type.
-
-        Raises:
-            IndexError - application is not installed.
-            TypeError - owner node has wrong type.
-        """
-        if self._node is None:
-            raise IndexError("application is not in a node")
-        if node_type is not None and not isinstance(self._node, node_type):
-            raise TypeError(f"application owner node is not of type {node_type}")
-        return cast("NodeT", self._node)
-
-    @property
-    def simulator(self) -> Simulator:
-        """
-        Retrieve the simulator.
-
-        Raises:
-            IndexError - application is not installed.
-        """
-        if self._simulator is None:
-            raise IndexError("application is not in a simulator")
-        return self._simulator
 
 
 ApplicationT = TypeVar("ApplicationT", bound=Application)

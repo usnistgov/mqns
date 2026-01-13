@@ -1,4 +1,5 @@
 import math
+from typing import override
 
 from mqns.entity.monitor import Monitor
 from mqns.entity.node import Application, QNode
@@ -7,7 +8,7 @@ from mqns.models.qubit import Qubit
 from mqns.simulator import Simulator, func_to_event
 
 
-class SendApp(Application):
+class SendApp(Application[QNode]):
     def __init__(self, dest: QNode, qchannel: QuantumChannel, send_rate=1):
         super().__init__()
         self.dest = dest
@@ -15,19 +16,19 @@ class SendApp(Application):
         self.send_rate = send_rate
         self.count = 0
 
-    def install(self, node, simulator: Simulator):
-        super().install(node, simulator)
-        simulator.add_event(func_to_event(simulator.ts, self.send, by=self))
+    @override
+    def install(self, node):
+        self._application_install(node, QNode)
+        self.simulator.add_event(func_to_event(self.simulator.ts, self.send, by=self))
 
     def send(self):
-        simulator = self.simulator
         qubit = Qubit()
         self.qchannel.send(qubit, next_hop=self.dest)
         self.count += 1
-        simulator.add_event(func_to_event(simulator.tc + 1 / self.send_rate, self.send, by=self))
+        self.simulator.add_event(func_to_event(self.simulator.tc + 1 / self.send_rate, self.send, by=self))
 
 
-class RecvApp(Application):
+class RecvApp(Application[QNode]):
     def __init__(self):
         super().__init__()
         self.count = 0

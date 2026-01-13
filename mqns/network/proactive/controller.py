@@ -18,14 +18,13 @@
 from typing import override
 
 from mqns.entity.cchannel import ClassicPacket
-from mqns.entity.node import Application, Controller, Node
+from mqns.entity.node import Application, Controller
 from mqns.network.proactive.message import InstallPathMsg, PathInstructions, UninstallPathMsg
 from mqns.network.proactive.routing import RoutingPath
-from mqns.simulator import Simulator
 from mqns.utils import log
 
 
-class ProactiveRoutingController(Application):
+class ProactiveRoutingController(Application[Controller]):
     """
     Centralized control plane app for Proactive Routing.
     Works with Proactive Forwarder on quantum nodes.
@@ -43,10 +42,9 @@ class ProactiveRoutingController(Application):
         self.paths = [] if not paths else paths if isinstance(paths, list) else [paths]
 
     @override
-    def install(self, node: Node, simulator: Simulator):
-        super().install(node, simulator)
-        self.own = self.get_node(node_type=Controller)
-        self.net = self.own.network
+    def install(self, node):
+        self._application_install(node, Controller)
+        self.net = self.node.network
         self.next_req_id = 0
         self.next_path_id = 0
 
@@ -90,5 +88,5 @@ class ProactiveRoutingController(Application):
 
         for node_name in instructions["route"]:
             qnode = self.net.get_node(node_name)
-            self.own.get_cchannel(qnode).send(ClassicPacket(msg, src=self.own, dest=qnode), next_hop=qnode)
-            log.debug(f"{self.own}: {verb} path #{path_id} at {qnode}: {instructions}")
+            self.node.get_cchannel(qnode).send(ClassicPacket(msg, src=self.node, dest=qnode), next_hop=qnode)
+            log.debug(f"{self.node}: {verb} path #{path_id} at {qnode}: {instructions}")

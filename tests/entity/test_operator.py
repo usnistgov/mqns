@@ -27,7 +27,7 @@ def test_operator_sync():
     s.run()
 
 
-class RecvOperateApp(Application):
+class RecvOperateApp(Application[QNode]):
     def __init__(self):
         super().__init__()
         self.add_handler(self.OperateResponseEventhandler, OperateResponseEvent)

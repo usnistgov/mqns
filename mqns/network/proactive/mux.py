@@ -29,8 +29,8 @@ class MuxScheme(ABC):
         return f"<{self.name}>"
 
     @property
-    def own(self) -> QNode:
-        return self.fw.own
+    def node(self) -> QNode:
+        return self.fw.node
 
     @property
     def memory(self) -> QuantumMemory:

@@ -51,8 +51,6 @@ class QuantumOperator(Entity):
 
     @override
     def handle(self, event: Event) -> None:
-        simulator = self.simulator
-
         if isinstance(event, OperateRequestEvent):
             assert self.node is not None
 
@@ -60,9 +58,9 @@ class QuantumOperator(Entity):
             # operate qubits and get measure results
             result = self.operate(*qubits)
 
-            t = simulator.tc + self.delay_model.calculate()
+            t = self.simulator.tc + self.delay_model.calculate()
             response = OperateResponseEvent(node=self.node, result=result, request=event, t=t, by=self)
-            simulator.add_event(response)
+            self.simulator.add_event(response)
 
     def set_own(self, node: QNode):
         """Set the owner of this quantum operator"""

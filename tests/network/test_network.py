@@ -1,10 +1,10 @@
-from mqns.entity.node import Application, Controller
+from mqns.entity.node import Application, Controller, Node
 from mqns.network.network import QuantumNetwork, TimingModeSync, TimingPhase, TimingPhaseEvent
 from mqns.network.topology import BasicTopology
 from mqns.simulator import Simulator
 
 
-class SyncCheckApp(Application):
+class SyncCheckApp(Application[Node]):
     def __init__(self):
         super().__init__()
         self.changes = 0
