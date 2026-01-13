@@ -36,8 +36,6 @@ sim_duration = 5.0
 
 def run_simulation(seed: int, t_cohere: float, t_wait: float):
     set_seed(seed)
-    s = Simulator(0, sim_duration + 5e-06, accuracy=SIMULATOR_ACCURACY)
-    log.install(s)
 
     topo = build_topology(
         nodes=["S", "R", "D"],
@@ -47,7 +45,6 @@ def run_simulation(seed: int, t_cohere: float, t_wait: float):
         swap_cutoff=[0, t_wait, 0],
     )
     net = QuantumNetwork(topo)
-    net.install(s)
 
     fwS = net.get_node("S").get_app(ProactiveForwarder)
     fwS.cnt.enable_collect_all()
@@ -55,6 +52,7 @@ def run_simulation(seed: int, t_cohere: float, t_wait: float):
     waitR = CutoffSchemeWaitTime.of(fwR)
     waitR.cnt.enable_collect_all()
 
+    s = Simulator(0, sim_duration + 5e-06, accuracy=SIMULATOR_ACCURACY, install_to=(log, net))
     s.run()
 
     rate = fwS.cnt.n_consumed / sim_duration

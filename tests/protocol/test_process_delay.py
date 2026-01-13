@@ -41,7 +41,5 @@ def test_process_delay():
     n1.add_apps(NodeProcessDelayApp(delay=0.5, delay_event_list=(ProcessEvent,)))
     n1.add_apps(ProcessApp())
 
-    s = Simulator(0, 10)
-    n1.install(s)
-
+    s = Simulator(0, 10, install_to=(n1,))
     s.run()

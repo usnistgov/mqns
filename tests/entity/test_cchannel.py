@@ -52,9 +52,7 @@ def test_cchannel():
     n1.add_cchannel(l1)
     n2.add_cchannel(l1)
 
-    s = Simulator(0, 10, accuracy=1000)
-    n1.install(s)
-    n2.install(s)
+    s = Simulator(0, 10, accuracy=1000, install_to=(n1, n2))
     s.run()
 
 
@@ -67,9 +65,7 @@ def test_cchannel_normal_delay():
     n1.add_cchannel(l1)
     n2.add_cchannel(l1)
 
-    s = Simulator(0, 10, accuracy=1000)
-    n1.install(s)
-    n2.install(s)
+    s = Simulator(0, 10, accuracy=1000, install_to=(n1, n2))
     s.run()
 
 
@@ -82,7 +78,5 @@ def test_cchannel_uniform_delay():
     n1.add_cchannel(l1)
     n2.add_cchannel(l1)
 
-    s = Simulator(0, 10, accuracy=1000)
-    n1.install(s)
-    n2.install(s)
+    s = Simulator(0, 10, accuracy=1000, install_to=(n1, n2))
     s.run()

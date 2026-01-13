@@ -46,9 +46,7 @@ def setup_and_run(l1: QuantumChannel) -> tuple[SendApp, RecvApp]:
     a2 = RecvApp()
     n2.add_apps(a2)
 
-    s = Simulator(1.000, 4.999, accuracy=1000)
-    n1.install(s)
-    n2.install(s)
+    s = Simulator(1.000, 4.999, accuracy=1000, install_to=(n1, n2))
     s.run()
 
     return (a1, a2)

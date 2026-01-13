@@ -166,13 +166,11 @@ def build_topology(t_cohere: float, p_swap: float, mux: MuxScheme) -> Topology:
 
 def run_simulation(t_cohere: float, p_swap: float, mux: MuxScheme, seed: int):
     set_seed(seed)
-    s = Simulator(0, sim_duration + 5e-06, accuracy=1000000)
-    log.install(s)
 
     topo = build_topology(t_cohere, p_swap, mux)
     net = QuantumNetwork(topo)
-    net.install(s)
 
+    s = Simulator(0, sim_duration + 5e-06, accuracy=1000000, install_to=(log, net))
     s.run()
 
     #### get stats: e2e_rate and mean_fidelity

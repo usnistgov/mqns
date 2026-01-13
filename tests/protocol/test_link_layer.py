@@ -87,18 +87,16 @@ def test_basic(epr_type: type[Entanglement]):
     net.build_route()
     net.get_qchannel("n1", "n2").assign_memory_qubits(capacity=1)
 
-    simulator = Simulator(0.0, 20.0)
-    log.install(simulator)
-    net.install(simulator)
+    s = Simulator(0.0, 20.0, install_to=(log, net))
 
     a1 = net.get_node("n1").get_app(NetworkLayer)
     a2 = net.get_node("n2").get_app(NetworkLayer)
-    manage_active_channel(simulator, 0.5, a1, a2)
-    manage_active_channel(simulator, 8.4, a1, a2, stop=True)
+    manage_active_channel(s, 0.5, a1, a2)
+    manage_active_channel(s, 8.4, a1, a2, stop=True)
     a1.release_after = 2.9
     a2.release_after = 3.2
 
-    simulator.run()
+    s.run()
 
     for app in (a1, a2):
         print(app.node.name, app.entangle, app.decohere)

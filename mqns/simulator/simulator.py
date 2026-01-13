@@ -19,8 +19,9 @@ import math
 import os
 import time
 from collections import defaultdict
+from collections.abc import Iterable
 from pstats import SortKey
-from typing import TYPE_CHECKING, overload
+from typing import TYPE_CHECKING, Any, Protocol, overload
 
 from mqns.simulator.event import Event
 from mqns.simulator.pool import DefaultEventPool
@@ -39,6 +40,10 @@ default_start_second = 0.0
 default_end_second = 60.0
 
 
+class SimulatorInstallable(Protocol):
+    def install(self, simulator: "Simulator") -> Any: ...
+
+
 class Simulator:
     """
     Discrete-event driven simulator core.
@@ -50,12 +55,14 @@ class Simulator:
         end_second: float = default_end_second,
         *,
         accuracy: int = default_accuracy,
+        install_to: Iterable[SimulatorInstallable] = [],
     ):
         """
         Args:
             start_second: simulation start time in seconds.
             end_second: simulator end time in seconds; infinite means continuous simulation.
             accuracy: the number of time slots per second.
+            install_to: install this simulator by invoking `.install(self)` on each target.
         """
         self.accuracy = accuracy
         set_default_accuracy(accuracy)
@@ -75,6 +82,9 @@ class Simulator:
         self.watch_event = defaultdict[type[Event], list["Monitor"]](lambda: [])
 
         self._running = False
+
+        for install_target in install_to:
+            install_target.install(self)
 
     @property
     def tc(self) -> Time:

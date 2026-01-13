@@ -52,8 +52,6 @@ def run_simulation(
     seed: int,
 ):
     set_seed(seed)
-    s = Simulator(0, sim_duration + 5e-06, accuracy=1000000)
-    log.install(s)
 
     topo = build_topology(
         nodes=N_NODES,
@@ -64,8 +62,8 @@ def run_simulation(
         swap=swapping_order,
     )
     net = QuantumNetwork(topo)
-    net.install(s)
 
+    s = Simulator(0, sim_duration + 5e-06, accuracy=1000000, install_to=(log, net))
     s.run()
 
     #### get stats

@@ -181,13 +181,11 @@ def vora_regen_row(p: ParameterSet, num_routers: int, dist_prop: str, indir: str
 
 def run_simulation(p: ParameterSet, seed: int) -> tuple[float, float]:
     set_seed(seed)
-    s = Simulator(0, p.sim_duration + 5e-06, accuracy=1000000)
-    log.install(s)
 
     topo = p.build_topology()
     net = QuantumNetwork(topo)
 
-    net.install(s)
+    s = Simulator(0, p.sim_duration + 5e-06, accuracy=1000000, install_to=(log, net))
     s.run()
 
     #### get stats

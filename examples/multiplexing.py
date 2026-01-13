@@ -250,12 +250,11 @@ def build_topology(t_cohere: float, mux: MuxScheme, active_flows: list[tuple[str
 
 def run_simulation(t_cohere: float, mux: MuxScheme, seed: int, active_flows: list[tuple[str, str]]):
     set_seed(seed)
-    s = Simulator(0, sim_duration + 5e-06, accuracy=1000000)
-    log.install(s)
 
     topo = build_topology(t_cohere, mux, active_flows)
     net = QuantumNetwork(topo)
-    net.install(s)
+
+    s = Simulator(0, sim_duration + 5e-06, accuracy=1000000, install_to=(log, net))
     s.run()
 
     # Collect per-source stats in fixed order [AK, BL, CI, DH, GM]

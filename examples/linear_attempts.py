@@ -53,8 +53,6 @@ def run_simulation(seed: int, sim_duration: float, L: list[float], M: int) -> li
     Return per-channel results.
     """
     set_seed(seed)
-    s = Simulator(0, sim_duration + 5e-06, accuracy=1000000)
-    log.install(s)
 
     topo = build_topology(
         nodes=len(L) + 1,
@@ -64,8 +62,8 @@ def run_simulation(seed: int, sim_duration: float, L: list[float], M: int) -> li
         swap=[0] * (len(L) + 1),
     )
     net = QuantumNetwork(topo)
-    net.install(s)
 
+    s = Simulator(0, sim_duration + 5e-06, accuracy=1000000, install_to=(log, net))
     s.run()
 
     res: list[ChannelResult] = []

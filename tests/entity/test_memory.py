@@ -27,10 +27,7 @@ class TwoNodes:
         self.n1.add_qchannel(self.qc)
         self.n2.add_qchannel(self.qc)
 
-        self.s = Simulator(0, 10, accuracy=1000000)
-        self.n1.install(self.s)
-        self.n2.install(self.s)
-        self.qc.install(self.s)
+        self.s = Simulator(0, 10, accuracy=1000000, install_to=(self.n1, self.n2, self.qc))
 
     def make_epr(self, name: str) -> WernerStateEntanglement:
         return WernerStateEntanglement(
@@ -232,8 +229,7 @@ def test_memory_async_qubit():
     m = QuantumMemory("m1", delay=0.5)
     n1.memory = m
 
-    s = Simulator(0, 10, accuracy=1000)
-    n1.install(s)
+    s = Simulator(0, 10, accuracy=1000, install_to=(n1,))
 
     q1 = Qubit(name="q1")
     write_request = MemoryWriteRequestEvent(memory=m, qubit=q1, t=s.time(sec=0), by=n1)

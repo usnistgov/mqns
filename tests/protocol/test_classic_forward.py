@@ -56,8 +56,6 @@ class RecvApp(Application[Node]):
 
 
 def test_classic_forward():
-    s = Simulator(0, 10, accuracy=10000000)
-
     topo = LinearTopology(nodes_number=10, qchannel_args={"delay": 0.1}, cchannel_args={"delay": 0.1})
 
     net = QuantumNetwork(topo, classic_topo=ClassicTopology.Follow)
@@ -80,5 +78,5 @@ def test_classic_forward():
 
     n1.add_apps(SendApp(n10, classic_route))
 
-    net.install(s)
+    s = Simulator(0, 10, accuracy=10000000, install_to=(net,))
     s.run()

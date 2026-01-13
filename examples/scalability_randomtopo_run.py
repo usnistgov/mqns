@@ -29,9 +29,7 @@ def run_simulation(args: RunArgs) -> RunResult:
     net = build_network(args)
 
     # Install network into Simulator.
-    s = Simulator(0, args.sim_duration + 5e-06, accuracy=1000000)
-    log.install(s)
-    net.install(s)
+    s = Simulator(0, args.sim_duration + 5e-06, accuracy=1000000, install_to=(log, net))
 
     # Install paths for requests.
     ctrl = net.get_controller().get_app(ProactiveRoutingController)

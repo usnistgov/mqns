@@ -16,7 +16,6 @@ def drop_rate(length):
 
 
 def test_bb84_protocol():
-    s = Simulator(0, 10, accuracy=10000000000)
     n1 = QNode(name="n1")
     n2 = QNode(name="n2")
 
@@ -34,8 +33,6 @@ def test_bb84_protocol():
     n1.add_apps(sp)
     n2.add_apps(rp)
 
-    n1.install(s)
-    n2.install(s)
-
+    s = Simulator(0, 10, accuracy=10000000000, install_to=(n1, n2))
     s.run()
     print(sp.fail_number)

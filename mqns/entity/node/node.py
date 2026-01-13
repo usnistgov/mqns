@@ -53,7 +53,7 @@ class Node(Entity):
         self._cchannel_by_dst = dict["Node", "ClassicChannel"]()
         self.apps: list[Application] = [] if apps is None else apps
         """Applications on this node."""
-        self._app_by_type = dict[type, Application]()
+        self._app_by_type: dict[type, Application] | None = None
 
     @override
     def install(self, simulator: Simulator) -> None:
@@ -69,6 +69,8 @@ class Node(Entity):
         for app in self.apps:
             apps_by_type[type(app)].append(app)
             app.install(self)
+
+        self._app_by_type = {}
         for typ, apps in apps_by_type.items():
             if len(apps) == 1:
                 self._app_by_type[typ] = apps[0]
@@ -97,6 +99,7 @@ class Node(Entity):
                  The caller is responsible for `deepcopy` if needed, so that each node has a separate instance.
 
         """
+        self.ensure_not_installed()
         if isinstance(app, list):
             self.apps += app
         else:
@@ -122,6 +125,13 @@ class Node(Entity):
         Raises:
             IndexError - application does not exist, or there are multiple instances
         """
+        if self._app_by_type is None:  # this is called before self.install() populates _app_by_type
+            self.ensure_not_installed()
+            apps = self.get_apps(app_type)
+            if len(apps) != 1:
+                raise IndexError("node does not have exactly one instance of {app_type}")
+            return apps[0]
+
         return cast(ApplicationT, self._app_by_type[app_type])
 
     def _add_channel(self, channel: "ChannelT", channels: list["ChannelT"]) -> None:
@@ -148,6 +158,7 @@ class Node(Entity):
         Add a classic channel in this Node.
         This function is available prior to calling .install().
         """
+        self.ensure_not_installed()
         self._add_channel(cchannel, self.cchannels)
 
     def get_cchannel(self, dst: "Node") -> "ClassicChannel":

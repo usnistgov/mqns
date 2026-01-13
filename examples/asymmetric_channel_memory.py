@@ -14,8 +14,6 @@ SEED_BASE = 100
 sim_duration = 3
 
 set_seed(SEED_BASE)
-s = Simulator(0, sim_duration + 5e-06, accuracy=1000000)
-log.install(s)
 
 topo = build_topology(
     nodes=4,
@@ -26,8 +24,8 @@ topo = build_topology(
     swap="swap_2_l2r",
 )
 net = QuantumNetwork(topo)
-net.install(s)
 
+s = Simulator(0, sim_duration + 5e-06, accuracy=1000000, install_to=(log, net))
 s.run()
 
 #### get stats

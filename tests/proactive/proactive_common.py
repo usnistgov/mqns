@@ -83,9 +83,7 @@ def _build_network_finish(
         qchannel.assign_memory_qubits(capacity=qchannel_capacity)
     topo.connect_controller(net.nodes)
 
-    simulator = Simulator(0.0, d.get("end_time", 10.0))
-    log.install(simulator)
-    net.install(simulator)
+    simulator = Simulator(0.0, d.get("end_time", 10.0), install_to=(log, net))
 
     return net, simulator
 

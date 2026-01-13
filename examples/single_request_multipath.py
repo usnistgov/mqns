@@ -145,16 +145,14 @@ def build_topology() -> Topology:
 
 
 set_seed(SEED_BASE)
-s = Simulator(0, sim_duration + 5e-06, accuracy=1000000)
-log.install(s)
 
 topo = build_topology()
 net = QuantumNetwork(
     topo,
     route=YenRouteAlgorithm(),  # Yen's algo is set here!
 )
-net.install(s)
 
+s = Simulator(0, sim_duration + 5e-06, accuracy=1000000, install_to=(log, net))
 s.run()
 
 #### get stats
