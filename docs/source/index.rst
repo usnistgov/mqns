@@ -1,6 +1,10 @@
 Multiverse Quantum Network Simulator
 ====================================
 
+.. image:: _static/mqns-logo.svg
+   :alt: MQNS logo
+   :width: 100
+
 **Multiverse** is a flexible and extensible simulator for evaluating **entanglement routing in quantum networks**.
 It is designed as an **architecture-agnostic, modular platform** that allows researchers and developers to:
 

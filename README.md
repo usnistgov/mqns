@@ -6,6 +6,8 @@
 
 **Multiverse** is a quantum network simulator designed to streamline the comparative evaluation of entanglement routing under dynamic and heterogeneous network conditions. It addresses the need for a unified, flexible framework for rapidly prototyping and benchmarking a wide range of entanglement distribution strategies and quantum network architectures. The simulator supports systematic exploration of routing algorithms, swapping strategies, purification schedules, and qubit/resource management across diverse network scenarios.
 
+![MQNS logo](docs/mqns-logo.svg)
+
 This software is developed at the [Smart Connected Systems Division](https://www.nist.gov/ctl/smart-connected-systems-division) of the [National Institute of Standards and Technology](https://www.nist.gov/).
 
 This project is part of an ongoing research effort to evaluate the quantum networking approaches presented in our survey:
