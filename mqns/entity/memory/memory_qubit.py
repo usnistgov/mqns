@@ -16,6 +16,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
+from collections.abc import Iterable
 from enum import Enum, auto
 
 from mqns.entity.qchannel import QuantumChannel
@@ -169,7 +170,20 @@ class MemoryQubit:
         self._events.clear()
 
     def __repr__(self) -> str:
-        return (
-            f"<memory qubit {self.addr}, ch={self.qchannel}, path_id={self.path_id}, "
-            f"active={self.active}, purif_rounds={self.purif_rounds}, state={self._state}>"
-        )
+        return ", ".join(_describe(self)) + ")"
+
+
+def _describe(mq: MemoryQubit) -> Iterable[str]:
+    yield f"MemoryQubit({mq.addr}"
+    yield f"state={mq._state.name}"
+
+    if mq.qchannel:
+        yield f"ch={mq.qchannel.name}"
+        if mq.path_direction:
+            yield f"path={mq.path_id}-{mq.path_direction.name}"
+
+    match mq._state:
+        case QubitState.ACTIVE | QubitState.RESERVED:
+            yield f"active={mq.active}"
+        case QubitState.PURIF | QubitState.PENDING | QubitState.ELIGIBLE:
+            yield f"purif_rounds={mq.purif_rounds}"

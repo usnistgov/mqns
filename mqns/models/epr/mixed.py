@@ -15,6 +15,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from collections.abc import Iterable
 from typing import Unpack, final, override
 
 import numpy as np
@@ -159,3 +160,10 @@ class MixedStateEntanglement(Entanglement["MixedStateEntanglement"]):
     @override
     def _to_qubits_rho(self) -> MultiQubitRho:
         return self.a * RHO_PHI_P + self.b * RHO_PSI_P + self.c * RHO_PSI_N + self.d * RHO_PHI_N
+
+    @override
+    def _describe_fidelity(self) -> Iterable[str]:
+        yield f"a={self.a:.4f}"
+        yield f"b={self.b:.4f}"
+        yield f"c={self.c:.4f}"
+        yield f"d={self.d:.4f}"

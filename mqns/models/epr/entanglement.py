@@ -28,6 +28,7 @@
 import hashlib
 import uuid
 from abc import ABC, abstractmethod
+from collections.abc import Iterable
 from typing import TYPE_CHECKING, Generic, TypedDict, TypeVar, Unpack, cast
 
 import numpy as np
@@ -42,10 +43,6 @@ from mqns.utils import get_rand
 
 if TYPE_CHECKING:
     from mqns.entity.node import QNode
-
-
-def _name_hash(s1: str) -> str:
-    return hashlib.sha256(s1.encode()).hexdigest()
 
 
 EntanglementT = TypeVar("EntanglementT", bound="Entanglement")
@@ -177,10 +174,12 @@ class Entanglement(ABC, Generic[EntanglementT], QuantumModel):
             else:
                 orig_eprs.extend(cast(list[EntanglementT], epr.orig_eprs))
 
+        orig_names = "-".join((e.name for e in orig_eprs))
+        name = hashlib.sha256(orig_names.encode()).hexdigest()[:32]  # same length as `uuid.uuid4().hex`
         ne = type(epr0)._make_swapped(
             epr0,
             epr1,
-            name=_name_hash("-".join((e.name for e in orig_eprs))),
+            name=name,
             creation_time=now,
             decoherence_time=min(epr0.decoherence_time, epr1.decoherence_time),
             src=epr0.src,
@@ -282,4 +281,34 @@ class Entanglement(ABC, Generic[EntanglementT], QuantumModel):
         return q2
 
     def __repr__(self) -> str:
-        return "<epr " + self.name + ">"
+        return ", ".join(_describe(self)) + ")"
+
+    def _describe_fidelity(self) -> Iterable[str]:
+        yield f"fidelity={self.fidelity:.4f}"
+
+
+def _describe(epr: Entanglement) -> Iterable[str]:
+    yield f"EPR({epr.name}"
+
+    if epr.is_decoherenced:
+        yield "DECOHERENCED"
+    else:
+        yield from epr._describe_fidelity()
+
+    if epr.creation_time is not Time.SENTINEL:
+        yield f"creation_time={epr.creation_time.sec}"
+    if epr.decoherence_time is not Time.SENTINEL:
+        yield f"decoherence_time={epr.decoherence_time.sec}"
+
+    if epr.src and epr.dst:
+        yield f"src={epr.src.name}"
+        yield f"dst={epr.dst.name}"
+        if epr.ch_index >= 0:
+            yield f"ch_index={epr.ch_index}"
+        elif len(epr.orig_eprs) > 0:
+            orig_eprs = ",".join(e.name for e in epr.orig_eprs)
+            yield f"orig_eprs=[{orig_eprs}]"
+
+    if epr.tmp_path_ids:
+        tmp_path_ids = ",".join(str(x) for x in epr.tmp_path_ids)
+        yield f"tmp_path_ids=[{tmp_path_ids}]"

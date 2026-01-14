@@ -430,7 +430,9 @@ class ProactiveForwarder(Application[QNode]):
 
         qubit = event.qubit
         assert qubit.state == QubitState.ENTANGLED1
-        self.mux.qubit_is_entangled(qubit, event.neighbor)
+        _, epr = self.memory.read(qubit.addr, has=self.epr_type)
+        log.debug(f"{self.node}: ENTANGLED {qubit} | {epr}")
+        self.mux.qubit_is_entangled(qubit, epr, event.neighbor)
 
         su_args = self.waiting_su.pop(qubit.addr, None)
         if (
@@ -729,7 +731,7 @@ class ProactiveForwarder(Application[QNode]):
 
         # Attempt the swap.
         new_epr = Entanglement.swap(prev_epr, next_epr, now=self.simulator.tc, ps=self.ps)
-        log.debug(f"{self.node}: SWAP {'SUCC' if new_epr else 'FAILED'} | {prev_qubit} x {next_qubit}")
+        log.debug(f"{self.node}: SWAP {'SUCC' if new_epr else 'FAILED'} | {prev_qubit} x {next_qubit} = {new_epr}")
 
         if new_epr is not None:  # swapping succeeded
             self.cnt.n_swapped_s += 1
@@ -938,10 +940,7 @@ class ProactiveForwarder(Application[QNode]):
         Consume an entangled qubit.
         """
         _, qm = self.memory.read(qubit.addr, has=self.epr_type, set_fidelity=True, remove=True)
-        assert qm.src is not None
-        assert qm.dst is not None
-
-        log.debug(f"{self.node}: consume EPR: {qm.name} -> {qm.src.name}-{qm.dst.name} | F={qm.fidelity}")
+        log.debug(f"{self.node}: consume EPR: {qm}")
         self.cnt.increment_n_consumed(qm.fidelity)
 
         self.release_qubit(qubit)

@@ -93,7 +93,7 @@ class MuxScheme(ABC):
         pass
 
     @abstractmethod
-    def qubit_is_entangled(self, qubit: MemoryQubit, neighbor: QNode) -> None:
+    def qubit_is_entangled(self, qubit: MemoryQubit, epr: Entanglement, neighbor: QNode) -> None:
         """
         Handle a qubit entering ENTANGLED state, i.e. having an elementary entanglement.
 

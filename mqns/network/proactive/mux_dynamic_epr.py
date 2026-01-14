@@ -70,14 +70,13 @@ class MuxSchemeDynamicEpr(MuxSchemeFibBase, MuxSchemeDynamicBase):
         self._select_path = select_path
 
     @override
-    def qubit_is_entangled(self, qubit: MemoryQubit, neighbor: QNode) -> None:
+    def qubit_is_entangled(self, qubit: MemoryQubit, epr: Entanglement, neighbor: QNode) -> None:
         possible_path_ids = self._qubit_is_entangled_0(qubit)
         if not possible_path_ids:  # all paths on the channel have been uninstalled
             return
 
         # TODO: if paths have different swap policies
         #       -> consider only paths for which this qubit may be eligible ??
-        _, epr = self.memory.read(qubit.addr, has=self.fw.epr_type)
 
         if epr.tmp_path_ids is None:
             # In principle, a random path_id is chosen for each elementary EPR during EPR generation.

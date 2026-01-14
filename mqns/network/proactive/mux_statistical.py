@@ -142,13 +142,10 @@ class MuxSchemeStatistical(MuxSchemeDynamicBase):
         assert all((r == 0 for r in instructions["purif"].values()))
 
     @override
-    def qubit_is_entangled(self, qubit: MemoryQubit, neighbor: QNode) -> None:
-        _ = neighbor
+    def qubit_is_entangled(self, qubit: MemoryQubit, epr: Entanglement, neighbor: QNode) -> None:
         possible_path_ids = frozenset(self._qubit_is_entangled_0(qubit))
         if not possible_path_ids:  # all paths on the channel have been uninstalled
             return
-
-        _, epr = self.memory.read(qubit.addr, has=self.fw.epr_type)
 
         log.debug(f"{self.node}: qubit {qubit} has tmp_path_ids {possible_path_ids}")
         if epr.tmp_path_ids is None:
