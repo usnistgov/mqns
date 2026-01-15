@@ -20,8 +20,8 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from mqns.models.qubit.const import (
-    OPERATOR_HADAMARD,
+from mqns.models.qubit.operator import (
+    OPERATOR_H,
     OPERATOR_PAULI_I,
     OPERATOR_PAULI_X,
     OPERATOR_PAULI_Y,
@@ -32,10 +32,8 @@ from mqns.models.qubit.const import (
     OPERATOR_RZ,
     OPERATOR_S,
     OPERATOR_T,
+    Operator,
 )
-from mqns.models.qubit.errors import QGateOperatorNotMatchError, QGateQubitNotInStateError
-from mqns.models.qubit.typing import Operator1
-from mqns.models.qubit.utils import joint
 
 if TYPE_CHECKING:
     from mqns.models.qubit.qubit import Qubit
@@ -46,7 +44,7 @@ class Gate:
 
     def __init__(self, name: str, _docs: str | None = None):
         """Args:
-        name (str): the gate's name
+        name: the gate's name
 
         """
         self._name = name
@@ -63,23 +61,19 @@ class SingleQubitGate(Gate):
 
 
 class SingleQubitSimpleGate(SingleQubitGate):
-    def __init__(self, name: str, operator: Operator1, _docs: str | None = None):
-        """Args:
-        name (str): the gate's name
-        operator (np.ndarray): the matrix represent of this operator
-
+    def __init__(self, name: str, operator: Operator, _docs: str | None = None):
+        """
+        Args:
+            name: the gate's name
+            operator: the matrix represent of this operator
         """
         super().__init__(name, _docs)
         self._operator = operator
 
     def __call__(self, qubit: "Qubit") -> None:
-        """Args:
+        """
+        Args:
             qubit (Qubit): the operating qubit
-
-        Raises:
-            QGateOperatorNotMatchError
-            QGateQubitNotInStateError
-
         """
         qubit.operate(self._operator)
 
@@ -88,29 +82,26 @@ X = SingleQubitSimpleGate(name="X", operator=OPERATOR_PAULI_X, _docs="Pauli X Ga
 Y = SingleQubitSimpleGate(name="Y", operator=OPERATOR_PAULI_Y, _docs="Pauli Y Gate")
 Z = SingleQubitSimpleGate(name="Z", operator=OPERATOR_PAULI_Z, _docs="Pauli Z Gate")
 I = SingleQubitSimpleGate(name="I", operator=OPERATOR_PAULI_I, _docs="Pauli I Gate")
-H = SingleQubitSimpleGate(name="H", operator=OPERATOR_HADAMARD, _docs="Hadamard Gate")
+H = SingleQubitSimpleGate(name="H", operator=OPERATOR_H, _docs="Hadamard Gate")
 T = SingleQubitSimpleGate(name="T", operator=OPERATOR_T, _docs="T gate (pi/4 shift gate)")
 S = SingleQubitSimpleGate(name="S", operator=OPERATOR_S, _docs="S gate (pi/2 shift gate)")
 
 
 class SingleQubitRotateGate(SingleQubitGate):
-    def __init__(self, name: str, operator: Callable[[float], Operator1], _docs: str | None = None):
-        """Args:
-        name (str): the gate's name
-        operator: a function that returns the matrix represent of this operator
-
+    def __init__(self, name: str, operator: Callable[[float], Operator], _docs: str | None = None):
+        """
+        Args:
+            name: the gate's name
+            operator: a function that returns the matrix represent of this operator
         """
         super().__init__(name, _docs)
         self._operator = operator
 
     def __call__(self, qubit: "Qubit", theta=np.pi / 4) -> None:
-        """Args:
+        """
+        Args:
             qubit (Qubit): the operating qubit
             theta (float): the rotating degree
-        Raises:
-            QGateOperatorNotMatchError
-            QGateQubitNotInStateError
-
         """
         qubit.operate(self._operator(theta))
 
@@ -122,17 +113,14 @@ RZ = SingleQubitRotateGate(name="RZ", operator=OPERATOR_RZ, _docs="Rz gate (Z ro
 
 
 class SingleQubitArbitraryGate(SingleQubitGate):
-    def __call__(self, qubit: "Qubit", operator: Operator1) -> None:
-        """Args:
-            qubit (Qubit): the operating qubit
-            operator (np.ndarray): the operator matrix
-        Raises:
-            QGateOperatorNotMatchError
-            QGateQubitNotInStateError
-
+    def __call__(self, qubit: "Qubit", operator: Operator) -> None:
         """
-        if operator.shape != (2, 2):
-            raise QGateOperatorNotMatchError
+        Args:
+            qubit (Qubit): the operating qubit
+            operator: the operator matrix
+        """
+        if operator.n != 1:
+            raise ValueError("wrong operator size")
         self._operator = operator
         qubit.operate(self._operator)
 
@@ -148,42 +136,35 @@ class DoubleQubitsControlledGate(Gate):
         [[I_2, 0][0, operator]]
     """
 
-    def __init__(self, name: str, operator: Operator1, _docs: str | None = None):
-        """Args:
-        name (str): the gate's name
-        operator (np.ndarray): the matrix represent of the operator
-
+    def __init__(self, name: str, operator: Operator, _docs: str | None = None):
+        """
+        Args:
+            name: the gate's name
+            operator: the matrix represent of the operator
         """
         super().__init__(name, _docs)
         self._operator = operator
 
-    def __call__(self, qubit1: "Qubit", qubit2: "Qubit", operator: Operator1 | None = None) -> None:
-        """Args:
-            qubit1 (Qubit): the first qubit (controller)
-            qubit2 (Qubit): the second qubit
-            operator (np.ndarray): the matrix represent of the operator
-
-        Raises:
-            QGateOperatorNotMatchError
-            QGateQubitNotInStateError
-            QGateStateJointError
-
+    def __call__(self, qubit1: "Qubit", qubit2: "Qubit", operator: Operator | None = None) -> None:
         """
+        Args:
+            qubit1: the first qubit (controller)
+            qubit2: the second qubit
+            operator: the matrix represent of the operator
+        """
+        from mqns.models.qubit.qubit import QState  # noqa: PLC0415
+
         if operator is None:
             operator = self._operator
-        if operator.shape != (2, 2):
-            raise QGateOperatorNotMatchError
+        if operator.n != 1:
+            raise ValueError("wrong operator size")
 
         if qubit1 == qubit2:
             return
-        joint(qubit1, qubit2)
-        state = qubit1.state
+        state = QState.joint(qubit1, qubit2)
 
-        try:
-            idx1 = state.qubits.index(qubit1)
-            idx2 = state.qubits.index(qubit2)
-        except ValueError:
-            raise QGateQubitNotInStateError
+        idx1 = state.qubits.index(qubit1)
+        idx2 = state.qubits.index(qubit2)
 
         full_operator_part_0 = np.array([1])  # |0> <0|
         full_operator_part_1 = np.array([1])  # |1> <1|
@@ -193,13 +174,13 @@ class DoubleQubitsControlledGate(Gate):
                 full_operator_part_0 = np.kron(full_operator_part_0, np.array([[1, 0], [0, 0]]))
                 full_operator_part_1 = np.kron(full_operator_part_1, np.array([[0, 0], [0, 1]]))
             elif i == idx2:
-                full_operator_part_0 = np.kron(full_operator_part_0, OPERATOR_PAULI_I)
-                full_operator_part_1 = np.kron(full_operator_part_1, operator)
+                full_operator_part_0 = np.kron(full_operator_part_0, OPERATOR_PAULI_I.u)
+                full_operator_part_1 = np.kron(full_operator_part_1, operator.u)
             else:
-                full_operator_part_0 = np.kron(full_operator_part_0, OPERATOR_PAULI_I)
-                full_operator_part_1 = np.kron(full_operator_part_1, OPERATOR_PAULI_I)
+                full_operator_part_0 = np.kron(full_operator_part_0, OPERATOR_PAULI_I.u)
+                full_operator_part_1 = np.kron(full_operator_part_1, OPERATOR_PAULI_I.u)
         full_operator = full_operator_part_0 + full_operator_part_1
-        qubit1.state.operate(full_operator)
+        qubit1.state.operate(Operator(full_operator, state.num))
 
 
 ControlledGate = DoubleQubitsControlledGate(name="Controlled Gate", operator=OPERATOR_PAULI_X, _docs="The controlled gate")
@@ -210,11 +191,11 @@ CZ = DoubleQubitsControlledGate(name="Controlled Pauli-Z Gate", operator=OPERATO
 
 
 class DoubleQubitsRotateGate(Gate):
-    def __init__(self, name: str, operator: Callable[[float], Operator1], _docs: str | None = None):
-        """Args:
-        name (str): the gate's name
-        operator: a function that returns the matrix represent of the operator
-
+    def __init__(self, name: str, operator: Callable[[float], Operator], _docs: str | None = None):
+        """
+        Args:
+            name: the gate's name
+            operator: a function that returns the matrix represent of the operator
         """
         super().__init__(name, _docs)
         self._operator = operator
@@ -231,28 +212,20 @@ CR = DoubleQubitsRotateGate(
 
 class SwapGate(Gate):
     def __call__(self, qubit1: "Qubit", qubit2: "Qubit"):
-        """The swap gate, swap the states of qubit1 and qubit2
+        """
+        The swap gate, swap the states of qubit1 and qubit2
 
         Args:
             qubit1 (Qubit): the first qubit (controller)
             qubit2 (Qubit): the second qubit
-
-        Raises:
-            QGateOperatorNotMatchError
-            QGateQubitNotInStateError
-
         """
+        from mqns.models.qubit.qubit import QState  # noqa: PLC0415
+
         if qubit1 == qubit2:
             return
-        joint(qubit1, qubit2)
-
-        state = qubit1.state
-        # single qubit operate
-        try:
-            idx1 = state.qubits.index(qubit1)
-            idx2 = state.qubits.index(qubit2)
-        except ValueError:
-            raise QGateQubitNotInStateError
+        state = QState.joint(qubit1, qubit2)
+        idx1 = state.qubits.index(qubit1)
+        idx2 = state.qubits.index(qubit2)
 
         state.qubits[idx1], state.qubits[idx2] = state.qubits[idx2], state.qubits[idx1]
 
@@ -261,42 +234,40 @@ Swap = SwapGate(name="Swap Gate", _docs="swap the states of qubit1 and qubit2")
 
 
 class ThreeQubitsGate(Gate):
-    """The gate operates on three qubits, including 2 controlled qubit and a operating qubit.
+    """
+    The gate operates on three qubits, including 2 controlled qubit and a operating qubit.
 
     The 3 controlled-controlled gate:
 
         [[I_6, 0][0, operator]]
     """
 
-    def __init__(self, name: str, operator: Operator1 = OPERATOR_PAULI_X, _docs: str | None = None):
-        """Args:
-        name (str): the gate's name
-        operator (np.ndarray): the matrix represent of the operator
-
+    def __init__(self, name: str, operator: Operator = OPERATOR_PAULI_X, _docs: str | None = None):
+        """
+        Args:
+            name: the gate's name
+            operator: the matrix represent of the operator
         """
         super().__init__(name, _docs)
         self._operator = operator
 
-    def __call__(self, qubit1: "Qubit", qubit2: "Qubit", qubit3: "Qubit", operator: Operator1 | None = None) -> Any:
+    def __call__(self, qubit1: "Qubit", qubit2: "Qubit", qubit3: "Qubit", operator: Operator | None = None) -> Any:
+        from mqns.models.qubit.qubit import QState  # noqa: PLC0415
+
         if operator is None:
             operator = self._operator
-        if operator.shape != (2, 2):
-            raise QGateOperatorNotMatchError
+        if operator.n != 1:
+            raise ValueError("wrong operator size")
 
         if qubit1 == qubit2 or qubit1 == qubit3 or qubit2 == qubit3:  # noqa: PLR1714
             return
-        joint(qubit1, qubit2)
-        joint(qubit2, qubit3)
-
-        state = qubit1.state
+        QState.joint(qubit1, qubit2)
+        state = QState.joint(qubit2, qubit3)
 
         # single qubit operate
-        try:
-            idx1 = state.qubits.index(qubit1)
-            idx2 = state.qubits.index(qubit2)
-            idx3 = state.qubits.index(qubit3)
-        except ValueError:
-            raise QGateQubitNotInStateError
+        idx1 = state.qubits.index(qubit1)
+        idx2 = state.qubits.index(qubit2)
+        idx3 = state.qubits.index(qubit3)
 
         full_operator_part_00 = np.array([1])  # |0> <0|
         full_operator_part_01 = np.array([1])  # |1> <1|
@@ -315,17 +286,17 @@ class ThreeQubitsGate(Gate):
                 full_operator_part_01 = np.kron(full_operator_part_01, np.array([[0, 0], [0, 1]]))
                 full_operator_part_11 = np.kron(full_operator_part_11, np.array([[0, 0], [0, 1]]))
             elif i == idx3:
-                full_operator_part_00 = np.kron(full_operator_part_00, OPERATOR_PAULI_I)
-                full_operator_part_01 = np.kron(full_operator_part_01, OPERATOR_PAULI_I)
-                full_operator_part_10 = np.kron(full_operator_part_10, OPERATOR_PAULI_I)
-                full_operator_part_11 = np.kron(full_operator_part_11, operator)
+                full_operator_part_00 = np.kron(full_operator_part_00, OPERATOR_PAULI_I.u)
+                full_operator_part_01 = np.kron(full_operator_part_01, OPERATOR_PAULI_I.u)
+                full_operator_part_10 = np.kron(full_operator_part_10, OPERATOR_PAULI_I.u)
+                full_operator_part_11 = np.kron(full_operator_part_11, operator.u)
             else:
-                full_operator_part_00 = np.kron(full_operator_part_00, OPERATOR_PAULI_I)
-                full_operator_part_01 = np.kron(full_operator_part_01, OPERATOR_PAULI_I)
-                full_operator_part_10 = np.kron(full_operator_part_10, OPERATOR_PAULI_I)
-                full_operator_part_11 = np.kron(full_operator_part_11, OPERATOR_PAULI_I)
+                full_operator_part_00 = np.kron(full_operator_part_00, OPERATOR_PAULI_I.u)
+                full_operator_part_01 = np.kron(full_operator_part_01, OPERATOR_PAULI_I.u)
+                full_operator_part_10 = np.kron(full_operator_part_10, OPERATOR_PAULI_I.u)
+                full_operator_part_11 = np.kron(full_operator_part_11, OPERATOR_PAULI_I.u)
         full_operator = full_operator_part_00 + full_operator_part_01 + full_operator_part_10 + full_operator_part_11
-        qubit1.state.operate(full_operator)
+        qubit1.state.operate(Operator(full_operator, state.num))
 
 
 Toffoli = ThreeQubitsGate(name="Toffoli Gate", operator=OPERATOR_PAULI_X, _docs="The controlled-controlled (Toffoli) gate")

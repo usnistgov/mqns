@@ -2,9 +2,10 @@ import itertools
 
 import numpy as np
 
-from mqns.models.qubit.const import OPERATOR_RX, OPERATOR_RY, QUBIT_STATE_0, QUBIT_STATE_1, QUBIT_STATE_N
 from mqns.models.qubit.gate import CNOT, CR, CZ, RX, RY, H, Swap, Toffoli, U
+from mqns.models.qubit.operator import OPERATOR_RX, OPERATOR_RY
 from mqns.models.qubit.qubit import Qubit
+from mqns.models.qubit.state import QUBIT_STATE_0, QUBIT_STATE_1, QUBIT_STATE_N
 
 
 def test_qubit():
@@ -59,10 +60,14 @@ def test_swap():
     q1 = Qubit(state=QUBIT_STATE_1, name="q1")
     q2 = Qubit(state=QUBIT_STATE_0, name="q2")
 
+    # q0,q1,q2=0,1,0
     Swap(q0, q1)
+    # q0,q1,q2=1,0,0
     Swap(q0, q2)
+    # q0,q1,q2=0,0,1
 
-    assert q0.measure() == q1.measure()
+    assert q0.measure() == 0
+    assert q1.measure() == 0
     assert q2.measure() == 1
 
 

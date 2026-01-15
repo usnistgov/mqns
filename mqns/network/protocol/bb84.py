@@ -25,7 +25,9 @@ from mqns.entity.cchannel import ClassicChannel, ClassicPacket, RecvClassicPacke
 from mqns.entity.node import Application, Node, QNode
 from mqns.entity.qchannel import QuantumChannel, RecvQubitPacket
 from mqns.models.qubit import Qubit
-from mqns.models.qubit.const import BASIS_X, BASIS_Z, QUBIT_STATE_0, QUBIT_STATE_1, QUBIT_STATE_N, QUBIT_STATE_P
+from mqns.models.qubit.basis import BASIS_X, BASIS_Z
+from mqns.models.qubit.operator import Operator
+from mqns.models.qubit.state import QUBIT_STATE_0, QUBIT_STATE_1, QUBIT_STATE_N, QUBIT_STATE_P
 from mqns.simulator import func_to_event
 from mqns.utils.rnd import get_choice, get_rand
 
@@ -36,7 +38,7 @@ class QubitWithError(Qubit):
         standand_lkm = 50.0
         theta = get_rand() * lkm / standand_lkm * np.pi / 4
         operation = np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]], dtype=np.complex128)
-        self.state.operate(operator=operation)
+        self.state.operate(Operator(operation))
 
 
 class BB84SendApp(Application[QNode]):
@@ -143,7 +145,7 @@ class BB84SendApp(Application[QNode]):
         basis_dest = msg.get("basis")
 
         # qubit = self.qubit_list[id]
-        basis_src = "Z" if (self.basis_list[id] == BASIS_Z).all() else "X"
+        basis_src = "Z" if (self.basis_list[id] == BASIS_Z.observable).all() else "X"
 
         if basis_dest == basis_src:
             # log.info(f"[{self._simulator.current_time}] src check {id} basis succ")
@@ -164,8 +166,7 @@ class BB84SendApp(Application[QNode]):
         # randomly generate a qubit
         state = get_choice([QUBIT_STATE_0, QUBIT_STATE_1, QUBIT_STATE_P, QUBIT_STATE_N])
         qubit = QubitWithError(state=state)
-        basis = BASIS_Z if (state == QUBIT_STATE_0).all() or (state == QUBIT_STATE_1).all() else BASIS_X
-        # basis_msg = "Z" if (basis == BASIS_Z).all() else "X"
+        basis = BASIS_Z.observable if (state == QUBIT_STATE_0).all() or (state == QUBIT_STATE_1).all() else BASIS_X.observable
 
         ret = 0 if (state == QUBIT_STATE_0).all() or (state == QUBIT_STATE_P).all() else 1
 
@@ -434,7 +435,7 @@ class BB84RecvApp(Application[QNode]):
         basis_src = msg.get("basis")
 
         # qubit = self.qubit_list[id]
-        basis_dest = "Z" if (self.basis_list[id] == BASIS_Z).all() else "X"
+        basis_dest = "Z" if (self.basis_list[id] == BASIS_Z.observable).all() else "X"
 
         ret_dest = self.measure_list[id]
         ret_src = msg.get("ret")
@@ -454,9 +455,9 @@ class BB84RecvApp(Application[QNode]):
     def recv(self, event: RecvQubitPacket):
         qubit: Qubit = event.qubit
         # randomly choose X,Z basis
-        basis = get_choice([BASIS_Z, BASIS_X])
-        basis_msg = "Z" if (basis == BASIS_Z).all() else "X"
-        ret = qubit.measureZ() if (basis == BASIS_Z).all() else qubit.measureX()
+        basis = get_choice([BASIS_Z.observable, BASIS_X.observable])
+        basis_msg = "Z" if (basis == BASIS_Z.observable).all() else "X"
+        ret = qubit.measureZ() if (basis == BASIS_Z.observable).all() else qubit.measureX()
         self.qubit_list[qubit.id] = qubit
         self.basis_list[qubit.id] = basis
         self.measure_list[qubit.id] = ret

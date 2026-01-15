@@ -20,29 +20,43 @@ from typing import Any, Literal, cast
 import numpy as np
 
 from mqns.models.core import QuantumModel
-from mqns.models.qubit.const import (
-    QUBIT_STATE_0,
-    QUBIT_STATE_1,
-    QUBIT_STATE_L,
-    QUBIT_STATE_N,
-    QUBIT_STATE_P,
-    QUBIT_STATE_R,
-)
-from mqns.models.qubit.errors import OperatorNotMatchError, QStateBaseError, QStateQubitNotInStateError, QStateSizeNotMatchError
+from mqns.models.qubit.basis import BASIS_BY_NAME
 from mqns.models.qubit.gate import SingleQubitGate
-from mqns.models.qubit.typing import MultiQubitRho, MultiQubitState, Operator, Operator1, QubitRho, QubitState
-from mqns.models.qubit.utils import partial_trace, single_gate_expand, state_to_rho
+from mqns.models.qubit.operator import Operator
+from mqns.models.qubit.state import (
+    ATOL,
+    QUBIT_STATE_0,
+    QubitRho,
+    QubitState,
+    check_qubit_rho,
+    qubit_rho_remove,
+    qubit_state_to_rho,
+)
 from mqns.utils import get_rand
 
 
 class QState:
     """QState represents the state of one or multiple qubits."""
 
+    @staticmethod
+    def joint(q0: "Qubit", q1: "Qubit") -> "QState":
+        """
+        Merge QState if necessary so that two qubits share the same QState.
+        """
+        if q0.state is q1.state:
+            return q0.state
+        assert set(q0.state.qubits).isdisjoint(q1.state.qubits)
+        rho: np.ndarray = np.kron(q0.state.rho, q1.state.rho)
+        nq = QState(q0.state.qubits + q1.state.qubits, rho=rho)
+        for q in nq.qubits:
+            q.state = nq
+        return nq
+
     def __init__(
         self,
-        qubits: list["Qubit"] = [],
-        state: MultiQubitState = QUBIT_STATE_0,
-        rho: MultiQubitRho | None = None,
+        qubits: list["Qubit"],
+        state: QubitState = QUBIT_STATE_0,
+        rho: QubitRho | None = None,
         name: str | None = None,
     ):
         """Args:
@@ -56,83 +70,51 @@ class QState:
         self.num = len(qubits)
         self.name = name
         self.qubits = qubits
-        self.rho: MultiQubitRho
+        self.rho: QubitRho
 
         if rho is None:
-            if len(state) != 2**self.num:
-                raise QStateSizeNotMatchError
-            self.rho = state_to_rho(state)
+            self.rho = qubit_state_to_rho(state, self.num)
         else:
-            if self.num != np.log2(rho.shape[0]) or self.num != np.log2(rho.shape[1]):
-                raise QStateSizeNotMatchError
-            if abs(1 - rho.trace()) > 0.0000000001:
-                # trace = 1
-                raise QStateSizeNotMatchError
-            self.rho = rho
+            self.rho = check_qubit_rho(rho, self.num)
 
     def measure(self, qubit: "Qubit", base: Literal["Z", "X", "Y"] = "Z") -> int:
-        """Measure this qubit using Z basis
-        Args:
-            qubit (Qubit): the measuring qubit
-            base: the measure base, "Z", "X" or "Y"
-
-        Returns:
-            0: QUBIT_STATE_0 state
-            1: QUBIT_STATE_1 state
-
         """
-        M_0 = None
-        M_1 = None
-        S_0 = None
-        S_1 = None
-        if base == "Z":
-            M_0 = np.array([[1, 0], [0, 0]])
-            M_1 = np.array([[0, 0], [0, 1]])
-            S_0 = QUBIT_STATE_0
-            S_1 = QUBIT_STATE_1
-        elif base == "X":
-            M_0 = 1 / 2 * np.array([[1, 1], [1, 1]])
-            M_1 = 1 / 2 * np.array([[1, -1], [-1, 1]])
-            S_0 = QUBIT_STATE_P
-            S_1 = QUBIT_STATE_N
-        elif base == "Y":
-            M_0 = 1 / 2 * np.array([[1, -1j], [1j, 1]])
-            M_1 = 1 / 2 * np.array([[1, 1j], [-1j, 1]])
-            S_0 = QUBIT_STATE_R
-            S_1 = QUBIT_STATE_L
-        else:
-            raise QStateBaseError
+        Measure this qubit using the specified basis.
+
+        Args:
+            qubit: the qubit to be measured.
+            base: the measure base, "Z", "X" or "Y".
+
+        Returns: Measurement outcome 0 or 1.
+        """
+        basis = BASIS_BY_NAME[base]
 
         try:
             idx = self.qubits.index(qubit)
-            shift = self.num - idx - 1
-            assert shift >= 0
         except AssertionError:
-            raise QStateQubitNotInStateError
+            raise RuntimeError("qubit not in state")
 
-        Full_M_0 = np.array([[1]])
-        Full_M_1 = np.array([[1]])
-        for i in range(self.num):
-            if i == idx:
-                Full_M_0 = np.kron(Full_M_0, M_0)
-                Full_M_1 = np.kron(Full_M_1, M_1)
-            else:
-                Full_M_0 = np.kron(Full_M_0, np.array([[1, 0], [0, 1]]))
-                Full_M_1 = np.kron(Full_M_1, np.array([[1, 0], [0, 1]]))
+        # Calculate probability with Born rule
+        full_m0 = basis.m0.lift(idx, self.num, check_unitary=False)
+        prob_0 = np.real(np.trace(full_m0.u_dagger @ full_m0.u @ self.rho))
+        prob_0 = np.clip(prob_0, 0.0, 1.0)  # avoid out-of-range due to floating-point calculation
 
-        poss_0 = np.trace(np.dot(Full_M_0.T.conjugate(), np.dot(Full_M_0, self.rho)))
-        rn = get_rand()
-
-        if rn < poss_0:
+        # Assign outcome and perform state collapse
+        if get_rand() < prob_0:
             ret = 0
-            ret_s = S_0
-            self.rho = np.dot(Full_M_0, np.dot(self.rho, Full_M_0.T.conjugate())) / poss_0
+            ret_s = basis.s0
+            op = full_m0
         else:
             ret = 1
-            ret_s = S_1
-            self.rho = np.dot(Full_M_1, np.dot(self.rho, Full_M_1.T.conjugate())) / (1 - poss_0)
+            ret_s = basis.s1
+            op = basis.m1.lift(idx, self.num, check_unitary=False)
 
-        self.rho = partial_trace(self.rho, idx)
+        # Perform state collapse
+        collapsed = op(self.rho)
+        collapsed = collapsed / (np.trace(collapsed) or 1.0)
+
+        # Perform partial trace to delete measured qubit
+        self.rho = qubit_rho_remove(collapsed, idx, self.num)
         self.num -= 1
         self.qubits.remove(qubit)
 
@@ -140,55 +122,34 @@ class QState:
         qubit.state = ns
         return ret
 
-    def operate(self, operator: Operator):
-        """Transform using `operator`
+    def operate(self, operator: Operator) -> None:
+        """
+        Apply an operator to the state.
 
         Args:
-            operator (np.ndarray): the operator
-        Raises:
-            OperatorNotMatchError
-
+            operator: the operator, which must have the correct dimension.
         """
-        operator_size = operator.shape
-        if operator_size == (2**self.num, 2**self.num):
-            # joint qubit operate
-            full_operator = operator
-        else:
-            raise OperatorNotMatchError
-        self.rho = np.dot(full_operator, np.dot(self.rho, full_operator.T.conjugate()))
+        self.rho = operator(self.rho)
 
-    def stochastic_operate(self, list_operators: list[Operator] = [], list_p: list[float] = []):
-        """A stochastic operate progess. It usually turns a pure state into a mixed state.
+    def stochastic_operate(self, operators: list[Operator] = [], probabilities: list[float] = []) -> None:
+        """
+        Apply a set of operators with associated probabilities to the state.
+        It usually turns a pure state into a mixed state.
 
         Args:
-            list_operators (List[np.ndarray]): a list of operators
-            list_p (List[float]): a list of possibility
-        Raises:
-            OperatorNotMatchError
-
+            operators: a list of operators, each must have the correct dimension.
+            probabilities: the probability of applying each operator; their sum must be 1.
         """
-        new_state: MultiQubitRho = np.zeros((2**self.num, 2**self.num), dtype=np.complex128)
+        assert len(operators) == len(probabilities), "must have same number of operators and probabilities"
+        prob = np.array(probabilities, dtype=np.float64)
+        assert np.all(prob >= 0), "each probability must be between 0 and 1"
+        assert np.all(prob <= 1), "each probability must be between 0 and 1"
+        assert np.isclose(np.sum(prob), 1.0, atol=ATOL), "sum of probabilities must be 1"
 
-        if len(list_operators) != len(list_p):
-            raise OperatorNotMatchError("Not match number between operators and possibilities")
-
-        sum = 0.0
-        for p in list_p:
-            if p < 0 or p > 1:
-                raise OperatorNotMatchError("possibility not in range")
-            sum += p
-
-        if abs(1 - sum) >= 1e-6:
-            raise OperatorNotMatchError("Probabilities are not normalized")
-
-        for idx, operator in enumerate(list_operators):
-            operator_size = operator.shape
-            if operator_size == (2**self.num, 2**self.num):
-                full_operator = operator
-            else:
-                raise OperatorNotMatchError
-            new_state += list_p[idx] * np.dot(full_operator, np.dot(self.rho, full_operator.T.conjugate()))
-        self.rho = new_state
+        new_state: QubitRho = np.zeros((2**self.num, 2**self.num), dtype=np.complex128)
+        for op, p in zip(operators, prob):
+            new_state += p * op(self.rho)
+        self.rho = check_qubit_rho(new_state, self.num)
 
     def equal(self, other_state: "QState") -> bool:
         """Compare two state vectors, return True if they are the same
@@ -197,7 +158,7 @@ class QState:
             other_state (QState): the second QState
 
         """
-        return cast(bool, np.all(self.rho == other_state.rho))
+        return np.all(self.rho == other_state.rho).item()
 
     def is_pure_state(self, eps: float = 0.000_001) -> bool:
         """Args:
@@ -209,7 +170,7 @@ class QState:
         """
         return abs(np.trace(np.dot(self.rho, self.rho)) - 1) <= eps
 
-    def state(self) -> MultiQubitState | None:
+    def state(self) -> QubitState | None:
         """If the state is a pure state, return the state vector, or return None
 
         Returns:
@@ -300,50 +261,35 @@ class Qubit(QuantumModel):
         self.measure_error_model(self.measure_decoherence_rate)
         return self.measure()
 
-    def operate(self, operator: SingleQubitGate | Operator1) -> None:
-        """Perfrom a operate on this qubit
-
-        Args:
-            operator (Union[SingleQubitGate, np.ndarray]): an operator matrix, or a quantum gate in qubit.gate
-
-        """
+    def operate(self, operator: SingleQubitGate | Operator) -> None:
+        """Apply an operator on this qubit, with operator error model."""
         self.operate_error_model(self.operate_decoherence_rate)
+        self._operate_without_error(operator)
+
+    def _operate_without_error(self, operator: SingleQubitGate | Operator) -> None:
+        """Apply an operator on this qubit, without operator error model."""
         if isinstance(operator, SingleQubitGate):
             operator(self)
             return
-        full_operator = single_gate_expand(self, operator)
+        full_operator = operator.lift(self.state.qubits.index(self), self.state.num)
         self.state.operate(full_operator)
 
-    def _operate_without_error(self, operator: SingleQubitGate | Operator1) -> None:
-        """Perfrom a operate on this qubit
+    def stochastic_operate(self, operators: list[SingleQubitGate | Operator] = [], probabilities: list[float] = []) -> None:
+        """
+        Apply a set of operators with associated probabilities to the qubit.
+        It usually turns a pure state into a mixed state.
 
         Args:
-            operator (Union[SingleQubitGate, np.ndarray]): an operator matrix, or a quantum gate in qubit.gate
-
+            operators: a list of operators, each must operator on a single qubit.
+            probabilities: the probability of applying each operator; their sum must be 1.
         """
-        if isinstance(operator, SingleQubitGate):
-            operator(self)
-            return
-        full_operator = single_gate_expand(self, operator)
-        self.state.operate(full_operator)
-
-    def stochastic_operate(self, list_operators: list[SingleQubitGate | Operator1] = [], list_p: list[float] = []):
-        """A stochastic operate on this qubit. It usually turns a pure state into a mixed state.
-
-        Args:
-            list_operators (List[np.ndarray]): a list of operators
-            list_p (List[float]): a list of possibility
-        Raises:
-            OperatorNotMatchError
-
-        """
-        full_operators_list: list[Operator1] = []
-        for operator in list_operators:
-            if isinstance(operator, SingleQubitGate):
-                full_operators_list.append(single_gate_expand(self, cast(Any, operator)._operator))
-            else:
-                full_operators_list.append(single_gate_expand(self, operator))
-        self.state.stochastic_operate(full_operators_list, list_p)
+        i, n = self.state.qubits.index(self), self.state.num
+        full_operators: list[Operator] = []
+        for j, op_gate in enumerate(operators):
+            op = cast(Any, op_gate)._operator if isinstance(op_gate, SingleQubitGate) else op_gate
+            assert type(op) is Operator, f"operators[{j}] does not contain Operator matrix"
+            full_operators.append(op.lift(i, n))
+        self.state.stochastic_operate(full_operators, probabilities)
 
     def __repr__(self) -> str:
         if self.name is not None:

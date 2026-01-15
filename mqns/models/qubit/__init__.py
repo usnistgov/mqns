@@ -31,7 +31,6 @@ from mqns.models.qubit.decoherence import (
 )
 from mqns.models.qubit.factory import QubitFactory
 from mqns.models.qubit.qubit import QState, Qubit
-from mqns.models.qubit.utils import single_gate_expand, state_to_rho
 
 __all__ = [
     "DephaseMeasureErrorModel",
@@ -49,6 +48,4 @@ __all__ = [
     "QState",
     "Qubit",
     "QubitFactory",
-    "single_gate_expand",
-    "state_to_rho",
 ]

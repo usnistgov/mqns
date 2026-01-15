@@ -20,9 +20,8 @@ from typing import Unpack, final, overload, override
 
 import numpy as np
 
-from mqns.models.epr.const import RHO_PHI_N, RHO_PHI_P, RHO_PSI_N, RHO_PSI_P
 from mqns.models.epr.entanglement import Entanglement, EntanglementInitKwargs
-from mqns.models.qubit.typing import MultiQubitRho
+from mqns.models.qubit.state import BELL_RHO_PHI_N, BELL_RHO_PHI_P, BELL_RHO_PSI_N, BELL_RHO_PSI_P, QubitRho, check_qubit_rho
 from mqns.utils import get_rand
 
 
@@ -163,8 +162,10 @@ class MixedStateEntanglement(Entanglement["MixedStateEntanglement"]):
         )
 
     @override
-    def _to_qubits_rho(self) -> MultiQubitRho:
-        return self.a * RHO_PHI_P + self.b * RHO_PSI_P + self.c * RHO_PSI_N + self.d * RHO_PHI_N
+    def _to_qubits_rho(self) -> QubitRho:
+        return check_qubit_rho(
+            self.a * BELL_RHO_PHI_P + self.b * BELL_RHO_PSI_P + self.c * BELL_RHO_PSI_N + self.d * BELL_RHO_PHI_N, n=2
+        )
 
     @override
     def _describe_fidelity(self) -> Iterable[str]:

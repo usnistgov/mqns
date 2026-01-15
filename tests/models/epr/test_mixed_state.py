@@ -2,7 +2,7 @@ import pytest
 
 from mqns.models.epr import MixedStateEntanglement
 from mqns.models.qubit import Qubit
-from mqns.models.qubit.const import QUBIT_STATE_0
+from mqns.models.qubit.state import QUBIT_STATE_0
 from mqns.simulator import Time
 
 

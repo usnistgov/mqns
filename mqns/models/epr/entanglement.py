@@ -34,10 +34,10 @@ from typing import TYPE_CHECKING, Generic, TypedDict, TypeVar, Unpack, cast
 import numpy as np
 
 from mqns.models.core import QuantumModel
-from mqns.models.qubit import QState, Qubit, state_to_rho
-from mqns.models.qubit.const import OPERATOR_PAULI_I, QUBIT_STATE_0, QUBIT_STATE_P
+from mqns.models.qubit import QState, Qubit
 from mqns.models.qubit.gate import CNOT, H, U, X, Y, Z
-from mqns.models.qubit.typing import MultiQubitRho
+from mqns.models.qubit.operator import OPERATOR_PAULI_I, Operator
+from mqns.models.qubit.state import QUBIT_STATE_0, QUBIT_STATE_P, QubitRho, build_qubit_state, qubit_state_to_rho
 from mqns.simulator import Time
 from mqns.utils import get_rand
 
@@ -255,11 +255,11 @@ class Entanglement(ABC, Generic[EntanglementT], QuantumModel):
         self.is_decoherenced = True
         return [q0, q1]
 
-    def _to_qubits_rho(self) -> MultiQubitRho:
+    def _to_qubits_rho(self) -> QubitRho:
         a = np.sqrt(self.fidelity / 2)
         b = np.sqrt((1 - self.fidelity) / 2)
-        state = np.array([[a], [b], [b], [a]], dtype=np.complex128)
-        return state_to_rho(state)
+        state = build_qubit_state((a, b, b, a), 2)
+        return qubit_state_to_rho(state, 2)
 
     def teleportation(self, qubit: Qubit) -> Qubit:
         """
@@ -276,7 +276,7 @@ class Entanglement(ABC, Generic[EntanglementT], QuantumModel):
             Z(q2)
         elif c1 == 1 and c0 == 1:
             Y(q2)
-            U(q2, np.complex128(1j) * OPERATOR_PAULI_I)
+            U(q2, Operator(np.complex128(1j) * OPERATOR_PAULI_I.u, 1))
         self.is_decoherenced = True
         return q2
 

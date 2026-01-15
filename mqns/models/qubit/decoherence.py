@@ -18,9 +18,9 @@
 
 import numpy as np
 
-from mqns.models.qubit.const import QUBIT_STATE_0
 from mqns.models.qubit.gate import I, X, Y, Z
 from mqns.models.qubit.qubit import QState
+from mqns.models.qubit.state import QUBIT_STATE_0
 from mqns.utils.rnd import get_rand
 
 

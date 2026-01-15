@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from mqns.models.epr import Entanglement, WernerStateEntanglement
-from mqns.models.qubit.const import QUBIT_STATE_P
+from mqns.models.qubit.state import QUBIT_STATE_P
 from mqns.simulator import Time
 
 

@@ -31,9 +31,8 @@ from typing import Unpack, final, overload, override
 
 import numpy as np
 
-from mqns.models.epr.const import RHO_PHI_P
 from mqns.models.epr.entanglement import Entanglement, EntanglementInitKwargs
-from mqns.models.qubit.typing import MultiQubitRho
+from mqns.models.qubit.state import BELL_RHO_PHI_P, QubitRho, check_qubit_rho
 from mqns.utils import get_rand
 
 
@@ -135,8 +134,8 @@ class WernerStateEntanglement(Entanglement["WernerStateEntanglement"]):
         self.w *= np.exp(-decoherence_rate * length)
 
     @override
-    def _to_qubits_rho(self) -> MultiQubitRho:
-        return self.w * RHO_PHI_P + (1 - self.w) / 4 * np.identity(4)
+    def _to_qubits_rho(self) -> QubitRho:
+        return check_qubit_rho(self.w * BELL_RHO_PHI_P + (1 - self.w) / 4 * np.identity(4), n=2)
 
     @override
     def _describe_fidelity(self) -> Iterable[str]:
