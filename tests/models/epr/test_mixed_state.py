@@ -13,7 +13,7 @@ from mqns.models.core.state import (
     QubitRho,
     QubitState,
     qubit_rho_classify_noise,
-    qubit_state_are_equal,
+    qubit_state_equal,
 )
 from mqns.models.epr import MixedStateEntanglement
 from mqns.models.qubit import Qubit
@@ -113,7 +113,7 @@ def test_to_qubits_maximal(i: float, z: float, x: float, y: float, state: QubitS
 
     pure_state = q0.state.state()
     assert pure_state is not None  # pure state
-    assert qubit_state_are_equal(state, pure_state)
+    assert qubit_state_equal(state, pure_state)
 
     v0 = q0.measure()
     v1 = q1.measure()

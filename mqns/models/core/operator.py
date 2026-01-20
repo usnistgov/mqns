@@ -2,6 +2,7 @@
 Definitions and constants for qubit operator.
 """
 
+import functools
 from typing import cast, final
 
 import numpy as np
@@ -30,11 +31,10 @@ class Operator:
         self._validate(check_unitary)
 
     def _validate(self, check_unitary: bool) -> None:
-        assert np.iscomplexobj(self.u), "Operator must be complex-valued."
         dim = 2**self.n
         assert self.u.shape == (dim, dim), f"Expected ({dim}, {dim}), got {self.u.shape}"
         if check_unitary:
-            is_unitary = np.allclose(self.u_dagger @ self.u, np.eye(dim), atol=ATOL)
+            is_unitary = np.allclose(self.u_dagger @ self.u, np.identity(dim, dtype=np.complex128), atol=ATOL)
             assert is_unitary, "Operator is not unitary (U^dagger @ U != I)"
 
     def __call__[T: (QubitState | QubitRho)](self, state: T) -> T:
@@ -59,7 +59,7 @@ class Operator:
 
     def lift(self, i: int, n: int, *, check_unitary=True) -> "Operator":
         """
-        Expand a single-qubit operator to apply on i-th qubit on a n-qubit state.
+        Expand a single-qubit operator to apply on the i-th qubit of a n-qubit state.
 
         Args:
             self: single-qubit operator.
@@ -68,22 +68,20 @@ class Operator:
 
         Raises:
             AssertionError - this is not a single-qubit operator.
-            AssertionError - i or n is out of range.
+            ValueError - i or n is out of range.
 
         Returns: n-qubit operator.
         """
         assert self.n == 1, "cannot only lift 1-qubit operator"
-        assert 0 <= i < n
+        if not (0 <= i < n):
+            raise ValueError("i or n is out of range")
         if n == 1:
             return self
 
         # full_matrix = I⊗..⊗U⊗..⊗I where the i-th matrix is U
-        full_matrix = np.array([[1]], dtype=np.complex128)
-        for j in range(n):
-            if j == i:
-                full_matrix = np.kron(full_matrix, self.u)
-            else:
-                full_matrix = np.kron(full_matrix, OPERATOR_PAULI_I.u)
+        mats = [OPERATOR_PAULI_I.u] * n
+        mats[i] = self.u
+        full_matrix = functools.reduce(np.kron, mats)
         return Operator(full_matrix, n, check_unitary=check_unitary)
 
 

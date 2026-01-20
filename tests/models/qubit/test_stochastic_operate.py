@@ -1,7 +1,7 @@
-from mqns.models.core.operator import OPERATOR_PAULI_I, OPERATOR_PAULI_X
+from mqns.models.core.operator import OPERATOR_PAULI_I, OPERATOR_PAULI_X, OPERATOR_PAULI_Y, OPERATOR_PAULI_Z
 from mqns.models.core.state import QUBIT_STATE_0
 from mqns.models.qubit import Qubit
-from mqns.models.qubit.gate import CNOT, H, I, X, Y, Z
+from mqns.models.qubit.gate import CNOT, H, Y
 
 
 def test_stochastic_operate():
@@ -15,8 +15,8 @@ def test_stochastic_operate():
 
 def test_stochastic_operate2():
     q0 = Qubit(state=QUBIT_STATE_0, name="q0")
-    q0.operate(Y)
+    Y(q0)
     print(q0.state)
 
     q0 = Qubit(state=QUBIT_STATE_0, name="q0")
-    q0.stochastic_operate([I, X, Y, Z], [0.7, 0.1, 0.1, 0.1])
+    q0.stochastic_operate([OPERATOR_PAULI_I, OPERATOR_PAULI_X, OPERATOR_PAULI_Y, OPERATOR_PAULI_Z], [0.7, 0.1, 0.1, 0.1])

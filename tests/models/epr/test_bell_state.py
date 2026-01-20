@@ -3,7 +3,7 @@ from mqns.models.core.state import (
     BELL_STATE_PHI_P,
     QUBIT_STATE_1,
     qubit_rho_classify_noise,
-    qubit_state_are_equal,
+    qubit_state_equal,
 )
 from mqns.models.epr import BellStateEntanglement
 from mqns.models.qubit import Qubit
@@ -36,4 +36,4 @@ def test_to_qubits():
 
     state = q0.state.state()
     assert state is not None  # pure state
-    assert qubit_state_are_equal(BELL_STATE_PHI_P, state)
+    assert qubit_state_equal(BELL_STATE_PHI_P, state)

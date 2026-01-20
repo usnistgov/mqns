@@ -17,14 +17,6 @@ def test_qubit():
     c1 = q1.measure()
     assert c0 == c1
 
-    q0 = Qubit(state=QUBIT_STATE_0, name="q0")
-    q1 = Qubit(state=QUBIT_STATE_0, name="q1")
-    q0.operate(H)
-    CNOT(q0, q1)
-    c0 = q0.measure()
-    c1 = q1.measure()
-    assert c0 == c1
-
 
 def test_qubit_rotate():
     q0 = Qubit(state=QUBIT_STATE_0, name="q0")

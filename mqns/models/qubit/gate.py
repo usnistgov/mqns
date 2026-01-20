@@ -16,7 +16,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import numpy as np
 
@@ -34,9 +34,7 @@ from mqns.models.core.operator import (
     OPERATOR_T,
     Operator,
 )
-
-if TYPE_CHECKING:
-    from mqns.models.qubit.qubit import Qubit
+from mqns.models.qubit.qubit import QState, Qubit
 
 
 class Gate:
@@ -50,7 +48,7 @@ class Gate:
         self._name = name
         self.__doc__ = _docs
 
-    def __call__(self, *args: Any, **kwds: Any) -> Any:
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
         pass
 
 
@@ -70,7 +68,7 @@ class SingleQubitSimpleGate(SingleQubitGate):
         super().__init__(name, _docs)
         self._operator = operator
 
-    def __call__(self, qubit: "Qubit") -> None:
+    def __call__(self, qubit: Qubit) -> None:
         """
         Args:
             qubit (Qubit): the operating qubit
@@ -97,7 +95,7 @@ class SingleQubitRotateGate(SingleQubitGate):
         super().__init__(name, _docs)
         self._operator = operator
 
-    def __call__(self, qubit: "Qubit", theta=np.pi / 4) -> None:
+    def __call__(self, qubit: Qubit, theta=np.pi / 4) -> None:
         """
         Args:
             qubit (Qubit): the operating qubit
@@ -113,7 +111,7 @@ RZ = SingleQubitRotateGate(name="RZ", operator=OPERATOR_RZ, _docs="Rz gate (Z ro
 
 
 class SingleQubitArbitraryGate(SingleQubitGate):
-    def __call__(self, qubit: "Qubit", operator: Operator) -> None:
+    def __call__(self, qubit: Qubit, operator: Operator) -> None:
         """
         Args:
             qubit (Qubit): the operating qubit
@@ -145,14 +143,13 @@ class DoubleQubitsControlledGate(Gate):
         super().__init__(name, _docs)
         self._operator = operator
 
-    def __call__(self, qubit1: "Qubit", qubit2: "Qubit", operator: Operator | None = None) -> None:
+    def __call__(self, qubit1: Qubit, qubit2: Qubit, operator: Operator | None = None) -> None:
         """
         Args:
             qubit1: the first qubit (controller)
             qubit2: the second qubit
             operator: the matrix represent of the operator
         """
-        from mqns.models.qubit.qubit import QState  # noqa: PLC0415
 
         if operator is None:
             operator = self._operator
@@ -200,7 +197,7 @@ class DoubleQubitsRotateGate(Gate):
         super().__init__(name, _docs)
         self._operator = operator
 
-    def __call__(self, qubit1: "Qubit", qubit2: "Qubit", theta: float = np.pi / 4) -> None:
+    def __call__(self, qubit1: Qubit, qubit2: Qubit, theta: float = np.pi / 4) -> None:
         operator = self._operator(theta)
         super().__call__(qubit1, qubit2, operator=operator)
 
@@ -211,7 +208,7 @@ CR = DoubleQubitsRotateGate(
 
 
 class SwapGate(Gate):
-    def __call__(self, qubit1: "Qubit", qubit2: "Qubit"):
+    def __call__(self, qubit1: Qubit, qubit2: Qubit):
         """
         The swap gate, swap the states of qubit1 and qubit2
 
@@ -219,8 +216,6 @@ class SwapGate(Gate):
             qubit1 (Qubit): the first qubit (controller)
             qubit2 (Qubit): the second qubit
         """
-        from mqns.models.qubit.qubit import QState  # noqa: PLC0415
-
         if qubit1 == qubit2:
             return
         state = QState.joint(qubit1, qubit2)
@@ -251,9 +246,7 @@ class ThreeQubitsGate(Gate):
         super().__init__(name, _docs)
         self._operator = operator
 
-    def __call__(self, qubit1: "Qubit", qubit2: "Qubit", qubit3: "Qubit", operator: Operator | None = None) -> Any:
-        from mqns.models.qubit.qubit import QState  # noqa: PLC0415
-
+    def __call__(self, qubit1: Qubit, qubit2: Qubit, qubit3: Qubit, operator: Operator | None = None) -> Any:
         if operator is None:
             operator = self._operator
         if operator.n != 1:

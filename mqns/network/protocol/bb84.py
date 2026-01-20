@@ -454,9 +454,8 @@ class BB84RecvApp(Application[QNode]):
     def recv(self, event: RecvQubitPacket):
         qubit: Qubit = event.qubit
         # randomly choose X,Z basis
-        basis = [BASIS_Z.observable, BASIS_X.observable][rng.choice(2)]
-        basis_msg = "Z" if (basis == BASIS_Z.observable).all() else "X"
-        ret = qubit.measureZ() if (basis == BASIS_Z.observable).all() else qubit.measureX()
+        basis = [BASIS_Z, BASIS_X][rng.choice(2)]
+        ret = qubit.measure(basis)
         self.qubit_list[qubit.id] = qubit
         self.basis_list[qubit.id] = basis
         self.measure_list[qubit.id] = ret
@@ -464,7 +463,7 @@ class BB84RecvApp(Application[QNode]):
         # log.info(f"[{self._simulator.current_time}] recv qubit {qubit.id}, \
         # basis: {basis_msg}, ret: {ret}")
         packet = ClassicPacket(
-            msg={"packet_class": "check_basis", "id": qubit.id, "basis": basis_msg}, src=self.node, dest=self.src
+            msg={"packet_class": "check_basis", "id": qubit.id, "basis": basis.name}, src=self.node, dest=self.src
         )
         self.cchannel.send(packet, next_hop=self.src)
 

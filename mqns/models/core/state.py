@@ -53,7 +53,7 @@ def build_qubit_state(input: Iterable[complex], n=1) -> QubitState:
     return check_qubit_state(column, n)
 
 
-def qubit_state_are_equal(s0: QubitState, s1: QubitState) -> bool:
+def qubit_state_equal(s0: QubitState, s1: QubitState) -> bool:
     """Compare qubit state vectors for equality."""
     return np.allclose(s0, s1, atol=ATOL)
 
@@ -166,6 +166,11 @@ def qubit_rho_to_state(rho: QubitRho, n=1) -> QubitState | None:
     return check_qubit_state(psi, n)
 
 
+def qubit_rho_equal(rho0: QubitRho, rho1: QubitRho) -> bool:
+    """Compare density matrices for equality."""
+    return np.allclose(rho0, rho1, atol=ATOL)
+
+
 def qubit_rho_classify_noise(ideal: QubitRho, noisy: QubitRho) -> int:
     """
     Identify what kind of noise has been applied to transform ``ideal`` state to ``noisy`` state.
@@ -175,7 +180,7 @@ def qubit_rho_classify_noise(ideal: QubitRho, noisy: QubitRho) -> int:
         * 1 - pure dephasing noise.
         * 2 - depolarizing, bit-flip, or amplitude damping noise.
     """
-    if np.allclose(ideal, noisy, atol=ATOL):
+    if qubit_rho_equal(ideal, noisy):
         return 0
     if np.allclose(ideal.diagonal(), noisy.diagonal(), atol=ATOL):
         return 1

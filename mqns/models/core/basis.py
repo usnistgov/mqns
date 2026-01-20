@@ -1,3 +1,5 @@
+from typing import Literal
+
 import numpy as np
 
 from mqns.models.core.operator import OPERATOR_PAULI_X, OPERATOR_PAULI_Y, OPERATOR_PAULI_Z, Operator
@@ -23,6 +25,10 @@ class Basis:
         s0: QubitState,
         s1: QubitState,
     ):
+        assert observable.shape == (2, 2)
+        assert s0.shape == (2, 1)
+        assert s1.shape == (2, 1)
+
         self.name = name
         """Measurement basis name."""
         self.observable = observable
@@ -64,8 +70,5 @@ BASIS_Y = Basis(
 )
 """Measurement basis Y: projects onto ``|R>`` and ``|L>``.."""
 
-BASIS_BY_NAME: dict[str, Basis] = {
-    "Z": BASIS_Z,
-    "X": BASIS_X,
-    "Y": BASIS_Y,
-}
+MeasureOutcome = Literal[0, 1]
+"""Measurement outcome."""
