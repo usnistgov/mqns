@@ -1,6 +1,7 @@
-import random
 from collections.abc import Callable
-from typing import override
+from typing import cast, override
+
+import numpy as np
 
 from mqns.entity.memory import MemoryQubit, QubitState
 from mqns.entity.node import QNode
@@ -9,20 +10,21 @@ from mqns.network.proactive.fib import Fib, FibEntry
 from mqns.network.proactive.mux_buffer_space import MuxSchemeFibBase
 from mqns.network.proactive.mux_statistical import MuxSchemeDynamicBase, has_intersect_tmp_path_ids
 from mqns.network.proactive.select import MemoryEprIterator
-from mqns.utils import log
+from mqns.utils import log, rng
 
 
 def _select_path_random(epr: Entanglement, fib: Fib, path_ids: list[int]) -> int:
     _ = epr, fib
-    return random.choice(path_ids)
+    return rng.choice(path_ids)
 
 
 def _select_path_swap_weighted(epr: Entanglement, fib: Fib, path_ids: list[int]) -> FibEntry:
     _ = epr
     entries = [fib.get(pid) for pid in path_ids]
     # fewer swaps (shorter route) means higher weight
-    weights = [1.0 / (1 + len(e.swap)) for e in entries]
-    return random.choices(entries, weights=weights, k=1)[0]
+    weights = np.array([1.0 / (1 + len(e.swap)) for e in entries])
+    weights /= np.sum(weights)
+    return rng.choice(cast(list, entries), p=weights)
 
 
 class MuxSchemeDynamicEpr(MuxSchemeFibBase, MuxSchemeDynamicBase):

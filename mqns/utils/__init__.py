@@ -17,16 +17,15 @@
 
 from mqns.utils.json import json_default, json_encodable
 from mqns.utils.logger import log
-from mqns.utils.rnd import get_choice, get_rand, get_randint, set_seed
+from mqns.utils.random import FixedRng, rng, set_seed
 from mqns.utils.timeout import WallClockTimeout
 
 __all__ = [
-    "get_choice",
-    "get_rand",
-    "get_randint",
+    "FixedRng",
     "json_default",
     "json_encodable",
     "log",
+    "rng",
     "set_seed",
     "WallClockTimeout",
 ]

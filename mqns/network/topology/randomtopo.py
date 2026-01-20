@@ -20,7 +20,7 @@ from typing import Unpack, override
 from mqns.entity.node import QNode
 from mqns.entity.qchannel import QuantumChannel
 from mqns.network.topology.topo import Topology, TopologyInitKwargs
-from mqns.utils import get_randint
+from mqns.utils import rng
 
 
 class RandomTopology(Topology):
@@ -50,7 +50,7 @@ class RandomTopology(Topology):
             n = QNode(f"n{i + 2}")
             nl.append(n)
 
-            idx = get_randint(0, i)
+            idx = rng.integers(0, i, endpoint=True)
             pn = nl[idx]
             mat[idx][i + 1] = 1
             mat[i + 1][idx] = 1
@@ -63,8 +63,8 @@ class RandomTopology(Topology):
         if self.lines_number > self.nodes_number - 1:
             for i in range(self.nodes_number - 1, self.lines_number):
                 while True:
-                    a = get_randint(0, self.nodes_number - 1)
-                    b = get_randint(0, self.nodes_number - 1)
+                    a = rng.integers(0, self.nodes_number)
+                    b = rng.integers(0, self.nodes_number)
                     if a != b and mat[a][b] == 0:
                         break
                 mat[a][b] = 1

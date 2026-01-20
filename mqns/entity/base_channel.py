@@ -4,7 +4,7 @@ from mqns.entity.entity import Entity
 from mqns.entity.node import NodeT
 from mqns.models.delay import DelayInput, parseDelay
 from mqns.simulator import Simulator, Time
-from mqns.utils import get_rand, log
+from mqns.utils import log, rng
 
 default_light_speed: float = 2e5
 """
@@ -54,7 +54,7 @@ class BaseChannel(Entity, Generic[NodeT]):
         self.length = kwargs.get("length", 0.0)
         assert self.length >= 0.0
 
-        self.delay_model = parseDelay(kwargs.get("delay", 0 if self.length == 0 else self.length / default_light_speed))
+        self.delay = parseDelay(kwargs.get("delay", 0 if self.length == 0 else self.length / default_light_speed))
 
         self.drop_rate = kwargs.get("drop_rate", 0.0)
         assert 0.0 <= self.drop_rate <= 1.0
@@ -83,12 +83,12 @@ class BaseChannel(Entity, Generic[NodeT]):
             send_time = now
 
         # random drop
-        if self.drop_rate > 0 and get_rand() < self.drop_rate:
+        if self.drop_rate > 0 and rng.random() < self.drop_rate:
             log.debug(f"{self}: drop {packet_repr} due to drop rate")
             return True, Time.SENTINEL
 
         # add delay
-        recv_time = send_time + self.delay_model.calculate()
+        recv_time = send_time + self.delay.calculate()
         return False, recv_time
 
     def find_peer(self, own: NodeT) -> NodeT:

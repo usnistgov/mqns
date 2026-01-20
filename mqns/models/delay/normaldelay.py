@@ -17,7 +17,7 @@
 
 
 from mqns.models.delay.delay import DelayModel
-from mqns.utils.rnd import get_normal
+from mqns.utils import rng
 
 
 class NormalDelayModel(DelayModel):
@@ -27,7 +27,7 @@ class NormalDelayModel(DelayModel):
         Args:
             name (str): the name of this delay model
             mean_delay (float): the mean of the time delay [s]
-            std (float): the standand deviation [s]
+            std (float): the standard deviation [s]
 
         """
         super().__init__(name)
@@ -35,4 +35,4 @@ class NormalDelayModel(DelayModel):
         self._std = std
 
     def calculate(self) -> float:
-        return get_normal(self._mean_delay, self._std)
+        return rng.normal(loc=self._mean_delay, scale=self._std)

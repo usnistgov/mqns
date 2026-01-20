@@ -33,7 +33,7 @@ from mqns.models.qubit.state import (
     qubit_rho_to_state,
     qubit_state_to_rho,
 )
-from mqns.utils import get_rand
+from mqns.utils import rng
 
 
 class QState:
@@ -101,7 +101,7 @@ class QState:
         prob_0 = np.clip(prob_0, 0.0, 1.0)  # avoid out-of-range due to floating-point calculation
 
         # Assign outcome and perform state collapse
-        if get_rand() < prob_0:
+        if rng.random() < prob_0:
             ret = 0
             ret_s = basis.s0
             op = full_m0

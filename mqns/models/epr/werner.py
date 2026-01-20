@@ -33,7 +33,7 @@ import numpy as np
 
 from mqns.models.epr.entanglement import Entanglement, EntanglementInitKwargs
 from mqns.models.qubit.state import BELL_RHO_PHI_P, QubitRho, check_qubit_rho
-from mqns.utils import get_rand
+from mqns.utils import rng
 
 
 def _fidelity_from_w(w: float) -> float:
@@ -97,7 +97,7 @@ class WernerStateEntanglement(Entanglement["WernerStateEntanglement"]):
         fmin = min(self.fidelity, epr1.fidelity)
         expr1 = fmin**2 + 5 / 9 * (1 - fmin) ** 2 + 2 / 3 * fmin * (1 - fmin)
 
-        if get_rand() > expr1:
+        if rng.random() > expr1:
             return False
 
         self.fidelity = (fmin**2 + (1 - fmin) ** 2 / 9) / expr1

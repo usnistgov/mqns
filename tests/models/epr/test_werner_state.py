@@ -9,6 +9,7 @@ from mqns.models.qubit.state import (
     qubit_state_are_equal,
 )
 from mqns.simulator import Time
+from mqns.utils import FixedRng
 
 
 def micros(us: int) -> Time:
@@ -28,7 +29,7 @@ def test_swap_success(monkeypatch: pytest.MonkeyPatch):
     e1 = WernerStateEntanglement(fidelity=0.9, creation_time=micros(1000), decoherence_time=micros(3000))
     e2 = WernerStateEntanglement(fidelity=0.8, creation_time=micros(2000), decoherence_time=micros(4000))
 
-    monkeypatch.setattr("mqns.models.epr.entanglement.get_rand", lambda: 0.1)
+    monkeypatch.setattr("mqns.models.epr.entanglement.rng", FixedRng(0.1))
     ne = Entanglement.swap(e1, e2, now=micros(2500))
 
     assert ne is not None
@@ -76,7 +77,7 @@ def test_swap_failure(monkeypatch: pytest.MonkeyPatch):
     e1 = WernerStateEntanglement(fidelity=0.9, creation_time=now, decoherence_time=decohere)
     e2 = WernerStateEntanglement(fidelity=0.8, creation_time=now, decoherence_time=decohere)
 
-    monkeypatch.setattr("mqns.models.epr.entanglement.get_rand", lambda: 0.99)
+    monkeypatch.setattr("mqns.models.epr.entanglement.rng", FixedRng(0.99))
     ne = Entanglement.swap(e1, e2, now=now, ps=0.5)
 
     assert ne is None
@@ -99,7 +100,7 @@ def test_purify_success(monkeypatch: pytest.MonkeyPatch):
     e1 = WernerStateEntanglement(fidelity=0.85)
     e2 = WernerStateEntanglement(fidelity=0.85)
 
-    monkeypatch.setattr("mqns.models.epr.werner.get_rand", lambda: 0.1)
+    monkeypatch.setattr("mqns.models.epr.werner.rng", FixedRng(0.1))
     assert e1.purify(e2, now=now) is True
 
     assert not e1.is_decoherenced
@@ -112,7 +113,7 @@ def test_purify_failure(monkeypatch: pytest.MonkeyPatch):
     e1 = WernerStateEntanglement(fidelity=0.5)
     e2 = WernerStateEntanglement(fidelity=0.5)
 
-    monkeypatch.setattr("mqns.models.epr.werner.get_rand", lambda: 0.99)
+    monkeypatch.setattr("mqns.models.epr.werner.rng", FixedRng(0.99))
     assert e1.purify(e2, now=now) is False
 
     assert e1.is_decoherenced

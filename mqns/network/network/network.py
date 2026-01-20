@@ -37,7 +37,7 @@ from mqns.network.network.timing import TimingMode, TimingModeAsync
 from mqns.network.route import DijkstraRouteAlgorithm, RouteAlgorithm, RouteQueryResult
 from mqns.network.topology import ClassicTopology, Topology
 from mqns.simulator import Simulator
-from mqns.utils import get_randint
+from mqns.utils import rng
 
 
 def _save_channel(l: list[ChannelT], d: dict[tuple[str, str], ChannelT], ch: ChannelT):
@@ -353,8 +353,8 @@ class QuantumNetwork:
 
         for _ in range(n):
             while True:
-                src_idx = get_randint(0, nnodes - 1)
-                dst_idx = get_randint(0, nnodes - 1)
+                src_idx = rng.integers(0, nnodes, dtype=int)
+                dst_idx = rng.integers(0, nnodes, dtype=int)
                 if src_idx == dst_idx:
                     continue
                 if not allow_overlay and (src_idx in used_nodes or dst_idx in used_nodes):

@@ -12,10 +12,10 @@ mqns.utils.log module
    :show-inheritance:
    :undoc-members:
 
-mqns.utils.rnd module
----------------------
+mqns.utils.random module
+------------------------
 
-.. automodule:: mqns.utils.rnd
+.. automodule:: mqns.utils.random
    :members:
    :show-inheritance:
    :undoc-members:
