@@ -8,6 +8,7 @@ from mqns.network.proactive import (
     ProactiveForwarder,
     RoutingPathSingle,
 )
+from mqns.utils import FixedRng
 
 from .proactive_common import (
     build_linear_network,
@@ -20,12 +21,12 @@ from .proactive_common import (
 def force_purify_outcome(monkeypatch: pytest.MonkeyPatch, *success: bool):
     l = list(success)
 
-    def new_get_rand() -> float:
+    def new_random() -> float:
         nonlocal l
         this_success, *l = l
         return 0.0 if this_success else 1.0
 
-    monkeypatch.setattr("mqns.models.epr.werner.get_rand", new_get_rand)
+    monkeypatch.setattr("mqns.models.epr.werner.rng", FixedRng(new_random))
 
 
 @pytest.mark.parametrize(

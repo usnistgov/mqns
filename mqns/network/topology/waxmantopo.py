@@ -15,8 +15,8 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import copy
 import itertools
-from copy import deepcopy
 from typing import Unpack, override
 
 import numpy as np
@@ -24,7 +24,7 @@ import numpy as np
 from mqns.entity.node import QNode
 from mqns.entity.qchannel import QuantumChannel
 from mqns.network.topology.topo import Topology, TopologyInitKwargs
-from mqns.utils.rnd import get_rand
+from mqns.utils import rng
 
 
 class WaxmanTopology(Topology):
@@ -54,8 +54,8 @@ class WaxmanTopology(Topology):
         for i in range(self.nodes_number):
             n = QNode(f"n{i + 1}")
             nl.append(n)
-            x = get_rand() * self.size
-            y = get_rand() * self.size
+            x = rng.uniform(0, self.size)
+            y = rng.uniform(0, self.size)
             location_table[n] = (x, y)
 
         L = 0
@@ -72,8 +72,8 @@ class WaxmanTopology(Topology):
                 continue
             d = distance_table[(n1, n2)]
             p = self.alpha * np.exp(-d / (self.beta * L))
-            if get_rand() < p:
-                qchannel_args = deepcopy(self.qchannel_args)
+            if rng.random() < p:
+                qchannel_args = copy.deepcopy(self.qchannel_args)
                 qchannel_args.setdefault("length", d)
                 link = QuantumChannel(name=f"l{n1}-{n2}", **qchannel_args)
                 ll.append(link)

@@ -16,7 +16,6 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import hashlib
-import random
 from typing import override
 
 import numpy as np
@@ -29,14 +28,14 @@ from mqns.models.qubit.basis import BASIS_X, BASIS_Z
 from mqns.models.qubit.operator import Operator
 from mqns.models.qubit.state import QUBIT_STATE_0, QUBIT_STATE_1, QUBIT_STATE_N, QUBIT_STATE_P
 from mqns.simulator import func_to_event
-from mqns.utils.rnd import get_choice, get_rand
+from mqns.utils import rng
 
 
 class QubitWithError(Qubit):
     def transfer_error_model(self, length: float = 0, decoherence_rate: float = 0, **kwargs):
         lkm = length / 1000
         standand_lkm = 50.0
-        theta = get_rand() * lkm / standand_lkm * np.pi / 4
+        theta = rng.uniform(0, lkm / standand_lkm * np.pi / 4)
         operation = np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]], dtype=np.complex128)
         self.state.operate(Operator(operation))
 
@@ -164,7 +163,7 @@ class BB84SendApp(Application[QNode]):
 
     def send_qubit(self):
         # randomly generate a qubit
-        state = get_choice([QUBIT_STATE_0, QUBIT_STATE_1, QUBIT_STATE_P, QUBIT_STATE_N])
+        state = rng.choice([QUBIT_STATE_0, QUBIT_STATE_1, QUBIT_STATE_P, QUBIT_STATE_N])
         qubit = QubitWithError(state=state)
         basis = BASIS_Z.observable if (state == QUBIT_STATE_0).all() or (state == QUBIT_STATE_1).all() else BASIS_X.observable
 
@@ -455,7 +454,7 @@ class BB84RecvApp(Application[QNode]):
     def recv(self, event: RecvQubitPacket):
         qubit: Qubit = event.qubit
         # randomly choose X,Z basis
-        basis = get_choice([BASIS_Z.observable, BASIS_X.observable])
+        basis = rng.choice([BASIS_Z.observable, BASIS_X.observable])
         basis_msg = "Z" if (basis == BASIS_Z.observable).all() else "X"
         ret = qubit.measureZ() if (basis == BASIS_Z.observable).all() else qubit.measureX()
         self.qubit_list[qubit.id] = qubit
@@ -488,7 +487,7 @@ class BB84RecvApp(Application[QNode]):
         # remove uesd raw key and update cascade_key && bit_for_estimate
         for i in keys:
             item_temp = self.succ_key_pool.pop(i)
-            if random.uniform(0, 1) < self.proportion_for_estimating_error:
+            if rng.random() < self.proportion_for_estimating_error:
                 bit_for_estimate[i] = item_temp
             else:
                 self.post_processing_key[i] = item_temp
@@ -672,8 +671,8 @@ class BB84RecvApp(Application[QNode]):
             # check error succeed,Bob's privacy amplification operation
             matrix_row = len(self.cascade_key)
             matrix_col = (1 - self.security) * len(self.cascade_key) - self.bit_leak
-            first_row = [random.randint(0, 1) for _ in range(matrix_row)]
-            first_col = [random.randint(0, 1) for _ in range(int(matrix_col) - 1)]
+            first_row = [rng.integers(0, 1, dtype=int, endpoint=True) for _ in range(matrix_row)]
+            first_col = [rng.integers(0, 1, dtype=int, endpoint=True) for _ in range(int(matrix_col) - 1)]
             toeplitz_matrix = pa_generate_toeplitz_matrix(matrix_row, matrix_col, first_row, first_col)
             self.successful_key += list(pa_randomize_key(self.cascade_key, toeplitz_matrix))
             packet = ClassicPacket(
@@ -740,7 +739,7 @@ def cascade_key_shuffle(index: list):
         index: the index list.
 
     """
-    np.random.shuffle(index)
+    rng.shuffle(index)
     return index
 
 

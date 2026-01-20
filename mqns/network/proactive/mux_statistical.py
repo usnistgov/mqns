@@ -1,7 +1,6 @@
-import random
 from collections import defaultdict
 from collections.abc import Callable, Iterable, Set
-from typing import TYPE_CHECKING, override
+from typing import TYPE_CHECKING, cast, override
 
 from mqns.entity.memory import MemoryQubit, PathDirection, QubitState
 from mqns.entity.node import QNode
@@ -11,7 +10,7 @@ from mqns.network.proactive.fib import FibEntry
 from mqns.network.proactive.message import PathInstructions, validate_path_instructions
 from mqns.network.proactive.mux import MuxScheme
 from mqns.network.proactive.select import MemoryEprIterator, MemoryEprTuple
-from mqns.utils import log
+from mqns.utils import log, rng
 
 if TYPE_CHECKING:
     from mqns.network.proactive.forwarder import ProactiveForwarder
@@ -99,11 +98,11 @@ class MuxSchemeStatistical(MuxSchemeDynamicBase):
 
     SelectSwapQubit = Callable[["ProactiveForwarder", MemoryEprTuple, list[MemoryEprTuple]], MemoryEprTuple]
 
-    SelectSwapQubit_random: SelectSwapQubit = lambda _fw, _mt, candidates: random.choice(candidates)
+    SelectSwapQubit_random: SelectSwapQubit = lambda _fw, _mt, candidates: rng.choice(cast(list, candidates))
 
     SelectPath = Callable[["ProactiveForwarder", Entanglement, Entanglement, list[int]], int | FibEntry]
 
-    SelectPath_random: SelectPath = lambda _fw, _e0, _e1, candidates: random.choice(candidates)
+    SelectPath_random: SelectPath = lambda _fw, _e0, _e1, candidates: rng.choice(cast(list, candidates))
 
     def __init__(
         self,

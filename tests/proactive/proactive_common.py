@@ -204,7 +204,7 @@ def provide_entanglements(
         _, d_notify_a, d_notify_b = ch.link_arch.delays(
             1,
             reset_time=0.0,
-            tau_l=ch.delay_model.calculate(),
+            tau_l=ch.delay.calculate(),
             tau_0=0.0,
         )
         t_creation = simulator.time(sec=t)

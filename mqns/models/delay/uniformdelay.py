@@ -16,7 +16,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from mqns.models.delay.delay import DelayModel
-from mqns.utils.rnd import get_rand
+from mqns.utils import rng
 
 
 class UniformDelayModel(DelayModel):
@@ -35,4 +35,4 @@ class UniformDelayModel(DelayModel):
         self._max_delay = max_delay
 
     def calculate(self) -> float:
-        return get_rand(self._min_delay, self._max_delay)
+        return rng.uniform(self._min_delay, self._max_delay)

@@ -21,7 +21,7 @@ import numpy as np
 from mqns.models.qubit.gate import I, X, Y, Z
 from mqns.models.qubit.qubit import QState
 from mqns.models.qubit.state import QUBIT_STATE_0
-from mqns.utils.rnd import get_rand
+from mqns.utils import rng
 
 
 def PrefectError(self, p: float = 0, **kwargs):
@@ -88,7 +88,7 @@ def DissipationError(self, p: float = 0, **kwargs):
     """
     if p < 0 or p > 1:
         raise Exception("Error decoherence rate, should be in [0, 1]")
-    real_p = get_rand()
+    real_p = rng.random()
     if real_p < p:
         self.measure()
         self.state = QState([self], state=QUBIT_STATE_0)

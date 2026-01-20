@@ -15,8 +15,8 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import copy
 from collections.abc import Callable
-from copy import deepcopy
 from typing import Any, cast, override
 
 import numpy as np
@@ -149,9 +149,9 @@ class ProactiveForwarder(Application[QNode]):
         assert 0.0 <= ps <= 1.0
         self.ps = ps
         """Probability of successful entanglement swapping."""
-        self.cutoff = deepcopy(cutoff)
+        self.cutoff = copy.deepcopy(cutoff)
         """EPR age cut-off scheme."""
-        self.mux = deepcopy(mux)
+        self.mux = copy.deepcopy(mux)
         """Multiplexing scheme."""
         self._select_purif_qubit = select_purif_qubit
 

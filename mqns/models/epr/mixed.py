@@ -13,7 +13,7 @@ from mqns.models.qubit.state import (
     QubitRho,
     check_qubit_rho,
 )
-from mqns.utils import get_rand
+from mqns.utils import rng
 
 ProbabilityVector = np.ndarray[tuple[Literal[4]], np.dtype[np.float64]]
 
@@ -118,7 +118,7 @@ class MixedStateEntanglement(Entanglement["MixedStateEntanglement"]):
         i0, z0, x0, y0 = self._prob
         i1, z1, x1, y1 = epr1._prob
         p_succ = (i0 + y0) * (i1 + y1) + (z0 + x0) * (x1 + z1)
-        if p_succ <= ATOL or get_rand() > p_succ:
+        if p_succ <= ATOL or rng.random() > p_succ:
             return False
 
         self.set_prob(

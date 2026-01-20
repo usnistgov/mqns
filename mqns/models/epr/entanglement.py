@@ -39,7 +39,7 @@ from mqns.models.qubit.gate import CNOT, H, U, X, Y, Z
 from mqns.models.qubit.operator import OPERATOR_PAULI_I, Operator
 from mqns.models.qubit.state import QUBIT_STATE_0, QUBIT_STATE_P, QubitRho, build_qubit_state, qubit_state_to_rho
 from mqns.simulator import Time
-from mqns.utils import get_rand
+from mqns.utils import rng
 
 if TYPE_CHECKING:
     from mqns.entity.node import QNode
@@ -158,7 +158,7 @@ class Entanglement(ABC, Generic[EntanglementT], QuantumModel):
             epr1._mark_decoherenced()
             return None
 
-        if ps < 1.0 and get_rand() >= ps:  # swap failed
+        if ps < 1.0 and rng.random() >= ps:  # swap failed
             epr0._mark_decoherenced()
             epr1._mark_decoherenced()
             return None

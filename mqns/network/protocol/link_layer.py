@@ -20,8 +20,6 @@ from collections import deque
 from dataclasses import dataclass
 from typing import Literal, TypedDict, cast, override
 
-import numpy as np
-
 from mqns.entity.cchannel import ClassicChannel, ClassicPacket, RecvClassicPacket
 from mqns.entity.memory import MemoryQubit, QubitState
 from mqns.entity.node import Application, QNode
@@ -34,7 +32,7 @@ from mqns.network.protocol.event import (
     QubitEntangledEvent,
     QubitReleasedEvent,
 )
-from mqns.utils import json_encodable, log
+from mqns.utils import json_encodable, log, rng
 
 
 class ReserveMsg(TypedDict):
@@ -357,13 +355,13 @@ class LinkLayer(Application[QNode]):
         p = qchannel.link_arch.success_prob(
             length=qchannel.length, alpha=self.alpha_db_per_km, eta_s=self.eta_s, eta_d=self.eta_d
         )
-        k = np.random.geometric(p)
+        k = rng.geometric(p)
 
         # Calculate when would the k-th attempt (1-based) succeed.
         d_epr_creation, d_notify_a, d_notify_b = qchannel.link_arch.delays(
             k,
             reset_time=self.reset_time,
-            tau_l=qchannel.delay_model.calculate(),  # time to send photon/message one way
+            tau_l=qchannel.delay.calculate(),  # time to send photon/message one way
             tau_0=self.tau_0,
         )
         # TODO space out EPRs on a qchannel by attempt_interval or qchannel.bandwidth

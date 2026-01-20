@@ -16,8 +16,8 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
+import copy
 from collections.abc import Iterable
-from copy import deepcopy
 from typing import NotRequired, TypedDict, cast, override
 
 from mqns.entity.cchannel import ClassicChannel, ClassicChannelInitKwargs
@@ -127,7 +127,7 @@ class CustomTopology(Topology):
         # Create quantum nodes
         for node in self.topo["qnodes"]:
             qn = QNode(node["name"])
-            qn.add_apps(node["apps"] if "apps" in node else deepcopy(self.nodes_apps))
+            qn.add_apps(node["apps"] if "apps" in node else copy.deepcopy(self.nodes_apps))
 
             # Assign a new memory
             memory_args = node.get("memory", self.memory_args)

@@ -1,7 +1,6 @@
-import random
 from abc import abstractmethod
 from collections.abc import Callable
-from typing import TYPE_CHECKING, override
+from typing import TYPE_CHECKING, cast, override
 
 from mqns.entity.memory import MemoryQubit, PathDirection, QubitState
 from mqns.entity.node import QNode
@@ -11,7 +10,7 @@ from mqns.network.proactive.fib import FibEntry
 from mqns.network.proactive.message import PathInstructions, validate_path_instructions
 from mqns.network.proactive.mux import MuxScheme
 from mqns.network.proactive.select import MemoryEprIterator, MemoryEprTuple
-from mqns.utils import log
+from mqns.utils import log, rng
 
 if TYPE_CHECKING:
     from mqns.network.proactive.forwarder import ProactiveForwarder
@@ -20,7 +19,7 @@ if TYPE_CHECKING:
 class MuxSchemeFibBase(MuxScheme):
     SelectSwapQubit = Callable[["ProactiveForwarder", MemoryEprTuple, FibEntry, list[MemoryEprTuple]], MemoryEprTuple]
 
-    SelectSwapQubit_random: SelectSwapQubit = lambda _fw, _mt, _fe, candidates: random.choice(candidates)
+    SelectSwapQubit_random: SelectSwapQubit = lambda _fw, _mt, _fe, candidates: rng.choice(cast(list, candidates))
 
     def __init__(self, name: str, select_swap_qubit: SelectSwapQubit | None):
         super().__init__(name)

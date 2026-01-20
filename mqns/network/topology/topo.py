@@ -25,9 +25,9 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import copy
 import itertools
 from abc import ABC, abstractmethod
-from copy import deepcopy
 from enum import Enum
 from typing import TypedDict, Unpack
 
@@ -87,7 +87,7 @@ class Topology(ABC):
 
         """
         for n in nl:
-            n.add_apps(deepcopy(self.nodes_apps))
+            n.add_apps(copy.deepcopy(self.nodes_apps))
 
     def _add_memories(self, nl: list[QNode]):
         """Add quantum memories to all nodes in `nl`
