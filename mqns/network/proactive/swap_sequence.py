@@ -103,7 +103,7 @@ def compute_vora_swap_sequence(
 
     # Compute time slot for the external phase i.e. elementary entanglement establishment.
     T_cutoff = t_cohere
-    tau = 2 * sum(L_list) / default_light_speed  # for heralding
+    tau = 2 * sum(L_list) / default_light_speed[0]  # for heralding
     T_ext = T_cutoff - tau  # for external phase
 
     # Derive actual capacity (#attempts/time_slot) passed to VoraSwap algorithm.

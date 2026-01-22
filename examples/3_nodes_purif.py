@@ -5,7 +5,7 @@ from tap import Tap
 from mqns.network.network import QuantumNetwork
 from mqns.network.proactive import ProactiveForwarder
 from mqns.simulator import Simulator
-from mqns.utils import log, set_seed
+from mqns.utils import log, rng
 
 from examples_common.topo_linear import build_topology
 
@@ -27,7 +27,7 @@ sim_duration = 5
 
 
 def run_simulation(t_cohere: float, seed: int):
-    set_seed(seed)
+    rng.reseed(seed)
 
     topo = build_topology(
         nodes=["S", "R", "D"],

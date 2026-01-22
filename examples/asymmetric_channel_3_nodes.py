@@ -21,7 +21,7 @@ from mqns.entity.qchannel import LinkArch, LinkArchDimBk, LinkArchSim, LinkArchS
 from mqns.network.network import QuantumNetwork
 from mqns.network.proactive import ProactiveForwarder
 from mqns.simulator import Simulator
-from mqns.utils import log, set_seed
+from mqns.utils import log, rng
 
 from examples_common.plotting import Axes2D, mpl, plt, plt_save
 from examples_common.topo_linear import build_topology
@@ -53,7 +53,7 @@ def run_simulation(
     t_cohere: float,
     seed: int,
 ):
-    set_seed(seed)
+    rng.reseed(seed)
 
     topo = build_topology(
         nodes=nodes,

@@ -54,7 +54,7 @@ from mqns.network.network import QuantumNetwork
 from mqns.network.proactive import ProactiveForwarder, compute_vora_swap_sequence
 from mqns.network.topology.topo import Topology
 from mqns.simulator import Simulator
-from mqns.utils import log, set_seed
+from mqns.utils import log, rng
 
 from examples_common.plotting import Axes2D, plt, plt_save
 from examples_common.stats import gather_etg_decoh
@@ -180,7 +180,7 @@ def vora_regen_row(p: ParameterSet, num_routers: int, dist_prop: str, indir: str
 
 
 def run_simulation(p: ParameterSet, seed: int) -> tuple[float, float]:
-    set_seed(seed)
+    rng.reseed(seed)
 
     topo = p.build_topology()
     net = QuantumNetwork(topo)

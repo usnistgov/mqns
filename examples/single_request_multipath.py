@@ -3,7 +3,7 @@ from mqns.network.proactive import LinkLayer, ProactiveForwarder, ProactiveRouti
 from mqns.network.route import YenRouteAlgorithm
 from mqns.network.topology import CustomTopology, Topology
 from mqns.simulator import Simulator
-from mqns.utils import log, set_seed
+from mqns.utils import log, rng
 
 from examples_common.stats import gather_etg_decoh
 
@@ -144,7 +144,7 @@ def build_topology() -> Topology:
     )
 
 
-set_seed(SEED_BASE)
+rng.reseed(SEED_BASE)
 
 topo = build_topology()
 net = QuantumNetwork(

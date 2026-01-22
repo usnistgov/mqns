@@ -18,7 +18,7 @@ from mqns.models.qubit.state import (
     qubit_state_are_equal,
 )
 from mqns.simulator import Time
-from mqns.utils import FixedRng
+from mqns.utils import rng
 
 
 def test_fidelity_conversion():
@@ -47,7 +47,7 @@ def test_swap():
 
 
 def test_purify_success(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr("mqns.models.epr.mixed.rng", FixedRng(0.0))
+    monkeypatch.setattr(rng, "random", lambda: 0.0)
     now = Time(0, accuracy=1000000)
     decohere = now + 5.0
 
@@ -62,7 +62,7 @@ def test_purify_success(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_purify_failure(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr("mqns.models.epr.mixed.rng", FixedRng(1.0))
+    monkeypatch.setattr(rng, "random", lambda: 1.0)
     now = Time(0, accuracy=1000000)
     decohere = now + 5.0
 

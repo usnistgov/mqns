@@ -18,7 +18,7 @@ from mqns.network.proactive import (
 from mqns.network.proactive.message import MultiplexingVector
 from mqns.network.topology.customtopo import CustomTopology, TopoCChannel, Topology, TopoQChannel, TopoQNode
 from mqns.simulator import Simulator
-from mqns.utils import log, set_seed
+from mqns.utils import log, rng
 
 from examples_common.plotting import mpl, plt, plt_save
 
@@ -249,7 +249,7 @@ def build_topology(t_cohere: float, mux: MuxScheme, active_flows: list[tuple[str
 
 
 def run_simulation(t_cohere: float, mux: MuxScheme, seed: int, active_flows: list[tuple[str, str]]):
-    set_seed(seed)
+    rng.reseed(seed)
 
     topo = build_topology(t_cohere, mux, active_flows)
     net = QuantumNetwork(topo)

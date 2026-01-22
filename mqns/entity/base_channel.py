@@ -6,17 +6,13 @@ from mqns.models.delay import DelayInput, parseDelay
 from mqns.simulator import Simulator, Time
 from mqns.utils import log, rng
 
-default_light_speed: float = 2e5
+default_light_speed: list[float] = [2e5]
 """
 Default speed of light in km/s.
 Initial value is 200000 km/s, the speed of light in fiber optics.
+
+This is defined as list rather than scalar, so that the value can be changed.
 """
-
-
-def set_default_light_speed(light_speed: float) -> None:
-    """Change default speed of light in km/s."""
-    global default_light_speed
-    default_light_speed = light_speed
 
 
 class BaseChannelInitKwargs(TypedDict, total=False):
@@ -54,7 +50,7 @@ class BaseChannel(Entity, Generic[NodeT]):
         self.length = kwargs.get("length", 0.0)
         assert self.length >= 0.0
 
-        self.delay = parseDelay(kwargs.get("delay", 0 if self.length == 0 else self.length / default_light_speed))
+        self.delay = parseDelay(kwargs.get("delay", 0 if self.length == 0 else self.length / default_light_speed[0]))
 
         self.drop_rate = kwargs.get("drop_rate", 0.0)
         assert 0.0 <= self.drop_rate <= 1.0

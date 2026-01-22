@@ -7,7 +7,7 @@ from mqns.network.topology import RandomTopology
 from mqns.network.topology.topo import ClassicTopology
 from mqns.simulator.simulator import Simulator
 from mqns.utils import log
-from mqns.utils.rnd import set_seed
+from mqns.utils.rnd import rng
 
 # constrains
 init_fidelity = 0.99
@@ -22,7 +22,7 @@ requests_number = 10
 log.logger.setLevel(logging.DEBUG)
 
 # set a fixed random seed
-set_seed(100)
+rng.reseed(100)
 s = Simulator(0, 10, accuracy=1000000)
 log.install(s)
 

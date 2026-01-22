@@ -17,7 +17,7 @@ from mqns.network.proactive import (
     ProactiveRoutingController,
 )
 from mqns.network.topology import ClassicTopology, RandomTopology
-from mqns.utils import set_seed
+from mqns.utils import rng
 
 # global simulation parameters
 fiber_alpha = 0.2
@@ -59,7 +59,7 @@ def build_network(args: RunArgs) -> QuantumNetwork:
     """
     Defines the topology with globally declared simulation parameters.
     """
-    set_seed(args.seed)
+    rng.reseed(args.seed)
 
     # Define topology.
     topo = RandomTopology(

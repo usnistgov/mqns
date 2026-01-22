@@ -27,7 +27,7 @@ from tap import Tap
 from mqns.network.network import QuantumNetwork
 from mqns.network.proactive import ProactiveForwarder
 from mqns.simulator import Simulator
-from mqns.utils import log, set_seed
+from mqns.utils import log, rng
 
 from examples_common.plotting import Axes1D, mpl, plt, plt_save
 from examples_common.stats import gather_etg_decoh
@@ -51,7 +51,7 @@ def run_simulation(
     swapping_order: str,
     seed: int,
 ):
-    set_seed(seed)
+    rng.reseed(seed)
 
     topo = build_topology(
         nodes=N_NODES,

@@ -17,7 +17,7 @@ from mqns.network.proactive import (
 )
 from mqns.network.topology import CustomTopology, Topology
 from mqns.simulator import Simulator
-from mqns.utils import log, set_seed
+from mqns.utils import log, rng
 
 from examples_common.plotting import Axes2D, mpl, plt, plt_save
 
@@ -165,7 +165,7 @@ def build_topology(t_cohere: float, p_swap: float, mux: MuxScheme) -> Topology:
 
 
 def run_simulation(t_cohere: float, p_swap: float, mux: MuxScheme, seed: int):
-    set_seed(seed)
+    rng.reseed(seed)
 
     topo = build_topology(t_cohere, p_swap, mux)
     net = QuantumNetwork(topo)

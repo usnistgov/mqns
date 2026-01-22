@@ -29,7 +29,7 @@ from tap import Tap
 from mqns.network.network import QuantumNetwork
 from mqns.network.protocol.link_layer import LinkLayer
 from mqns.simulator import Simulator
-from mqns.utils import log, set_seed
+from mqns.utils import log, rng
 
 from examples_common.plotting import Axes, plt, plt_save
 from examples_common.topo_linear import build_topology
@@ -52,7 +52,7 @@ def run_simulation(seed: int, sim_duration: float, L: list[float], M: int) -> li
     Run single simulation.
     Return per-channel results.
     """
-    set_seed(seed)
+    rng.reseed(seed)
 
     topo = build_topology(
         nodes=len(L) + 1,
