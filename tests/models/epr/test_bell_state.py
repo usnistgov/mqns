@@ -1,12 +1,12 @@
-from mqns.models.epr import BellStateEntanglement
-from mqns.models.qubit import Qubit
-from mqns.models.qubit.state import (
+from mqns.models.core.state import (
     BELL_RHO_PHI_P,
     BELL_STATE_PHI_P,
     QUBIT_STATE_1,
     qubit_rho_classify_noise,
     qubit_state_are_equal,
 )
+from mqns.models.epr import BellStateEntanglement
+from mqns.models.qubit import Qubit
 
 
 def test_teleportation():

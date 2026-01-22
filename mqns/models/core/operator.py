@@ -6,7 +6,7 @@ from typing import cast, final
 
 import numpy as np
 
-from mqns.models.qubit.state import ATOL, QubitRho, QubitState
+from mqns.models.core.state import ATOL, QubitRho, QubitState
 
 
 @final

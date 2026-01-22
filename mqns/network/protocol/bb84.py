@@ -23,10 +23,10 @@ import numpy as np
 from mqns.entity.cchannel import ClassicChannel, ClassicPacket, RecvClassicPacket
 from mqns.entity.node import Application, Node, QNode
 from mqns.entity.qchannel import QuantumChannel, RecvQubitPacket
+from mqns.models.core.basis import BASIS_X, BASIS_Z
+from mqns.models.core.operator import Operator
+from mqns.models.core.state import QUBIT_STATE_0, QUBIT_STATE_1, QUBIT_STATE_N, QUBIT_STATE_P
 from mqns.models.qubit import Qubit
-from mqns.models.qubit.basis import BASIS_X, BASIS_Z
-from mqns.models.qubit.operator import Operator
-from mqns.models.qubit.state import QUBIT_STATE_0, QUBIT_STATE_1, QUBIT_STATE_N, QUBIT_STATE_P
 from mqns.simulator import func_to_event
 from mqns.utils import rng
 

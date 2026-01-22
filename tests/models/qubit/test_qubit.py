@@ -2,10 +2,10 @@ import itertools
 
 import numpy as np
 
+from mqns.models.core.operator import OPERATOR_RX, OPERATOR_RY
+from mqns.models.core.state import QUBIT_STATE_0, QUBIT_STATE_1, QUBIT_STATE_N
 from mqns.models.qubit.gate import CNOT, CR, CZ, RX, RY, H, Swap, Toffoli, U
-from mqns.models.qubit.operator import OPERATOR_RX, OPERATOR_RY
 from mqns.models.qubit.qubit import Qubit
-from mqns.models.qubit.state import QUBIT_STATE_0, QUBIT_STATE_1, QUBIT_STATE_N
 
 
 def test_qubit():

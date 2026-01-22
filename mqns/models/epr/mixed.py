@@ -3,8 +3,7 @@ from typing import Literal, Unpack, cast, final, overload, override
 
 import numpy as np
 
-from mqns.models.epr.entanglement import Entanglement, EntanglementInitKwargs
-from mqns.models.qubit.state import (
+from mqns.models.core.state import (
     ATOL,
     BELL_RHO_PHI_N,
     BELL_RHO_PHI_P,
@@ -13,6 +12,7 @@ from mqns.models.qubit.state import (
     QubitRho,
     check_qubit_rho,
 )
+from mqns.models.epr.entanglement import Entanglement, EntanglementInitKwargs
 from mqns.utils import rng
 
 ProbabilityVector = np.ndarray[tuple[Literal[4]], np.dtype[np.float64]]

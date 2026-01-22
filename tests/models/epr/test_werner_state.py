@@ -1,13 +1,13 @@
 import pytest
 
-from mqns.models.epr import Entanglement, WernerStateEntanglement
-from mqns.models.qubit.state import (
+from mqns.models.core.state import (
     BELL_RHO_PHI_P,
     BELL_STATE_PHI_P,
     QUBIT_STATE_P,
     qubit_rho_classify_noise,
     qubit_state_are_equal,
 )
+from mqns.models.epr import Entanglement, WernerStateEntanglement
 from mqns.simulator import Time
 from mqns.utils import rng
 

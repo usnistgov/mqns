@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from mqns.models.qubit.operator import (
+from mqns.models.core.operator import (
     OPERATOR_H,
     OPERATOR_PAULI_I,
     OPERATOR_PAULI_X,

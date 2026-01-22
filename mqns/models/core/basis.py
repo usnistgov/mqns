@@ -1,7 +1,7 @@
 import numpy as np
 
-from mqns.models.qubit.operator import OPERATOR_PAULI_X, OPERATOR_PAULI_Y, OPERATOR_PAULI_Z, Operator
-from mqns.models.qubit.state import (
+from mqns.models.core.operator import OPERATOR_PAULI_X, OPERATOR_PAULI_Y, OPERATOR_PAULI_Z, Operator
+from mqns.models.core.state import (
     QUBIT_STATE_0,
     QUBIT_STATE_1,
     QUBIT_STATE_L,

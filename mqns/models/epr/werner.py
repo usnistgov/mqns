@@ -31,8 +31,8 @@ from typing import Unpack, final, overload, override
 
 import numpy as np
 
+from mqns.models.core.state import BELL_RHO_PHI_P, QubitRho, check_qubit_rho
 from mqns.models.epr.entanglement import Entanglement, EntanglementInitKwargs
-from mqns.models.qubit.state import BELL_RHO_PHI_P, QubitRho, check_qubit_rho
 from mqns.utils import rng
 
 

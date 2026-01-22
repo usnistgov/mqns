@@ -1,8 +1,6 @@
 import pytest
 
-from mqns.models.epr import MixedStateEntanglement
-from mqns.models.qubit import Qubit
-from mqns.models.qubit.state import (
+from mqns.models.core.state import (
     BELL_RHO_PHI_N,
     BELL_RHO_PHI_P,
     BELL_RHO_PSI_N,
@@ -17,6 +15,8 @@ from mqns.models.qubit.state import (
     qubit_rho_classify_noise,
     qubit_state_are_equal,
 )
+from mqns.models.epr import MixedStateEntanglement
+from mqns.models.qubit import Qubit
 from mqns.simulator import Time
 from mqns.utils import rng
 

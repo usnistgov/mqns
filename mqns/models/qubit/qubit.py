@@ -20,10 +20,9 @@ from typing import Any, Literal, cast
 import numpy as np
 
 from mqns.models.core import QuantumModel
-from mqns.models.qubit.basis import BASIS_BY_NAME
-from mqns.models.qubit.gate import SingleQubitGate
-from mqns.models.qubit.operator import Operator
-from mqns.models.qubit.state import (
+from mqns.models.core.basis import BASIS_BY_NAME
+from mqns.models.core.operator import Operator
+from mqns.models.core.state import (
     ATOL,
     QUBIT_STATE_0,
     QubitRho,
@@ -33,6 +32,7 @@ from mqns.models.qubit.state import (
     qubit_rho_to_state,
     qubit_state_to_rho,
 )
+from mqns.models.qubit.gate import SingleQubitGate
 from mqns.utils import rng
 
 

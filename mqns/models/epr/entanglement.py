@@ -34,10 +34,10 @@ from typing import TYPE_CHECKING, Generic, TypedDict, TypeVar, Unpack, cast
 import numpy as np
 
 from mqns.models.core import QuantumModel
+from mqns.models.core.operator import OPERATOR_PAULI_I, Operator
+from mqns.models.core.state import QUBIT_STATE_0, QUBIT_STATE_P, QubitRho, build_qubit_state, qubit_state_to_rho
 from mqns.models.qubit import QState, Qubit
 from mqns.models.qubit.gate import CNOT, H, U, X, Y, Z
-from mqns.models.qubit.operator import OPERATOR_PAULI_I, Operator
-from mqns.models.qubit.state import QUBIT_STATE_0, QUBIT_STATE_P, QubitRho, build_qubit_state, qubit_state_to_rho
 from mqns.simulator import Time
 from mqns.utils import rng
 

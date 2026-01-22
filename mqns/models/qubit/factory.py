@@ -18,6 +18,7 @@
 
 from types import MethodType
 
+from mqns.models.core.state import QUBIT_STATE_0, QubitRho, QubitState
 from mqns.models.qubit.decoherence import (
     PrefectMeasureErrorModel,
     PrefectOperateErrorModel,
@@ -25,7 +26,6 @@ from mqns.models.qubit.decoherence import (
     PrefectTransferErrorModel,
 )
 from mqns.models.qubit.qubit import Qubit
-from mqns.models.qubit.state import QUBIT_STATE_0, QubitRho, QubitState
 
 
 class QubitFactory:
