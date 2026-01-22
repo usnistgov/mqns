@@ -86,43 +86,64 @@ class Operator:
 
 
 def OPERATOR_RX(theta: float):
-    """Build an operator for rotation around the X-axis: ``exp(-i*theta*X/2)``."""
+    """
+    Build an operator for rotation around the X-axis: ``exp(-i*theta*X/2)``.
+
+    Args:
+        theta: Bloch Sphere rotation angle, in radians.
+    """
     c, s = np.cos(theta / 2), np.sin(theta / 2)
     return Operator([[c, -1j * s], [-1j * s, c]])
 
 
 def OPERATOR_RY(theta: float):
-    """Build an operator for rotation around the Y-axis: ``exp(-i*theta*Y/2)``."""
+    """
+    Build an operator for rotation around the Y-axis: ``exp(-i*theta*Y/2)``.
+
+    Args:
+        theta: Bloch Sphere rotation angle, in radians.
+    """
     c, s = np.cos(theta / 2), np.sin(theta / 2)
     return Operator([[c, -s], [s, c]])
 
 
 def OPERATOR_RZ(theta: float):
-    """Build an operator for rotation around the Z-axis: ``exp(-i*theta*Z/2)``."""
+    """
+    Build an operator for rotation around the Z-axis: ``exp(-i*theta*Z/2)``.
+
+    Args:
+        theta: Bloch Sphere rotation angle, in radians.
+    """
     return Operator([[np.exp(-0.5j * theta), 0], [0, np.exp(0.5j * theta)]])
 
 
 def OPERATOR_PHASE_SHIFT(theta: float):
-    """Build an operator for phase shift gate: ``|1> -> exp(i*theta)|1>``."""
+    """
+    Build an operator for phase shift gate: ``|1> -> exp(i*theta)|1>``.
+
+    Args:
+        theta: relative phase, in radians.
+    """
     return Operator([[1, 0], [0, np.exp(1j * theta)]])
 
 
 _sqrt1_2 = 1 / np.sqrt(2)
 OPERATOR_H = Operator([[_sqrt1_2, _sqrt1_2], [_sqrt1_2, -_sqrt1_2]])
 """Hadamard operator."""
-OPERATOR_T = Operator([[1, 0], [0, np.e ** (1j * np.pi / 4)]])
-"""T operator."""
-OPERATOR_S = Operator([[1, 0], [0, 1j]])
-"""Phase shift operator."""
 
-OPERATOR_PAULI_I = Operator([[1, 0], [0, 1]])
+OPERATOR_S = OPERATOR_PHASE_SHIFT(np.pi / 2)
+"""Phase shift operator."""
+OPERATOR_T = OPERATOR_PHASE_SHIFT(np.pi / 4)
+"""T operator."""
+
+OPERATOR_PAULI_I = Operator(np.identity(2))
 """Pauli identity operator."""
+OPERATOR_PAULI_Z = Operator([[1, 0], [0, -1]])
+"""Pauli-Z operator."""
 OPERATOR_PAULI_X = Operator([[0, 1], [1, 0]])
 """Pauli-X operator."""
 OPERATOR_PAULI_Y = Operator([[0, -1j], [1j, 0]])
 """Pauli-Y operator."""
-OPERATOR_PAULI_Z = Operator([[1, 0], [0, -1]])
-"""Pauli-Z operator."""
 
 OPERATOR_CNOT = Operator([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]], n=2)
 """Controlled Not operator: flip the second qubit if the first is ``|1>``."""
