@@ -27,17 +27,17 @@
 
 import hashlib
 import uuid
-from abc import ABC, abstractmethod
-from collections.abc import Iterable
+from abc import abstractmethod
+from collections.abc import Callable, Iterable
 from typing import TYPE_CHECKING, Generic, TypedDict, TypeVar, Unpack, cast
 
 import numpy as np
 
 from mqns.models.core import QuantumModel
+from mqns.models.core.operator import OPERATOR_PAULI_I, Operator
+from mqns.models.core.state import QUBIT_STATE_P, QubitRho, build_qubit_state, qubit_state_to_rho
 from mqns.models.qubit import QState, Qubit
 from mqns.models.qubit.gate import CNOT, H, U, X, Y, Z
-from mqns.models.qubit.operator import OPERATOR_PAULI_I, Operator
-from mqns.models.qubit.state import QUBIT_STATE_0, QUBIT_STATE_P, QubitRho, build_qubit_state, qubit_state_to_rho
 from mqns.simulator import Time
 from mqns.utils import rng
 
@@ -47,6 +47,8 @@ if TYPE_CHECKING:
 
 EntanglementT = TypeVar("EntanglementT", bound="Entanglement")
 
+EntanglementStoreErrorFunc = Callable[["Entanglement", Time], None] | None
+
 
 class EntanglementInitKwargs(TypedDict, total=False):
     name: str | None
@@ -54,10 +56,10 @@ class EntanglementInitKwargs(TypedDict, total=False):
     decoherence_time: Time
     src: "QNode|None"
     dst: "QNode|None"
-    mem_decohere_rate: tuple[float, float]
+    store_errors: tuple[EntanglementStoreErrorFunc, EntanglementStoreErrorFunc]
 
 
-class Entanglement(ABC, Generic[EntanglementT], QuantumModel):
+class Entanglement(Generic[EntanglementT], QuantumModel):
     """Base entanglement model."""
 
     def __init__(self, **kwargs: Unpack[EntanglementInitKwargs]):
@@ -70,7 +72,7 @@ class Entanglement(ABC, Generic[EntanglementT], QuantumModel):
             decoherence_time: Qubits decoherence time point, defaults to `Time.SENTINEL`.
             src: Left node that holds one entangled qubit.
             dst: Right node that holds one entangled qubit.
-            mem_decohere_rate: Memory decoherence rate at src and dst, defaults to (0.0,0.0).
+            store_errors: Memory store error function at src and dst.
         """
         name = kwargs.get("name")
         self.name = uuid.uuid4().hex if name is None else name
@@ -97,7 +99,7 @@ class Entanglement(ABC, Generic[EntanglementT], QuantumModel):
         """One node that holds one entangled qubit, at the left side of a path."""
         self.dst = kwargs.get("dst")
         """The other node that holds the other entangled qubit, at the right side of a path."""
-        self.mem_decohere_rate = kwargs.get("mem_decohere_rate", (0.0, 0.0))
+        self.store_errors = kwargs.get("store_errors", (None, None))
         """Memory decoherence rate in Hz at src and dst."""
 
         self.ch_index = -1
@@ -120,14 +122,19 @@ class Entanglement(ABC, Generic[EntanglementT], QuantumModel):
     def fidelity(self, value: float):
         pass
 
-    @property
-    def decoherence_rate(self) -> float:
-        """Pair decoherence rate in Hz"""
-        return sum(self.mem_decohere_rate)
-
     def _mark_decoherenced(self) -> None:
         """Mark the EPR as decoherenced."""
         self.is_decoherenced = True
+
+    def apply_store_errors(self, now: Time) -> None:
+        """Apply store error models for both qubits in this EPR."""
+        if self.read:
+            return
+        t = now - self.creation_time
+        for se in self.store_errors:
+            if se is not None:
+                se(self, t)
+        self.read = True
 
     @staticmethod
     def swap(
@@ -166,8 +173,7 @@ class Entanglement(ABC, Generic[EntanglementT], QuantumModel):
         orig_eprs: list[EntanglementT] = []
         for epr in (epr0, epr1):
             if not epr.read:
-                epr.read = True
-                epr.store_error_model((now - epr.creation_time).sec, epr.decoherence_rate)
+                epr.apply_store_errors(now)
 
             if epr.ch_index > -1:
                 orig_eprs.append(epr)
@@ -184,7 +190,7 @@ class Entanglement(ABC, Generic[EntanglementT], QuantumModel):
             decoherence_time=min(epr0.decoherence_time, epr1.decoherence_time),
             src=epr0.src,
             dst=epr1.dst,
-            mem_decohere_rate=(epr0.mem_decohere_rate[0], epr1.mem_decohere_rate[1]),
+            store_errors=(epr0.store_errors[0], epr1.store_errors[1]),
         )
         ne.orig_eprs = orig_eprs
         return ne
@@ -233,27 +239,27 @@ class Entanglement(ABC, Generic[EntanglementT], QuantumModel):
     def _do_purify(self, epr1: EntanglementT) -> bool:
         pass
 
-    def to_qubits(self) -> list[Qubit]:
+    def to_qubits(self) -> tuple[Qubit, Qubit]:
         """
         Transport the entanglement into a pair of qubits based on the fidelity.
         Maximally entanglement returns ``|Φ+>`` state.
 
         Returns:
-            A list of two qubits.
+            A tuple of two qubits.
         """
         if self.is_decoherenced:
-            q0 = Qubit(state=QUBIT_STATE_P, name="q0")
-            q1 = Qubit(state=QUBIT_STATE_P, name="q1")
-            return [q0, q1]
+            q0 = Qubit(QUBIT_STATE_P, name="q0")
+            q1 = Qubit(QUBIT_STATE_P, name="q1")
+            return (q0, q1)
 
-        q0 = Qubit(state=QUBIT_STATE_0, name="q0")
-        q1 = Qubit(state=QUBIT_STATE_0, name="q1")
+        q0 = Qubit(name="q0")
+        q1 = Qubit(name="q1")
         qs = QState([q0, q1], rho=self._to_qubits_rho())
         q0.state = qs
         q1.state = qs
 
         self.is_decoherenced = True
-        return [q0, q1]
+        return (q0, q1)
 
     def _to_qubits_rho(self) -> QubitRho:
         a = np.sqrt(self.fidelity / 2)

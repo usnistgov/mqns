@@ -35,16 +35,15 @@ from mqns.entity.qchannel.link_arch import (
 )
 from mqns.models.core import QuantumModel
 from mqns.models.epr import Entanglement
+from mqns.models.error import DepolarErrorModel, ErrorModelInput, parse_error
 from mqns.simulator import Event, Time
 
 
 class QuantumChannelInitKwargs(BaseChannelInitKwargs, total=False):
     link_arch: LinkArch
     """Link architecture model."""
-    decoherence_rate: float
-    """Decoherence rate passed to transfer_error_model."""
-    transfer_error_model_args: dict
-    """Parameters passed to transfer_error_model."""
+    transfer_error: ErrorModelInput
+    """Transfer error model."""
 
 
 class QuantumChannel(BaseChannel[QNode]):
@@ -53,8 +52,7 @@ class QuantumChannel(BaseChannel[QNode]):
     def __init__(self, name: str, **kwargs: Unpack[QuantumChannelInitKwargs]):
         super().__init__(name, **kwargs)
         self.link_arch = kwargs.get("link_arch", None) or LinkArchDimBkSeq()
-        self.decoherence_rate = kwargs.get("decoherence_rate", 0.0)
-        self.transfer_error_model_args = kwargs.get("transfer_error_model_args", {})
+        self.transfer_error = parse_error(kwargs.get("transfer_error"), DepolarErrorModel, self.length)
 
     @override
     def handle(self, event: Event):
@@ -100,7 +98,7 @@ class QuantumChannel(BaseChannel[QNode]):
             return
 
         # operation on the qubit
-        qubit.transfer_error_model(self.length, self.decoherence_rate, **self.transfer_error_model_args)
+        qubit.apply_error(self.transfer_error)
         send_event = RecvQubitPacket(t=recv_time, by=self, qchannel=self, qubit=qubit, dest=next_hop)
         self.simulator.add_event(send_event)
 

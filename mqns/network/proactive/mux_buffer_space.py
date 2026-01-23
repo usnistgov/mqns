@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from collections.abc import Callable
-from typing import TYPE_CHECKING, cast, override
+from typing import TYPE_CHECKING, override
 
 from mqns.entity.memory import MemoryQubit, PathDirection, QubitState
 from mqns.entity.node import QNode
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 class MuxSchemeFibBase(MuxScheme):
     SelectSwapQubit = Callable[["ProactiveForwarder", MemoryEprTuple, FibEntry, list[MemoryEprTuple]], MemoryEprTuple]
 
-    SelectSwapQubit_random: SelectSwapQubit = lambda _fw, _mt, _fe, candidates: rng.choice(cast(list, candidates))
+    SelectSwapQubit_random: SelectSwapQubit = lambda _fw, _mt, _fe, candidates: candidates[rng.choice(len(candidates))]
 
     def __init__(self, name: str, select_swap_qubit: SelectSwapQubit | None):
         super().__init__(name)

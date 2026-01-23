@@ -3,23 +3,25 @@ import numpy as np
 from mqns.entity.cchannel import ClassicChannel
 from mqns.entity.node import QNode
 from mqns.entity.qchannel import QuantumChannel
+from mqns.models.error import CoherentErrorModel
 from mqns.network.protocol import BB84RecvApp, BB84SendApp
 from mqns.simulator import Simulator
 
-light_speed = 299791458
-length = 1000
-
-
-def drop_rate(length):
-    # drop 0.2 db/KM
-    return 1 - np.exp(-length / 50000)
-
 
 def test_bb84_protocol():
+    light_speed = 299792.458  # km/s
+    length = 1  # km
+
     n1 = QNode(name="n1")
     n2 = QNode(name="n2")
 
-    qlink = QuantumChannel(name="l1", delay=length / light_speed, drop_rate=0)
+    qlink = QuantumChannel(
+        name="l1",
+        length=length,
+        delay=length / light_speed,
+        drop_rate=1 - np.exp(-length / 50),  # 0.2 db/km
+        transfer_error=CoherentErrorModel(length=length),
+    )
 
     clink = ClassicChannel(name="c1", delay=length / light_speed)
 
@@ -33,6 +35,9 @@ def test_bb84_protocol():
     n1.add_apps(sp)
     n2.add_apps(rp)
 
-    s = Simulator(0, 10, accuracy=10000000000, install_to=(n1, n2))
+    s = Simulator(0, 15, accuracy=10_000_000_000, install_to=(n1, n2))
     s.run()
-    print(sp.fail_number)
+    print("BB84SendApp", sp.fail_number, len(sp.successful_key))
+    print("BB84RecvApp", rp.fail_number, len(rp.successful_key))
+    assert len(sp.successful_key) > 0
+    assert sp.successful_key == rp.successful_key

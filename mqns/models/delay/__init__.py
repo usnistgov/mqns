@@ -17,8 +17,15 @@
 
 from mqns.models.delay.constdelay import ConstantDelayModel
 from mqns.models.delay.delay import DelayModel
-from mqns.models.delay.input import DelayInput, parseDelay
+from mqns.models.delay.input import DelayInput, parse_delay
 from mqns.models.delay.normaldelay import NormalDelayModel
 from mqns.models.delay.uniformdelay import UniformDelayModel
 
-__all__ = ["DelayModel", "ConstantDelayModel", "UniformDelayModel", "NormalDelayModel", "DelayInput", "parseDelay"]
+__all__ = [
+    "ConstantDelayModel",
+    "DelayInput",
+    "DelayModel",
+    "NormalDelayModel",
+    "parse_delay",
+    "UniformDelayModel",
+]

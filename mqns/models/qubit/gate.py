@@ -1,26 +1,9 @@
-#    SimQN: a discrete-event simulator for the quantum networks
-#    Copyright (C) 2021-2022 Lutong Chen, Jian Li, Kaiping Xue
-#    University of Science and Technology of China, USTC.
-#
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
+import functools
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from mqns.models.qubit.operator import (
+from mqns.models.core.operator import (
     OPERATOR_H,
     OPERATOR_PAULI_I,
     OPERATOR_PAULI_X,
@@ -34,269 +17,180 @@ from mqns.models.qubit.operator import (
     OPERATOR_T,
     Operator,
 )
+from mqns.models.qubit.qubit import Qubit
+from mqns.models.qubit.state import QState
 
-if TYPE_CHECKING:
-    from mqns.models.qubit.qubit import Qubit
-
-
-class Gate:
-    """The quantum gates that will operate qubits"""
-
-    def __init__(self, name: str, _docs: str | None = None):
-        """Args:
-        name: the gate's name
-
-        """
-        self._name = name
-        self.__doc__ = _docs
-
-    def __call__(self, *args: Any, **kwds: Any) -> Any:
-        pass
+_id = np.identity(2, dtype=np.complex128)
+_p0 = np.array([[1, 0], [0, 0]], dtype=np.complex128)  # projector matrix |0><0|
+_p1 = np.array([[0, 0], [0, 1]], dtype=np.complex128)  # projector matrix |1><1|
 
 
-class SingleQubitGate(Gate):
-    """The single qubit gates operate on a single qubit"""
-
-    pass
-
-
-class SingleQubitSimpleGate(SingleQubitGate):
-    def __init__(self, name: str, operator: Operator, _docs: str | None = None):
-        """
-        Args:
-            name: the gate's name
-            operator: the matrix represent of this operator
-        """
-        super().__init__(name, _docs)
-        self._operator = operator
-
-    def __call__(self, qubit: "Qubit") -> None:
-        """
-        Args:
-            qubit (Qubit): the operating qubit
-        """
-        qubit.operate(self._operator)
-
-
-X = SingleQubitSimpleGate(name="X", operator=OPERATOR_PAULI_X, _docs="Pauli X Gate")
-Y = SingleQubitSimpleGate(name="Y", operator=OPERATOR_PAULI_Y, _docs="Pauli Y Gate")
-Z = SingleQubitSimpleGate(name="Z", operator=OPERATOR_PAULI_Z, _docs="Pauli Z Gate")
-I = SingleQubitSimpleGate(name="I", operator=OPERATOR_PAULI_I, _docs="Pauli I Gate")
-H = SingleQubitSimpleGate(name="H", operator=OPERATOR_H, _docs="Hadamard Gate")
-T = SingleQubitSimpleGate(name="T", operator=OPERATOR_T, _docs="T gate (pi/4 shift gate)")
-S = SingleQubitSimpleGate(name="S", operator=OPERATOR_S, _docs="S gate (pi/2 shift gate)")
-
-
-class SingleQubitRotateGate(SingleQubitGate):
-    def __init__(self, name: str, operator: Callable[[float], Operator], _docs: str | None = None):
-        """
-        Args:
-            name: the gate's name
-            operator: a function that returns the matrix represent of this operator
-        """
-        super().__init__(name, _docs)
-        self._operator = operator
-
-    def __call__(self, qubit: "Qubit", theta=np.pi / 4) -> None:
-        """
-        Args:
-            qubit (Qubit): the operating qubit
-            theta (float): the rotating degree
-        """
-        qubit.operate(self._operator(theta))
-
-
-R = SingleQubitRotateGate(name="R", operator=OPERATOR_PHASE_SHIFT, _docs="R gate (phase shift gate)")
-RX = SingleQubitRotateGate(name="RX", operator=OPERATOR_RX, _docs="Rx gate (X rotate gate)")
-RY = SingleQubitRotateGate(name="RY", operator=OPERATOR_RY, _docs="Ry gate (Y rotate gate)")
-RZ = SingleQubitRotateGate(name="RZ", operator=OPERATOR_RZ, _docs="Rz gate (Z rotate gate)")
-
-
-class SingleQubitArbitraryGate(SingleQubitGate):
-    def __call__(self, qubit: "Qubit", operator: Operator) -> None:
-        """
-        Args:
-            qubit (Qubit): the operating qubit
-            operator: the operator matrix
-        """
-        if operator.n != 1:
-            raise ValueError("wrong operator size")
-        self._operator = operator
-        qubit.operate(self._operator)
-
-
-U = SingleQubitArbitraryGate(name="U", _docs="Arbitrary single qubit operation gate")
-
-
-class DoubleQubitsControlledGate(Gate):
-    """The double qubits gates operate on two qubits, including a controlled qubit and a operating qubit.
-
-    The controlled  gate:
-
-        [[I_2, 0][0, operator]]
+def operate_single(qubit: Qubit, op: Operator) -> None:
     """
-
-    def __init__(self, name: str, operator: Operator, _docs: str | None = None):
-        """
-        Args:
-            name: the gate's name
-            operator: the matrix represent of the operator
-        """
-        super().__init__(name, _docs)
-        self._operator = operator
-
-    def __call__(self, qubit1: "Qubit", qubit2: "Qubit", operator: Operator | None = None) -> None:
-        """
-        Args:
-            qubit1: the first qubit (controller)
-            qubit2: the second qubit
-            operator: the matrix represent of the operator
-        """
-        from mqns.models.qubit.qubit import QState  # noqa: PLC0415
-
-        if operator is None:
-            operator = self._operator
-        if operator.n != 1:
-            raise ValueError("wrong operator size")
-
-        if qubit1 == qubit2:
-            return
-        state = QState.joint(qubit1, qubit2)
-
-        idx1 = state.qubits.index(qubit1)
-        idx2 = state.qubits.index(qubit2)
-
-        full_operator_part_0 = np.array([1])  # |0> <0|
-        full_operator_part_1 = np.array([1])  # |1> <1|
-
-        for i in range(state.num):
-            if i == idx1:
-                full_operator_part_0 = np.kron(full_operator_part_0, np.array([[1, 0], [0, 0]]))
-                full_operator_part_1 = np.kron(full_operator_part_1, np.array([[0, 0], [0, 1]]))
-            elif i == idx2:
-                full_operator_part_0 = np.kron(full_operator_part_0, OPERATOR_PAULI_I.u)
-                full_operator_part_1 = np.kron(full_operator_part_1, operator.u)
-            else:
-                full_operator_part_0 = np.kron(full_operator_part_0, OPERATOR_PAULI_I.u)
-                full_operator_part_1 = np.kron(full_operator_part_1, OPERATOR_PAULI_I.u)
-        full_operator = full_operator_part_0 + full_operator_part_1
-        qubit1.state.operate(Operator(full_operator, state.num))
-
-
-ControlledGate = DoubleQubitsControlledGate(name="Controlled Gate", operator=OPERATOR_PAULI_X, _docs="The controlled gate")
-CNOT = DoubleQubitsControlledGate(name="Controlled NOT Gate", operator=OPERATOR_PAULI_X, _docs="The controlled Pauli-X gate")
-CX = DoubleQubitsControlledGate(name="Controlled Pauli-X Gate", operator=OPERATOR_PAULI_X, _docs="The controlled Pauli-X gate")
-CY = DoubleQubitsControlledGate(name="Controlled Pauli-Y Gate", operator=OPERATOR_PAULI_Y, _docs="The controlled Pauli-Y gate")
-CZ = DoubleQubitsControlledGate(name="Controlled Pauli-Z Gate", operator=OPERATOR_PAULI_Z, _docs="The controlled Pauli-Z gate")
-
-
-class DoubleQubitsRotateGate(Gate):
-    def __init__(self, name: str, operator: Callable[[float], Operator], _docs: str | None = None):
-        """
-        Args:
-            name: the gate's name
-            operator: a function that returns the matrix represent of the operator
-        """
-        super().__init__(name, _docs)
-        self._operator = operator
-
-    def __call__(self, qubit1: "Qubit", qubit2: "Qubit", theta: float = np.pi / 4) -> None:
-        operator = self._operator(theta)
-        super().__call__(qubit1, qubit2, operator=operator)
-
-
-CR = DoubleQubitsRotateGate(
-    name="Controlled Phase Rotate Gate", operator=OPERATOR_PHASE_SHIFT, _docs="The controlled rotate gate"
-)
-
-
-class SwapGate(Gate):
-    def __call__(self, qubit1: "Qubit", qubit2: "Qubit"):
-        """
-        The swap gate, swap the states of qubit1 and qubit2
-
-        Args:
-            qubit1 (Qubit): the first qubit (controller)
-            qubit2 (Qubit): the second qubit
-        """
-        from mqns.models.qubit.qubit import QState  # noqa: PLC0415
-
-        if qubit1 == qubit2:
-            return
-        state = QState.joint(qubit1, qubit2)
-        idx1 = state.qubits.index(qubit1)
-        idx2 = state.qubits.index(qubit2)
-
-        state.qubits[idx1], state.qubits[idx2] = state.qubits[idx2], state.qubits[idx1]
-
-
-Swap = SwapGate(name="Swap Gate", _docs="swap the states of qubit1 and qubit2")
-
-
-class ThreeQubitsGate(Gate):
+    Apply a single-qubit operator.
     """
-    The gate operates on three qubits, including 2 controlled qubit and a operating qubit.
+    state = qubit.state
+    i, n = state.qubits.index(qubit), state.num
+    full_op = op.lift(i, n)
 
-    The 3 controlled-controlled gate:
+    qubit.apply_error(qubit.operate_error)
+    state.operate(full_op)
 
-        [[I_6, 0][0, operator]]
+
+def operate_controlled(q0: Qubit, q1: Qubit, op: Operator) -> None:
     """
+    Apply a controlled operator.
 
-    def __init__(self, name: str, operator: Operator = OPERATOR_PAULI_X, _docs: str | None = None):
-        """
-        Args:
-            name: the gate's name
-            operator: the matrix represent of the operator
-        """
-        super().__init__(name, _docs)
-        self._operator = operator
+    Args:
+        q0: controller qubit.
+        q1: target qubit.
+        op: single-qubit operator.
+    """
+    assert op.n == 1
+    state = QState.joint(q0, q1)
+    n = state.num
+    i0, i1 = state.qubits.index(q0), state.qubits.index(q1)
+    assert i0 != i1, "Qubits must be distinct"
 
-    def __call__(self, qubit1: "Qubit", qubit2: "Qubit", qubit3: "Qubit", operator: Operator | None = None) -> Any:
-        from mqns.models.qubit.qubit import QState  # noqa: PLC0415
+    mats0 = [_id] * n
+    mats1 = [_id] * n
+    mats0[i0] = _p0
+    mats1[i0] = _p1
+    mats1[i1] = op.u
 
-        if operator is None:
-            operator = self._operator
-        if operator.n != 1:
-            raise ValueError("wrong operator size")
+    full_op = functools.reduce(np.kron, mats0) + functools.reduce(np.kron, mats1)
 
-        if qubit1 == qubit2 or qubit1 == qubit3 or qubit2 == qubit3:  # noqa: PLR1714
-            return
-        QState.joint(qubit1, qubit2)
-        state = QState.joint(qubit2, qubit3)
-
-        # single qubit operate
-        idx1 = state.qubits.index(qubit1)
-        idx2 = state.qubits.index(qubit2)
-        idx3 = state.qubits.index(qubit3)
-
-        full_operator_part_00 = np.array([1])  # |0> <0|
-        full_operator_part_01 = np.array([1])  # |1> <1|
-        full_operator_part_10 = np.array([1])  # |0> <0|
-        full_operator_part_11 = np.array([1])  # |1> <1|
-
-        for i in range(state.num):
-            if i == idx1:
-                full_operator_part_00 = np.kron(full_operator_part_00, np.array([[1, 0], [0, 0]]))
-                full_operator_part_01 = np.kron(full_operator_part_01, np.array([[1, 0], [0, 0]]))
-                full_operator_part_10 = np.kron(full_operator_part_10, np.array([[0, 0], [0, 1]]))
-                full_operator_part_11 = np.kron(full_operator_part_11, np.array([[0, 0], [0, 1]]))
-            elif i == idx2:
-                full_operator_part_00 = np.kron(full_operator_part_00, np.array([[1, 0], [0, 0]]))
-                full_operator_part_10 = np.kron(full_operator_part_10, np.array([[1, 0], [0, 0]]))
-                full_operator_part_01 = np.kron(full_operator_part_01, np.array([[0, 0], [0, 1]]))
-                full_operator_part_11 = np.kron(full_operator_part_11, np.array([[0, 0], [0, 1]]))
-            elif i == idx3:
-                full_operator_part_00 = np.kron(full_operator_part_00, OPERATOR_PAULI_I.u)
-                full_operator_part_01 = np.kron(full_operator_part_01, OPERATOR_PAULI_I.u)
-                full_operator_part_10 = np.kron(full_operator_part_10, OPERATOR_PAULI_I.u)
-                full_operator_part_11 = np.kron(full_operator_part_11, operator.u)
-            else:
-                full_operator_part_00 = np.kron(full_operator_part_00, OPERATOR_PAULI_I.u)
-                full_operator_part_01 = np.kron(full_operator_part_01, OPERATOR_PAULI_I.u)
-                full_operator_part_10 = np.kron(full_operator_part_10, OPERATOR_PAULI_I.u)
-                full_operator_part_11 = np.kron(full_operator_part_11, OPERATOR_PAULI_I.u)
-        full_operator = full_operator_part_00 + full_operator_part_01 + full_operator_part_10 + full_operator_part_11
-        qubit1.state.operate(Operator(full_operator, state.num))
+    for q in q0, q1:
+        q.apply_error(q.operate_error)
+    state.operate(full_op)
 
 
-Toffoli = ThreeQubitsGate(name="Toffoli Gate", operator=OPERATOR_PAULI_X, _docs="The controlled-controlled (Toffoli) gate")
+def operate_cc(q0: Qubit, q1: Qubit, q2: Qubit, op: Operator) -> None:
+    """
+    Apply a controlled-controlled operator.
+
+    Args:
+        q0: first controller qubit.
+        q1: second controller qubit.
+        q2: target qubit.
+        op: single-qubit operator.
+    """
+    assert op.n == 1
+    QState.joint(q0, q1)
+    state = QState.joint(q0, q2)
+    n = state.num
+    i0, i1, i2 = state.qubits.index(q0), state.qubits.index(q1), state.qubits.index(q2)
+    assert len({i0, i1, i2}) == 3, "Qubits must be distinct"
+
+    mats_zz = [_id] * n
+    mats_zz[i0] = _p1
+    mats_zz[i1] = _p1
+
+    mats_11 = mats_zz.copy()
+    mats_11[i2] = op.u
+
+    # full_id         = (|00><00| + |01><01| + |10><10| + |11><11|)⊗I
+    # p11_on_controls = (|11><11|)⊗I
+    # u11_on_target   = (|11><11|)⊗U
+    # full_op         = (|00><00| + |01><01| + |10><10|)⊗I + (|11><11|)⊗U
+    full_id = np.identity(2**n, dtype=np.complex128)
+    p11_on_controls = functools.reduce(np.kron, mats_zz)
+    u11_on_target = functools.reduce(np.kron, mats_11)
+    full_op = full_id - p11_on_controls + u11_on_target
+
+    for q in q0, q1, q2:
+        q.apply_error(q.operate_error)
+    state.operate(full_op)
+
+
+def _make_single(op: Operator):
+    def f(qubit: Qubit) -> None:
+        operate_single(qubit, op)
+
+    return f
+
+
+def _make_rotate(op: Callable[[float], Operator]):
+    def f(qubit: Qubit, theta=np.pi / 4) -> None:
+        operate_single(qubit, op(theta))
+
+    return f
+
+
+def _make_controlled(op: Operator):
+    def f(q0: Qubit, q1: Qubit) -> None:
+        return operate_controlled(q0, q1, op)
+
+    return f
+
+
+def _make_cc(op: Operator):
+    def f(q0: Qubit, q1: Qubit, q2: Qubit) -> None:
+        return operate_cc(q0, q1, q2, op)
+
+    return f
+
+
+I = _make_single(OPERATOR_PAULI_I)
+"""Pauli I Gate"""
+X = _make_single(OPERATOR_PAULI_X)
+"""Pauli X Gate"""
+Y = _make_single(OPERATOR_PAULI_Y)
+"""Pauli Y Gate"""
+Z = _make_single(OPERATOR_PAULI_Z)
+"""Pauli Z Gate"""
+H = _make_single(OPERATOR_H)
+"""Hadamard Gate"""
+T = _make_single(OPERATOR_T)
+"""T gate (pi/4 shift gate)"""
+S = _make_single(OPERATOR_S)
+"""S gate (pi/2 shift gate)"""
+
+
+R = _make_rotate(OPERATOR_PHASE_SHIFT)
+"""R gate (phase shift gate)"""
+RX = _make_rotate(OPERATOR_RX)
+"""Rx gate (X rotate gate)"""
+RY = _make_rotate(OPERATOR_RY)
+"""Ry gate (Y rotate gate)"""
+RZ = _make_rotate(OPERATOR_RZ)
+"""Rz gate (Z rotate gate)"""
+
+
+def U(qubit: Qubit, op: Operator) -> None:
+    """Arbitrary single qubit operation gate"""
+    return operate_single(qubit, op)
+
+
+CX = _make_controlled(OPERATOR_PAULI_X)
+"""Controlled Pauli-X gate"""
+CY = _make_controlled(OPERATOR_PAULI_Y)
+"""Controlled Pauli-Y gate"""
+CZ = _make_controlled(OPERATOR_PAULI_Z)
+"""Controlled Pauli-Z gate"""
+CNOT = CX
+"""Controlled NOT gate"""
+
+
+def _make_controlled_rotate(op: Callable[[float], Operator]):
+    def f(q0: Qubit, q1: Qubit, theta=np.pi / 4) -> None:
+        operate_controlled(q0, q1, op(theta))
+
+    return f
+
+
+CR = _make_controlled_rotate(OPERATOR_PHASE_SHIFT)
+"""Controlled Phase Rotate Gate"""
+
+
+def Swap(q0: Qubit, q1: Qubit) -> None:
+    """Swap gate: swap the states of two qubits."""
+    state = QState.joint(q0, q1)
+    i0 = state.qubits.index(q0)
+    i1 = state.qubits.index(q1)
+    assert i0 != i1, "Qubits must be distinct"
+    state.qubits[i0], state.qubits[i1] = state.qubits[i1], state.qubits[i0]
+
+
+Toffoli = _make_cc(OPERATOR_PAULI_X)
+"""Toffoli Gate"""

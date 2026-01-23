@@ -214,7 +214,7 @@ def provide_entanglements(
             decoherence_time=t_creation + min(src.memory.decoherence_delay, dst.memory.decoherence_delay),
             src=src.node,
             dst=dst.node,
-            mem_decohere_rate=(src.memory.decoherence_rate, dst.memory.decoherence_rate),
+            store_error=(src.memory.store_error, dst.memory.store_error),
         )
         for node, neighbor, d_notify in (src, dst, d_notify_a), (dst, src, d_notify_b):
             q, _ = next(node.memory.find(lambda _, v: v is None, qchannel=ch))

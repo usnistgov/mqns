@@ -1,8 +1,6 @@
 import pytest
 
-from mqns.models.epr import MixedStateEntanglement
-from mqns.models.qubit import Qubit
-from mqns.models.qubit.state import (
+from mqns.models.core.state import (
     BELL_RHO_PHI_N,
     BELL_RHO_PHI_P,
     BELL_RHO_PSI_N,
@@ -15,8 +13,11 @@ from mqns.models.qubit.state import (
     QubitRho,
     QubitState,
     qubit_rho_classify_noise,
-    qubit_state_are_equal,
+    qubit_state_equal,
 )
+from mqns.models.epr import MixedStateEntanglement
+from mqns.models.error import DephaseErrorModel, DepolarErrorModel, ErrorModelInput, parse_error
+from mqns.models.qubit import Qubit
 from mqns.simulator import Time
 from mqns.utils import rng
 
@@ -24,15 +25,15 @@ from mqns.utils import rng
 def test_fidelity_conversion():
     e = MixedStateEntanglement()
     assert e.fidelity == pytest.approx(1.0, abs=1e-9)
-    assert (e.i, e.z, e.x, e.y) == pytest.approx((1.0, 0.0, 0.0, 0.0), abs=1e-9)
+    assert e.probv == pytest.approx((1.0, 0.0, 0.0, 0.0), abs=1e-9)
 
     e = MixedStateEntanglement(fidelity=0.7)
     assert e.fidelity == pytest.approx(0.7, abs=1e-9)
-    assert (e.i, e.z, e.x, e.y) == pytest.approx((0.7, 0.1, 0.1, 0.1), abs=1e-9)
+    assert e.probv == pytest.approx((0.7, 0.1, 0.1, 0.1), abs=1e-9)
 
     e = MixedStateEntanglement(i=4, z=2, x=1, y=1)
     assert e.fidelity == pytest.approx(0.5, abs=1e-9)
-    assert (e.i, e.z, e.x, e.y) == pytest.approx((0.5, 0.25, 0.125, 0.125), abs=1e-9)
+    assert e.probv == pytest.approx((0.5, 0.25, 0.125, 0.125), abs=1e-9)
 
 
 def test_swap():
@@ -41,6 +42,7 @@ def test_swap():
 
     e1 = MixedStateEntanglement(fidelity=0.95, name="e1", creation_time=now, decoherence_time=decohere)
     e2 = MixedStateEntanglement(fidelity=0.95, name="e2", creation_time=now, decoherence_time=decohere)
+    e1.read, e2.read = True, True
     e3 = MixedStateEntanglement.swap(e1, e2, now=now)
     assert e3 is not None
     assert e3.fidelity == pytest.approx(0.903333, abs=1e-6)
@@ -58,7 +60,7 @@ def test_purify_success(monkeypatch: pytest.MonkeyPatch):
 
     e8 = MixedStateEntanglement(fidelity=0.95, creation_time=now, decoherence_time=decohere)
     assert e3.purify(e8, now=now) is True
-    assert (e3.i, e3.z, e3.x, e3.y) == pytest.approx((9.183907e-1, 8.179613e-5, 8.179613e-5, 8.144570e-2), rel=1e-6)
+    assert e3.probv == pytest.approx((9.183907e-1, 8.179613e-5, 8.179613e-5, 8.144570e-2), rel=1e-6)
 
 
 def test_purify_failure(monkeypatch: pytest.MonkeyPatch):
@@ -103,17 +105,15 @@ def test_teleportion():
 def test_to_qubits_maximal(i: float, z: float, x: float, y: float, state: QubitState, rho: QubitRho, measured_same: bool):
     e = MixedStateEntanglement(i=i, z=z, x=x, y=y)
 
-    qlist = e.to_qubits()
+    q0, q1 = e.to_qubits()
     assert e.is_decoherenced
-    assert len(qlist) == 2
 
-    q0, q1 = qlist
     assert q0.state is q1.state
     assert qubit_rho_classify_noise(rho, q0.state.rho) == 0
 
     pure_state = q0.state.state()
     assert pure_state is not None  # pure state
-    assert qubit_state_are_equal(state, pure_state)
+    assert qubit_state_equal(state, pure_state)
 
     v0 = q0.measure()
     v1 = q1.measure()
@@ -123,33 +123,23 @@ def test_to_qubits_maximal(i: float, z: float, x: float, y: float, state: QubitS
         assert v0 != v1
 
 
-def test_to_qubits_dephase():
+@pytest.mark.parametrize(
+    ("error", "classify_noise"),
+    [
+        ((DephaseErrorModel, {"p_error": 0.1}), 1),
+        ((DepolarErrorModel, {"p_error": 0.1}), 2),
+    ],
+)
+def test_to_qubits_mixed(error: ErrorModelInput, classify_noise: int):
+    error = parse_error(error)
     e = MixedStateEntanglement()
-    e.dephase(1.0, 1 / 5.0)
-    print(e.i, e.z, e.x, e.y)
+    e.apply_error(error)
+    print(e.probv)
 
-    qlist = e.to_qubits()
+    q0, q1 = e.to_qubits()
     assert e.is_decoherenced
-    assert len(qlist) == 2
 
-    q0, q1 = qlist
     assert q0.state is q1.state
     print(q0.state)
-    assert qubit_rho_classify_noise(BELL_RHO_PHI_P, q0.state.rho) == 1
-    assert q0.state.state() is None  # mixed state
-
-
-def test_to_qubits_depolarize():
-    e = MixedStateEntanglement()
-    e.depolarize(1.0, 1 / 5.0)
-    print(e.i, e.z, e.x, e.y)
-
-    qlist = e.to_qubits()
-    assert e.is_decoherenced
-    assert len(qlist) == 2
-
-    q0, q1 = qlist
-    assert q0.state is q1.state
-    print(q0.state)
-    assert qubit_rho_classify_noise(BELL_RHO_PHI_P, q0.state.rho) == 2
+    assert qubit_rho_classify_noise(BELL_RHO_PHI_P, q0.state.rho) == classify_noise
     assert q0.state.state() is None  # mixed state

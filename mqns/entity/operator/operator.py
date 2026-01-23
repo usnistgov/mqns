@@ -21,7 +21,7 @@ from typing import override
 from mqns.entity.entity import Entity
 from mqns.entity.node.qnode import QNode
 from mqns.entity.operator.event import OperateRequestEvent, OperateResponseEvent
-from mqns.models.delay import DelayInput, parseDelay
+from mqns.models.delay import DelayInput, parse_delay
 from mqns.simulator.event import Event
 
 
@@ -47,7 +47,7 @@ class QuantumOperator(Entity):
         super().__init__(name=name)
         self.node = node
         self.gate = gate
-        self.delay_model = parseDelay(delay)
+        self.delay = parse_delay(delay)
 
     @override
     def handle(self, event: Event) -> None:
@@ -58,7 +58,7 @@ class QuantumOperator(Entity):
             # operate qubits and get measure results
             result = self.operate(*qubits)
 
-            t = self.simulator.tc + self.delay_model.calculate()
+            t = self.simulator.tc + self.delay.calculate()
             response = OperateResponseEvent(node=self.node, result=result, request=event, t=t, by=self)
             self.simulator.add_event(response)
 

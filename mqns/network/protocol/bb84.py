@@ -16,28 +16,18 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import hashlib
-from typing import override
+from typing import cast, override
 
 import numpy as np
 
 from mqns.entity.cchannel import ClassicChannel, ClassicPacket, RecvClassicPacket
 from mqns.entity.node import Application, Node, QNode
 from mqns.entity.qchannel import QuantumChannel, RecvQubitPacket
+from mqns.models.core import BASIS_X, BASIS_Z, Basis, MeasureOutcome
+from mqns.models.core.state import QUBIT_STATE_0, QUBIT_STATE_1, QUBIT_STATE_N, QUBIT_STATE_P
 from mqns.models.qubit import Qubit
-from mqns.models.qubit.basis import BASIS_X, BASIS_Z
-from mqns.models.qubit.operator import Operator
-from mqns.models.qubit.state import QUBIT_STATE_0, QUBIT_STATE_1, QUBIT_STATE_N, QUBIT_STATE_P
 from mqns.simulator import func_to_event
 from mqns.utils import rng
-
-
-class QubitWithError(Qubit):
-    def transfer_error_model(self, length: float = 0, decoherence_rate: float = 0, **kwargs):
-        lkm = length / 1000
-        standand_lkm = 50.0
-        theta = rng.uniform(0, lkm / standand_lkm * np.pi / 4)
-        operation = np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]], dtype=np.complex128)
-        self.state.operate(Operator(operation))
 
 
 class BB84SendApp(Application[QNode]):
@@ -78,9 +68,9 @@ class BB84SendApp(Application[QNode]):
         self.send_rate = send_rate
 
         self.count = 0
-        self.qubit_list = {}
-        self.basis_list = {}
-        self.measure_list = {}
+        self.qubit_list: dict[int, Qubit] = {}
+        self.basis_list: dict[int, Basis] = {}
+        self.measure_list: dict[int, MeasureOutcome] = {}
 
         self.succ_key_pool = {}
         self.fail_number = 0
@@ -140,11 +130,11 @@ class BB84SendApp(Application[QNode]):
         packet_class = msg.get("packet_class")
         if packet_class != "check_basis":
             return False
-        id = msg.get("id")
+        id = cast(int, msg.get("id"))
         basis_dest = msg.get("basis")
 
         # qubit = self.qubit_list[id]
-        basis_src = "Z" if (self.basis_list[id] == BASIS_Z.observable).all() else "X"
+        basis_src = self.basis_list[id].name
 
         if basis_dest == basis_src:
             # log.info(f"[{self._simulator.current_time}] src check {id} basis succ")
@@ -163,19 +153,22 @@ class BB84SendApp(Application[QNode]):
 
     def send_qubit(self):
         # randomly generate a qubit
-        state = rng.choice([QUBIT_STATE_0, QUBIT_STATE_1, QUBIT_STATE_P, QUBIT_STATE_N])
-        qubit = QubitWithError(state=state)
-        basis = BASIS_Z.observable if (state == QUBIT_STATE_0).all() or (state == QUBIT_STATE_1).all() else BASIS_X.observable
+        state, basis, ret = [
+            (QUBIT_STATE_0, BASIS_Z, 0),
+            (QUBIT_STATE_1, BASIS_Z, 1),
+            (QUBIT_STATE_P, BASIS_X, 0),
+            (QUBIT_STATE_N, BASIS_X, 1),
+        ][rng.choice(4)]
 
-        ret = 0 if (state == QUBIT_STATE_0).all() or (state == QUBIT_STATE_P).all() else 1
-
-        qubit.id = self.count
+        id = self.count
         self.count += 1
-        self.qubit_list[qubit.id] = qubit
-        self.basis_list[qubit.id] = basis
-        self.measure_list[qubit.id] = ret
+        qubit = Qubit(state, name=f"{id}")
 
-        # log.info(f"[{self._simulator.current_time}] send qubit {qubit.id},\
+        self.qubit_list[id] = qubit
+        self.basis_list[id] = basis
+        self.measure_list[id] = cast(MeasureOutcome, ret)
+
+        # log.info(f"[{self._simulator.current_time}] send qubit {id},\
         #  basis: {basis_msg} , ret: {ret}")
         self.qchannel.send(qubit=qubit, next_hop=self.dest)
 
@@ -380,9 +373,9 @@ class BB84RecvApp(Application[QNode]):
         self.qchannel = qchannel
         self.cchannel = cchannel
 
-        self.qubit_list = {}
-        self.basis_list = {}
-        self.measure_list = {}
+        self.qubit_list: dict[int, Qubit] = {}
+        self.basis_list: dict[int, Basis] = {}
+        self.measure_list: dict[int, MeasureOutcome] = {}
 
         self.succ_key_pool = {}
         self.fail_number = 0
@@ -430,11 +423,11 @@ class BB84RecvApp(Application[QNode]):
         packet_class = msg.get("packet_class")
         if packet_class != "check_basis":
             return False
-        id = msg.get("id")
+        id = cast(int, msg.get("id"))
         basis_src = msg.get("basis")
 
         # qubit = self.qubit_list[id]
-        basis_dest = "Z" if (self.basis_list[id] == BASIS_Z.observable).all() else "X"
+        basis_dest = self.basis_list[id].name
 
         ret_dest = self.measure_list[id]
         ret_src = msg.get("ret")
@@ -452,20 +445,19 @@ class BB84RecvApp(Application[QNode]):
         return True
 
     def recv(self, event: RecvQubitPacket):
-        qubit: Qubit = event.qubit
-        # randomly choose X,Z basis
-        basis = rng.choice([BASIS_Z.observable, BASIS_X.observable])
-        basis_msg = "Z" if (basis == BASIS_Z.observable).all() else "X"
-        ret = qubit.measureZ() if (basis == BASIS_Z.observable).all() else qubit.measureX()
-        self.qubit_list[qubit.id] = qubit
-        self.basis_list[qubit.id] = basis
-        self.measure_list[qubit.id] = ret
+        qubit = cast(Qubit, event.qubit)
+        id = int(qubit.name)
 
-        # log.info(f"[{self._simulator.current_time}] recv qubit {qubit.id}, \
+        # randomly choose X,Z basis
+        basis = [BASIS_Z, BASIS_X][rng.choice(2)]
+        ret = qubit.measure(basis)
+        self.qubit_list[id] = qubit
+        self.basis_list[id] = basis
+        self.measure_list[id] = ret
+
+        # log.info(f"[{self._simulator.current_time}] recv qubit {id}, \
         # basis: {basis_msg}, ret: {ret}")
-        packet = ClassicPacket(
-            msg={"packet_class": "check_basis", "id": qubit.id, "basis": basis_msg}, src=self.node, dest=self.src
-        )
+        packet = ClassicPacket(msg={"packet_class": "check_basis", "id": id, "basis": basis.name}, src=self.node, dest=self.src)
         self.cchannel.send(packet, next_hop=self.src)
 
     def send_error_estimate_packet(self):
@@ -484,7 +476,7 @@ class BB84RecvApp(Application[QNode]):
         bits_len_for_cascade = len(self.succ_key_pool)
         keys = list(self.succ_key_pool.keys())[0:bits_len_for_cascade]
 
-        # remove uesd raw key and update cascade_key && bit_for_estimate
+        # remove used raw key and update cascade_key && bit_for_estimate
         for i in keys:
             item_temp = self.succ_key_pool.pop(i)
             if rng.random() < self.proportion_for_estimating_error:

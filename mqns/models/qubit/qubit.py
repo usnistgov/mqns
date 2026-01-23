@@ -15,264 +15,108 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from typing import Any, Literal, cast
-
-import numpy as np
+from typing import overload, override
 
 from mqns.models.core import QuantumModel
-from mqns.models.qubit.basis import BASIS_BY_NAME
-from mqns.models.qubit.gate import SingleQubitGate
-from mqns.models.qubit.operator import Operator
-from mqns.models.qubit.state import (
-    ATOL,
+from mqns.models.core.basis import BASIS_Z, MeasureOutcome
+from mqns.models.core.operator import Operator
+from mqns.models.core.state import (
+    QUBIT_RHO_0,
     QUBIT_STATE_0,
     QubitRho,
     QubitState,
-    check_qubit_rho,
-    qubit_rho_remove,
-    qubit_rho_to_state,
-    qubit_state_to_rho,
 )
-from mqns.utils import rng
-
-
-class QState:
-    """QState represents the state of one or multiple qubits."""
-
-    @staticmethod
-    def joint(q0: "Qubit", q1: "Qubit") -> "QState":
-        """
-        Merge QState if necessary so that two qubits share the same QState.
-        """
-        if q0.state is q1.state:
-            return q0.state
-        assert set(q0.state.qubits).isdisjoint(q1.state.qubits)
-        rho: np.ndarray = np.kron(q0.state.rho, q1.state.rho)
-        nq = QState(q0.state.qubits + q1.state.qubits, rho=rho)
-        for q in nq.qubits:
-            q.state = nq
-        return nq
-
-    def __init__(
-        self,
-        qubits: list["Qubit"],
-        state: QubitState = QUBIT_STATE_0,
-        rho: QubitRho | None = None,
-        name: str | None = None,
-    ):
-        """Args:
-        qubits (List[Qubit]): a list of qubits in this quantum state
-        state: the state vector of this state, either ``state`` or ``rho`` can be used to present a state
-        rho: the density matrix of this state, either ``state`` or ``rho`` can be used to present a state;
-             if both ``state`` and ``rho`` are specified, ``rho`` takes priority
-        name (str): the name of this state
-
-        """
-        self.num = len(qubits)
-        self.name = name
-        self.qubits = qubits
-        self.rho: QubitRho
-
-        if rho is None:
-            self.rho = qubit_state_to_rho(state, self.num)
-        else:
-            self.rho = check_qubit_rho(rho, self.num)
-
-    def measure(self, qubit: "Qubit", base: Literal["Z", "X", "Y"] = "Z") -> int:
-        """
-        Measure this qubit using the specified basis.
-
-        Args:
-            qubit: the qubit to be measured.
-            base: the measure base, "Z", "X" or "Y".
-
-        Returns: Measurement outcome 0 or 1.
-        """
-        basis = BASIS_BY_NAME[base]
-
-        try:
-            idx = self.qubits.index(qubit)
-        except AssertionError:
-            raise RuntimeError("qubit not in state")
-
-        # Calculate probability with Born rule
-        full_m0 = basis.m0.lift(idx, self.num, check_unitary=False)
-        prob_0 = np.real(np.trace(full_m0.u_dagger @ full_m0.u @ self.rho))
-        prob_0 = np.clip(prob_0, 0.0, 1.0)  # avoid out-of-range due to floating-point calculation
-
-        # Assign outcome and perform state collapse
-        if rng.random() < prob_0:
-            ret = 0
-            ret_s = basis.s0
-            op = full_m0
-        else:
-            ret = 1
-            ret_s = basis.s1
-            op = basis.m1.lift(idx, self.num, check_unitary=False)
-
-        # Perform state collapse
-        collapsed = op(self.rho)
-        collapsed = collapsed / (np.trace(collapsed) or 1.0)
-
-        # Perform partial trace to delete measured qubit
-        self.rho = qubit_rho_remove(collapsed, idx, self.num)
-        self.num -= 1
-        self.qubits.remove(qubit)
-
-        ns = QState([qubit], state=ret_s)
-        qubit.state = ns
-        return ret
-
-    def operate(self, operator: Operator) -> None:
-        """
-        Apply an operator to the state.
-
-        Args:
-            operator: the operator, which must have the correct dimension.
-        """
-        self.rho = operator(self.rho)
-
-    def stochastic_operate(self, operators: list[Operator] = [], probabilities: list[float] = []) -> None:
-        """
-        Apply a set of operators with associated probabilities to the state.
-        It usually turns a pure state into a mixed state.
-
-        Args:
-            operators: a list of operators, each must have the correct dimension.
-            probabilities: the probability of applying each operator; their sum must be 1.
-        """
-        assert len(operators) == len(probabilities), "must have same number of operators and probabilities"
-        prob = np.array(probabilities, dtype=np.float64)
-        assert np.all(prob >= 0), "each probability must be between 0 and 1"
-        assert np.all(prob <= 1), "each probability must be between 0 and 1"
-        assert np.isclose(np.sum(prob), 1.0, atol=ATOL), "sum of probabilities must be 1"
-
-        new_state: QubitRho = np.zeros((2**self.num, 2**self.num), dtype=np.complex128)
-        for op, p in zip(operators, prob):
-            new_state += p * op(self.rho)
-        self.rho = check_qubit_rho(new_state, self.num)
-
-    def equal(self, other_state: "QState") -> bool:
-        """Compare two state vectors, return True if they are the same
-
-        Args:
-            other_state (QState): the second QState
-
-        """
-        return np.all(self.rho == other_state.rho).item()
-
-    def state(self) -> QubitState | None:
-        """If the state is a pure state, return the state vector, or return None
-
-        Returns:
-            The pure state vector
-
-        """
-        return qubit_rho_to_state(self.rho, self.num)
-
-    def __repr__(self) -> str:
-        if self.name is not None:
-            return "<qubit state " + self.name + ">"
-        return str(self.rho)
+from mqns.models.error import DepolarErrorModel, ErrorModelInput, parse_error
+from mqns.models.qubit.state import QState
 
 
 class Qubit(QuantumModel):
-    """Represent a qubit"""
+    """Represent a qubit."""
 
+    @overload
     def __init__(
         self,
         state: QubitState = QUBIT_STATE_0,
-        rho: QubitRho | None = None,
-        operate_decoherence_rate: float = 0,
-        measure_decoherence_rate: float = 0,
-        name: str | None = None,
+        *,
+        operate_error: ErrorModelInput = None,
+        measure_error: ErrorModelInput = None,
+        name="",
     ):
-        """Args:
-        state (list): the initial state of a qubit, default is |0> = [1, 0]^T
-        operate_decoherence_rate (float): the operate decoherence rate
-        measure_decoherence_rate (float): the measure decoherence rate
-        name (str): the qubit's name
-
         """
+        Construct with qubit state.
+
+        Args:
+            state: initial state, default is ``|0>``.
+            operate_error: operate error model.
+            measure_error: measure error model.
+            name: descriptive name.
+        """
+
+    @overload
+    def __init__(
+        self,
+        *,
+        rho: QubitRho,
+        operate_error: ErrorModelInput = None,
+        measure_error: ErrorModelInput = None,
+        name="",
+    ):
+        """
+        Construct with density matrix.
+
+        Args:
+            state: initial density matrix.
+            operate_error: operate error model.
+            measure_error: measure error model.
+            name: descriptive name.
+        """
+
+    def __init__(
+        self,
+        state: QubitState | None = None,
+        *,
+        rho: QubitRho = QUBIT_RHO_0,
+        operate_error: ErrorModelInput = None,
+        measure_error: ErrorModelInput = None,
+        name="",
+    ):
         self.name = name
+        """Descriptive name."""
         self.state = QState([self], state=state, rho=rho)
-        self.operate_decoherence_rate = operate_decoherence_rate
-        self.measure_decoherence_rate = measure_decoherence_rate
+        """QState that includes this qubit."""
+        self.operate_error = parse_error(operate_error, DepolarErrorModel)
+        """Operate error model."""
+        self.measure_error = parse_error(measure_error, DepolarErrorModel)
+        """Measure error model."""
 
-    def measure(self):
-        """Measure this qubit using Z basis
-
-        Returns:
-            0: QUBIT_STATE_0 state
-            1: QUBIT_STATE_1 state
-
+    def measure(self, basis=BASIS_Z) -> MeasureOutcome:
         """
-        self.measure_error_model(decoherence_rate=self.measure_decoherence_rate)
-        return self.state.measure(self)
+        Measure this qubit with the specified basis.
 
-    def measureX(self):
-        """Measure this qubit using X basis.
+        Args:
+            basis: Measurement basis, defaults to Z.
 
-        Returns:
-            0: QUBIT_STATE_P state
-            1: QUBIT_STATE_N state
-
+        Returns: Measurement outcome 0 or 1.
         """
-        self.measure_error_model(self.measure_decoherence_rate)
-        return self.state.measure(self, "X")
+        self.apply_error(self.measure_error)
+        return self.state.measure(self, basis)
 
-    def measureY(self):
-        """Measure this qubit using Y basis.
-        Only for not entangled qubits.
-
-        Returns:
-            0: QUBIT_STATE_R state
-            1: QUBIT_STATE_L state
-
-        """
-        self.measure_error_model(self.measure_decoherence_rate)
-        return self.state.measure(self, "Y")
-
-    def measureZ(self):
-        """Measure this qubit using Z basis
-
-        Returns:
-            0: QUBIT_STATE_0 state
-            1: QUBIT_STATE_1 state
-
-        """
-        self.measure_error_model(self.measure_decoherence_rate)
-        return self.measure()
-
-    def operate(self, operator: SingleQubitGate | Operator) -> None:
-        """Apply an operator on this qubit, with operator error model."""
-        self.operate_error_model(self.operate_decoherence_rate)
-        self._operate_without_error(operator)
-
-    def _operate_without_error(self, operator: SingleQubitGate | Operator) -> None:
-        """Apply an operator on this qubit, without operator error model."""
-        if isinstance(operator, SingleQubitGate):
-            operator(self)
-            return
-        full_operator = operator.lift(self.state.qubits.index(self), self.state.num)
-        self.state.operate(full_operator)
-
-    def stochastic_operate(self, operators: list[SingleQubitGate | Operator] = [], probabilities: list[float] = []) -> None:
+    def stochastic_operate(self, operators: list[Operator] = [], probabilities: list[float] = []) -> None:
         """
         Apply a set of operators with associated probabilities to the qubit.
         It usually turns a pure state into a mixed state.
 
         Args:
-            operators: a list of operators, each must operator on a single qubit.
+            operators: a list of operators, each must operate on a single qubit.
             probabilities: the probability of applying each operator; their sum must be 1.
         """
         i, n = self.state.qubits.index(self), self.state.num
-        full_operators: list[Operator] = []
-        for j, op_gate in enumerate(operators):
-            op = cast(Any, op_gate)._operator if isinstance(op_gate, SingleQubitGate) else op_gate
-            assert type(op) is Operator, f"operators[{j}] does not contain Operator matrix"
-            full_operators.append(op.lift(i, n))
+        full_operators: list[Operator] = [op.lift(i, n) for op in operators]
         self.state.stochastic_operate(full_operators, probabilities)
+
+    @override
+    def apply_error(self, error) -> None:
+        error.qubit(self)
 
     def __repr__(self) -> str:
         if self.name is not None:

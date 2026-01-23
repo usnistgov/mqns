@@ -2,7 +2,7 @@ from typing import Generic, TypedDict, TypeVar, Unpack, override
 
 from mqns.entity.entity import Entity
 from mqns.entity.node import NodeT
-from mqns.models.delay import DelayInput, parseDelay
+from mqns.models.delay import DelayInput, parse_delay
 from mqns.simulator import Simulator, Time
 from mqns.utils import log, rng
 
@@ -50,7 +50,7 @@ class BaseChannel(Entity, Generic[NodeT]):
         self.length = kwargs.get("length", 0.0)
         assert self.length >= 0.0
 
-        self.delay = parseDelay(kwargs.get("delay", 0 if self.length == 0 else self.length / default_light_speed[0]))
+        self.delay = parse_delay(kwargs.get("delay", 0 if self.length == 0 else self.length / default_light_speed[0]))
 
         self.drop_rate = kwargs.get("drop_rate", 0.0)
         assert 0.0 <= self.drop_rate <= 1.0

@@ -44,3 +44,7 @@ class BellStateEntanglement(Entanglement["BellStateEntanglement"]):
     def _do_purify(self, epr1: "BellStateEntanglement") -> bool:
         _ = epr1
         return True
+
+    @override
+    def apply_error(self, error) -> None:
+        _ = error

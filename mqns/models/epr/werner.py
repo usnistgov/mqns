@@ -31,8 +31,8 @@ from typing import Unpack, final, overload, override
 
 import numpy as np
 
+from mqns.models.core.state import BELL_RHO_PHI_P, QubitRho, check_qubit_rho
 from mqns.models.epr.entanglement import Entanglement, EntanglementInitKwargs
-from mqns.models.qubit.state import BELL_RHO_PHI_P, QubitRho, check_qubit_rho
 from mqns.utils import rng
 
 
@@ -104,34 +104,8 @@ class WernerStateEntanglement(Entanglement["WernerStateEntanglement"]):
         return True
 
     @override
-    def store_error_model(self, t: float = 0, decoherence_rate: float = 0, **kwargs):
-        """
-        Apply an error model for storing this entangled pair in quantum memory::
-
-            w = w * e^{-decoherence_rate * t}
-
-        Args:
-            t: the time stored in a quantum memory in seconds.
-            decoherence_rate: the decoherence rate, equals to the inverse of coherence time.
-
-        """
-        _ = kwargs
-        self.w *= np.exp(-decoherence_rate * t)
-
-    @override
-    def transfer_error_model(self, length: float = 0, decoherence_rate: float = 0, **kwargs):
-        """
-        Apply an error model for transmitting this entanglement::
-
-            w = w * e^{decoherence_rate * length}
-
-        Args:
-            length: the length of the channel in kilometers.
-            decoherence_rate: the decoherence rate, equals to the inverse of coherence time.
-
-        """
-        _ = kwargs
-        self.w *= np.exp(-decoherence_rate * length)
+    def apply_error(self, error) -> None:
+        error.werner(self)
 
     @override
     def _to_qubits_rho(self) -> QubitRho:

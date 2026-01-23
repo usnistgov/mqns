@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from typing import cast, override
+from typing import override
 
 import numpy as np
 
@@ -24,7 +24,7 @@ def _select_path_swap_weighted(epr: Entanglement, fib: Fib, path_ids: list[int])
     # fewer swaps (shorter route) means higher weight
     weights = np.array([1.0 / (1 + len(e.swap)) for e in entries])
     weights /= np.sum(weights)
-    return rng.choice(cast(list, entries), p=weights)
+    return entries[rng.choice(len(entries), p=weights)]
 
 
 class MuxSchemeDynamicEpr(MuxSchemeFibBase, MuxSchemeDynamicBase):

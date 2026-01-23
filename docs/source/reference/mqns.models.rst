@@ -8,6 +8,7 @@ Subpackages
    :maxdepth: 4
 
    mqns.models.core
-   mqns.models.delay
-   mqns.models.epr
    mqns.models.qubit
+   mqns.models.epr
+   mqns.models.error
+   mqns.models.delay
