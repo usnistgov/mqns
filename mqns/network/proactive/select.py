@@ -1,5 +1,4 @@
 from collections.abc import Callable, Iterator
-from typing import cast
 
 from mqns.entity.memory import MemoryQubit
 from mqns.entity.node import QNode
@@ -45,4 +44,4 @@ def select_purif_qubit_random(
     candidates: list[MemoryEprTuple],
 ) -> MemoryEprTuple:
     _ = qubit, fib_entry, partner
-    return rng.choice(cast(list, candidates))
+    return candidates[rng.choice(len(candidates))]

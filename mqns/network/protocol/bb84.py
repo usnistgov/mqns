@@ -163,7 +163,7 @@ class BB84SendApp(Application[QNode]):
 
     def send_qubit(self):
         # randomly generate a qubit
-        state = rng.choice([QUBIT_STATE_0, QUBIT_STATE_1, QUBIT_STATE_P, QUBIT_STATE_N])
+        state = [QUBIT_STATE_0, QUBIT_STATE_1, QUBIT_STATE_P, QUBIT_STATE_N][rng.choice(4)]
         qubit = QubitWithError(state=state)
         basis = BASIS_Z.observable if (state == QUBIT_STATE_0).all() or (state == QUBIT_STATE_1).all() else BASIS_X.observable
 
@@ -454,7 +454,7 @@ class BB84RecvApp(Application[QNode]):
     def recv(self, event: RecvQubitPacket):
         qubit: Qubit = event.qubit
         # randomly choose X,Z basis
-        basis = rng.choice([BASIS_Z.observable, BASIS_X.observable])
+        basis = [BASIS_Z.observable, BASIS_X.observable][rng.choice(2)]
         basis_msg = "Z" if (basis == BASIS_Z.observable).all() else "X"
         ret = qubit.measureZ() if (basis == BASIS_Z.observable).all() else qubit.measureX()
         self.qubit_list[qubit.id] = qubit

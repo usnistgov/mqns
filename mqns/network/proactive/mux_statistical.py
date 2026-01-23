@@ -1,6 +1,6 @@
 from collections import defaultdict
 from collections.abc import Callable, Iterable, Set
-from typing import TYPE_CHECKING, cast, override
+from typing import TYPE_CHECKING, override
 
 from mqns.entity.memory import MemoryQubit, PathDirection, QubitState
 from mqns.entity.node import QNode
@@ -98,11 +98,11 @@ class MuxSchemeStatistical(MuxSchemeDynamicBase):
 
     SelectSwapQubit = Callable[["ProactiveForwarder", MemoryEprTuple, list[MemoryEprTuple]], MemoryEprTuple]
 
-    SelectSwapQubit_random: SelectSwapQubit = lambda _fw, _mt, candidates: rng.choice(cast(list, candidates))
+    SelectSwapQubit_random: SelectSwapQubit = lambda _fw, _mt, candidates: candidates[rng.choice(len(candidates))]
 
     SelectPath = Callable[["ProactiveForwarder", Entanglement, Entanglement, list[int]], int | FibEntry]
 
-    SelectPath_random: SelectPath = lambda _fw, _e0, _e1, candidates: rng.choice(cast(list, candidates))
+    SelectPath_random: SelectPath = lambda _fw, _e0, _e1, candidates: candidates[rng.choice(len(candidates))]
 
     def __init__(
         self,
