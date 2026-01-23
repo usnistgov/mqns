@@ -12,8 +12,6 @@ This template allows to:
 - save CSV/JSON and plot
 """
 
-from __future__ import annotations
-
 import itertools
 import json
 from typing import Any, Literal
@@ -51,11 +49,11 @@ log.set_default_level("CRITICAL")
 SEED_BASE = 100  # each run uses SEED_BASE + run_index
 
 # Simulation controls
-SIM_DURATION = 3.0  # Duration of one simulation run in seconds. Can be changed via --runs flag
+SIM_DURATION = 3.0  # Duration of one simulation run in seconds
 SIM_ACCURACY = 1_000_000  # simulator accuracy
 
 # Number of trials per parameter point (used in sweeps)
-DEFAULT_RUNS = 10
+DEFAULT_RUNS = 10  #  Can be changed via --runs flag
 
 
 # ──────────────────────────────────────────────────────────────────────────────
