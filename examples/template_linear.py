@@ -22,7 +22,7 @@ import numpy as np
 import pandas as pd
 from tap import Tap
 
-from mqns.entity.qchannel import LinkArchDimBk
+from mqns.entity.qchannel import LinkArchDimBk, LinkArchSim, LinkArchSr
 from mqns.network.network import QuantumNetwork
 from mqns.network.proactive import ProactiveForwarder
 from mqns.simulator import Simulator
@@ -32,9 +32,13 @@ from examples_common.plotting import plt, plt_save
 from examples_common.stats import gather_etg_decoh
 from examples_common.topo_linear import build_topology
 
+_ = (LinkArchDimBk, LinkArchSim, LinkArchSr)
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # USER CONFIG: Logging
 # ──────────────────────────────────────────────────────────────────────────────
+# Log level can be changed via MQNS_LOGLVL environment variable.
 # Use "DEBUG" while developing, "CRITICAL" to suppress most output.
 log.set_default_level("CRITICAL")
 
@@ -47,7 +51,7 @@ log.set_default_level("CRITICAL")
 SEED_BASE = 100  # each run uses SEED_BASE + run_index
 
 # Simulation controls
-SIM_DURATION = 3.0  # seconds (the window you normalize throughput by)
+SIM_DURATION = 3.0  # Duration of one simulation run in seconds. Can be changed via --runs flag
 SIM_ACCURACY = 1_000_000  # simulator accuracy
 
 # Number of trials per parameter point (used in sweeps)
@@ -93,7 +97,7 @@ T_COHERE = 0.01
 #
 # If you want custom architectures, uncomment and edit:
 # LINK_ARCH = [LinkArchSr(), LinkArchSim(), ...]
-LINK_ARCH = [LinkArchDimBk(), LinkArchDimBk(), LinkArchDimBk()]  # None means "don't pass link_arch; use builder default"
+LINK_ARCH = [LinkArchDimBk(), LinkArchDimBk(), LinkArchDimBk()]
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -162,12 +166,13 @@ def run_simulation(
     """
     rng.reseed(seed)
 
-    topo_kwargs: dict[str, Any] = dict(
+    topo = build_topology(
         nodes=nodes,
         mem_capacity=MEM_CAPACITY,
         t_cohere=t_cohere,
         channel_length=channel_length,
         channel_capacity=channel_capacity,
+        link_arch=LINK_ARCH,
         entg_attempt_rate=ENTG_ATTEMPT_RATE,
         init_fidelity=INIT_FIDELITY,
         fiber_alpha=FIBER_ALPHA,
@@ -178,11 +183,6 @@ def run_simulation(
         swap=swap,
     )
 
-    # Only pass link_arch if user configured it; otherwise builder default applies.
-    if LINK_ARCH is not None:
-        topo_kwargs["link_arch"] = LINK_ARCH
-
-    topo = build_topology(**topo_kwargs)
     net = QuantumNetwork(topo)
 
     # Run simulator for SIM_DURATION + time to install paths.
@@ -328,10 +328,7 @@ def save_results(
 
     plt.tight_layout()
 
-    if save_plt:
-        plt_save(save_plt)
-
-    plt.show()
+    plt_save(save_plt)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
