@@ -55,6 +55,8 @@ class ErrorModel(ABC):
         Args:
             t: duration stored in memory, in seconds.
             rate: decoherence rate in Hz; ``None`` to reuse last value.
+
+        It's possible to use other time units, as long as ``t`` and ``rate`` are inverse of each other.
         """
 
     @overload
@@ -65,6 +67,8 @@ class ErrorModel(ABC):
         Args:
             length: distance traversed in channel, in km.
             rate: decoherence rate in ``km^-1``; ``None`` to reuse last value.
+
+        It's possible to use other length units, as long as ``length`` and ``rate`` are inverse of each other.
         """
 
     def set(

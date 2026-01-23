@@ -108,21 +108,6 @@ class WernerStateEntanglement(Entanglement["WernerStateEntanglement"]):
         error.werner(self)
 
     @override
-    def store_error_model(self, t: float = 0, decoherence_rate: float = 0, **kwargs):
-        """
-        Apply an error model for storing this entangled pair in quantum memory::
-
-            w = w * e^{-decoherence_rate * t}
-
-        Args:
-            t: the time stored in a quantum memory in seconds.
-            decoherence_rate: the decoherence rate, equals to the inverse of coherence time.
-
-        """
-        _ = kwargs
-        self.w *= np.exp(-decoherence_rate * t)
-
-    @override
     def _to_qubits_rho(self) -> QubitRho:
         return check_qubit_rho(self.w * BELL_RHO_PHI_P + (1 - self.w) / 4 * np.identity(4), n=2)
 

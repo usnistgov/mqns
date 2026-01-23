@@ -42,6 +42,7 @@ def test_swap():
 
     e1 = MixedStateEntanglement(fidelity=0.95, name="e1", creation_time=now, decoherence_time=decohere)
     e2 = MixedStateEntanglement(fidelity=0.95, name="e2", creation_time=now, decoherence_time=decohere)
+    e1.read, e2.read = True, True
     e3 = MixedStateEntanglement.swap(e1, e2, now=now)
     assert e3 is not None
     assert e3.fidelity == pytest.approx(0.903333, abs=1e-6)

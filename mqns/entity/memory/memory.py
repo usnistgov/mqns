@@ -43,7 +43,8 @@ from mqns.entity.qchannel import QuantumChannel
 from mqns.models.core import QuantumModel, QuantumModelT
 from mqns.models.delay import DelayInput, parse_delay
 from mqns.models.epr import Entanglement
-from mqns.simulator import Event, Simulator
+from mqns.models.error import DephaseErrorModel, ErrorModel
+from mqns.simulator import Event, Simulator, Time
 
 
 class QuantumMemoryInitKwargs(TypedDict, total=False):
@@ -84,6 +85,7 @@ class QuantumMemory(Entity):
         """Read/write delay, only applicable to async access."""
 
         self.t_cohere = kwargs.get("t_cohere", 1.0)
+        """Memory dephasing time in seconds, often known as T2."""
 
         assert self.capacity >= 1
         self._storage: list[tuple[MemoryQubit, QuantumModel | None]] = [
@@ -101,13 +103,17 @@ class QuantumMemory(Entity):
     @override
     def install(self, simulator: Simulator) -> None:
         super().install(simulator)
+
         self.decoherence_delay = simulator.time(sec=self.t_cohere)
         """Memory dephasing time."""
-        self.decoherence_rate = 1.0 / self.t_cohere
+
+        self._store_error: ErrorModel = DephaseErrorModel().set(t=0, rate=1.0 / self.decoherence_delay.time_slot)
         """
-        Memory dephasing rate in Hz.
-        This is the inverse of memory dephasing time.
-        EPR pair dephasing rate is the sum of memory dephasing rates.
+        Store error model.
+        Its time unit is time slot, based on simulator accuracy.
+
+        Prior to each application onto a stored qubit, caller should change the ``t`` parameter to the storage duration
+        in time slots, but preserve the existing ``rate`` parameter.
         """
 
     @override
@@ -255,6 +261,17 @@ class QuantumMemory(Entity):
             qubit.path_id = None
             qubit.path_direction = None
 
+    def store_error(self, target: QuantumModel, t: Time) -> None:
+        """
+        Apply store error model to a qubit.
+
+        Args:
+            target: qubit that has been stored in this memory.
+            t: storage duration since the last update.
+        """
+        self._store_error.set(t=t.time_slot)
+        target.apply_error(self._store_error)
+
     @overload
     def read(self, key: int | str, *, remove: bool | QuantumModel = False) -> tuple[MemoryQubit, QuantumModel | None] | None:
         """
@@ -348,9 +365,7 @@ class QuantumMemory(Entity):
             raise ValueError(f"{self}: data at {qubit.addr} is not {has}")
 
         if set_fidelity and isinstance(data, Entanglement) and not data.read:
-            data.read = True
-            now = self.simulator.tc
-            data.store_error_model((now - data.creation_time).sec, self.decoherence_rate)
+            data.apply_store_errors(self.simulator.tc)
 
         if remove in (True, data):
             qubit.set_event(QuantumMemory, None)  # cancel scheduled decoherence event

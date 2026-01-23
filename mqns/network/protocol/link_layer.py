@@ -375,7 +375,7 @@ class LinkLayer(Application[QNode]):
             decoherence_time=t_epr_creation + min(mem_a.decoherence_delay, mem_b.decoherence_delay),
             src=self.node,
             dst=next_hop,
-            mem_decohere_rate=(mem_a.decoherence_rate, mem_b.decoherence_rate),
+            store_errors=(mem_a.store_error, mem_b.store_error),
         )
         epr.fidelity = self.init_fidelity
         epr.key = qubit.active

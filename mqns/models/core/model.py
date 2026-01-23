@@ -34,18 +34,5 @@ class QuantumModel(ABC):
             error: error model with assigned error probability.
         """
 
-    def store_error_model(self, t: float = 0, decoherence_rate: float = 0, **kwargs):
-        """The error model for quantum memory.
-        This function will change the quantum state or fidelity
-        according to different backend models.
-
-        Args:
-            t (float): the time stored in a quantum memory. The unit it second.
-            decoherence_rate (float): the decoherency rate
-            kwargs: other parameters
-
-        """
-        pass
-
 
 QuantumModelT = TypeVar("QuantumModelT", bound=QuantumModel)

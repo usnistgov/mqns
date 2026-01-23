@@ -150,18 +150,6 @@ class MixedStateEntanglement(Entanglement["MixedStateEntanglement"]):
         self.set_probv(0.25 + (self.probv - 0.25) * multiplier)
 
     @override
-    def store_error_model(self, t: float = 0, decoherence_rate: float = 0, **kwargs):
-        """
-        Apply an error model for storing this entangled pair in a quantum memory.
-
-        Args:
-            t: duration since last update in seconds.
-            decoherence_rate: memory decoherence rate in Hz.
-        """
-        _ = kwargs
-        self.depolarize(t, decoherence_rate)
-
-    @override
     def _to_qubits_rho(self) -> QubitRho:
         i, z, x, y = self.probv
         return check_qubit_rho(i * BELL_RHO_PHI_P + z * BELL_RHO_PHI_N + x * BELL_RHO_PSI_P + y * BELL_RHO_PSI_N, n=2)
