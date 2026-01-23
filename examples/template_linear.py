@@ -22,16 +22,15 @@ import numpy as np
 import pandas as pd
 from tap import Tap
 
+from mqns.entity.qchannel import LinkArchDimBk
 from mqns.network.network import QuantumNetwork
 from mqns.network.proactive import ProactiveForwarder
 from mqns.simulator import Simulator
-from mqns.utils import log, set_seed
+from mqns.utils import log, rng
 
-from mqns.entity.qchannel import LinkArchSr, LinkArchSim, LinkArchDimBk, LinkArchDimBkSeq 
-
+from examples_common.plotting import plt, plt_save
 from examples_common.stats import gather_etg_decoh
 from examples_common.topo_linear import build_topology
-from examples_common.plotting import plt, plt_save
 
 # ──────────────────────────────────────────────────────────────────────────────
 # USER CONFIG: Logging
@@ -48,8 +47,8 @@ log.set_default_level("CRITICAL")
 SEED_BASE = 100  # each run uses SEED_BASE + run_index
 
 # Simulation controls
-SIM_DURATION = 3.0         # seconds (the window you normalize throughput by)
-SIM_ACCURACY = 1_000_000   # simulator accuracy
+SIM_DURATION = 3.0  # seconds (the window you normalize throughput by)
+SIM_ACCURACY = 1_000_000  # simulator accuracy
 
 # Number of trials per parameter point (used in sweeps)
 DEFAULT_RUNS = 10
@@ -61,12 +60,12 @@ DEFAULT_RUNS = 10
 # nodes:
 #   - int: build_topology will auto-name ["S", "R1", ..., "D"]
 #   - list[str]: explicit names (must include "S" and "D")
-NODES: int | list[str] = ["S", "R", "D"]
+NODES: int | list[str] = 4
 
 # channel_length:
 #   - float: uniform length for every link
 #   - list[float]: per-link lengths (must have n_links = len(nodes)-1 values)
-CHANNEL_LENGTH: float | list[float] = [32.0, 18.0]
+CHANNEL_LENGTH: float | list[float] = [32.0, 18.0, 10.0]
 
 # channel_capacity:
 #   - int: uniform capacity for every link (left == right == capacity)
@@ -94,18 +93,18 @@ T_COHERE = 0.01
 #
 # If you want custom architectures, uncomment and edit:
 # LINK_ARCH = [LinkArchSr(), LinkArchSim(), ...]
-LINK_ARCH = [LinkArchDimBk(), LinkArchSim()]  # None means "don't pass link_arch; use builder default"
+LINK_ARCH = [LinkArchDimBk(), LinkArchDimBk(), LinkArchDimBk()]  # None means "don't pass link_arch; use builder default"
 
 
 # ──────────────────────────────────────────────────────────────────────────────
 # USER CONFIG: Physics / Link-Layer parameters (passed into build_topology)
 # ──────────────────────────────────────────────────────────────────────────────
-ENTG_ATTEMPT_RATE = 50e6   # attempts/sec
-INIT_FIDELITY = 0.99       # fidelity of generated elementary entanglement
-FIBER_ALPHA = 0.2          # dB/km
-ETA_D = 0.95               # detector efficiency
-ETA_S = 0.95               # source efficiency
-FREQUENCY = 1e6            # entanglement source / memory frequency
+ENTG_ATTEMPT_RATE = 50e6  # attempts/sec
+INIT_FIDELITY = 0.99  # fidelity of generated elementary entanglement
+FIBER_ALPHA = 0.2  # dB/km
+ETA_D = 0.95  # detector efficiency
+ETA_S = 0.95  # source efficiency
+FREQUENCY = 1e6  # entanglement source / memory frequency
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -114,9 +113,9 @@ FREQUENCY = 1e6            # entanglement source / memory frequency
 # swap:
 #   - preset string:
 #       - 1 router: "swap_1"
-#       - 2 to 5 routers: "asap", "l2r", "r2l", "baln" 
+#       - 2 to 5 routers: "asap", "l2r", "r2l", "baln"
 #   - explicit list[int] sequence (for custom swap order) [see REDiP for syntax]
-SWAP: str | list[int] = "swap_1"
+SWAP: str | list[int] = "l2r"
 
 # p_swap:
 #   - Swapping success probability used by ProactiveForwarder(ps=p_swap)
@@ -128,12 +127,12 @@ P_SWAP = 0.5
 # ──────────────────────────────────────────────────────────────────────────────
 # If SWEEP=False, run a single scenario.
 # If SWEEP=True, run a cartesian product grid sequentially.
-SWEEP = False
+SWEEP = True
 
 # Supported sweep variables:
-t_cohere_values = [0.005, 0.01, 0.02]                       # seconds
-swap_values: list[str | list[int]] = ["l2r", "r2l", "asap"]         # see SWAP
-channel_capacity_values = [CHANNEL_CAPACITY]                # include alternative allocations if desired
+t_cohere_values = [0.005, 0.01, 0.02]  # seconds
+swap_values: list[str | list[int]] = ["l2r", "r2l", "asap"]  # see SWAP
+channel_capacity_values = [CHANNEL_CAPACITY]  # include alternative allocations if desired
 
 
 # What to measure:
@@ -161,7 +160,7 @@ def run_simulation(
     - changing which node/app counters you read
     - adding your own logging or trace collection
     """
-    set_seed(seed)
+    rng.reseed(seed)
 
     topo_kwargs: dict[str, Any] = dict(
         nodes=nodes,
@@ -285,11 +284,11 @@ def save_results(
     if has_throughput:
         ax = axes[0]
         for swap_label, sub in df.groupby("swap"):
-            sub = sub.sort_values("t_cohere")
+            subb = sub.sort_values("t_cohere")
             ax.errorbar(
-                sub["t_cohere"],
-                sub["throughput_eps_mean"],
-                yerr=sub.get("throughput_eps_std", None),
+                subb["t_cohere"],
+                subb["throughput_eps_mean"],
+                yerr=subb.get("throughput_eps_std", None),
                 fmt="o--",
                 capsize=4,
                 label=swap_label,
@@ -308,11 +307,11 @@ def save_results(
     if has_fidelity:
         ax = axes[1]
         for swap_label, sub in df.groupby("swap"):
-            sub = sub.sort_values("t_cohere")
+            subb = sub.sort_values("t_cohere")
             ax.errorbar(
-                sub["t_cohere"],
-                sub["mean_fidelity_mean"],
-                yerr=sub.get("mean_fidelity_std", None),
+                subb["t_cohere"],
+                subb["mean_fidelity_mean"],
+                yerr=subb.get("mean_fidelity_std", None),
                 fmt="s--",
                 capsize=4,
                 label=swap_label,
@@ -335,7 +334,6 @@ def save_results(
     plt.show()
 
 
-
 # ──────────────────────────────────────────────────────────────────────────────
 # CLI + Main
 # ──────────────────────────────────────────────────────────────────────────────
@@ -346,9 +344,9 @@ if __name__ == "__main__":
         runs: int = DEFAULT_RUNS  # number of trials per parameter point
 
         # Outputs
-        csv: str = ""             # optional CSV output file
-        json: str = ""            # optional JSON output file
-        plt: str = ""             # optional plot output file
+        csv: str = ""  # optional CSV output file
+        json: str = ""  # optional JSON output file
+        plt: str = ""  # optional plot output file
 
     args = Args().parse_args()
 
@@ -372,7 +370,7 @@ if __name__ == "__main__":
         sweep_points = list(itertools.product(t_cohere_values, swap_values, channel_capacity_values))
 
         rows: list[dict[str, Any]] = []
-        for (t, sw, cap) in sweep_points:
+        for t, sw, cap in sweep_points:
             row = run_row(n_runs=args.runs, t_cohere=t, swap=sw, channel_capacity=cap)
             rows.append(row)
 
@@ -390,12 +388,7 @@ if __name__ == "__main__":
                 "throughput_eps_std",
             ]
             print("\nTop results by throughput:")
-            print(
-                df[cols]
-                .sort_values("throughput_eps_mean", ascending=False)
-                .head(10)
-                .to_string(index=False)
-            )
+            print(df[cols].sort_values("throughput_eps_mean", ascending=False).head(10).to_string(index=False))
 
         # Fidelity summary
         if "mean_fidelity_mean" in df.columns:
@@ -407,9 +400,4 @@ if __name__ == "__main__":
                 "mean_fidelity_std",
             ]
             print("\nTop results by fidelity:")
-            print(
-                df[cols]
-                .sort_values("mean_fidelity_mean", ascending=False)
-                .head(10)
-                .to_string(index=False)
-            )
+            print(df[cols].sort_values("mean_fidelity_mean", ascending=False).head(10).to_string(index=False))
