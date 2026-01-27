@@ -22,11 +22,11 @@ from typing import Any, cast, override
 import numpy as np
 
 from mqns.entity.cchannel import ClassicPacket, RecvClassicPacket
-from mqns.entity.memory import MemoryQubit, QubitState
+from mqns.entity.memory import MemoryQubit, PathDirection, QubitState
 from mqns.entity.node import Application, Node, QNode
-from mqns.entity.qchannel import QuantumChannel
 from mqns.models.epr import Entanglement
 from mqns.network.network import TimingPhase, TimingPhaseEvent
+from mqns.network.proactive.cutoff import CutoffScheme, CutoffSchemeWaitTime
 from mqns.network.proactive.fib import Fib, FibEntry
 from mqns.network.proactive.message import (
     InstallPathMsg,
@@ -55,6 +55,7 @@ class ReactiveForwarder(Application[QNode]):
         self,
         *,
         ps: float = 1.0,
+        cutoff: CutoffScheme = CutoffSchemeWaitTime(),
         mux: MuxScheme = MuxSchemeBufferSpace(),
         select_purif_qubit: SelectPurifQubit = None,
     ):
@@ -73,6 +74,8 @@ class ReactiveForwarder(Application[QNode]):
         assert 0.0 <= ps <= 1.0
         self.ps = ps
         """Probability of successful entanglement swapping."""
+        self.cutoff = copy.deepcopy(cutoff)
+        """EPR age cut-off scheme."""
         self.mux = copy.deepcopy(mux)
         """Multiplexing scheme."""
         self._select_purif_qubit = select_purif_qubit
@@ -119,6 +122,8 @@ class ReactiveForwarder(Application[QNode]):
         """
         Counters.
         """
+        
+        self.first: bool = True
 
     @override
     def install(self, node):
@@ -130,25 +135,24 @@ class ReactiveForwarder(Application[QNode]):
         self.epr_type = self.network.epr_type
         """Network-wide entanglement type."""
         self.mux.fw = self
-        
-        self.activate_qchannels()
-        
-    
+
+
     # instruct LinkLayer to start generating EPRs on ALL qchannels
     # can be called from install() or at the first EXTERNAL phase (for better coordination)
     def activate_qchannels(self):
         for ch in self.node.qchannels:
-            if self == ch.node_list[0]:     # self is the EPR initiator node for this channel
+            if self.node == ch.node_list[0]:     # self is the EPR initiator node for this channel
+                log.debug(f"{self.node}: activate qchannel {ch.name}")
                 self.simulator.add_event(
-                ManageActiveChannels(
-                    self.node,
-                    ch.node_list[1],
-                    ch,
-                    path_id=None,
-                    start=True,
-                    t=self.simulator.tc,
-                    by=self,
-                )
+                    ManageActiveChannels(
+                        self.node,
+                        ch.node_list[1],
+                        ch,
+                        path_id=None,
+                        start=True,
+                        t=self.simulator.tc,
+                        by=self,
+                    )
             )
 
     def handle_sync_phase(self, event: TimingPhaseEvent):
@@ -168,6 +172,13 @@ class ReactiveForwarder(Application[QNode]):
         """
         if event.phase == TimingPhase.EXTERNAL:
             self.remote_swapped_eprs.clear()
+            if self.first:
+                self.activate_qchannels()  # activate qchannels at 1st EXTERNAL phase
+                self.first = False
+        elif event.phase == TimingPhase.ROUTING:
+            log.debug(f"{self.node}: there are {len(self.waiting_etg)} etg qubits to process")
+            log.debug(f"{self.node}: send link_state for {len(self.waiting_etg)} etg qubits")
+            self.send_link_state()
         elif event.phase == TimingPhase.INTERNAL:
             log.debug(f"{self.node}: there are {len(self.waiting_etg)} etg qubits to process")
             for etg_event in self.waiting_etg:
@@ -236,7 +247,7 @@ class ReactiveForwarder(Application[QNode]):
         """
         Process an install_path message containing routing instructions from the controller.
 
-        1. Insert FIB entry -> needed for classic signaling
+        1. Insert FIB entry -> needed for signaling
         2. Save the path and neighbors in the multiplexing scheme -> to reuse forwarding logic
         """
         path_id = msg["path_id"]
@@ -251,19 +262,41 @@ class ReactiveForwarder(Application[QNode]):
             route=route,
             own_idx=route.index(self.node.name),
             swap=instructions["swap"],
-            swap_cutoff=None,
+            swap_cutoff=[None if t < 0 else self.simulator.time(time_slot=t) for t in instructions["swap_cutoff"]],
             purif=instructions["purif"],
         )
         self.fib.insert_or_replace(fib_entry)
+        
+                # identify left/right neighbors
+        l_neighbor = self._find_neighbor(fib_entry, -1)
+        r_neighbor = self._find_neighbor(fib_entry, +1)
+
+        if l_neighbor:
+            l_qchannel = self.node.get_qchannel(l_neighbor)
+
+            # associate path with qchannel and allocate qubits
+            self.mux.install_path_neighbor(instructions, fib_entry, PathDirection.L, l_neighbor, l_qchannel)
+
+        if r_neighbor:
+            r_qchannel = self.node.get_qchannel(r_neighbor)
+
+            # associate path with qchannel and allocate qubits
+            self.mux.install_path_neighbor(instructions, fib_entry, PathDirection.R, r_neighbor, r_qchannel)
 
     CLASSIC_CONTROL_HANDLERS["install_path"] = handle_install_path
 
+
+    def _find_neighbor(self, fib_entry: FibEntry, route_offset: int) -> QNode | None:
+        neigh_idx = fib_entry.own_idx + route_offset
+        if neigh_idx in (-1, len(fib_entry.route)):  # no left/right neighbor if own node is the left/right end node
+            return None
+        return self.network.get_node(fib_entry.route[neigh_idx])
+    
     # reorg and add link state sending to controller!!!
     def qubit_is_entangled(self, event: QubitEntangledEvent):
         """
         Handle a qubit entering ENTANGLED state, i.e. having an elementary entanglement.
 
-        In ASYNC timing mode, events are processed immediately.
         In SYNC timing mode, events arrive in EXTERNAL phase and is queued in `self.waiting_etg`.
         Queued events are released upon entering INTERNAL phase and then processed.
 
@@ -280,8 +313,6 @@ class ReactiveForwarder(Application[QNode]):
             self.waiting_etg.append(event)
             return
 
-##--------------------------
-
         self.cnt.n_entg += 1
 
         qubit = event.qubit
@@ -296,6 +327,32 @@ class ReactiveForwarder(Application[QNode]):
             and su_args
         ):
             self.handle_swap_update(*su_args)
+
+    def send_link_state(self):
+        """
+        Send link state message to controller. Assumes direct connection to controller.
+        """
+        ctrl_node = self.network.get_controller()
+        link_states = []
+        for event in self.waiting_etg:
+            link_states.append({
+                "node": event.node.name,
+                "neighbor": event.neighbor.name,
+                "qubit": event.qubit.addr
+            })
+
+        msg = { "ls": link_states }
+        
+        if len(link_states) == 0:
+            log.debug(f"{self.node}: no link_state to send")
+            return
+
+        log.debug(
+            f"{self.node}: sending link_state to controller"
+            f" | {msg}"
+        )
+        self.node.get_cchannel(ctrl_node).send(ClassicPacket(msg, src=self.node, dest=ctrl_node), ctrl_node)
+
 
     def qubit_is_purif(self, qubit: MemoryQubit, fib_entry: FibEntry, partner: QNode):
         """
@@ -603,7 +660,7 @@ class ReactiveForwarder(Application[QNode]):
                     self.parallel_swappings[a_epr.name] = (a_epr, b_epr, new_epr)
 
                 # Deposit swapped EPR at the partner.
-                a_partner.get_app(ProactiveForwarder).remote_swapped_eprs[new_epr.name] = new_epr
+                a_partner.get_app(ReactiveForwarder).remote_swapped_eprs[new_epr.name] = new_epr
 
             # Send SWAP_UPDATE to the partner.
             su_msg: SwapUpdateMsg = {
@@ -811,6 +868,9 @@ class ReactiveForwarder(Application[QNode]):
         """
         if need_remove:
             self.memory.read(qubit.addr, remove=True)
+        
+        # in Reactive: remove path allocation for next routing cycle
+        self.memory.deallocate(qubit.addr)
 
         qubit.state = QubitState.RELEASE
         self.simulator.add_event(QubitReleasedEvent(self.node, qubit, t=self.simulator.tc, by=self))

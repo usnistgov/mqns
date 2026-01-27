@@ -207,7 +207,7 @@ class LinkLayer(Application[QNode]):
             return
 
         log.debug(
-            f"{self.node}: add qchannel {qchannel} with {neighbor} on path {path_id}, link arch {qchannel.link_arch.name}"
+            f"{self.node}: activate qchannel {qchannel} with {neighbor} on path {path_id}, link arch {qchannel.link_arch.name}"
         )
 
         if self.node.timing.is_async():

@@ -2,15 +2,8 @@
 Simulate Reactive routing in a 3-node linear topology and report end-to-end throughput.
 """
 
-from __future__ import annotations
 
-import itertools
-import json
 from typing import Any, Literal
-
-import numpy as np
-import pandas as pd
-from tap import Tap
 
 from mqns.network.network import TimingModeSync
 from mqns.network.network import QuantumNetwork
@@ -18,16 +11,16 @@ from mqns.network.reactive import ReactiveForwarder
 from mqns.simulator import Simulator
 from mqns.utils import log, set_seed
 
-from mqns.entity.qchannel import LinkArchSr, LinkArchSim, LinkArchDimBk, LinkArchDimBkSeq 
+from mqns.entity.qchannel import LinkArchDimBk 
 
 from examples_common.stats import gather_etg_decoh
 from examples_common.topo_linear_reactive import build_topology
 
-log.set_default_level("CRITICAL")
+log.set_default_level("DEBUG")
 
 SEED_BASE = 100
 
-SIM_DURATION = 3.0         # seconds
+SIM_DURATION = 10.0         # seconds
 SIM_ACCURACY = 1_000_000
 
 
@@ -60,8 +53,8 @@ CHANNEL_CAPACITY: int | list[int] | list[tuple[int, int]] = 3
 #   - list[int]: per-node #qubits
 MEM_CAPACITY: int | list[int] | None = None
 
-# Memory coherence time (seconds) used when SWEEP = False
-T_COHERE = 0.01
+# Memory coherence time (seconds)
+T_COHERE = 0.1
 
 # link_arch:
 #   - None uses build_topology default LinkArchDimBkSeq()
@@ -70,7 +63,7 @@ T_COHERE = 0.01
 #
 # If you want custom architectures, uncomment and edit:
 # LINK_ARCH = [LinkArchSr(), LinkArchSim(), ...]
-LINK_ARCH = [LinkArchDimBk(), LinkArchSim()]  # None means "don't pass link_arch; use builder default"
+LINK_ARCH =  [LinkArchDimBk(), LinkArchDimBk()]  # None means "don't pass link_arch; use builder default"
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -96,7 +89,7 @@ SWAP: str | list[int] = "swap_1"
 
 # p_swap:
 #   - Swapping success probability used by ReactiveForwarder(ps=p_swap)
-P_SWAP = 0.5
+P_SWAP = 1.0
 
 
 # What to measure:
@@ -147,12 +140,12 @@ def run_simulation(
         topo_kwargs["link_arch"] = LINK_ARCH
 
     topo = build_topology(**topo_kwargs)
-    timing = TimingModeSync(t_ext=1e3, t_int=1e3)       # set External and Internal phases duration
+    timing = TimingModeSync(t_ext=0.03, t_rtg=0.00005, t_int=0.0002)       # set phases durations
     net = QuantumNetwork(topo, timing=timing)           # use Synchronous timing
     net.add_request("S", "D")              # set an E2E etg. request (NOT install path) to be served by the network
 
     # Run simulator for SIM_DURATION + time to install paths.
-    s = Simulator(0, SIM_DURATION + 5e-06, accuracy=SIM_ACCURACY, install_to=(log, net))
+    s = Simulator(0, SIM_DURATION, accuracy=SIM_ACCURACY, install_to=(log, net))
     s.run()
 
     # ── Extract metrics ───────────────────────────────────────────────────────

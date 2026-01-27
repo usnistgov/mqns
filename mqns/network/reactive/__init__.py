@@ -1,7 +1,7 @@
 from mqns.network.reactive.controller import ReactiveRoutingController
 
 from mqns.network.proactive.fib import Fib, FibEntry
-from mqns.network.proactive.forwarder import ReactiveForwarder, ProactiveForwarderCounters
+from mqns.network.reactive.forwarder import ReactiveForwarder, ProactiveForwarderCounters
 from mqns.network.proactive.mux import MuxScheme
 from mqns.network.proactive.mux_buffer_space import MuxSchemeBufferSpace
 from mqns.network.proactive.mux_dynamic_epr import (
@@ -40,9 +40,9 @@ __all__ = [
     "MuxSchemeDynamicEpr",
     "MuxSchemeStatistical",
     "parse_swap_sequence",
-    "ProactiveForwarder",
+    "ReactiveForwarder",
     "ProactiveForwarderCounters",
-    "ProactiveRoutingController",
+    "ReactiveRoutingController",
     "QubitAllocationType",
     "RoutingPath",
     "RoutingPathMulti",

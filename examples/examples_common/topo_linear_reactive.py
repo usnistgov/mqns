@@ -1,5 +1,5 @@
 from mqns.entity.qchannel import LinkArch, LinkArchDimBkSeq
-from mqns.network.proactive import LinkLayer, ProactiveForwarder, ProactiveRoutingController, RoutingPathSingle
+from mqns.network.reactive import LinkLayer, ReactiveForwarder, ReactiveRoutingController
 from mqns.network.topology.customtopo import CustomTopology, Topo, TopoCChannel, TopoController, TopoQChannel, TopoQNode
 from mqns.network.topology.topo import Topology
 

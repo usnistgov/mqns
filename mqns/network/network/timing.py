@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 
 class TimingPhase(Enum):
     EXTERNAL = auto()
+    ROUTING = auto()
     INTERNAL = auto()
 
 
@@ -62,6 +63,16 @@ class TimingMode(ABC):
         pass
 
     @abstractmethod
+    def is_routing(self, t: Time | None = None) -> bool:
+        """
+        Determine whether the network is either using ASYNC timing or in a ROUTING phase.
+
+        Args:
+            t: If specified, also check that the timestamp is in the same phase window.
+        """
+        pass
+
+    @abstractmethod
     def is_internal(self, t: Time | None = None) -> bool:
         """
         Determine whether the network is either using ASYNC timing or in an INTERNAL phase.
@@ -90,6 +101,11 @@ class TimingModeAsync(TimingMode):
         return True
 
     @override
+    def is_routing(self, t: Time | None = None) -> bool:
+        _ = t
+        return True
+
+    @override
     def is_internal(self, t: Time | None = None) -> bool:
         _ = t
         return True
@@ -100,16 +116,18 @@ class TimingModeSync(TimingMode):
     Synchronous application timing mode.
     """
 
-    def __init__(self, *, name="SYNC", t_ext: float, t_int: float):
+    def __init__(self, *, name="SYNC", t_ext: float, t_rtg: float, t_int: float):
         """
         Args:
-            t_ext: EXTERNAL phase duration.
-            t_int: INTERNAL phase duration.
+            t_ext: EXTERNAL phase duration in seconds.
+            t_rtg: ROUTING phase duration in seconds.
+            t_int: INTERNAL phase duration in seconds.
         """
         super().__init__(name)
         self.sequence = deque[tuple[TimingPhase, float]](
             [
                 (TimingPhase.EXTERNAL, t_ext),
+                (TimingPhase.ROUTING, t_rtg),
                 (TimingPhase.INTERNAL, t_int),
             ]
         )
@@ -147,6 +165,10 @@ class TimingModeSync(TimingMode):
     @override
     def is_external(self, t: Time | None = None) -> bool:
         return self.phase == TimingPhase.EXTERNAL and (t is None or t < self.end_time)
+    
+    @override
+    def is_routing(self, t: Time | None = None) -> bool:
+        return self.phase == TimingPhase.ROUTING and (t is None or t < self.end_time)
 
     @override
     def is_internal(self, t: Time | None = None) -> bool:

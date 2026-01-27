@@ -17,10 +17,13 @@
 
 from typing import override
 
-from mqns.entity.cchannel import ClassicPacket
+from mqns.entity.cchannel import ClassicPacket, RecvClassicPacket
 from mqns.entity.node import Application, Controller
+from mqns.entity.base_channel import ChannelT, NodeT
+from mqns.network.route.dijkstra import DijkstraRouteAlgorithm
+from mqns.network.route.route import RouteAlgorithm
 from mqns.network.proactive.message import InstallPathMsg, PathInstructions, UninstallPathMsg
-from mqns.network.proactive.routing import RoutingPath
+from mqns.network.proactive.routing import RoutingPath, RoutingPathStatic
 from mqns.utils import log
 
 
@@ -40,22 +43,59 @@ class ReactiveRoutingController(Application[Controller]):
         """
         super().__init__()
         self.swap = swap
+        
+        self.add_handler(self.RecvClassicPacketHandler, RecvClassicPacket)
+        
+        self.ls_messages = []
 
     @override
     def install(self, node):
         self._application_install(node, Controller)
         self.net = self.node.network
         self.requests = self.net.requests   # requests to satisfy in each routing phase
+        self.next_req_id = 0
+        self.next_path_id = 0
+
+
+    def RecvClassicPacketHandler(self, event: RecvClassicPacket) -> bool:
+        """
+        Process a received classical packet.
+        The packet is expected to contain link_states from nodes and received during the ROUTING phase.
+
+        This method recognizes a message that is a dict with "ls" key with known value.
+
+        Returns False for unrecognized message types, which allows the packet to go to the next application.
+        """
+        packet = event.packet
+        msg = packet.get()
+        if not (isinstance(msg, dict) and "ls" in msg):
+            return False
+        if not self.node.timing.is_routing():  # should be in SYNC timing mode ROUTING phase
+            log.debug(f"{self.node}: received ls message from {packet.src} outside of ROUTING phase | {msg}")
+            return False
+
+        log.debug(f"{self.node.name}: received LS message from {packet.src} | {msg}")
         
-        
+        self.ls_messages.append(msg)
+        if len(self.ls_messages) == 3:
+            self.do_routing()
+            self.ls_messages = []
+    
+        return True
+
+
     # Handle INTERNAL/ROUTING phase signal:
     # build logical topology
     # compute paths for requests
-    # create rpath = ReactiveRoutingPath(RoutingPath) for each path
-    # rpath.compute_paths (i.e., instructions)
+    # create path = ReactiveRoutingPath(RoutingPath) for each path
+    # path.compute_paths (i.e., instructions)
     # self.instructions
     # Instructions format may be adapted to ReactiveRouting
 
+    def do_routing(self):
+        rpath = RoutingPathStatic(["S", "R", "D"], swap=self.swap)
+        self.install_path(rpath)
+        
 
     # Try to reuse this in Reactive!!!
     def install_path(self, rp: RoutingPath):
