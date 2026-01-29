@@ -19,10 +19,7 @@ from typing import override
 
 from mqns.entity.cchannel import ClassicPacket, RecvClassicPacket
 from mqns.entity.node import Application, Controller
-from mqns.entity.base_channel import ChannelT, NodeT
-from mqns.network.route.dijkstra import DijkstraRouteAlgorithm
-from mqns.network.route.route import RouteAlgorithm
-from mqns.network.proactive.message import InstallPathMsg, PathInstructions, UninstallPathMsg
+from mqns.network.proactive.message import InstallPathMsg, PathInstructions
 from mqns.network.proactive.routing import RoutingPath, RoutingPathStatic
 from mqns.utils import log
 
@@ -43,19 +40,18 @@ class ReactiveRoutingController(Application[Controller]):
         """
         super().__init__()
         self.swap = swap
-        
+
         self.add_handler(self.RecvClassicPacketHandler, RecvClassicPacket)
-        
+
         self.ls_messages = []
 
     @override
     def install(self, node):
         self._application_install(node, Controller)
         self.net = self.node.network
-        self.requests = self.net.requests   # requests to satisfy in each routing phase
+        self.requests = self.net.requests  # requests to satisfy in each routing phase
         self.next_req_id = 0
         self.next_path_id = 0
-
 
     def RecvClassicPacketHandler(self, event: RecvClassicPacket) -> bool:
         """
@@ -75,29 +71,20 @@ class ReactiveRoutingController(Application[Controller]):
             return False
 
         log.debug(f"{self.node.name}: received LS message from {packet.src} | {msg}")
-        
+
         self.ls_messages.append(msg)
         if len(self.ls_messages) == 3:
             self.do_routing()
             self.ls_messages = []
-    
+
         return True
 
-
-    # Handle INTERNAL/ROUTING phase signal:
-    # build logical topology
-    # compute paths for requests
-    # create path = ReactiveRoutingPath(RoutingPath) for each path
-    # path.compute_paths (i.e., instructions)
-    # self.instructions
-    # Instructions format may be adapted to ReactiveRouting
-
+    # For test: always install the same static path!
     def do_routing(self):
         rpath = RoutingPathStatic(["S", "R", "D"], swap=self.swap)
         self.install_path(rpath)
-        
 
-    # Try to reuse this in Reactive!!!
+    # Try to reuse RoutingPath and instructions
     def install_path(self, rp: RoutingPath):
         """
         Compute routing path(s) and send install commands to nodes.
@@ -114,12 +101,8 @@ class ReactiveRoutingController(Application[Controller]):
             self.next_path_id = max(self.next_path_id, path_id + 1)
             self._send_instructions(path_id, instructions)
 
-    def _send_instructions(self, path_id: int, instructions: PathInstructions, *, uninstall=False):
-        verb, msg = (
-            ("uninstall", UninstallPathMsg(cmd="uninstall_path", path_id=path_id))
-            if uninstall
-            else ("install", InstallPathMsg(cmd="install_path", path_id=path_id, instructions=instructions))
-        )
+    def _send_instructions(self, path_id: int, instructions: PathInstructions):
+        verb, msg = ("install", InstallPathMsg(cmd="install_path", path_id=path_id, instructions=instructions))
 
         for node_name in instructions["route"]:
             qnode = self.net.get_node(node_name)

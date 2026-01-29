@@ -165,7 +165,7 @@ class TimingModeSync(TimingMode):
     @override
     def is_external(self, t: Time | None = None) -> bool:
         return self.phase == TimingPhase.EXTERNAL and (t is None or t < self.end_time)
-    
+
     @override
     def is_routing(self, t: Time | None = None) -> bool:
         return self.phase == TimingPhase.ROUTING and (t is None or t < self.end_time)
