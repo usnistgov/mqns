@@ -135,7 +135,7 @@ def run_simulation(
 
     timing = TimingModeSync(t_ext=0.03, t_rtg=0.00005, t_int=0.0002)  # set phases durations
     net = QuantumNetwork(topo, timing=timing)  # use Synchronous timing
-    net.add_request("S", "D")  # set an E2E etg. request (NOT install path) to be served by the network
+    net.add_request(net.get_node("S"), net.get_node("D"))  # set an E2E etg. request to be served by the network
 
     # Run simulator for SIM_DURATION + time to install paths.
     s = Simulator(0, SIM_DURATION, accuracy=SIM_ACCURACY, install_to=(log, net))
