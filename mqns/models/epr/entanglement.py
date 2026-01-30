@@ -29,7 +29,7 @@ import hashlib
 import uuid
 from abc import abstractmethod
 from collections.abc import Callable, Iterable
-from typing import TYPE_CHECKING, Generic, TypedDict, TypeVar, Unpack, cast
+from typing import TYPE_CHECKING, Self, TypedDict, Unpack, cast
 
 import numpy as np
 
@@ -45,9 +45,7 @@ if TYPE_CHECKING:
     from mqns.entity.node import QNode
 
 
-EntanglementT = TypeVar("EntanglementT", bound="Entanglement")
-
-EntanglementStoreErrorFunc = Callable[["Entanglement", Time], None] | None
+type EntanglementStoreErrorFunc = Callable[["Entanglement", Time], None] | None
 
 
 class EntanglementInitKwargs(TypedDict, total=False):
@@ -59,7 +57,7 @@ class EntanglementInitKwargs(TypedDict, total=False):
     store_errors: tuple[EntanglementStoreErrorFunc, EntanglementStoreErrorFunc]
 
 
-class Entanglement(Generic[EntanglementT], QuantumModel):
+class Entanglement(QuantumModel):
     """Base entanglement model."""
 
     def __init__(self, **kwargs: Unpack[EntanglementInitKwargs]):
@@ -107,7 +105,7 @@ class Entanglement(Generic[EntanglementT], QuantumModel):
         Index of elementary entanglement in a path, smaller indices are on the left side.
         Negative means this is not an elementary entanglement.
         """
-        self.orig_eprs: list[EntanglementT] = []
+        self.orig_eprs: list[Self] = []
         """Elementary entanglements that swapped into this entanglement."""
         self.tmp_path_ids: frozenset[int] | None = None
         """Possible path IDs, used by MuxSchemeStatistical and MuxSchemeDynamicEpr."""
@@ -137,13 +135,13 @@ class Entanglement(Generic[EntanglementT], QuantumModel):
         self.read = True
 
     @staticmethod
-    def swap(
-        epr0: EntanglementT,
-        epr1: EntanglementT,
+    def swap[E: Entanglement](
+        epr0: E,
+        epr1: E,
         *,
         now: Time,
         ps=1.0,
-    ) -> EntanglementT | None:
+    ) -> E | None:
         """
         Perform swapping between `epr0` and `epr1`, and distribute a new entanglement.
 
@@ -170,7 +168,7 @@ class Entanglement(Generic[EntanglementT], QuantumModel):
             epr1._mark_decoherenced()
             return None
 
-        orig_eprs: list[EntanglementT] = []
+        orig_eprs: list[E] = []
         for epr in (epr0, epr1):
             if not epr.read:
                 epr.apply_store_errors(now)
@@ -178,34 +176,36 @@ class Entanglement(Generic[EntanglementT], QuantumModel):
             if epr.ch_index > -1:
                 orig_eprs.append(epr)
             else:
-                orig_eprs.extend(cast(list[EntanglementT], epr.orig_eprs))
+                orig_eprs.extend(cast(list[E], epr.orig_eprs))
 
         orig_names = "-".join((e.name for e in orig_eprs))
         name = hashlib.sha256(orig_names.encode()).hexdigest()[:32]  # same length as `uuid.uuid4().hex`
-        ne = type(epr0)._make_swapped(
-            epr0,
-            epr1,
-            name=name,
-            creation_time=now,
-            decoherence_time=min(epr0.decoherence_time, epr1.decoherence_time),
-            src=epr0.src,
-            dst=epr1.dst,
-            store_errors=(epr0.store_errors[0], epr1.store_errors[1]),
+        ne = cast(
+            E,
+            type(epr0)._make_swapped(
+                epr0,
+                epr1,
+                name=name,
+                creation_time=now,
+                decoherence_time=min(epr0.decoherence_time, epr1.decoherence_time),
+                src=epr0.src,
+                dst=epr1.dst,
+                store_errors=(epr0.store_errors[0], epr1.store_errors[1]),
+            ),
         )
         ne.orig_eprs = orig_eprs
         return ne
 
     @staticmethod
     @abstractmethod
-    def _make_swapped(epr0: EntanglementT, epr1: EntanglementT, **kwargs: Unpack[EntanglementInitKwargs]) -> EntanglementT:
+    def _make_swapped(epr0, epr1, **kwargs: Unpack[EntanglementInitKwargs]) -> "Entanglement":
         """
         Create a new entanglement that is the result of successful swapping between epr0 and epr1.
         Most properties are provided in kwargs or assigned subsequently.
         Subclass implementation should calculate the fidelity of new entanglement.
         """
-        pass
 
-    def purify(self, epr1: EntanglementT, *, now: Time) -> bool:
+    def purify(self, epr1: Self, *, now: Time) -> bool:
         """
         Perform purification on `self` consuming `epr1`.
 
@@ -236,7 +236,7 @@ class Entanglement(Generic[EntanglementT], QuantumModel):
         return ok
 
     @abstractmethod
-    def _do_purify(self, epr1: EntanglementT) -> bool:
+    def _do_purify(self, epr1) -> bool:
         pass
 
     def to_qubits(self) -> tuple[Qubit, Qubit]:

@@ -6,10 +6,10 @@ from mqns.models.epr import Entanglement
 from mqns.network.proactive.fib import FibEntry
 from mqns.utils import rng
 
-MemoryEprTuple = tuple[MemoryQubit, Entanglement]
-MemoryEprIterator = Iterator[MemoryEprTuple]
+type MemoryEprTuple = tuple[MemoryQubit, Entanglement]
+type MemoryEprIterator = Iterator[MemoryEprTuple]
 
-SelectPurifQubit = (
+type SelectPurifQubit = (
     Callable[
         [MemoryQubit, FibEntry, QNode, list[MemoryEprTuple]],
         MemoryEprTuple,

@@ -31,7 +31,7 @@ from mqns.utils import log, rng
 
 from examples_common.plotting import Axes1D, mpl, plt, plt_save
 from examples_common.stats import gather_etg_decoh
-from examples_common.topo_linear import build_topology
+from examples_common.topo_linear import CTRL_DELAY, build_topology
 
 log.set_default_level("CRITICAL")
 
@@ -63,7 +63,7 @@ def run_simulation(
     )
     net = QuantumNetwork(topo)
 
-    s = Simulator(0, sim_duration + 5e-06, accuracy=1000000, install_to=(log, net))
+    s = Simulator(0, sim_duration + CTRL_DELAY, accuracy=1000000, install_to=(log, net))
     s.run()
 
     #### get stats
@@ -74,7 +74,7 @@ def run_simulation(
     return e2e_rate, decoh_ratio, mean_fidelity
 
 
-Results = dict[str, dict[str, dict[float, tuple[float, float]]]]
+type Results = dict[str, dict[str, dict[float, tuple[float, float]]]]
 
 
 def plot_results(results: Results) -> None:

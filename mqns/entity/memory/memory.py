@@ -40,7 +40,7 @@ from mqns.entity.memory.event import (
 from mqns.entity.memory.memory_qubit import MemoryQubit, PathDirection, QubitState
 from mqns.entity.node import QNode
 from mqns.entity.qchannel import QuantumChannel
-from mqns.models.core import QuantumModel, QuantumModelT
+from mqns.models.core import QuantumModel
 from mqns.models.delay import DelayInput, parse_delay
 from mqns.models.epr import Entanglement
 from mqns.models.error import DephaseErrorModel, ErrorModel
@@ -142,21 +142,21 @@ class QuantumMemory(Entity):
         pass
 
     @overload
-    def find(
+    def find[M: QuantumModel](
         self,
-        predicate: Callable[[MemoryQubit, QuantumModelT], bool],
+        predicate: Callable[[MemoryQubit, M], bool],
         *,
         qchannel: QuantumChannel | None = None,
-        has: type[QuantumModelT],
-    ) -> Iterator[tuple[MemoryQubit, QuantumModelT]]:
+        has: type[M],
+    ) -> Iterator[tuple[MemoryQubit, M]]:
         pass
 
-    def find(
+    def find[M: QuantumModel](
         self,
         predicate: Callable[[MemoryQubit, Any], bool],
         *,
         qchannel: QuantumChannel | None = None,
-        has: type[QuantumModelT] | None = None,
+        has: type[M] | None = None,
     ) -> Iterator[Any]:
         """
         Iterate over qubits and associated data that satisfy a predicate.
@@ -313,15 +313,15 @@ class QuantumMemory(Entity):
         pass
 
     @overload
-    def read(
+    def read[M: QuantumModel](
         self,
         key: int | str,
         *,
         must: Literal[True] = True,
-        has: type[QuantumModelT],
+        has: type[M],
         set_fidelity=False,
         remove: bool | QuantumModel = False,
-    ) -> tuple[MemoryQubit, QuantumModelT]:
+    ) -> tuple[MemoryQubit, M]:
         """
         Retrieve a qubit and associated data.
 
@@ -342,12 +342,12 @@ class QuantumMemory(Entity):
         """
         pass
 
-    def read(
+    def read[M: QuantumModel](
         self,
         key: int | str,
         *,
         must=False,
-        has: type[QuantumModelT] | None = None,
+        has: type[M] | None = None,
         set_fidelity=False,
         remove: bool | QuantumModel = False,
     ):

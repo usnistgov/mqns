@@ -7,7 +7,7 @@ from mqns.network.proactive import ProactiveForwarder
 from mqns.simulator import Simulator
 from mqns.utils import log, rng
 
-from examples_common.topo_linear import build_topology
+from examples_common.topo_linear import CTRL_DELAY, build_topology
 
 
 # Command line arguments
@@ -39,7 +39,7 @@ def run_simulation(t_cohere: float, seed: int):
     )
     net = QuantumNetwork(topo)
 
-    s = Simulator(0, sim_duration + 5e-06, accuracy=1000000, install_to=(log, net))
+    s = Simulator(0, sim_duration + CTRL_DELAY, accuracy=1000000, install_to=(log, net))
     s.run()
 
     #### get stats

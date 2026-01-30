@@ -10,7 +10,7 @@ import numpy as np
 ATOL = 1e-9
 """Absolute numerical tolerance for floating-point calculations."""
 
-QubitState = np.ndarray[tuple[int, Literal[1]], np.dtype[np.complex128]]
+type QubitState = np.ndarray[tuple[int, Literal[1]], np.dtype[np.complex128]]
 """Qubit state vector for N qubits, shape is (2**N, 1)."""
 
 
@@ -75,7 +75,7 @@ def qubit_state_equal(s0: QubitState, s1: QubitState) -> bool:
     return np.allclose(s0, s1, atol=ATOL)
 
 
-QubitRho = np.ndarray[tuple[int, int], np.dtype[np.complex128]]
+type QubitRho = np.ndarray[tuple[int, int], np.dtype[np.complex128]]
 """Qubit density matrix for N qubits, shape is (2**N, 2**N)."""
 
 

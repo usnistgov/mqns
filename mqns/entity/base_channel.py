@@ -1,7 +1,7 @@
-from typing import Generic, TypedDict, TypeVar, Unpack, override
+from typing import TypedDict, Unpack, override
 
 from mqns.entity.entity import Entity
-from mqns.entity.node import NodeT
+from mqns.entity.node import Node
 from mqns.models.delay import DelayInput, parse_delay
 from mqns.simulator import Simulator, Time
 from mqns.utils import log, rng
@@ -35,10 +35,10 @@ class BaseChannelInitKwargs(TypedDict, total=False):
     """Packet/photon loss probability. 0 means never, 1 means always."""
 
 
-class BaseChannel(Entity, Generic[NodeT]):
+class BaseChannel[N: Node](Entity):
     def __init__(self, name: str, **kwargs: Unpack[BaseChannelInitKwargs]):
         super().__init__(name=name)
-        self.node_list: list[NodeT] = []
+        self.node_list: list[N] = []
         self._next_send_time: Time
 
         self.bandwidth = kwargs.get("bandwidth", 0)
@@ -60,7 +60,7 @@ class BaseChannel(Entity, Generic[NodeT]):
         super().install(simulator)
         self._next_send_time = simulator.ts
 
-    def _send(self, *, packet_repr: str, packet_len: int, next_hop: NodeT) -> tuple[bool, Time]:
+    def _send(self, *, packet_repr: str, packet_len: int, next_hop: N) -> tuple[bool, Time]:
         now = self.simulator.tc
 
         if next_hop not in self.node_list:
@@ -87,7 +87,7 @@ class BaseChannel(Entity, Generic[NodeT]):
         recv_time = send_time + self.delay.calculate()
         return False, recv_time
 
-    def find_peer(self, own: NodeT) -> NodeT:
+    def find_peer(self, own: N) -> N:
         """
         Return the node in node_list that is not ``own``.
 
@@ -105,7 +105,3 @@ class BaseChannel(Entity, Generic[NodeT]):
 
 class NextHopNotConnectionException(Exception):
     pass
-
-
-ChannelT = TypeVar("ChannelT", bound=BaseChannel)
-"""Either ClassicChannel or QuantumChannel."""

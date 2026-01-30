@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 
 class MuxSchemeFibBase(MuxScheme):
-    SelectSwapQubit = Callable[["ProactiveForwarder", MemoryEprTuple, FibEntry, list[MemoryEprTuple]], MemoryEprTuple]
+    type SelectSwapQubit = Callable[["ProactiveForwarder", MemoryEprTuple, FibEntry, list[MemoryEprTuple]], MemoryEprTuple]
 
     SelectSwapQubit_random: SelectSwapQubit = lambda _fw, _mt, _fe, candidates: candidates[rng.choice(len(candidates))]
 

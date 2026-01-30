@@ -25,16 +25,14 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from mqns.entity.node.app import Application, ApplicationT, NodeT
+from mqns.entity.node.app import Application
 from mqns.entity.node.controller import Controller
 from mqns.entity.node.node import Node
 from mqns.entity.node.qnode import QNode
 
 __all__ = [
     "Application",
-    "ApplicationT",
     "Controller",
     "Node",
-    "NodeT",
     "QNode",
 ]

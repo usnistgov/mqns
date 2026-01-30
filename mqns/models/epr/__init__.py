@@ -16,7 +16,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from mqns.models.epr.bell import BellStateEntanglement
-from mqns.models.epr.entanglement import Entanglement, EntanglementInitKwargs, EntanglementT
+from mqns.models.epr.entanglement import Entanglement, EntanglementInitKwargs
 from mqns.models.epr.mixed import MixedStateEntanglement
 from mqns.models.epr.werner import WernerStateEntanglement
 
@@ -24,7 +24,6 @@ __all__ = [
     "BellStateEntanglement",
     "Entanglement",
     "EntanglementInitKwargs",
-    "EntanglementT",
     "MixedStateEntanglement",
     "WernerStateEntanglement",
 ]

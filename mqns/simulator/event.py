@@ -17,7 +17,7 @@
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from typing import Any, TypeVar, override
+from typing import Any, override
 
 from mqns.simulator.time import Time
 
@@ -77,10 +77,6 @@ class Event(ABC):
 
     def __repr__(self) -> str:
         return f"Event({self.name or ''})"
-
-
-EventT = TypeVar("EventT", bound=Event)
-"""Represents an event type."""
 
 
 class WrapperEvent(Event):

@@ -20,11 +20,12 @@ from typing import Any, override
 import numpy as np
 from scipy.sparse.csgraph import dijkstra
 
-from mqns.entity.base_channel import ChannelT, NodeT
+from mqns.entity.base_channel import BaseChannel
+from mqns.entity.node import Node
 from mqns.network.route.route import MetricFunc, RouteAlgorithm, RouteQueryResult, make_csr
 
 
-class DijkstraRouteAlgorithm(RouteAlgorithm[NodeT, ChannelT]):
+class DijkstraRouteAlgorithm[N: Node, C: BaseChannel](RouteAlgorithm[N, C]):
     """
     Dijkstra algorithm.
 
@@ -32,7 +33,7 @@ class DijkstraRouteAlgorithm(RouteAlgorithm[NodeT, ChannelT]):
     """
 
     @override
-    def __init__(self, name="dijkstra", metric_func: MetricFunc | None = None) -> None:
+    def __init__(self, name="dijkstra", metric_func: MetricFunc[C] | None = None) -> None:
         """
         Args:
             name: Name of the routing algorithm (default: "dijkstra").
@@ -40,10 +41,10 @@ class DijkstraRouteAlgorithm(RouteAlgorithm[NodeT, ChannelT]):
                 Defaults to a constant function m(l) = 1.
         """
         super().__init__(name, metric_func)
-        self.route_table: dict[NodeT, dict[NodeT, tuple[float, list[NodeT]]]] = {}
+        self.route_table: dict[N, dict[N, tuple[float, list[N]]]] = {}
 
     @override
-    def build(self, nodes: list[NodeT], channels: list[ChannelT]):
+    def build(self, nodes: list[N], channels: list[C]):
         # build adjacency matrix
         csr_adj = make_csr(nodes, channels, self.metric_func)
 
@@ -56,7 +57,7 @@ class DijkstraRouteAlgorithm(RouteAlgorithm[NodeT, ChannelT]):
         )
 
         # Reconstruct path helper
-        def _reconstruct_path(src_idx: int, dst_idx: int) -> list[NodeT]:
+        def _reconstruct_path(src_idx: int, dst_idx: int) -> list[N]:
             # Backtrack from dst to src using predecessors
             path_idx: list[int] = []
             u = dst_idx
@@ -70,7 +71,7 @@ class DijkstraRouteAlgorithm(RouteAlgorithm[NodeT, ChannelT]):
 
         # For each source node, create the per-destination entry
         for src_idx, src_node in enumerate(nodes):
-            dest_entry: dict[NodeT, Any] = {}
+            dest_entry: dict[N, Any] = {}
 
             for dst_idx, dst_node in enumerate(nodes):
                 if src_idx == dst_idx:
@@ -88,7 +89,7 @@ class DijkstraRouteAlgorithm(RouteAlgorithm[NodeT, ChannelT]):
             self.route_table[src_node] = dest_entry
 
     @override
-    def query(self, src: NodeT, dst: NodeT) -> list[RouteQueryResult]:
+    def query(self, src: N, dst: N) -> list[RouteQueryResult]:
         ls = self.route_table.get(src, None)
         if ls is None:
             return []

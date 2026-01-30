@@ -49,7 +49,7 @@ _w_1 = _fidelity_to_w(1.0)
 
 
 @final
-class WernerStateEntanglement(Entanglement["WernerStateEntanglement"]):
+class WernerStateEntanglement(Entanglement):
     """A pair of entangled qubits in Werner State with a hidden-variable."""
 
     @overload

@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from mqns.network.network import QuantumNetwork
 
 
-AttributionFunc = Callable[[Simulator, "QuantumNetwork|None", Event], Any]
+type AttributionFunc = Callable[[Simulator, "QuantumNetwork|None", Event], Any]
 """Callback function to calculate an attribution."""
 
 

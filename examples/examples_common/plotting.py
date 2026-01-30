@@ -21,22 +21,22 @@ Default is yes.
 Disable the display window with MQNS_PLTSHOW=0 environment variable.
 """
 
-Axes1D = Sequence[Axes]
+type Axes1D = Sequence[Axes]
 """
 1-dimensional array of Axes.
 """
 
-Axes2D = Mapping[tuple[int, int], Axes]
+type Axes2D = Mapping[tuple[int, int], Axes]
 """
 2-dimensional array of Axes.
 """
 
-SubFigure1D = Sequence[SubFigure]
+type SubFigure1D = Sequence[SubFigure]
 """
 1-dimensional array of SubFigure.
 """
 
-SubFigure2D = Mapping[tuple[int, int], SubFigure]
+type SubFigure2D = Mapping[tuple[int, int], SubFigure]
 """
 2-dimensional array of SubFigure.
 """

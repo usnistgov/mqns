@@ -18,23 +18,19 @@
 from abc import ABC
 from collections import defaultdict
 from collections.abc import Callable, Iterable
-from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast
+from typing import TYPE_CHECKING, Any, cast
 
-from mqns.simulator import Event, EventT
+from mqns.simulator import Event
 
 if TYPE_CHECKING:
     from mqns.entity.node.node import Node
 
 
-NodeT = TypeVar("NodeT", bound="Node")
-"""Type argument for Node or its subclass."""
-
-
-class Application(ABC, Generic[NodeT]):
+class Application[N: "Node"](ABC):
     """
     Application deployed on a node.
 
-    ``NodeT`` parameter indicates which ``Node`` subclass is required for installing this application.
+    ``N`` type parameter indicates which ``Node`` subclass is required for installing this application.
     """
 
     def __init__(self):
@@ -46,22 +42,22 @@ class Application(ABC, Generic[NodeT]):
         """
         Install this application onto the node.
 
-        Base class implementation does not verify ``node`` matches ``NodeT`` type.
-        If ``NodeT`` is a subclass such as ``QNode``, subclass should override this method to
+        Base class implementation does not verify ``node`` matches ``N`` type parameter.
+        If ``N`` type parameter is a subclass such as ``QNode``, subclass should override this method to
         invoke ``self._application_install()`` with an appropriate ``node_type``.
         """
         from mqns.entity.node.node import Node  # noqa: PLC0415
 
         self._application_install(node, cast(Any, Node))
 
-    def _application_install(self, node: "Node", node_type: type[NodeT]) -> None:
+    def _application_install(self, node: "Node", node_type: type[N]) -> None:
         """
         Part of ``install`` method logic.
         """
         self.simulator = node.simulator
         """Global simulator instance."""
         assert isinstance(node, node_type)
-        self.node: NodeT = node
+        self.node: N = node
         """Node that owns this application."""
 
     def handle(self, event: Event) -> bool | None:
@@ -84,10 +80,10 @@ class Application(ABC, Generic[NodeT]):
                     return skip
         return False
 
-    def add_handler(
+    def add_handler[E: Event](
         self,
-        handler: Callable[[EventT], bool | None],
-        event_type: type[EventT] | Iterable[type[EventT]],
+        handler: Callable[[E], bool | None],
+        event_type: type[E] | Iterable[type[E]],
         event_by: Iterable[Any] | None = None,
     ):
         """
@@ -101,10 +97,6 @@ class Application(ABC, Generic[NodeT]):
         ets = [event_type] if isinstance(event_type, type) else event_type
         eb = None if event_by is None else set(event_by)
         eh = cast(Any, handler)
-        for et in cast(Iterable[type[EventT]], ets):
+        for et in cast(Iterable[type[E]], ets):
             assert getattr(et, "__final__", False) is True, f"event type {et} must be marked @final"
             self._dispatch_table[et].append((eb, eh))
-
-
-ApplicationT = TypeVar("ApplicationT", bound=Application)
-"""Represents an application type."""

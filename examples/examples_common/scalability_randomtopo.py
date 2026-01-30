@@ -99,7 +99,7 @@ def build_network(args: RunArgs) -> QuantumNetwork:
     return net
 
 
-RequestStats = tuple[float, float]
+type RequestStats = tuple[float, float]
 """Per-request statistics: throughput, average fidelity."""
 
 

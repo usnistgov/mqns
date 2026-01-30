@@ -32,7 +32,7 @@ class MuxSchemeDynamicEpr(MuxSchemeFibBase, MuxSchemeDynamicBase):
     Dynamic EPR Affection multiplexing scheme.
     """
 
-    SelectPath = Callable[[Entanglement, Fib, list[int]], int | FibEntry]
+    type SelectPath = Callable[[Entanglement, Fib, list[int]], int | FibEntry]
     """
     Path selection strategy.
     Function to select a path for an elementary entanglement.

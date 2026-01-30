@@ -29,11 +29,11 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, cast, override
 
 from mqns.entity.entity import Entity
-from mqns.entity.node.app import Application, ApplicationT
+from mqns.entity.node.app import Application
 from mqns.simulator import Event, Simulator
 
 if TYPE_CHECKING:
-    from mqns.entity.base_channel import ChannelT
+    from mqns.entity.base_channel import BaseChannel
     from mqns.entity.cchannel import ClassicChannel
     from mqns.network.network import QuantumNetwork, TimingMode
 
@@ -105,7 +105,7 @@ class Node(Entity):
         else:
             self.apps.append(app)
 
-    def get_apps(self, app_type: type[ApplicationT]) -> list[ApplicationT]:
+    def get_apps[A: Application](self, app_type: type[A]) -> list[A]:
         """
         Retrieve applications of given type.
 
@@ -114,7 +114,7 @@ class Node(Entity):
         """
         return [app for app in self.apps if isinstance(app, app_type)]
 
-    def get_app(self, app_type: type[ApplicationT]) -> ApplicationT:
+    def get_app[A: Application](self, app_type: type[A]) -> A:
         """
         Retrieve an application of given type.
         There must be exactly one instance of this application.
@@ -132,16 +132,14 @@ class Node(Entity):
                 raise IndexError("node does not have exactly one instance of {app_type}")
             return apps[0]
 
-        return cast(ApplicationT, self._app_by_type[app_type])
+        return cast(A, self._app_by_type[app_type])
 
-    def _add_channel(self, channel: "ChannelT", channels: list["ChannelT"]) -> None:
+    def _add_channel[C: "BaseChannel"](self, channel: C, channels: list[C]) -> None:
         self.ensure_not_installed()
         channel.node_list.append(self)
         channels.append(channel)
 
-    def _install_channels(
-        self, typ: type["ChannelT"], channels: list["ChannelT"], by_neighbor: dict["Node", "ChannelT"]
-    ) -> None:
+    def _install_channels[C: "BaseChannel"](self, typ: type[C], channels: list[C], by_neighbor: dict["Node", C]) -> None:
         for ch in channels:
             assert isinstance(ch, typ)
             for dst in ch.node_list:
@@ -150,7 +148,7 @@ class Node(Entity):
             ch.install(self.simulator)
 
     @staticmethod
-    def _get_channel(dst: "Node", by_neighbor: dict["Node", "ChannelT"]) -> "ChannelT":
+    def _get_channel[C: "BaseChannel"](dst: "Node", by_neighbor: dict["Node", C]) -> C:
         return by_neighbor[dst]
 
     def add_cchannel(self, cchannel: "ClassicChannel"):

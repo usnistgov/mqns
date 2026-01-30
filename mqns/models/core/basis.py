@@ -70,5 +70,5 @@ BASIS_Y = Basis(
 )
 """Measurement basis Y: projects onto ``|R>`` and ``|L>``.."""
 
-MeasureOutcome = Literal[0, 1]
+type MeasureOutcome = Literal[0, 1]
 """Measurement outcome."""

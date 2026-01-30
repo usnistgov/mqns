@@ -3,7 +3,7 @@ from typing import NotRequired, TypedDict
 
 from mqns.models.error.error import ErrorModel, PerfectErrorModel
 
-ErrorModeConstructor = Callable[[], ErrorModel]
+type ErrorModeConstructor = Callable[[], ErrorModel]
 
 
 class ErrorModelInputPSurvival(TypedDict):
@@ -24,7 +24,7 @@ class ErrorModelInputLength(TypedDict):
     rate: float
 
 
-ErrorModelInputDict = ErrorModelInputPSurvival | ErrorModelInputPError | ErrorModelInputTime | ErrorModelInputLength
+type ErrorModelInputDict = ErrorModelInputPSurvival | ErrorModelInputPError | ErrorModelInputTime | ErrorModelInputLength
 
 
 def _apply_input_dict(error: ErrorModel, d: ErrorModelInputDict, dflt_t: float):
@@ -43,7 +43,7 @@ def _apply_input_dict(error: ErrorModel, d: ErrorModelInputDict, dflt_t: float):
     return error
 
 
-ErrorModelInput = ErrorModel | tuple[ErrorModel | ErrorModeConstructor, ErrorModelInputDict] | ErrorModelInputDict | None
+type ErrorModelInput = ErrorModel | tuple[ErrorModel | ErrorModeConstructor, ErrorModelInputDict] | ErrorModelInputDict | None
 """
 Input to ``parse_error``.
 

@@ -27,7 +27,7 @@
 
 from typing import cast, overload
 
-from mqns.entity.base_channel import ChannelT
+from mqns.entity.base_channel import BaseChannel
 from mqns.entity.cchannel import ClassicChannel
 from mqns.entity.node import Controller, Node, QNode
 from mqns.entity.qchannel import QuantumChannel
@@ -40,7 +40,7 @@ from mqns.simulator import Simulator
 from mqns.utils import rng
 
 
-def _save_channel(l: list[ChannelT], d: dict[tuple[str, str], ChannelT], ch: ChannelT):
+def _save_channel[C: BaseChannel](l: list[C], d: dict[tuple[str, str], C], ch: C):
     l.append(ch)
     if len(ch.node_list) != 2:
         return
@@ -48,7 +48,7 @@ def _save_channel(l: list[ChannelT], d: dict[tuple[str, str], ChannelT], ch: Cha
     d[(a, b)] = ch
 
 
-def _get_channel(l: list[ChannelT], d: dict[tuple[str, str], ChannelT], q: tuple[str, ...]):
+def _get_channel[C: BaseChannel](l: list[C], d: dict[tuple[str, str], C], q: tuple[str, ...]):
     if len(q) == 1:
         name = q[0]
         for ch in l:

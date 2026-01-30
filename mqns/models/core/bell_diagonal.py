@@ -8,7 +8,7 @@ import numpy as np
 
 from mqns.models.core.state import ATOL
 
-BellDiagonalProbV = np.ndarray[tuple[Literal[4]], np.dtype[np.float64]]
+type BellDiagonalProbV = np.ndarray[tuple[Literal[4]], np.dtype[np.float64]]
 """
 Bell-Diagonal probability vector.
 
@@ -22,7 +22,7 @@ Elements:
 
 def normalize_bell_diagonal_probv(probv: BellDiagonalProbV) -> BellDiagonalProbV:
     """
-    Normalize Bell-Diagonal probability vector.
+    Normalize Bell-Diagonal probability vector in-place.
     """
     total = np.sum(probv)
     if total <= ATOL:  # avoid divide-by-zero
@@ -39,7 +39,7 @@ def make_bell_diagonal_probv(i: float, z: float, x: float, y: float) -> BellDiag
     return normalize_bell_diagonal_probv(np.array((i, z, x, y), dtype=np.float64))
 
 
-PauliTransferMat = np.ndarray[tuple[Literal[4], Literal[4]], np.dtype[np.float64]]
+type PauliTransferMat = np.ndarray[tuple[Literal[4], Literal[4]], np.dtype[np.float64]]
 """
 Pauli Transfer Matrix (PTM).
 """

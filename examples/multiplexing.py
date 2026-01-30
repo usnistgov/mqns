@@ -40,6 +40,7 @@ log.set_default_level("CRITICAL")
 # Paper-like parameters
 # ------------------------------
 SEED_BASE = 100
+CTRL_DELAY = 5e-06
 sim_duration = 3.0
 
 fiber_alpha = 0.17  # dB/km
@@ -222,7 +223,7 @@ def build_topology(t_cohere: float, mux: MuxScheme, active_flows: list[tuple[str
 
     qchannels = [qch(a, b) for a, b in QCHANNELS]
     cchannels = [TopoCChannel({"node1": a, "node2": b, "parameters": {"length": KM20}}) for a, b in CCHANNELS] + [
-        TopoCChannel({"node1": "ctrl", "node2": n, "parameters": {"length": 1.0}}) for n in "ABCDEFJKLMGHI"
+        TopoCChannel({"node1": "ctrl", "node2": n, "parameters": {"delay": CTRL_DELAY}}) for n in "ABCDEFJKLMGHI"
     ]
 
     return CustomTopology(
@@ -254,7 +255,7 @@ def run_simulation(t_cohere: float, mux: MuxScheme, seed: int, active_flows: lis
     topo = build_topology(t_cohere, mux, active_flows)
     net = QuantumNetwork(topo)
 
-    s = Simulator(0, sim_duration + 5e-06, accuracy=1000000, install_to=(log, net))
+    s = Simulator(0, sim_duration + CTRL_DELAY, accuracy=1000000, install_to=(log, net))
     s.run()
 
     # Collect per-source stats in fixed order [AK, BL, CI, DH, GM]

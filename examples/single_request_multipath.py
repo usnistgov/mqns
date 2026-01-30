@@ -10,6 +10,7 @@ from examples_common.stats import gather_etg_decoh
 log.set_default_level("DEBUG")
 
 SEED_BASE = 100
+CTRL_DELAY = 5e-6
 
 # parameters
 sim_duration = 3
@@ -113,13 +114,13 @@ def build_topology() -> Topology:
                 {"node1": "R4", "node2": "D", "parameters": {"length": ch_R4_D}},
                 {"node1": "S", "node2": "R5", "parameters": {"length": ch_S_R5}},
                 {"node1": "R5", "node2": "R3", "parameters": {"length": ch_R5_R3}},
-                {"node1": "ctrl", "node2": "S", "parameters": {"length": 1.0}},
-                {"node1": "ctrl", "node2": "R1", "parameters": {"length": 1.0}},
-                {"node1": "ctrl", "node2": "R2", "parameters": {"length": 1.0}},
-                {"node1": "ctrl", "node2": "R3", "parameters": {"length": 1.0}},
-                {"node1": "ctrl", "node2": "R4", "parameters": {"length": 1.0}},
-                {"node1": "ctrl", "node2": "R5", "parameters": {"length": 1.0}},
-                {"node1": "ctrl", "node2": "D", "parameters": {"length": 1.0}},
+                {"node1": "ctrl", "node2": "S", "parameters": {"delay": CTRL_DELAY}},
+                {"node1": "ctrl", "node2": "R1", "parameters": {"delay": CTRL_DELAY}},
+                {"node1": "ctrl", "node2": "R2", "parameters": {"delay": CTRL_DELAY}},
+                {"node1": "ctrl", "node2": "R3", "parameters": {"delay": CTRL_DELAY}},
+                {"node1": "ctrl", "node2": "R4", "parameters": {"delay": CTRL_DELAY}},
+                {"node1": "ctrl", "node2": "R5", "parameters": {"delay": CTRL_DELAY}},
+                {"node1": "ctrl", "node2": "D", "parameters": {"delay": CTRL_DELAY}},
             ],
             "controller": {
                 "name": "ctrl",
@@ -152,7 +153,7 @@ net = QuantumNetwork(
     route=YenRouteAlgorithm(),  # Yen's algo is set here!
 )
 
-s = Simulator(0, sim_duration + 5e-06, accuracy=1000000, install_to=(log, net))
+s = Simulator(0, sim_duration + CTRL_DELAY, accuracy=1000000, install_to=(log, net))
 s.run()
 
 #### get stats

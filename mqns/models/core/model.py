@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, TypeVar
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from mqns.models.error import ErrorModel
@@ -16,6 +16,3 @@ class QuantumModel(ABC):
         Args:
             error: error model with assigned error probability.
         """
-
-
-QuantumModelT = TypeVar("QuantumModelT", bound=QuantumModel)

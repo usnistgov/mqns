@@ -28,7 +28,7 @@ from mqns.utils import log, rng
 
 from examples_common.plotting import plt, plt_save
 from examples_common.stats import gather_etg_decoh
-from examples_common.topo_linear import build_topology
+from examples_common.topo_linear import CTRL_DELAY, build_topology
 
 _ = (LinkArchDimBk, LinkArchSim, LinkArchSr)
 
@@ -138,7 +138,7 @@ channel_capacity_values = [CHANNEL_CAPACITY]  # include alternative allocations 
 
 
 # What to measure:
-MetricName = Literal["throughput", "mean_fidelity", "expired_ratio"]
+type MetricName = Literal["throughput", "mean_fidelity", "expired_ratio"]
 MEASURES: list[MetricName] = ["throughput", "mean_fidelity", "expired_ratio"]
 
 
@@ -184,7 +184,7 @@ def run_simulation(
     net = QuantumNetwork(topo)
 
     # Run simulator for SIM_DURATION + time to install paths.
-    s = Simulator(0, SIM_DURATION + 5e-06, accuracy=SIM_ACCURACY, install_to=(log, net))
+    s = Simulator(0, SIM_DURATION + CTRL_DELAY, accuracy=SIM_ACCURACY, install_to=(log, net))
     s.run()
 
     # ── Extract metrics ───────────────────────────────────────────────────────

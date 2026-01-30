@@ -58,7 +58,7 @@ from mqns.utils import log, rng
 
 from examples_common.plotting import Axes2D, plt, plt_save
 from examples_common.stats import gather_etg_decoh
-from examples_common.topo_linear import build_topology
+from examples_common.topo_linear import CTRL_DELAY, build_topology
 
 log.set_default_level("CRITICAL")
 
@@ -185,7 +185,7 @@ def run_simulation(p: ParameterSet, seed: int) -> tuple[float, float]:
     topo = p.build_topology()
     net = QuantumNetwork(topo)
 
-    s = Simulator(0, p.sim_duration + 5e-06, accuracy=1000000, install_to=(log, net))
+    s = Simulator(0, p.sim_duration + CTRL_DELAY, accuracy=1000000, install_to=(log, net))
     s.run()
 
     #### get stats

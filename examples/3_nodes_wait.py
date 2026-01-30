@@ -17,7 +17,7 @@ from mqns.simulator import Simulator
 from mqns.utils import log, rng
 
 from examples_common.plotting import Axes1D, SubFigure1D, plt, plt_save
-from examples_common.topo_linear import build_topology
+from examples_common.topo_linear import CTRL_DELAY, build_topology
 
 log.set_default_level("CRITICAL")
 
@@ -52,7 +52,7 @@ def run_simulation(seed: int, t_cohere: float, t_wait: float):
     waitR = CutoffSchemeWaitTime.of(fwR)
     waitR.cnt.enable_collect_all()
 
-    s = Simulator(0, sim_duration + 5e-06, accuracy=SIMULATOR_ACCURACY, install_to=(log, net))
+    s = Simulator(0, sim_duration + CTRL_DELAY, accuracy=SIMULATOR_ACCURACY, install_to=(log, net))
     s.run()
 
     rate = fwS.cnt.n_consumed / sim_duration

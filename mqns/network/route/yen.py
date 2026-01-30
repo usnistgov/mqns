@@ -21,11 +21,12 @@ from typing import override
 import numpy as np
 from scipy.sparse.csgraph import yen
 
-from mqns.entity.base_channel import ChannelT, NodeT
+from mqns.entity.base_channel import BaseChannel
+from mqns.entity.node import Node
 from mqns.network.route.route import MetricFunc, RouteAlgorithm, RouteQueryResult, make_csr
 
 
-class YenRouteAlgorithm(RouteAlgorithm[NodeT, ChannelT]):
+class YenRouteAlgorithm[N: Node, C: BaseChannel](RouteAlgorithm[N, C]):
     """
     Yen's algorithm.
 
@@ -44,15 +45,15 @@ class YenRouteAlgorithm(RouteAlgorithm[NodeT, ChannelT]):
         """
         super().__init__(name, metric_func)
         self.k_paths = k_paths
-        self.route_table: dict[NodeT, dict[NodeT, list[tuple[float, list[NodeT]]]]] = {}
+        self.route_table: dict[N, dict[N, list[tuple[float, list[N]]]]] = {}
 
     @override
-    def build(self, nodes: list[NodeT], channels: list[ChannelT]):
+    def build(self, nodes: list[N], channels: list[C]):
         # build adjacency matrix
         csr_adj = make_csr(nodes, channels, self.metric_func)
 
         # Helper: reconstruct one path given a predecessor row from yen()
-        def _reconstruct_path(pred_row: np.ndarray, src_idx: int, dst_idx: int) -> list[NodeT]:
+        def _reconstruct_path(pred_row: np.ndarray, src_idx: int, dst_idx: int) -> list[N]:
             path_idx: list[int] = []
             u = dst_idx
             # SciPy uses -9999 as sentinel for "no predecessor"
@@ -92,7 +93,7 @@ class YenRouteAlgorithm(RouteAlgorithm[NodeT, ChannelT]):
                     self.route_table[src][dst] = []
                     continue
 
-                route_list: list[tuple[float, list[NodeT]]] = []
+                route_list: list[tuple[float, list[N]]] = []
                 for i in range(dist_array.shape[0]):
                     cost = float(dist_array[i])
                     pred_row = predecessors[i]
@@ -102,7 +103,7 @@ class YenRouteAlgorithm(RouteAlgorithm[NodeT, ChannelT]):
                 self.route_table[src][dst] = route_list
 
     @override
-    def query(self, src: NodeT, dst: NodeT) -> list[RouteQueryResult]:
+    def query(self, src: N, dst: N) -> list[RouteQueryResult]:
         paths = self.route_table.get(src, {}).get(dst, [])
         results: list[RouteQueryResult] = []
         for metric, path in paths:

@@ -21,7 +21,7 @@ from mqns.models.epr.entanglement import Entanglement, EntanglementInitKwargs
 
 
 @final
-class BellStateEntanglement(Entanglement["BellStateEntanglement"]):
+class BellStateEntanglement(Entanglement):
     """`BellStateEntanglement` is the ideal max entangled qubits. Its fidelity is always 1."""
 
     @property

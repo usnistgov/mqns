@@ -2,7 +2,7 @@ import pytest
 
 from mqns.entity.qchannel import LinkArch, LinkArchDimBk, LinkArchDimBkSeq, LinkArchDimDual, LinkArchSim, LinkArchSr
 
-DurationMultipliers = tuple[float, float]
+type DurationMultipliers = tuple[float, float]
 """
 Link architecture duration multiplier: (m_l, m_0).
 The duration is: (m_l * tau_l + m_0 * tau_0).

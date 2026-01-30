@@ -2,8 +2,8 @@ from typing import Literal, NotRequired, TypedDict
 
 from mqns.simulator import Time
 
-SwapSequence = list[int]
-MultiplexingVector = list[tuple[int, int]]
+type SwapSequence = list[int]
+type MultiplexingVector = list[tuple[int, int]]
 
 
 class PathInstructions(TypedDict):

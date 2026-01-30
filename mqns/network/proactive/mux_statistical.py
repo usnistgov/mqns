@@ -96,11 +96,11 @@ class MuxSchemeStatistical(MuxSchemeDynamicBase):
     Statistical multiplexing scheme.
     """
 
-    SelectSwapQubit = Callable[["ProactiveForwarder", MemoryEprTuple, list[MemoryEprTuple]], MemoryEprTuple]
+    type SelectSwapQubit = Callable[["ProactiveForwarder", MemoryEprTuple, list[MemoryEprTuple]], MemoryEprTuple]
 
     SelectSwapQubit_random: SelectSwapQubit = lambda _fw, _mt, candidates: candidates[rng.choice(len(candidates))]
 
-    SelectPath = Callable[["ProactiveForwarder", Entanglement, Entanglement, list[int]], int | FibEntry]
+    type SelectPath = Callable[["ProactiveForwarder", Entanglement, Entanglement, list[int]], int | FibEntry]
 
     SelectPath_random: SelectPath = lambda _fw, _e0, _e1, candidates: candidates[rng.choice(len(candidates))]
 

@@ -28,12 +28,13 @@
 import copy
 import itertools
 from abc import ABC, abstractmethod
+from collections.abc import Iterable
 from enum import Enum
 from typing import TypedDict, Unpack
 
 from mqns.entity.cchannel import ClassicChannel, ClassicChannelInitKwargs
 from mqns.entity.memory import QuantumMemory, QuantumMemoryInitKwargs
-from mqns.entity.node import Application, Controller, NodeT, QNode
+from mqns.entity.node import Application, Controller, Node, QNode
 from mqns.entity.qchannel import QuantumChannel, QuantumChannelInitKwargs
 
 
@@ -100,7 +101,11 @@ class Topology(ABC):
             node.memory = QuantumMemory(f"{node.name}.memory", **self.memory_args)
 
     def add_cchannels(
-        self, *, classic_topo: ClassicTopology = ClassicTopology.Empty, nl: list[QNode] = [], ll: list[QuantumChannel] = []
+        self,
+        *,
+        classic_topo: ClassicTopology = ClassicTopology.Empty,
+        nl: Iterable[QNode] = [],
+        ll: Iterable[QuantumChannel] = [],
     ) -> list[ClassicChannel]:
         """Build classic network topology
 
@@ -131,7 +136,7 @@ class Topology(ABC):
 
         return cchannel_list
 
-    def connect_controller(self, nl: list[NodeT], **kwargs: Unpack[ClassicChannelInitKwargs]) -> list[ClassicChannel]:
+    def connect_controller(self, nl: Iterable[Node], **kwargs: Unpack[ClassicChannelInitKwargs]) -> list[ClassicChannel]:
         """
         Create a cchannel from the controller to each node.
 

@@ -1,8 +1,6 @@
 from collections.abc import Iterable
 from typing import Unpack, final, overload, override
 
-import numpy as np
-
 from mqns.models.core.bell_diagonal import (
     BellDiagonalProbV,
     bell_diagonal_probv_to_pauli_transfer_mat,
@@ -23,7 +21,7 @@ from mqns.utils import rng
 
 
 @final
-class MixedStateEntanglement(Entanglement["MixedStateEntanglement"]):
+class MixedStateEntanglement(Entanglement):
     """A pair of entangled qubits in Bell-Diagonal State with a hidden-variable."""
 
     @overload
@@ -68,9 +66,10 @@ class MixedStateEntanglement(Entanglement["MixedStateEntanglement"]):
     ):
         super().__init__(**kwargs)
         if probv is not None:
-            self.probv = normalize_bell_diagonal_probv(probv)
+            self.set_probv(probv)
         elif fidelity is None:
             self.probv = make_bell_diagonal_probv(i, z, x, y)
+            """Probability vector: I,Z,X,Y."""
         else:
             self.fidelity = fidelity
 
@@ -89,7 +88,6 @@ class MixedStateEntanglement(Entanglement["MixedStateEntanglement"]):
     def set_probv(self, probv: BellDiagonalProbV) -> None:
         """Update probability vector."""
         self.probv = normalize_bell_diagonal_probv(probv.copy())
-        """Probability vector: I,Z,X,Y."""
 
     @staticmethod
     @override
@@ -118,36 +116,6 @@ class MixedStateEntanglement(Entanglement["MixedStateEntanglement"]):
     @override
     def apply_error(self, error) -> None:
         error.mixed(self)
-
-    def dephase(self, t: float, rate: float):
-        """
-        Inject dephasing noise.
-
-        Args:
-            t: time in seconds, distance in km, etc.
-            rate: dephasing rate, unit is inverse of ``t``.
-        """
-        i, z, x, y = self.probv
-        multiplier = np.exp(-rate * t)
-        self.set_probv(
-            make_bell_diagonal_probv(
-                0.5 + (i - 0.5) * multiplier,
-                0.5 + (z - 0.5) * multiplier,
-                x,
-                y,
-            )
-        )
-
-    def depolarize(self, t: float, rate: float):
-        """
-        Inject depolarizing noise.
-
-        Args:
-            t: time in seconds, distance in km, etc.
-            rate: depolarizing rate, unit is inverse of ``t``.
-        """
-        multiplier = np.exp(-rate * t)
-        self.set_probv(0.25 + (self.probv - 0.25) * multiplier)
 
     @override
     def _to_qubits_rho(self) -> QubitRho:

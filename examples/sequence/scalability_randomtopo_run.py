@@ -152,7 +152,7 @@ def build_network(basename: str, net: QuantumNetwork, tlb: TimelineBounds) -> tu
     return topo, routers
 
 
-RequestApps = tuple[EntanglementRequestApp, ResetApp]
+type RequestApps = tuple[EntanglementRequestApp, ResetApp]
 
 
 def convert_request(routers: list[QuantumRouter], request: Request) -> RequestApps:

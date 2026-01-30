@@ -34,6 +34,7 @@ args = Args().parse_args()
 log.set_default_level("CRITICAL")
 
 SEED_BASE = 100
+CTRL_DELAY = 5e-06
 
 # parameters
 sim_duration = 3
@@ -130,13 +131,13 @@ def build_topology(t_cohere: float, p_swap: float, mux: MuxScheme) -> Topology:
                 {"node1": "R3", "node2": "D1", "parameters": {"length": ch_R3_D1}},
                 {"node1": "S2", "node2": "R2", "parameters": {"length": ch_S2_R2}},
                 {"node1": "R3", "node2": "D2", "parameters": {"length": ch_R3_D2}},
-                {"node1": "ctrl", "node2": "S1", "parameters": {"length": 1.0}},
-                {"node1": "ctrl", "node2": "S2", "parameters": {"length": 1.0}},
-                {"node1": "ctrl", "node2": "R1", "parameters": {"length": 1.0}},
-                {"node1": "ctrl", "node2": "R2", "parameters": {"length": 1.0}},
-                {"node1": "ctrl", "node2": "R3", "parameters": {"length": 1.0}},
-                {"node1": "ctrl", "node2": "D1", "parameters": {"length": 1.0}},
-                {"node1": "ctrl", "node2": "D2", "parameters": {"length": 1.0}},
+                {"node1": "ctrl", "node2": "S1", "parameters": {"delay": CTRL_DELAY}},
+                {"node1": "ctrl", "node2": "S2", "parameters": {"delay": CTRL_DELAY}},
+                {"node1": "ctrl", "node2": "R1", "parameters": {"delay": CTRL_DELAY}},
+                {"node1": "ctrl", "node2": "R2", "parameters": {"delay": CTRL_DELAY}},
+                {"node1": "ctrl", "node2": "R3", "parameters": {"delay": CTRL_DELAY}},
+                {"node1": "ctrl", "node2": "D1", "parameters": {"delay": CTRL_DELAY}},
+                {"node1": "ctrl", "node2": "D2", "parameters": {"delay": CTRL_DELAY}},
             ],
             "controller": {
                 "name": "ctrl",
@@ -170,7 +171,7 @@ def run_simulation(t_cohere: float, p_swap: float, mux: MuxScheme, seed: int):
     topo = build_topology(t_cohere, p_swap, mux)
     net = QuantumNetwork(topo)
 
-    s = Simulator(0, sim_duration + 5e-06, accuracy=1000000, install_to=(log, net))
+    s = Simulator(0, sim_duration + CTRL_DELAY, accuracy=1000000, install_to=(log, net))
     s.run()
 
     #### get stats: e2e_rate and mean_fidelity
