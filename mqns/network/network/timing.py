@@ -116,18 +116,18 @@ class TimingModeSync(TimingMode):
     Synchronous application timing mode.
     """
 
-    def __init__(self, *, name="SYNC", t_ext: float, t_rtg: float, t_int: float):
+    def __init__(self, *, name="SYNC", t_ext: float, t_int: float, t_rtg: float = 0):
         """
         Args:
             t_ext: EXTERNAL phase duration in seconds.
-            t_rtg: ROUTING phase duration in seconds.
+            t_rtg: ROUTING phase duration in seconds. 0 if not provided
             t_int: INTERNAL phase duration in seconds.
         """
         super().__init__(name)
         self.sequence = deque[tuple[TimingPhase, float]](
             [
                 (TimingPhase.EXTERNAL, t_ext),
-                (TimingPhase.ROUTING, t_rtg),
+                *([(TimingPhase.ROUTING, t_rtg)] if t_rtg != 0 else []),
                 (TimingPhase.INTERNAL, t_int),
             ]
         )

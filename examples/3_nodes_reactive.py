@@ -133,7 +133,7 @@ def run_simulation(
         swap=swap,
     )
 
-    timing = TimingModeSync(t_ext=0.03, t_rtg=0.00005, t_int=0.0002)  # set phases durations
+    timing = TimingModeSync(t_ext=0.03, t_int=0.0002, t_rtg=0.00005)  # set phases durations
     net = QuantumNetwork(topo, timing=timing)  # use Synchronous timing
     net.add_request(net.get_node("S"), net.get_node("D"))  # set an E2E etg. request to be served by the network
 
