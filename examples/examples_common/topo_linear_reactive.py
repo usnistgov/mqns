@@ -1,27 +1,45 @@
+from collections.abc import Sequence
+
 from mqns.entity.qchannel import LinkArch, LinkArchDimBkSeq
 from mqns.network.reactive import LinkLayer, ReactiveForwarder, ReactiveRoutingController
 from mqns.network.topology.customtopo import CustomTopology, Topo, TopoCChannel, TopoController, TopoQChannel, TopoQNode
 from mqns.network.topology.topo import Topology
 
 
+def _broadcast[T](name: str, input: T | Sequence[T], n: int) -> Sequence[T]:
+    if isinstance(input, Sequence):
+        assert len(input) == n, f"{name} must have {n} items"
+        return input
+    return [input] * n
+
+
 def _split_channel_capacity(item: int | tuple[int, int]) -> tuple[int, int]:
     return (item, item) if isinstance(item, int) else item
 
 
+CTRL_DELAY = 5e-06
+"""
+Delay of the classic channels between the controller and each QNode, in seconds.
+
+In most examples, the overall simulation duration is increased by this value,
+so that the QNodes can perform entanglement forwarding for the full intended duration.
+"""
+
+
 def build_topology(
     *,
-    nodes: int | list[str],
-    mem_capacity: int | list[int] | None = None,
-    t_cohere: float,
-    channel_length: float | list[float],
-    channel_capacity: int | list[int] | list[tuple[int, int]] | list[int | tuple[int, int]] = 1,
-    link_arch: LinkArch | list[LinkArch] = LinkArchDimBkSeq(),
-    entg_attempt_rate: float = 50e6,  # From fiber max frequency (50 MHz) AND detectors count rate (60 MHz)
+    nodes: int | Sequence[str],
+    mem_capacity: int | Sequence[int] | None = None,
+    t_cohere: float = 0.02,
+    channel_length: float | Sequence[float],
+    channel_capacity: int | Sequence[int | tuple[int, int]] = 1,
+    link_arch: LinkArch | Sequence[LinkArch] = LinkArchDimBkSeq(),
+    entg_attempt_rate: float = 50e6,
     init_fidelity: float = 0.99,
     fiber_alpha: float = 0.2,
     eta_d: float = 0.95,
     eta_s: float = 0.95,
-    frequency: float = 1e6,  # memory frequency
+    frequency: float = 1e6,
     p_swap: float = 0.5,
     swap: list[int] | str,
     swap_cutoff: list[float] | None = None,
@@ -51,7 +69,7 @@ def build_topology(
         swap: predefined or explicitly specified swapping order.
         swap_cutoff: cutoff times.
     """
-    if not isinstance(nodes, list):
+    if isinstance(nodes, int):
         assert nodes >= 2, "at least two nodes"
         nodes = [f"R{i}" for i in range(nodes)]
         nodes[0] = "S"
@@ -61,20 +79,9 @@ def build_topology(
     assert n_nodes >= 2, "at least two nodes"
     n_links = n_nodes - 1
 
-    if isinstance(channel_length, list):
-        assert len(channel_length) == n_links, f"channel_length must have {n_links} items"
-    else:
-        channel_length = [float(channel_length)] * n_links
-
-    if isinstance(channel_capacity, list):
-        assert len(channel_capacity) == n_links, f"channel_capacity must have {n_links} items"
-    else:
-        channel_capacity = [int(channel_capacity)] * n_links
-
-    if isinstance(link_arch, list):
-        assert len(link_arch) == n_links, f"link_arch must have {n_links} items"
-    else:
-        link_arch = [link_arch] * n_links
+    channel_length = _broadcast("channel_length", channel_length, n_links)
+    channel_capacity = _broadcast("channel_capacity", channel_capacity, n_links)
+    link_arch = _broadcast("link_arch", link_arch, n_links)
 
     if mem_capacity is None:
         mem_capacity = [0]
@@ -82,10 +89,8 @@ def build_topology(
             capL, capR = _split_channel_capacity(caps)
             mem_capacity[-1] += capL
             mem_capacity.append(capR)
-    elif isinstance(mem_capacity, list):
-        assert len(mem_capacity) == len(nodes), f"mem_capacity must have {len(nodes)} items"
     else:
-        mem_capacity = [mem_capacity] * n_nodes
+        mem_capacity = _broadcast("mem_capacity", mem_capacity, n_nodes)
 
     qnodes: list[TopoQNode] = []
     for name, mem_capacity in zip(nodes, mem_capacity):
@@ -122,7 +127,7 @@ def build_topology(
         "apps": [ReactiveRoutingController(swap=swap)],
     }
     for node in nodes:
-        cchannels.append({"node1": "ctrl", "node2": node, "parameters": {"length": 1.0}})
+        cchannels.append({"node1": "ctrl", "node2": node, "parameters": {"delay": CTRL_DELAY}})
 
     topo: Topo = {"qnodes": qnodes, "qchannels": qchannels, "cchannels": cchannels, "controller": controller}
     return CustomTopology(
