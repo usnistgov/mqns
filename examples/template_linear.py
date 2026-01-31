@@ -62,12 +62,12 @@ DEFAULT_RUNS = 10  #  Can be changed via --runs flag
 # nodes:
 #   - int: build_topology will auto-name ["S", "R1", ..., "D"]
 #   - list[str]: explicit names (must include "S" and "D")
-NODES: int | list[str] = 4
+NODES: int | list[str] = ["S", "R", "D"]
 
 # channel_length:
 #   - float: uniform length for every link
 #   - list[float]: per-link lengths (must have n_links = len(nodes)-1 values)
-CHANNEL_LENGTH: float | list[float] = [32.0, 18.0, 10.0]
+CHANNEL_LENGTH: float | list[float] = [32.0, 18.0]
 
 # channel_capacity:
 #   - int: uniform capacity for every link (left == right == capacity)
@@ -86,7 +86,7 @@ CHANNEL_CAPACITY: int | list[int] | list[tuple[int, int]] = 3
 MEM_CAPACITY: int | list[int] | None = None
 
 # Memory coherence time (seconds) used when SWEEP = False
-T_COHERE = 0.01
+T_COHERE = 0.1
 
 # link_arch:
 #   - None uses build_topology default LinkArchDimBkSeq()
@@ -95,7 +95,7 @@ T_COHERE = 0.01
 #
 # If you want custom architectures, uncomment and edit:
 # LINK_ARCH = [LinkArchSr(), LinkArchSim(), ...]
-LINK_ARCH = [LinkArchDimBk(), LinkArchDimBk(), LinkArchDimBk()]
+LINK_ARCH = [LinkArchDimBk(), LinkArchDimBk()]
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -117,7 +117,7 @@ FREQUENCY = 1e6  # entanglement source / memory frequency
 #       - 1 router: "swap_1"
 #       - 2 to 5 routers: "asap", "l2r", "r2l", "baln"
 #   - explicit list[int] sequence (for custom swap order) [see REDiP for syntax]
-SWAP: str | list[int] = "l2r"
+SWAP: str | list[int] = "swap_1"
 
 # p_swap:
 #   - Swapping success probability used by ProactiveForwarder(ps=p_swap)
@@ -129,7 +129,7 @@ P_SWAP = 0.5
 # ──────────────────────────────────────────────────────────────────────────────
 # If SWEEP=False, run a single scenario.
 # If SWEEP=True, run a cartesian product grid sequentially.
-SWEEP = True
+SWEEP = False
 
 # Supported sweep variables:
 t_cohere_values = [0.005, 0.01, 0.02]  # seconds
@@ -181,6 +181,8 @@ def run_simulation(
         swap=swap,
     )
 
+    # timing = TimingModeSync(t_ext=0.03, t_int=0.0002)  # set phases durations
+    # net = QuantumNetwork(topo, timing=timing)  # use Synchronous timing
     net = QuantumNetwork(topo)
 
     # Run simulator for SIM_DURATION + time to install paths.

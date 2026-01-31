@@ -86,7 +86,7 @@ SWAP: str | list[int] = "swap_1"
 
 # p_swap:
 #   - Swapping success probability used by ReactiveForwarder(ps=p_swap)
-P_SWAP = 1.0
+P_SWAP = 0.5
 
 
 # What to measure:

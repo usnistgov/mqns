@@ -10,7 +10,7 @@ from mqns.network.proactive.message import PathInstructions
 from mqns.network.proactive.select import MemoryEprIterator
 
 if TYPE_CHECKING:
-    from mqns.network.proactive.forwarder import ProactiveForwarder
+    from mqns.network.forwarder import Forwarder
 
 
 class MuxScheme(ABC):
@@ -20,7 +20,7 @@ class MuxScheme(ABC):
         self.name = name
         """Scheme name."""
 
-        self.fw: "ProactiveForwarder"
+        self.fw: "Forwarder"
         """
         Forwarder that uses this instance, assigned by the forwarder install function.
         """

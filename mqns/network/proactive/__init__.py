@@ -6,7 +6,7 @@ from mqns.network.proactive.cutoff import (
     CutoffSchemeWernerAge,
 )
 from mqns.network.proactive.fib import Fib, FibEntry
-from mqns.network.proactive.forwarder import ProactiveForwarder, ProactiveForwarderCounters
+from mqns.network.proactive.forwarder import ProactiveForwarder
 from mqns.network.proactive.mux import MuxScheme
 from mqns.network.proactive.mux_buffer_space import MuxSchemeBufferSpace
 from mqns.network.proactive.mux_dynamic_epr import (
@@ -46,7 +46,6 @@ __all__ = [
     "MuxSchemeStatistical",
     "parse_swap_sequence",
     "ProactiveForwarder",
-    "ProactiveForwarderCounters",
     "ProactiveRoutingController",
     "QubitAllocationType",
     "RoutingPath",
