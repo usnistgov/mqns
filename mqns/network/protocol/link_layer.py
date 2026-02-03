@@ -327,9 +327,11 @@ class LinkLayer(Application[QNode]):
         """
         qubit, _ = next(
             self.memory.find(
-                lambda q, v: v is None  # currently unoccupied
-                and not q.active  # not part of an active reservation
-                and q.path_id == req.path_id,  # allocated to the path_id, if MuxScheme uses path_id
+                lambda q, v: (
+                    v is None  # currently unoccupied
+                    and not q.active  # not part of an active reservation
+                    and q.path_id == req.path_id  # allocated to the path_id, if MuxScheme uses path_id
+                ),
                 qchannel=req.qchannel,  # assigned to the quantum channel
             ),
             (None, None),

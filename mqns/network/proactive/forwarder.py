@@ -486,11 +486,13 @@ class ProactiveForwarder(Application[QNode]):
             return
 
         candidates = self.memory.find(
-            lambda q, v: q.addr != qubit.addr  # not the same qubit
-            and q.state == QubitState.PURIF  # in PURIF state
-            and q.purif_rounds == qubit.purif_rounds  # with same number of purif rounds
-            and partner in (v.src, v.dst)  # with the same partner
-            and q.path_id == fib_entry.path_id,  # on the same path_id
+            lambda q, v: (
+                q.addr != qubit.addr  # not the same qubit
+                and q.state == QubitState.PURIF  # in PURIF state
+                and q.purif_rounds == qubit.purif_rounds  # with same number of purif rounds
+                and partner in (v.src, v.dst)  # with the same partner
+                and q.path_id == fib_entry.path_id  # on the same path_id
+            ),
             has=self.epr_type,
         )
         found = call_select_purif_qubit(self._select_purif_qubit, qubit, fib_entry, partner, candidates)
@@ -669,9 +671,11 @@ class ProactiveForwarder(Application[QNode]):
         self.cutoff.qubit_is_eligible(qubit, fib_entry)
 
         swap_candidates = self.memory.find(
-            lambda q, _: q.state == QubitState.ELIGIBLE  # in ELIGIBLE state
-            and q.qchannel != qubit.qchannel  # assigned to a different channel
-            and self.cutoff.filter_swap_candidate(q),
+            lambda q, _: (
+                q.state == QubitState.ELIGIBLE  # in ELIGIBLE state
+                and q.qchannel != qubit.qchannel  # assigned to a different channel
+                and self.cutoff.filter_swap_candidate(q)
+            ),
             has=self.epr_type,
         )
         swap_candidate_tuple = self.mux.find_swap_candidate(qubit, epr, fib_entry, swap_candidates)

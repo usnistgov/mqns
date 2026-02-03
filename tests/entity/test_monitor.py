@@ -132,7 +132,7 @@ def test_monitor_full_continuous():
     sp, rp = build_network(simulator)
     m = make_monitor(simulator, sp, rp)
 
-    simulator.add_event(func_to_event(simulator.time(sec=9.5), lambda: simulator.stop()))
+    simulator.add_event(func_to_event(simulator.time(sec=9.5), simulator.stop))
     simulator.run()
 
     data = m.get_data()
