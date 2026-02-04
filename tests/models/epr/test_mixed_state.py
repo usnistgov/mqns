@@ -16,7 +16,7 @@ from mqns.models.core.state import (
     qubit_state_equal,
 )
 from mqns.models.epr import MixedStateEntanglement
-from mqns.models.error import DephaseErrorModel, DepolarErrorModel, ErrorModelInput, parse_error
+from mqns.models.error import DephaseErrorModel, DepolarErrorModel, DissipationErrorModel, ErrorModelInput, parse_error
 from mqns.models.qubit import Qubit
 from mqns.simulator import Time
 from mqns.utils import rng
@@ -109,7 +109,7 @@ def test_to_qubits_maximal(i: float, z: float, x: float, y: float, state: QubitS
     assert e.is_decoherenced
 
     assert q0.state is q1.state
-    assert qubit_rho_classify_noise(rho, q0.state.rho) == 0
+    assert qubit_rho_classify_noise(rho, q0.state.rho) == "IDENTICAL"
 
     pure_state = q0.state.state()
     assert pure_state is not None  # pure state
@@ -124,17 +124,20 @@ def test_to_qubits_maximal(i: float, z: float, x: float, y: float, state: QubitS
 
 
 @pytest.mark.parametrize(
-    ("error", "classify_noise"),
+    ("error", "probv", "classify_noise"),
     [
-        ((DephaseErrorModel, {"p_error": 0.1}), 1),
-        ((DepolarErrorModel, {"p_error": 0.1}), 2),
+        ((DephaseErrorModel, {"p_error": 0.1}), [0.9, 0.1, 0, 0], "DEPHASE"),
+        ((DepolarErrorModel, {"p_error": 0.1}), [0.9, 0.1 / 3, 0.1 / 3, 0.1 / 3], "DEPOLAR"),
+        # twirling makes dissipation noise look like dephasing
+        ((DissipationErrorModel, {"p_error": 0.1}), [0.95, 0.05, 0, 0], "DEPHASE"),
     ],
 )
-def test_to_qubits_mixed(error: ErrorModelInput, classify_noise: int):
+def test_to_qubits_mixed(error: ErrorModelInput, probv: list[float], classify_noise: str):
     error = parse_error(error)
     e = MixedStateEntanglement()
     e.apply_error(error)
     print(e.probv)
+    assert e.probv == pytest.approx(probv)
 
     q0, q1 = e.to_qubits()
     assert e.is_decoherenced

@@ -188,20 +188,27 @@ def qubit_rho_equal(rho0: QubitRho, rho1: QubitRho) -> bool:
     return np.allclose(rho0, rho1, atol=ATOL)
 
 
-def qubit_rho_classify_noise(ideal: QubitRho, noisy: QubitRho) -> int:
+def qubit_rho_classify_noise(ideal: QubitRho, noisy: QubitRho) -> Literal["IDENTICAL", "DEPHASE", "DISSIPATION", "DEPOLAR"]:
     """
     Identify what kind of noise has been applied to transform ``ideal`` state to ``noisy`` state.
 
-    Args:
-        * 0 - identical.
-        * 1 - pure dephasing noise.
-        * 2 - depolarizing, bit-flip, or amplitude damping noise.
+    Returns:
+        * "IDENTICAL" - identical (no noise).
+        * "DEPHASE" - pure dephasing (off-diagonals change, diagonal stays same).
+        * "DISSIPATION" - dissipation / amplitude damping (diagonal changes specifically).
+        * "DEPOLAR" - depolarizing / bit-flip (broad diagonal and off-diagonal shifts).
     """
     if qubit_rho_equal(ideal, noisy):
-        return 0
-    if np.allclose(ideal.diagonal(), noisy.diagonal(), atol=ATOL):
-        return 1
-    return 2
+        return "IDENTICAL"
+
+    ideal_diag, noisy_diag = ideal.diagonal(), noisy.diagonal()
+    if np.allclose(ideal_diag, noisy_diag, atol=ATOL):
+        return "DEPHASE"
+
+    if noisy_diag[0] > ideal_diag[0] + ATOL:
+        return "DISSIPATION"
+
+    return "DEPOLAR"
 
 
 def qubit_rho_remove(rho: QubitRho, i: int, n: int) -> QubitRho:

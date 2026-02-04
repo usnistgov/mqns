@@ -30,7 +30,7 @@ def test_to_qubits():
     assert e.is_decoherenced
 
     assert q0.state is q1.state
-    assert qubit_rho_classify_noise(BELL_RHO_PHI_P, q0.state.rho) == 0
+    assert qubit_rho_classify_noise(BELL_RHO_PHI_P, q0.state.rho) == "IDENTICAL"
 
     state = q0.state.state()
     assert state is not None  # pure state

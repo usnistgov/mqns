@@ -1,19 +1,64 @@
 import functools
+from abc import abstractmethod
 from collections.abc import Iterable
 from typing import Literal, cast, override
 
 import numpy as np
 
-from mqns.models.core.bell_diagonal import bell_diagonal_probv_to_pauli_transfer_mat, make_bell_diagonal_probv
+from mqns.models.core.bell_diagonal import (
+    BellDiagonalProbV,
+    PauliTransferMat,
+    bell_diagonal_probv_to_pauli_transfer_mat,
+    make_bell_diagonal_probv,
+)
 from mqns.models.core.operator import OPERATOR_PAULI_I, OPERATOR_PAULI_X, OPERATOR_PAULI_Y, OPERATOR_PAULI_Z, Operator
 from mqns.models.core.state import ATOL
 from mqns.models.error.error import ErrorModel
 
 OP_IZXY = [OPERATOR_PAULI_I, OPERATOR_PAULI_Z, OPERATOR_PAULI_X, OPERATOR_PAULI_Y]
-_probv0 = make_bell_diagonal_probv(1, 0, 0, 0)
 
 
-class PauliErrorModel(ErrorModel):
+class PauliErrorModelBase(ErrorModel):
+    _probv0 = make_bell_diagonal_probv(1, 0, 0, 0)
+
+    def __init__(self, name: str):
+        super().__init__(name)
+
+        self.probv = self._probv0
+        """Probability of I,Z,X,Y result."""
+        # initial p_survival is 1.0, corresponding to probv=[1,0,0,0]
+
+    @abstractmethod
+    def _prepare(self) -> None:
+        """
+        Subclass must invoke _set_probv() in this method.
+        """
+
+    def _set_probv(self, probv: BellDiagonalProbV) -> None:
+        self.probv = probv
+
+        try:
+            del self._ptm
+        except AttributeError:
+            pass
+
+    @functools.cached_property
+    def _ptm(self) -> PauliTransferMat:
+        """
+        Construct the transition matrix for Bell-diagonal states.
+        """
+        return bell_diagonal_probv_to_pauli_transfer_mat(self.probv)
+
+    @override
+    def werner(self, q) -> None:
+        q.w *= self.p_survival
+
+    @override
+    def mixed(self, q) -> None:
+        q.set_probv(self._ptm @ q.probv, copy=False)
+
+
+class PauliErrorModel(PauliErrorModelBase):
     """
     Pauli error model: one of Z,X,Y gates may be randomly applied with ``p_error`` total probability.
     """
@@ -38,31 +83,15 @@ class PauliErrorModel(ErrorModel):
         else:
             self.ratios.fill(1 / 3)
 
-        self.probv = _probv0
-        """Probability of I,Z,X,Y result."""
-        # initial p_survival is 1.0, corresponding to probv=[1,0,0,0]
-
     @override
     def _prepare(self) -> None:
         z, x, y = self.ratios * self.p_error
-        self.probv = make_bell_diagonal_probv(self.p_survival, z, x, y)
-
-        try:
-            del self._ptm
-        except AttributeError:
-            pass
+        self._set_probv(make_bell_diagonal_probv(self.p_survival, z, x, y))
 
         try:
             del self._stochastic_ops
         except AttributeError:
             pass
-
-    @functools.cached_property
-    def _ptm(self) -> np.ndarray[tuple[Literal[4], Literal[4]], np.dtype[np.float64]]:
-        """
-        Construct the transition matrix for Bell-diagonal states.
-        """
-        return bell_diagonal_probv_to_pauli_transfer_mat(self.probv)
 
     @functools.cached_property
     def _stochastic_ops(self) -> tuple[list[Operator], list[float]]:
@@ -82,14 +111,6 @@ class PauliErrorModel(ErrorModel):
     def qubit(self, q) -> None:
         ops, prob = self._stochastic_ops
         q.stochastic_operate(ops, prob)
-
-    @override
-    def werner(self, q) -> None:
-        q.w *= self.p_survival
-
-    @override
-    def mixed(self, q) -> None:
-        q.set_probv(self._ptm @ q.probv)
 
 
 class DepolarErrorModel(PauliErrorModel):

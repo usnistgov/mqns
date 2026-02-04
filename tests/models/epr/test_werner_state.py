@@ -8,7 +8,7 @@ from mqns.models.core.state import (
     qubit_state_equal,
 )
 from mqns.models.epr import Entanglement, WernerStateEntanglement
-from mqns.models.error import DephaseErrorModel
+from mqns.models.error import make_time_decay_func
 from mqns.simulator import Time
 from mqns.utils import rng
 
@@ -46,11 +46,7 @@ def test_swap_fidelity():
     Validate fidelity calculation after swaps.
     """
     mem_dt = micros(1000000)  # memory dephasing time: 1 second
-    dephase_error = DephaseErrorModel().set(t=0, rate=1 / mem_dt.sec)
-
-    def dephase(e: Entanglement, t: Time):
-        dephase_error.set(t=t.sec)
-        e.apply_error(dephase_error)
+    dephase = make_time_decay_func(t_cohere=mem_dt)
 
     e1, e2, e3 = (
         WernerStateEntanglement(fidelity=0.99, fidelity_time=c, decohere_time=c + mem_dt, store_decays=(dephase, dephase))
@@ -142,7 +138,7 @@ def test_to_qubits_maximal():
 
     assert q0.state is q1.state
     print(q0.state)
-    assert qubit_rho_classify_noise(BELL_RHO_PHI_P, q0.state.rho) == 0
+    assert qubit_rho_classify_noise(BELL_RHO_PHI_P, q0.state.rho) == "IDENTICAL"
 
     state = q0.state.state()
     assert state is not None  # pure state
@@ -160,7 +156,7 @@ def test_to_qubits_mixed():
 
     assert q0.state is q1.state
     print(q0.state)
-    assert qubit_rho_classify_noise(BELL_RHO_PHI_P, q0.state.rho) == 2
+    assert qubit_rho_classify_noise(BELL_RHO_PHI_P, q0.state.rho) == "DEPOLAR"
     assert q0.state.state() is None  # mixed state
 
 

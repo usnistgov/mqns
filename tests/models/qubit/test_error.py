@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from mqns.models.core.state import check_qubit_rho, qubit_rho_equal
+from mqns.models.core.state import QUBIT_RHO_0, check_qubit_rho, qubit_rho_equal
 from mqns.models.error import DissipationErrorModel, ErrorModelInput
 from mqns.models.qubit import Qubit
 from mqns.models.qubit.gate import CNOT, H
@@ -75,5 +75,7 @@ def test_dissipation(monkeypatch: pytest.MonkeyPatch, random: float, decohered: 
 
     if decohered:
         assert q0.state is not q1.state
+        assert qubit_rho_equal(q0.state.rho, QUBIT_RHO_0)
+        assert q1.state.rho.diagonal() == pytest.approx([0.5, 0.5])
     else:
         assert q0.state is q1.state

@@ -3,7 +3,13 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from mqns.models.core import ATOL, Basis, MeasureOutcome, Operator, QubitRho, QubitState
-from mqns.models.core.state import QUBIT_RHO_0, check_qubit_rho, qubit_rho_remove, qubit_rho_to_state, qubit_state_to_rho
+from mqns.models.core.state import (
+    QUBIT_STATE_0,
+    check_qubit_rho,
+    qubit_rho_remove,
+    qubit_rho_to_state,
+    qubit_state_to_rho,
+)
 from mqns.utils import rng
 
 if TYPE_CHECKING:
@@ -32,18 +38,22 @@ class QState:
         qubits: list["Qubit"],
         *,
         state: QubitState | None = None,
-        rho=QUBIT_RHO_0,
+        rho: QubitRho | None = None,
     ):
         """
         Args:
             qubits: list of qubits in this state.
-            state: state vector.
+            state: state vector, required if ``rho`` is absent.
             rho: density matrix, ignored if ``state`` is specified.
         """
         self.qubits = qubits
         """List of qubits in this state."""
-        self.rho = check_qubit_rho(rho, self.num) if state is None else qubit_state_to_rho(state, self.num)
-        """Density matrix."""
+        if state is None:
+            assert rho is not None
+            self.rho = check_qubit_rho(rho, self.num)
+            """Density matrix."""
+        else:
+            self.rho = qubit_state_to_rho(state, self.num)
 
     @property
     def num(self) -> int:
@@ -62,7 +72,7 @@ class QState:
         """
         try:
             idx = self.qubits.index(qubit)
-        except AssertionError:
+        except ValueError:
             raise RuntimeError("qubit not in state")
 
         # Calculate probability with Born rule
@@ -70,7 +80,7 @@ class QState:
         prob_0 = np.real(np.trace(full_m0.u_dagger @ full_m0.u @ self.rho))
         prob_0 = np.clip(prob_0, 0.0, 1.0)  # avoid out-of-range due to floating-point calculation
 
-        # Assign outcome and perform state collapse
+        # Assign outcome
         if rng.random() < prob_0:
             ret = 0
             ret_s = basis.s0
@@ -82,15 +92,31 @@ class QState:
 
         # Perform state collapse
         collapsed = op(self.rho)
-        collapsed = collapsed / (np.trace(collapsed) or 1.0)
+        self.rho = collapsed / (np.trace(collapsed) or 1.0)
 
         # Perform partial trace to delete measured qubit
-        self.rho = qubit_rho_remove(collapsed, idx, self.num)
+        self.trace_out(qubit, ret_s, idx=idx)
+        return ret
+
+    def trace_out(self, qubit: "Qubit", state=QUBIT_STATE_0, *, idx: int | None = None) -> None:
+        """
+        Remove a qubit from state without measurement.
+
+        Args:
+            qubit: qubit in this state to be removed.
+            idx: index of qubit in ``self.qubits``, if known.
+            state: new state of the removed qubit.
+        """
+        if idx is None:
+            try:
+                idx = self.qubits.index(qubit)
+            except ValueError:
+                raise RuntimeError("qubit not in state")
+
+        self.rho = qubit_rho_remove(self.rho, idx, self.num)
         self.qubits.remove(qubit)
 
-        ns = QState([qubit], state=ret_s)
-        qubit.state = ns
-        return ret
+        qubit.state = QState([qubit], state=state)
 
     def operate(self, op: Operator | np.ndarray) -> None:
         """

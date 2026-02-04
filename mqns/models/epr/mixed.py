@@ -68,7 +68,7 @@ class MixedStateEntanglement(Entanglement):
         if probv is not None:
             self.set_probv(probv)
         elif fidelity is None:
-            self.probv = make_bell_diagonal_probv(i, z, x, y)
+            self.set_probv(make_bell_diagonal_probv(i, z, x, y), normalize=False)
             """Probability vector: I,Z,X,Y."""
         else:
             self.fidelity = fidelity
@@ -83,11 +83,27 @@ class MixedStateEntanglement(Entanglement):
     def fidelity(self, value: float):
         """Reset fidelity, turning into a Werner state."""
         zxy = (1 - value) / 3
-        self.probv = make_bell_diagonal_probv(value, zxy, zxy, zxy)
+        self.set_probv(make_bell_diagonal_probv(value, zxy, zxy, zxy), normalize=False)
 
-    def set_probv(self, probv: BellDiagonalProbV) -> None:
-        """Update probability vector."""
-        self.probv = normalize_bell_diagonal_probv(probv.copy())
+    @property
+    def probv(self) -> BellDiagonalProbV:
+        """Probability vector: I,Z,X,Y."""
+        return self._probv
+
+    def set_probv(self, probv: BellDiagonalProbV, *, normalize=True, copy=True) -> None:
+        """
+        Update probability vector.
+
+        Args:
+            probv: new probability vector.
+            normalize: if False, assume ``probv`` is already normalized.
+            copy: if False, ``probv`` may be normalized in-place.
+        """
+        if normalize:
+            if copy:
+                probv = probv.copy()
+            probv = normalize_bell_diagonal_probv(probv)
+        self._probv = probv
 
     @staticmethod
     @override
@@ -105,11 +121,14 @@ class MixedStateEntanglement(Entanglement):
         if p_succ <= ATOL or rng.random() > p_succ:
             return False
 
-        self.probv = make_bell_diagonal_probv(
-            i0 * i1 + y0 * y1,
-            z0 * z1 + x0 * x1,
-            z0 * x1 + x0 * z1,
-            i0 * y1 + y0 * i1,
+        self.set_probv(
+            make_bell_diagonal_probv(
+                i0 * i1 + y0 * y1,
+                z0 * z1 + x0 * x1,
+                z0 * x1 + x0 * z1,
+                i0 * y1 + y0 * i1,
+            ),
+            normalize=False,
         )
         return True
 

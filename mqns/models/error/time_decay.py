@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
-from mqns.models.error.input import ErrorModeConstructor, ErrorModelInput, parse_error
+from mqns.models.error.input import ErrorModelConstructor, ErrorModelInput, parse_error
 from mqns.models.error.pauli import DephaseErrorModel
 from mqns.simulator import Time
 
@@ -29,7 +29,7 @@ def make_time_decay_func(
     input: ErrorModelInput = None,
     *,
     t_cohere: Time,
-    dflt: ErrorModeConstructor = DephaseErrorModel,
+    dflt: ErrorModelConstructor = DephaseErrorModel,
 ) -> TimeDecayFunc:
     """
     Build TimeDecayFunc from coherence time.
