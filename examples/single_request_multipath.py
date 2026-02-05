@@ -1,7 +1,8 @@
 from mqns.network.network import QuantumNetwork
 from mqns.network.proactive import LinkLayer, ProactiveForwarder, ProactiveRoutingController, RoutingPathMulti
 from mqns.network.route import YenRouteAlgorithm
-from mqns.network.topology import CustomTopology, Topology
+from mqns.network.topology import Topology
+from mqns.network.topology.customtopo import CustomTopology, TopoQChannel
 from mqns.simulator import Simulator
 from mqns.utils import log, rng
 
@@ -44,6 +45,11 @@ def build_topology() -> Topology:
     Defines the topology with globally declared simulation parameters.
     """
 
+    def qch(n1: str, cap1: int, n2: str, cap2: int, length: float):
+        return TopoQChannel(
+            node1=n1, node2=n2, capacity1=cap1, capacity2=cap2, parameters={"length": length, "alpha": fiber_alpha}
+        )
+
     return CustomTopology(
         {
             "qnodes": [
@@ -56,55 +62,13 @@ def build_topology() -> Topology:
                 {"name": "D"},
             ],
             "qchannels": [
-                {
-                    "node1": "S",
-                    "node2": "R1",
-                    "capacity1": 2,
-                    "capacity2": 2,
-                    "parameters": {"length": ch_S_R1},
-                },
-                {
-                    "node1": "R1",
-                    "node2": "R2",
-                    "capacity1": 2,
-                    "capacity2": 2,
-                    "parameters": {"length": ch_R1_R2},
-                },
-                {
-                    "node1": "R2",
-                    "node2": "R3",
-                    "capacity1": 2,
-                    "capacity2": 1,
-                    "parameters": {"length": ch_R2_R3},
-                },
-                {
-                    "node1": "R3",
-                    "node2": "R4",
-                    "capacity1": 2,
-                    "capacity2": 2,
-                    "parameters": {"length": ch_R3_R4},
-                },
-                {
-                    "node1": "R4",
-                    "node2": "D",
-                    "capacity1": 2,
-                    "capacity2": 4,
-                    "parameters": {"length": ch_R4_D},
-                },
-                {
-                    "node1": "S",
-                    "node2": "R5",
-                    "capacity1": 2,
-                    "capacity2": 2,
-                    "parameters": {"length": ch_S_R5},
-                },
-                {
-                    "node1": "R5",
-                    "node2": "R3",
-                    "capacity1": 2,
-                    "capacity2": 1,
-                    "parameters": {"length": ch_R5_R3},
-                },
+                qch("S", 2, "R1", 2, ch_S_R1),
+                qch("R1", 2, "R2", 2, ch_R1_R2),
+                qch("R2", 2, "R3", 1, ch_R2_R3),
+                qch("R3", 2, "R4", 2, ch_R3_R4),
+                qch("R4", 2, "D", 4, ch_R4_D),
+                qch("S", 2, "R5", 2, ch_S_R5),
+                qch("R5", 2, "R3", 1, ch_R5_R3),
             ],
             "cchannels": [
                 {"node1": "S", "node2": "R1", "parameters": {"length": ch_S_R1}},
@@ -131,7 +95,6 @@ def build_topology() -> Topology:
             LinkLayer(
                 attempt_rate=entg_attempt_rate,
                 init_fidelity=init_fidelity,
-                alpha_db_per_km=fiber_alpha,
                 eta_d=eta_d,
                 eta_s=eta_s,
                 frequency=frequency,

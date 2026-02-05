@@ -217,9 +217,21 @@ def build_topology(t_cohere: float, mux: MuxScheme, active_flows: list[tuple[str
 
     def qch(n1, n2) -> TopoQChannel:
         if (n1, n2) in [("E", "F"), ("G", "F")]:
-            return {"node1": n1, "node2": n2, "capacity1": RX_QUBITS, "capacity2": TX_QUBITS, "parameters": {"length": KM20}}
+            return {
+                "node1": n1,
+                "node2": n2,
+                "capacity1": RX_QUBITS,
+                "capacity2": TX_QUBITS,
+                "parameters": {"length": KM20, "alpha": fiber_alpha},
+            }
         else:
-            return {"node1": n1, "node2": n2, "capacity1": TX_QUBITS, "capacity2": RX_QUBITS, "parameters": {"length": KM20}}
+            return {
+                "node1": n1,
+                "node2": n2,
+                "capacity1": TX_QUBITS,
+                "capacity2": RX_QUBITS,
+                "parameters": {"length": KM20, "alpha": fiber_alpha},
+            }
 
     qchannels = [qch(a, b) for a, b in QCHANNELS]
     cchannels = [TopoCChannel({"node1": a, "node2": b, "parameters": {"length": KM20}}) for a, b in CCHANNELS] + [
@@ -236,7 +248,6 @@ def build_topology(t_cohere: float, mux: MuxScheme, active_flows: list[tuple[str
         nodes_apps=[
             LinkLayer(
                 init_fidelity=init_fidelity,
-                alpha_db_per_km=fiber_alpha,
                 eta_d=eta_d,
                 eta_s=eta_s,
                 frequency=frequency,

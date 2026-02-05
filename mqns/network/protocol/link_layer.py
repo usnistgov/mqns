@@ -75,7 +75,6 @@ class LinkLayer(Application[QNode]):
         self,
         *,
         attempt_rate: float = 1e6,
-        alpha_db_per_km: float = 0.2,
         eta_s: float = 1.0,
         eta_d: float = 1.0,
         frequency: float = 80e6,
@@ -87,7 +86,6 @@ class LinkLayer(Application[QNode]):
 
         Args:
             attempt_rate: max entanglement attempts per second (default: 1e6) (currently ineffective).
-            alpha_db_per_km: fiber attenuation loss in dB/km (default: 0.2).
             eta_s: source efficiency (default: 1.0).
             eta_d: detector efficiency (default: 1.0).
             frequency: entanglement source frequency in Hz (default: 80e6).
@@ -99,8 +97,6 @@ class LinkLayer(Application[QNode]):
 
         self.attempt_interval = 1 / attempt_rate
         """Minimum interval spaced out between attempts (currently ineffective)."""
-        self.alpha_db_per_km = alpha_db_per_km
-        """Fiber attenuation loss in dB/km."""
         self.eta_s = eta_s
         """Source efficiency between 0 and 1."""
         self.eta_d = eta_d
@@ -213,7 +209,6 @@ class LinkLayer(Application[QNode]):
         # so that the parameters saved into LinkArch are the same every time.
         qchannel.link_arch.set(
             ch=qchannel,
-            alpha=self.alpha_db_per_km,
             eta_s=self.eta_s,
             eta_d=self.eta_d,
             reset_time=self.reset_time,

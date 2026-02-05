@@ -1,5 +1,6 @@
 from typing import override
 
+from mqns.entity.base_channel import calc_transmission_prob
 from mqns.entity.qchannel.link_arch import LinkArchBase
 from mqns.models.epr import Entanglement
 from mqns.models.error import ErrorModel, TimeDecayFunc
@@ -26,7 +27,7 @@ class LinkArchSim(LinkArchBase):
         #
         # The overall success probability has `**2` because it requires both photons.
         _ = eta_s
-        p_l_sb = self._calc_propagation_loss(length / 2, alpha)
+        p_l_sb = calc_transmission_prob(length / 2, alpha)
         eta_rr = (eta_d * p_l_sb) ** 2
         return eta_rr
 

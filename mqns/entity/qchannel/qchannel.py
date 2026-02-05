@@ -28,7 +28,7 @@
 import copy
 from typing import Any, Unpack, final, override
 
-from mqns.entity.base_channel import BaseChannel, BaseChannelInitKwargs
+from mqns.entity.base_channel import BaseChannel, BaseChannelInitKwargs, calc_transmission_prob
 from mqns.entity.node import QNode
 from mqns.entity.qchannel.link_arch import LinkArch
 from mqns.entity.qchannel.link_arch_dim import LinkArchDimBkSeq
@@ -42,25 +42,46 @@ from mqns.simulator import Event, Time
 class QuantumChannelInitKwargs(BaseChannelInitKwargs, total=False):
     link_arch: LinkArch
     """Link architecture model."""
+    alpha: float
+    """
+    Fiber attenuation loss in dB/km.
+
+    If ``BaseChannel.drop_rate`` is zero but both ``length`` and ``alpha`` are positive,
+    ``BaseChannel.drop_rate`` is recalculated from ``length`` and ``alpha``.
+    """
     transfer_error: ErrorModelInputLength
-    """Transfer error model."""
+    """Transfer error model for loss of quantum information."""
 
 
 class QuantumChannel(BaseChannel[QNode]):
     """
     QuantumChannel is the channel for transmitting photonic qubits.
 
-    Currently, MQNS does not use the ``send()`` method to transmit photonic qubits.
+    In entanglement routing experiments, MQNS does not use the ``send()`` method to transmit photonic qubits.
     Instead, the ``LinkLayer`` application calculates entanglement arrival times and fidelity from channel parameters
     such as ``length`` and ``link_arch``, and directly schedules entanglement arrivals.
     """
 
     def __init__(self, name: str, **kwargs: Unpack[QuantumChannelInitKwargs]):
         super().__init__(name, **kwargs)
+
         link_arch = kwargs.get("link_arch", None)
         self.link_arch = copy.deepcopy(link_arch) if link_arch else LinkArchDimBkSeq()
         """Link architecture model (separate instance per channel)."""
+
+        self.alpha = kwargs.get("alpha", 0.0)
+        """Fiber attenuation loss in dB/km."""
+        assert self.alpha >= 0
+        if self.drop_rate == 0 and self.length > 0 and self.alpha > 0:
+            self.drop_rate = 1 - calc_transmission_prob(self.length, self.alpha)
+
         self.transfer_error = parse_error(kwargs.get("transfer_error"), DepolarErrorModel, self.length)
+        """
+        Transfer error model.
+
+        It reflects loss of quantum information when a qubit/EPR is sent through the fiber.
+        It does not reflect loss of photons.
+        """
 
     @override
     def handle(self, event: Event):

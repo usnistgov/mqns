@@ -1,5 +1,6 @@
 from typing import override
 
+from mqns.entity.base_channel import calc_transmission_prob
 from mqns.entity.qchannel.link_arch import LinkArchBase
 from mqns.models.epr import Entanglement
 from mqns.models.error import ErrorModel, TimeDecayFunc
@@ -22,7 +23,7 @@ class LinkArchSr(LinkArchBase):
         # - eta_s: the source at B emits a photon.
         # - p_l_sr: the photon propagates through the fiber without loss.
         # - eta_d: the detector at A detects the photon.
-        p_l_sr = self._calc_propagation_loss(length, alpha)
+        p_l_sr = calc_transmission_prob(length, alpha)
         eta_sr = eta_s * eta_d * p_l_sr
         return eta_sr
 

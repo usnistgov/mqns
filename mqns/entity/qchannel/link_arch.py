@@ -18,6 +18,8 @@ class QchannelParameters(Protocol):
 
     length: float
     """Fiber length in kilometers."""
+    alpha: float
+    """Fiber attenuation loss in dB/km."""
     delay: DelayModel
     """
     Fiber propagation delay in seconds, also used as one-way classical message delay.
@@ -36,8 +38,6 @@ class QchannelParameters(Protocol):
 class LinkArchParameters(TypedDict):
     ch: QchannelParameters
     """QuantumChannel to gather parameters from."""
-    alpha: float
-    """Fiber loss in dB/km."""
     eta_s: float
     """Source efficiency between 0 and 1."""
     eta_d: float
@@ -158,7 +158,7 @@ class LinkArchBase(ABC, LinkArch):
 
         self.success_prob = self._compute_success_prob(
             length=ch.length,
-            alpha=kwargs["alpha"],
+            alpha=ch.alpha,
             eta_s=kwargs["eta_s"],
             eta_d=kwargs["eta_d"],
         )
@@ -188,20 +188,6 @@ class LinkArchBase(ABC, LinkArch):
         Compute success probability of a single attempt.
         Subclass implementation may precompute or save other parameters if necessary.
         """
-
-    @staticmethod
-    def _calc_propagation_loss(length: float, alpha: float) -> float:
-        """
-        Compute fiber propagation loss.
-
-        Args:
-            length: fiber length in kilometers.
-            alpha: fiber loss in dB/km.
-
-        Returns:
-            Probability of a single photon to propagate through the fiber without loss.
-        """
-        return 10 ** (-alpha * length / 10)
 
     @abstractmethod
     def _compute_delays(self, *, reset_time: float, tau_l: float, tau_0: float) -> tuple[float, float, float]:

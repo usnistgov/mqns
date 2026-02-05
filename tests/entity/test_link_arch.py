@@ -16,11 +16,13 @@ from mqns.simulator import Simulator, Time
 @dataclass
 class FakeQuantumChannel:
     length: float
+    alpha: float
     delay: DelayModel
     transfer_error: ErrorModel
 
-    def __init__(self, length: float, *, delay=-1.0, transfer_error_rate=0.0):
+    def __init__(self, length: float, *, alpha=0.2, delay=-1.0, transfer_error_rate=0.0):
         self.length = length
+        self.alpha = alpha
         self.delay = ConstantDelayModel(delay if delay >= 0 else length / default_light_speed[0])
         self.transfer_error = DepolarErrorModel().set(rate=transfer_error_rate, length=0)
 
@@ -47,7 +49,6 @@ def test_delays(LA: type[LinkArch], multipliers: tuple[float, float, float, floa
     link_arch = LA()
     link_arch.set(
         ch=ch,
-        alpha=0,
         eta_s=1,
         eta_d=1,
         reset_time=0,
@@ -95,7 +96,6 @@ def test_perfect_error(LA: type[LinkArch], E: type[Entanglement]):
     link_arch = LA()
     link_arch.set(
         ch=ch,
-        alpha=0,
         eta_s=1,
         eta_d=1,
         reset_time=0,
@@ -137,7 +137,6 @@ def test_realistic_error(LA: type[LinkArch], w_or_probv: float | tuple[float, fl
     link_arch = LA()
     link_arch.set(
         ch=ch,
-        alpha=0,
         eta_s=1,
         eta_d=1,
         reset_time=0,

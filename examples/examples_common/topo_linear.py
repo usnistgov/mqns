@@ -33,10 +33,10 @@ def build_topology(
     t_cohere: float = 0.02,
     channel_length: float | Sequence[float],
     channel_capacity: int | Sequence[int | tuple[int, int]] = 1,
+    fiber_alpha: float = 0.2,
     link_arch: LinkArch | Sequence[LinkArch] = LinkArchDimBkSeq(),
     entg_attempt_rate: float = 50e6,
     init_fidelity: float = 0.99,
-    fiber_alpha: float = 0.2,
     eta_d: float = 0.95,
     eta_s: float = 0.95,
     frequency: float = 1e6,
@@ -55,11 +55,11 @@ def build_topology(
         # QuantumChannel
         channel_length: Lengths of qchannels between adjacent nodes.
         channel_capacity: (left, right) qubit allocation per qchannel.
+        fiber_alpha: fiber loss in dB/km.
         link_arch: Link architecture per qchannel.
         # LinkLayer
         entg_attempt_rate: maximum entanglement attempts per second.
         init_fidelity: fidelity of generated entangled pairs.
-        fiber_alpha: fiber loss in dB/km.
         eta_d: detector efficiency.
         eta_s: source efficiency.
         frequency: entanglement source frequency.
@@ -115,7 +115,7 @@ def build_topology(
                 "node2": node2,
                 "capacity1": cap1,
                 "capacity2": cap2,
-                "parameters": {"length": length, "link_arch": la},
+                "parameters": {"length": length, "alpha": fiber_alpha, "link_arch": la},
             }
         )
         cchannels.append({"node1": node1, "node2": node2, "parameters": {"length": length}})
@@ -135,7 +135,6 @@ def build_topology(
             LinkLayer(
                 attempt_rate=entg_attempt_rate,
                 init_fidelity=init_fidelity,
-                alpha_db_per_km=fiber_alpha,
                 eta_d=eta_d,
                 eta_s=eta_s,
                 frequency=frequency,

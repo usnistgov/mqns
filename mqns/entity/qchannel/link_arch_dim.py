@@ -1,5 +1,6 @@
 from typing import override
 
+from mqns.entity.base_channel import calc_transmission_prob
 from mqns.entity.qchannel.link_arch import LinkArchBase
 from mqns.models.epr import Entanglement
 from mqns.models.error import ErrorModel, TimeDecayFunc
@@ -27,7 +28,7 @@ class LinkArchDimBk(LinkArchBase):
         # p_bsa, set to 50%, is the maximum theoretical coincidence probability for distinguishing two of
         # the four Bell states at a standard linear optics Bell-state analyzer.
         p_bsa = 0.5
-        p_l_sb = self._calc_propagation_loss(length / 2, alpha)
+        p_l_sb = calc_transmission_prob(length / 2, alpha)
         eta_sb = eta_s * eta_d * p_l_sb
         return p_bsa * eta_sb**2
 
@@ -142,7 +143,7 @@ class LinkArchDimDual(LinkArchBase):
         # p_bsa, set to 50%, is the maximum theoretical coincidence probability for distinguishing two of
         # the four Bell states at a standard linear optics Bell-state analyzer.
         p_bsa = 0.5
-        p_l_sb = self._calc_propagation_loss(length / 2, alpha)
+        p_l_sb = calc_transmission_prob(length / 2, alpha)
         eta_sb = eta_s * eta_d * p_l_sb
         return p_bsa * eta_sb**2
 

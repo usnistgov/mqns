@@ -117,12 +117,12 @@ def build_topology(t_cohere: float, p_swap: float, mux: MuxScheme) -> Topology:
                 },
             ],
             "qchannels": [
-                {"node1": "S1", "node2": "R1", "capacity": 1, "parameters": {"length": ch_S1_R1}},
-                {"node1": "R1", "node2": "R2", "capacity": 1, "parameters": {"length": ch_R1_R2}},
-                {"node1": "R2", "node2": "R3", "capacity": 1, "parameters": {"length": ch_R2_R3}},
-                {"node1": "R3", "node2": "D1", "capacity": 1, "parameters": {"length": ch_R3_D1}},
-                {"node1": "S2", "node2": "R2", "capacity": 1, "parameters": {"length": ch_S2_R2}},
-                {"node1": "R3", "node2": "D2", "capacity": 1, "parameters": {"length": ch_R3_D2}},
+                {"node1": "S1", "node2": "R1", "capacity": 1, "parameters": {"length": ch_S1_R1, "alpha": fiber_alpha}},
+                {"node1": "R1", "node2": "R2", "capacity": 1, "parameters": {"length": ch_R1_R2, "alpha": fiber_alpha}},
+                {"node1": "R2", "node2": "R3", "capacity": 1, "parameters": {"length": ch_R2_R3, "alpha": fiber_alpha}},
+                {"node1": "R3", "node2": "D1", "capacity": 1, "parameters": {"length": ch_R3_D1, "alpha": fiber_alpha}},
+                {"node1": "S2", "node2": "R2", "capacity": 1, "parameters": {"length": ch_S2_R2, "alpha": fiber_alpha}},
+                {"node1": "R3", "node2": "D2", "capacity": 1, "parameters": {"length": ch_R3_D2, "alpha": fiber_alpha}},
             ],
             "cchannels": [
                 {"node1": "S1", "node2": "R1", "parameters": {"length": ch_S1_R1}},
@@ -155,7 +155,6 @@ def build_topology(t_cohere: float, p_swap: float, mux: MuxScheme) -> Topology:
             LinkLayer(
                 attempt_rate=entg_attempt_rate,
                 init_fidelity=init_fidelity,
-                alpha_db_per_km=fiber_alpha,
                 eta_d=eta_d,
                 eta_s=eta_s,
                 frequency=frequency,

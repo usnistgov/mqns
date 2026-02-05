@@ -65,14 +65,13 @@ def build_network(args: RunArgs) -> QuantumNetwork:
     topo = RandomTopology(
         nodes_number=args.nnodes,
         lines_number=args.nedges,
-        qchannel_args={"length": 30},
+        qchannel_args={"length": 30, "alpha": fiber_alpha},
         cchannel_args={"length": 30},
         memory_args={"capacity": nqubits, "t_cohere": t_cohere},
         nodes_apps=[
             LinkLayer(
                 attempt_rate=entg_attempt_rate,
                 init_fidelity=init_fidelity,
-                alpha_db_per_km=fiber_alpha,
                 eta_d=eta_d,
                 eta_s=eta_s,
                 frequency=frequency,
