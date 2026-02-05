@@ -212,15 +212,17 @@ class LinkLayer(Application[QNode]):
         # Nevertheless, we assume every LinkLayer instance has the same parameters,
         # so that the parameters saved into LinkArch are the same every time.
         qchannel.link_arch.set(
-            length=qchannel.length,
+            ch=qchannel,
             alpha=self.alpha_db_per_km,
             eta_s=self.eta_s,
             eta_d=self.eta_d,
             reset_time=self.reset_time,
-            tau_l=qchannel.delay.calculate(),
             tau_0=self.tau_0,
             epr_type=self.epr_type,
             init_fidelity=self.init_fidelity,
+            t0=self.simulator.tc,
+            store_decays=(self.memory.time_decay, neighbor.memory.time_decay),
+            bsa_error=None,
         )
 
         log.debug(

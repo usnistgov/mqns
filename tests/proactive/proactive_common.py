@@ -203,12 +203,11 @@ def provide_entanglements(
         ch = src.node.get_qchannel(dst.node)
 
         ch.link_arch.set(
-            length=0,
+            ch=ch,
             alpha=0,
             eta_s=1,
             eta_d=1,
             reset_time=0,
-            tau_l=ch.delay.calculate(),
             tau_0=0,
             epr_type=src.network.epr_type,
             init_fidelity=1.0,

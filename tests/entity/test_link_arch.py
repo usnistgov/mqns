@@ -1,4 +1,5 @@
 import itertools
+from dataclasses import dataclass
 
 import pytest
 
@@ -6,9 +7,22 @@ from mqns.entity.base_channel import default_light_speed
 from mqns.entity.memory import QuantumMemory
 from mqns.entity.node import QNode
 from mqns.entity.qchannel import LinkArch, LinkArchDimBk, LinkArchDimBkSeq, LinkArchDimDual, LinkArchSim, LinkArchSr
+from mqns.models.delay import ConstantDelayModel, DelayModel
 from mqns.models.epr import Entanglement, MixedStateEntanglement, WernerStateEntanglement
-from mqns.models.error import PerfectErrorModel, make_time_decay_func
+from mqns.models.error import DepolarErrorModel, ErrorModel, PerfectErrorModel, make_time_decay_func
 from mqns.simulator import Simulator, Time
+
+
+@dataclass
+class FakeQuantumChannel:
+    length: float
+    delay: DelayModel
+    transfer_error: ErrorModel
+
+    def __init__(self, length: float, *, delay=-1.0, transfer_error_rate=0.0):
+        self.length = length
+        self.delay = ConstantDelayModel(delay if delay >= 0 else length / default_light_speed[0])
+        self.transfer_error = DepolarErrorModel().set(rate=transfer_error_rate, length=0)
 
 
 @pytest.mark.parametrize(
@@ -29,14 +43,14 @@ def test_delays(LA: type[LinkArch], multipliers: tuple[float, float, float, floa
 
     tau_l, tau_0 = 0.000471, 0.000031
 
+    ch = FakeQuantumChannel(0, delay=tau_l, transfer_error_rate=0)
     link_arch = LA()
     link_arch.set(
-        length=0,
+        ch=ch,
         alpha=0,
         eta_s=1,
         eta_d=1,
         reset_time=0,
-        tau_l=tau_l,
         tau_0=tau_0,
         epr_type=WernerStateEntanglement,
         init_fidelity=1.0,
@@ -75,21 +89,20 @@ def make_epr(link_arch: LinkArch, t_cohere: Time):
     ),
 )
 def test_perfect_error(LA: type[LinkArch], E: type[Entanglement]):
+    ch = FakeQuantumChannel(0)
     t_cohere = Time.from_sec(1, accuracy=ACCURACY)
     store_decay = make_time_decay_func(PerfectErrorModel(), t_cohere=t_cohere)
     link_arch = LA()
     link_arch.set(
-        length=0,
+        ch=ch,
         alpha=0,
         eta_s=1,
         eta_d=1,
         reset_time=0,
-        tau_l=0,
         tau_0=0,
         epr_type=E,
         t0=t_cohere,
         store_decays=(store_decay, store_decay),
-        transfer_error={"rate": 0},
         bsa_error={"p_error": 0},
     )
 
@@ -115,22 +128,23 @@ def test_perfect_error(LA: type[LinkArch], E: type[Entanglement]):
     ],
 )
 def test_realistic_error(LA: type[LinkArch], w_or_probv: float | tuple[float, float, float, float]):
-    length = 50.0  # km
+    ch = FakeQuantumChannel(
+        50.0,  # km
+        transfer_error_rate=0.001,  # 0.001 for typical fiber, 0.0051 for noisy fiber
+    )
     t_cohere = Time.from_sec(0.100, accuracy=ACCURACY)  # coherence of an NV-center or Ion-Trap
     store_decay = make_time_decay_func(t_cohere=t_cohere)
     link_arch = LA()
     link_arch.set(
-        length=length,
+        ch=ch,
         alpha=0,
         eta_s=1,
         eta_d=1,
         reset_time=0,
-        tau_l=length / default_light_speed[0],
         tau_0=0.000001,  # 1~10us
         epr_type=MixedStateEntanglement if isinstance(w_or_probv, tuple) else WernerStateEntanglement,
         t0=Time(0, accuracy=t_cohere.accuracy),
         store_decays=(store_decay, store_decay),
-        transfer_error={"rate": 0.001},  # 0.001 for typical fiber, 0.0051 for noisy fiber
         bsa_error={"p_error": 0.01},  # 0.5~2.0% detector jitter and beam-splitter asymmetry
     )
 

@@ -53,6 +53,7 @@ class BaseChannel[N: Node](Entity):
         self.delay = parse_delay(kwargs.get("delay", 0 if self.length == 0 else self.length / default_light_speed[0]))
 
         self.drop_rate = kwargs.get("drop_rate", 0.0)
+        """Packet/photon loss probability. 0 means never, 1 means always."""
         assert 0.0 <= self.drop_rate <= 1.0
 
     @override
