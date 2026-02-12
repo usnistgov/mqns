@@ -177,11 +177,12 @@ class NetworkBuilder:
                 If specified as dict, it maps from node name to node memory capacity.
                 If ``None`` or for unspecified nodes, it is derived from channels.
             channels: List of channels.
-                First tuple item is channel end point delimited with hyphen (``-``).
+                First tuple item is channel end points delimited with hyphen (``-``);
+                nodes are automatically created from these end points.
                 Second tuple item is channel length in kilometer.
-                Third tuple item is channel capacity, defaults to ``channel_capacity``.
+                Third tuple item is channel capacity, defaults to ``channel_capacity``;
+                for each qchannel, an integer applies to both sides, a tuple applies to (left,right) sides.
             channel_capacity: Qubit allocation per qchannel, if not specified in ``channels``.
-                For each qchannel, an integer applies to both sides, a tuple applies to (left,right) sides.
             fiber_alpha: Fiber loss in dB/km, determines success probability.
             fiber_rate: Fiber decoherence rate in km^{-1}, determines qualify of entangled state.
             link_arch: Link architecture per qchannel.

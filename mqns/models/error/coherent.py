@@ -14,7 +14,7 @@ class CoherentErrorModel(ErrorModel):
     Note: cannot construct this type with ``parse_error`` utility.
     """
 
-    def __init__(self, name="dissipation", *, length=0.0, standard_lkm=50.0):
+    def __init__(self, name="coherent", *, length=0.0, standard_lkm=50.0):
         super().__init__(name)
         self.standard_lkm = standard_lkm
         """Characteristic distance: the distance at which the maximum possible rotation angle reaches 45°."""
