@@ -76,7 +76,9 @@ class PathStats(NamedTuple):
     fid_std: float
 
 
-def run_row(args: Args, strategy: str, mux: MuxScheme, t_cohere: float) -> list[PathStats]:
+def run_row(args: Args, strategy: str, t_cohere: float) -> list[PathStats]:
+    mux = STRATEGIES[strategy]
+
     path_rates: list[list[float]] = [[] for _ in range(N_PATHS)]
     path_fids: list[list[float]] = [[] for _ in range(N_PATHS)]
 
@@ -88,13 +90,8 @@ def run_row(args: Args, strategy: str, mux: MuxScheme, t_cohere: float) -> list[
             path_fids[path].append(fid)
 
     return [
-        PathStats(
-            np.mean(path_rates[path]).item(),
-            np.std(path_rates[path]).item(),
-            np.mean(path_fids[path]).item(),
-            np.std(path_fids[path]).item(),
-        )
-        for path in range(N_PATHS)
+        PathStats(np.mean(rates).item(), np.std(rates).item(), np.mean(fids).item(), np.std(fids).item())
+        for rates, fids in zip(path_rates, path_fids, strict=True)
     ]
 
 
@@ -163,10 +160,10 @@ if __name__ == "__main__":
     args = Args().parse_args()
 
     results: dict[str, list[list[PathStats]]] = {}  # strategy->path->t_cohere_index
-    for strategy, mux in STRATEGIES.items():
+    for strategy in STRATEGIES:
         results[strategy] = [[] for _ in PATH_TITLES]
         for t_cohere in T_COHERE_VALUES:
-            row = run_row(args, strategy, mux, t_cohere)
+            row = run_row(args, strategy, t_cohere)
             for path, stats in enumerate(row):
                 results[strategy][path].append(stats)
 
