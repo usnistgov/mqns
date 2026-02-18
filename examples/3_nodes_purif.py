@@ -2,11 +2,10 @@ import numpy as np
 import pandas as pd
 from tap import Tap
 
+from mqns.network.builder import CTRL_DELAY, NetworkBuilder
 from mqns.network.proactive import ProactiveForwarder
 from mqns.simulator import Simulator
 from mqns.utils import log, rng
-
-from examples_common.topo_linear import CTRL_DELAY, build_network
 
 
 # Command line arguments
@@ -28,13 +27,18 @@ sim_duration = 5
 def run_simulation(t_cohere: float, seed: int):
     rng.reseed(seed)
 
-    net = build_network(
-        nodes=["S", "R", "D"],
-        t_cohere=t_cohere,
-        channel_length=[32, 18],
-        channel_capacity=2,
-        init_fidelity=0.7,
-        swap="swap_1",
+    net = (
+        NetworkBuilder()
+        .topo_linear(
+            nodes=("S", "R", "D"),
+            t_cohere=t_cohere,
+            channel_length=[32, 18],
+            channel_capacity=2,
+            init_fidelity=0.7,
+        )
+        .proactive_centralized()
+        .path("S-D", swap="swap_1")
+        .make_network()
     )
 
     s = Simulator(0, sim_duration + CTRL_DELAY, accuracy=1000000, install_to=(log, net))

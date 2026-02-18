@@ -18,12 +18,12 @@ import numpy as np
 from tap import Tap
 
 from mqns.entity.qchannel import LinkArch, LinkArchDimBk, LinkArchSim, LinkArchSr
+from mqns.network.builder import CTRL_DELAY, NetworkBuilder
 from mqns.network.proactive import ProactiveForwarder
 from mqns.simulator import Simulator
 from mqns.utils import log, rng
 
 from examples_common.plotting import Axes2D, mpl, plt, plt_save
-from examples_common.topo_linear import CTRL_DELAY, build_network
 
 log.set_default_level("CRITICAL")
 
@@ -44,9 +44,6 @@ channel_configs: dict[str, list[LinkArch]] = {
 
 
 def run_simulation(
-    nodes: list[str],
-    mem_capacities: list[int],
-    ch_lengths: list[float],
     ch_capacities: list[tuple[int, int]],
     link_architectures: list[LinkArch],
     t_cohere: float,
@@ -54,14 +51,18 @@ def run_simulation(
 ):
     rng.reseed(seed)
 
-    net = build_network(
-        nodes=nodes,
-        mem_capacity=mem_capacities,
-        t_cohere=t_cohere,
-        channel_length=ch_lengths,
-        channel_capacity=ch_capacities,
-        link_arch=link_architectures,
-        swap="swap_1",
+    net = (
+        NetworkBuilder()
+        .topo_linear(
+            nodes=("S", "R", "D"),
+            channel_length=ch_lengths,
+            channel_capacity=ch_capacities,
+            link_arch=link_architectures,
+            t_cohere=t_cohere,
+        )
+        .proactive_centralized()
+        .path("S-D", swap="swap_1")
+        .make_network()
     )
 
     s = Simulator(0, sim_duration + CTRL_DELAY, accuracy=1000000, install_to=(log, net))
@@ -86,9 +87,6 @@ def run_row(
     for i in range(n_runs):
         print(f"{arch_label}, T_cohere={t_cohere:.3f}, Mem alloc={[left, right]}, run {i + 1}")
         rate, fidelity = run_simulation(
-            nodes=["S", "R", "D"],
-            mem_capacities=[total_qubits, total_qubits, total_qubits],
-            ch_lengths=ch_lengths,
             ch_capacities=[(total_qubits, left), (right, total_qubits)],
             link_architectures=link_archs,
             t_cohere=t_cohere,

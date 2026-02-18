@@ -3,7 +3,7 @@ from collections import defaultdict
 from collections.abc import Iterator
 from enum import Enum, auto
 from itertools import pairwise
-from typing import override
+from typing import TypedDict, Unpack, override
 
 from mqns.network.network import QuantumNetwork
 from mqns.network.proactive.message import MultiplexingVector, PathInstructions, SwapSequence, make_path_instructions
@@ -46,12 +46,25 @@ def _parse_swap_cutoff(simulator: Simulator, input: list[float] | None) -> list[
     return [simulator.time(sec=t) if t >= 0 else None for t in input]
 
 
+class RoutingPathInitArgs(TypedDict, total=False):
+    req_id: int
+    """Request identifier, defaults to auto-assignment."""
+    path_id: int
+    """Path identifier for the first path, defaults to auto-assignment."""
+    swap: SwapSequence | str
+    """Predefined or explicitly specified swapping order, defaults to ASAP."""
+    swap_cutoff: list[float] | None
+    """Swap cut-off times in seconds."""
+    purif: dict[str, int] | None
+    """Purification scheme."""
+
+
 class RoutingPath(ABC):
     """
     Compute routing path(s) for installing through ProactiveRoutingController.
     """
 
-    def __init__(self, src: str, dst: str, req_id: int | None, path_id: int | None):
+    def __init__(self, src: str, dst: str, **kwargs: Unpack[RoutingPathInitArgs]):
         self.src = src
         """
         Source node name.
@@ -60,21 +73,24 @@ class RoutingPath(ABC):
         """
         Destination node name.
         """
-        self.req_id = -1 if req_id is None else req_id
+        self.req_id = kwargs.get("req_id", -1)
         """
         Request identifier.
 
-        If unspecified, the controller will assign the next unused value before calling `compute_paths`.
+        If unspecified, the controller will assign the next unused value before calling ``compute_paths``.
         """
-        self.path_id = -1 if path_id is None else path_id
+        self.path_id = kwargs.get("path_id", -1)
         """
         Path identifier for the first path.
 
-        If unspecified, the controller will assign the next unused value before calling `compute_paths`.
+        If unspecified, the controller will assign the next unused value before calling ``compute_paths``.
 
-        When `compute_paths` yields multiple paths, this is the path_id on the first path,
+        When ``compute_paths`` yields multiple paths, this is the path_id on the first path,
         while subsequent paths are given consecutive path_ids.
         """
+        self.swap = kwargs.get("swap") or "asap"
+        self.swap_cutoff = kwargs.get("swap_cutoff")
+        self.purif = kwargs.get("purif") or {}
 
     @abstractmethod
     def compute_paths(self, net: QuantumNetwork) -> Iterator[PathInstructions]:
@@ -83,7 +99,7 @@ class RoutingPath(ABC):
 
         Args:
             net: The quantum network.
-                 `net.build_route()` has been called prior to invoking this function.
+                 ``net.build_route()`` must have been called prior to invoking this function.
 
         Returns:
             A generator of path instructions.
@@ -113,19 +129,12 @@ class RoutingPathStatic(RoutingPath):
         self,
         route: list[str],
         *,
-        req_id: int | None = None,
-        path_id: int | None = None,
-        swap: SwapSequence | str,
-        swap_cutoff: list[float] | None = None,
         m_v: MultiplexingVector | QubitAllocationType = QubitAllocationType.FOLLOW_QCHANNEL,
-        purif: dict[str, int] = {},
+        **kwargs: Unpack[RoutingPathInitArgs],
     ):
-        super().__init__(route[0], route[-1], req_id, path_id)
+        super().__init__(route[0], route[-1], **kwargs)
         self.route = route
-        self.swap = swap
-        self.swap_cutoff = swap_cutoff
         self.m_v = m_v
-        self.purif = purif
 
     @override
     def compute_paths(self, net: QuantumNetwork) -> Iterator[PathInstructions]:
@@ -149,18 +158,11 @@ class RoutingPathSingle(RoutingPath):
         src: str,
         dst: str,
         *,
-        req_id: int | None = None,
-        path_id: int | None = None,
         qubit_allocation=QubitAllocationType.FOLLOW_QCHANNEL,
-        swap: SwapSequence | str,
-        swap_cutoff: list[float] | None = None,
-        purif: dict[str, int] = {},
+        **kwargs: Unpack[RoutingPathInitArgs],
     ):
-        super().__init__(src, dst, req_id, path_id)
+        super().__init__(src, dst, **kwargs)
         self.qubit_allocation = qubit_allocation
-        self.swap = swap
-        self.swap_cutoff = swap_cutoff
-        self.purif = purif
 
     @override
     def compute_paths(self, net: QuantumNetwork) -> Iterator[PathInstructions]:
@@ -190,17 +192,9 @@ class RoutingPathMulti(RoutingPath):
         self,
         src: str,
         dst: str,
-        *,
-        req_id: int | None = None,
-        path_id: int | None = None,
-        swap: SwapSequence | str,
-        swap_cutoff: list[float] | None = None,
-        purif: dict[str, int] = {},
+        **kwargs: Unpack[RoutingPathInitArgs],
     ):
-        super().__init__(src, dst, req_id, path_id)
-        self.swap = swap
-        self.swap_cutoff = swap_cutoff
-        self.purif = purif
+        super().__init__(src, dst, **kwargs)
 
     @override
     def compute_paths(self, net: QuantumNetwork) -> Iterator[PathInstructions]:

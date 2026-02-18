@@ -30,12 +30,12 @@ import numpy as np
 import pandas as pd
 from tap import Tap
 
+from mqns.network.builder import CTRL_DELAY, LINK_ARCH_MAP, LinkArchLiteral, NetworkBuilder
 from mqns.network.protocol.link_layer import LinkLayer
 from mqns.simulator import Simulator
 from mqns.utils import log, rng
 
 from examples_common.plotting import Axes1D, plt, plt_save
-from examples_common.topo_linear import CTRL_DELAY, LINK_ARCH_MAP, LinkArchLiteral, build_network
 
 log.set_default_level("CRITICAL")
 
@@ -76,13 +76,18 @@ def run_simulation(seed: int, sim_duration: float, L: list[float], M: int, link_
     """
     rng.reseed(seed)
 
-    net = build_network(
-        nodes=len(L) + 1,
-        t_cohere=0.1,
-        channel_length=L,
-        channel_capacity=M,
-        swap=[0] * (len(L) + 1),
-        link_arch=link_arch,
+    net = (
+        NetworkBuilder()
+        .topo_linear(
+            nodes=len(L) + 1,
+            channel_length=L,
+            channel_capacity=M,
+            link_arch=link_arch,
+            t_cohere=0.1,
+        )
+        .proactive_centralized()
+        .path("S-D", swap=[0] * (len(L) + 1))
+        .make_network()
     )
 
     s = Simulator(0, sim_duration + CTRL_DELAY, accuracy=1000000, install_to=(log, net))

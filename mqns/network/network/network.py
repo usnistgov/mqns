@@ -71,7 +71,7 @@ class QuantumNetwork:
         topo: Topology | None = None,
         *,
         classic_topo: ClassicTopology | None = None,
-        route: RouteAlgorithm | None = None,
+        route: RouteAlgorithm[QNode, QuantumChannel] | None = None,
         timing: TimingMode = TimingModeAsync(),
         epr_type: type[Entanglement] = WernerStateEntanglement,
     ):

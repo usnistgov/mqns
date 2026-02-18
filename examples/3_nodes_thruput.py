@@ -19,12 +19,12 @@ import numpy as np
 import pandas as pd
 from tap import Tap
 
+from mqns.network.builder import CTRL_DELAY, NetworkBuilder
 from mqns.network.proactive import ProactiveForwarder
 from mqns.simulator import Simulator
 from mqns.utils import log, rng
 
 from examples_common.plotting import plt, plt_save
-from examples_common.topo_linear import CTRL_DELAY, build_network
 
 log.set_default_level("CRITICAL")
 
@@ -52,11 +52,16 @@ def run_simulation(t_cohere: float, seed: int):
     """
     rng.reseed(seed)
 
-    net = build_network(
-        nodes=["S", "R", "D"],
-        t_cohere=t_cohere,
-        channel_length=[32, 18],
-        swap="swap_1",
+    net = (
+        NetworkBuilder()
+        .topo_linear(
+            nodes=("S", "R", "D"),
+            t_cohere=t_cohere,
+            channel_length=(32, 18),
+        )
+        .proactive_centralized()
+        .path("S-D", swap="swap_1")
+        .make_network()
     )
 
     s = Simulator(0, sim_duration + CTRL_DELAY, accuracy=1000000, install_to=(log, net))

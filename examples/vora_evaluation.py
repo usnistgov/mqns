@@ -50,6 +50,7 @@ import numpy as np
 import pandas as pd
 from tap import Tap
 
+from mqns.network.builder import CTRL_DELAY, NetworkBuilder
 from mqns.network.network import QuantumNetwork
 from mqns.network.proactive import ProactiveForwarder, compute_vora_swap_sequence
 from mqns.simulator import Simulator
@@ -57,7 +58,6 @@ from mqns.utils import log, rng
 
 from examples_common.plotting import Axes2D, plt, plt_save
 from examples_common.stats import gather_etg_decoh
-from examples_common.topo_linear import CTRL_DELAY, build_network
 
 log.set_default_level("CRITICAL")
 
@@ -115,12 +115,17 @@ class ParameterSet:
         swap = self.get_swap_sequence()
         log.info(f"build_network: distances={distances} sum={sum(distances)} swap-sequence={swap}")
 
-        return build_network(
-            nodes=2 + self.number_of_routers,
-            t_cohere=self.t_cohere,
-            channel_length=distances,
-            channel_capacity=self.qchannel_capacity,
-            swap=swap,
+        return (
+            NetworkBuilder()
+            .topo_linear(
+                nodes=2 + self.number_of_routers,
+                t_cohere=self.t_cohere,
+                channel_length=distances,
+                channel_capacity=self.qchannel_capacity,
+            )
+            .proactive_centralized()
+            .path("S-D", swap=swap)
+            .make_network()
         )
 
     def compute_distances(self) -> list[float]:

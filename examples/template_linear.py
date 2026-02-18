@@ -4,7 +4,7 @@ TEMPLATE: Custom simulation script for MQNS linear-topology experiments.
 Copy this file and edit the "USER CONFIG" sections.
 
 This template allows to:
-- build a linear topology S-R*-D via examples_common.topo_linear.build_network(...)
+- build a linear topology S-R*-D via mqns.network.builder.NetworkBuilder
 - Install a single default path S-D
 - extract stats from ProactiveForwarder counters (throughput, fidelity, etc.)
 - optionally compute decoherence/expired-memory metrics via gather_etg_decoh(...)
@@ -21,13 +21,13 @@ import pandas as pd
 from tap import Tap
 
 from mqns.entity.qchannel import LinkArchDimBk, LinkArchSim, LinkArchSr
+from mqns.network.builder import CTRL_DELAY, NetworkBuilder
 from mqns.network.proactive import ProactiveForwarder
 from mqns.simulator import Simulator
 from mqns.utils import log, rng
 
 from examples_common.plotting import plt, plt_save
 from examples_common.stats import gather_etg_decoh
-from examples_common.topo_linear import CTRL_DELAY, build_network
 
 _ = (LinkArchDimBk, LinkArchSim, LinkArchSr)
 
@@ -59,7 +59,7 @@ DEFAULT_RUNS = 10  #  Can be changed via --runs flag
 # USER CONFIG: Topology (linear path)
 # ──────────────────────────────────────────────────────────────────────────────
 # nodes:
-#   - int: build_network will auto-name ["S", "R1", ..., "D"]
+#   - int: NetworkBuilder will auto-name ["S", "R1", ..., "D"]
 #   - list[str]: explicit names (must include "S" and "D")
 NODES: int | list[str] = 4
 
@@ -73,7 +73,7 @@ CHANNEL_LENGTH: float | list[float] = [32.0, 18.0, 10.0]
 #   - list[int]: per-link capacity (left == right for each link)
 #   - list[tuple[int,int]]: per-link (left,right) endpoint allocation
 #
-# build_network interprets (left,right) as:
+# NetworkBuilder interprets (left,right) as:
 #   - capacity1 = allocation at node i
 #   - capacity2 = allocation at node i+1
 CHANNEL_CAPACITY: int | list[int] | list[tuple[int, int]] = 3
@@ -97,7 +97,7 @@ LINK_ARCH = [LinkArchDimBk(), LinkArchDimBk(), LinkArchDimBk()]
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# USER CONFIG: Physics / Link-Layer parameters (passed into build_network)
+# USER CONFIG: Physics / Link-Layer parameters (passed into NetworkBuilder)
 # ──────────────────────────────────────────────────────────────────────────────
 ENTG_ATTEMPT_RATE = 50e6  # attempts/sec
 INIT_FIDELITY = 0.99  # fidelity of generated elementary entanglement
@@ -108,7 +108,7 @@ FREQUENCY = 1e6  # entanglement source / memory frequency
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# USER CONFIG: Swapping / routing (passed into build_network)
+# USER CONFIG: Swapping / routing (passed into NetworkBuilder)
 # ──────────────────────────────────────────────────────────────────────────────
 # swap:
 #   - preset string:
@@ -162,21 +162,26 @@ def run_simulation(
     """
     rng.reseed(seed)
 
-    net = build_network(
-        nodes=nodes,
-        mem_capacity=MEM_CAPACITY,
-        t_cohere=t_cohere,
-        channel_length=channel_length,
-        channel_capacity=channel_capacity,
-        fiber_alpha=FIBER_ALPHA,
-        link_arch=LINK_ARCH,
-        entg_attempt_rate=ENTG_ATTEMPT_RATE,
-        init_fidelity=INIT_FIDELITY,
-        eta_d=ETA_D,
-        eta_s=ETA_S,
-        frequency=FREQUENCY,
-        p_swap=P_SWAP,
-        swap=swap,
+    net = (
+        NetworkBuilder()
+        .topo_linear(
+            nodes=nodes,
+            mem_capacity=MEM_CAPACITY,
+            t_cohere=t_cohere,
+            channel_length=channel_length,
+            channel_capacity=channel_capacity,
+            fiber_alpha=FIBER_ALPHA,
+            link_arch=LINK_ARCH,
+            entg_attempt_rate=ENTG_ATTEMPT_RATE,
+            init_fidelity=INIT_FIDELITY,
+            eta_d=ETA_D,
+            eta_s=ETA_S,
+            frequency=FREQUENCY,
+            p_swap=P_SWAP,
+        )
+        .proactive_centralized()
+        .path("S-D", swap=swap)
+        .make_network()
     )
 
     # Run simulator for SIM_DURATION + time to install paths.

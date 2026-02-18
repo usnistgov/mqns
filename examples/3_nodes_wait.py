@@ -12,12 +12,12 @@ import numpy as np
 import pandas as pd
 from tap import Tap
 
+from mqns.network.builder import CTRL_DELAY, EprTypeLiteral, LinkArchLiteral, NetworkBuilder, tap_configure
 from mqns.network.proactive import CutoffSchemeWaitTime, ProactiveForwarder
 from mqns.simulator import Simulator
 from mqns.utils import log, rng
 
 from examples_common.plotting import Axes1D, SubFigure1D, plt, plt_save
-from examples_common.topo_linear import CTRL_DELAY, EPR_TYPE_MAP, LINK_ARCH_MAP, EprTypeLiteral, LinkArchLiteral, build_network
 
 log.set_default_level("CRITICAL")
 
@@ -29,8 +29,8 @@ class Args(Tap):
     L: tuple[float, float] = (32, 18)  # qchannel lengths (km)
     t_cohere: list[float] = [0.1]  # memory coherence time (s)
     t_wait: list[float] = [0.0025, 0.005, 0.01, 0.02, 1000]  # wait-time cutoff values (s)
-    epr_type: EprTypeLiteral = "W"  # network-wide EPR type
-    link_arch: LinkArchLiteral = "DIM-BK-SeQUeNCe"  # link architecture
+    epr_type: EprTypeLiteral  # network-wide EPR type
+    link_arch: LinkArchLiteral  # link architecture
     link_arch_sim: bool = False  # determine fidelity with LinkArch mini simulation
     fiber_error: str = "DEPOLAR:0.01"  # fiber error model with decoherence rate
     csv: str = ""  # save results as CSV file
@@ -39,8 +39,7 @@ class Args(Tap):
     @override
     def configure(self) -> None:
         super().configure()
-        self.add_argument("--epr_type", type=str, choices=EPR_TYPE_MAP.keys())
-        self.add_argument("--link_arch", type=str, choices=LINK_ARCH_MAP.keys())
+        tap_configure(self)
 
 
 SIMULATOR_ACCURACY = 1000000
@@ -50,16 +49,25 @@ SEED_BASE = 100
 def run_simulation(seed: int, args: Args, t_cohere: float, t_wait: float):
     rng.reseed(seed)
 
-    net = build_network(
-        epr_type=args.epr_type,
-        nodes=["S", "R", "D"],
-        t_cohere=t_cohere,
-        channel_length=args.L,
-        fiber_error=args.fiber_error,
-        link_arch=args.link_arch,
-        init_fidelity=None if args.link_arch_sim else 0.99,
-        swap=[1, 0, 1],
-        swap_cutoff=[0, t_wait, 0],
+    net = (
+        NetworkBuilder(
+            epr_type=args.epr_type,
+        )
+        .topo_linear(
+            nodes=("S", "R", "D"),
+            t_cohere=t_cohere,
+            channel_length=args.L,
+            fiber_error=args.fiber_error,
+            link_arch=args.link_arch,
+            init_fidelity=None if args.link_arch_sim else 0.99,
+        )
+        .proactive_centralized()
+        .path(
+            "S-D",
+            swap=[1, 0, 1],
+            swap_cutoff=[0, t_wait, 0],
+        )
+        .make_network()
     )
 
     fwS = net.get_node("S").get_app(ProactiveForwarder)

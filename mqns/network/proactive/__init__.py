@@ -7,15 +7,15 @@ from mqns.network.proactive.cutoff import (
 )
 from mqns.network.proactive.fib import Fib, FibEntry
 from mqns.network.proactive.forwarder import ProactiveForwarder, ProactiveForwarderCounters
+from mqns.network.proactive.message import MultiplexingVector, SwapSequence
 from mqns.network.proactive.mux import MuxScheme
 from mqns.network.proactive.mux_buffer_space import MuxSchemeBufferSpace
-from mqns.network.proactive.mux_dynamic_epr import (
-    MuxSchemeDynamicEpr,
-)
+from mqns.network.proactive.mux_dynamic_epr import MuxSchemeDynamicEpr
 from mqns.network.proactive.mux_statistical import MuxSchemeStatistical
 from mqns.network.proactive.routing import (
     QubitAllocationType,
     RoutingPath,
+    RoutingPathInitArgs,
     RoutingPathMulti,
     RoutingPathSingle,
     RoutingPathStatic,
@@ -40,6 +40,7 @@ __all__ = [
     "LinkLayer",  # re-export for convenience
     "MemoryEprIterator",
     "MemoryEprTuple",
+    "MultiplexingVector",
     "MuxScheme",
     "MuxSchemeBufferSpace",
     "MuxSchemeDynamicEpr",
@@ -50,14 +51,16 @@ __all__ = [
     "ProactiveRoutingController",
     "QubitAllocationType",
     "RoutingPath",
+    "RoutingPathInitArgs",
     "RoutingPathMulti",
     "RoutingPathSingle",
     "RoutingPathStatic",
     "select_purif_qubit_random",
     "SelectPurifQubit",
+    "SwapSequence",
 ]
 
 for name in __all__:
-    if name in ("LinkLayer", "MemoryEprIterator", "MemoryEprTuple", "SelectPurifQubit"):
+    if name in ("LinkLayer", "MemoryEprIterator", "MemoryEprTuple", "MultiplexingVector", "SelectPurifQubit", "SwapSequence"):
         continue
     globals()[name].__module__ = __name__

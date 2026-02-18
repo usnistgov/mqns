@@ -24,13 +24,13 @@ from typing import cast
 import numpy as np
 from tap import Tap
 
+from mqns.network.builder import CTRL_DELAY, NetworkBuilder
 from mqns.network.proactive import ProactiveForwarder
 from mqns.simulator import Simulator
 from mqns.utils import log, rng
 
 from examples_common.plotting import Axes1D, mpl, plt, plt_save
 from examples_common.stats import gather_etg_decoh
-from examples_common.topo_linear import CTRL_DELAY, build_network
 
 log.set_default_level("CRITICAL")
 
@@ -52,13 +52,18 @@ def run_simulation(
 ):
     rng.reseed(seed)
 
-    net = build_network(
-        nodes=N_NODES,
-        mem_capacity=TOTAL_QUBITS,
-        t_cohere=t_cohere,
-        channel_length=CHANNEL_LENGTHS,
-        channel_capacity=ch_capacities,
-        swap=swapping_order,
+    net = (
+        NetworkBuilder()
+        .topo_linear(
+            nodes=N_NODES,
+            mem_capacity=TOTAL_QUBITS,
+            t_cohere=t_cohere,
+            channel_length=CHANNEL_LENGTHS,
+            channel_capacity=ch_capacities,
+        )
+        .proactive_centralized()
+        .path("S-D", swap=swapping_order)
+        .make_network()
     )
 
     s = Simulator(0, sim_duration + CTRL_DELAY, accuracy=1000000, install_to=(log, net))
