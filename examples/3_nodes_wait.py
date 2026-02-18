@@ -4,6 +4,7 @@ It gathers statistics of the end-to-end rate and fidelity.
 """
 
 import itertools
+import json
 from collections.abc import Sequence
 from multiprocessing import Pool, freeze_support
 from typing import Any, TypedDict, cast, override
@@ -15,7 +16,7 @@ from tap import Tap
 from mqns.network.builder import CTRL_DELAY, EprTypeLiteral, LinkArchLiteral, NetworkBuilder, tap_configure
 from mqns.network.proactive import CutoffSchemeWaitTime, ProactiveForwarder
 from mqns.simulator import Simulator
-from mqns.utils import log, rng
+from mqns.utils import json_default, log, rng
 
 from examples_common.plotting import Axes1D, SubFigure1D, plt, plt_save
 
@@ -33,8 +34,10 @@ class Args(Tap):
     link_arch: LinkArchLiteral  # link architecture
     link_arch_sim: bool = False  # determine fidelity with LinkArch mini simulation
     fiber_error: str = "DEPOLAR:0.01"  # fiber error model with decoherence rate
-    csv: str = ""  # save results as CSV file
+    csv: str = ""  # save stats as CSV file
+    json: str = ""  # save stats and details as JSON file
     plt: str = ""  # save plot as image file
+    plt_from_json: str = ""  # skip simulation and only plot from saved JSON
 
     @override
     def configure(self) -> None:
@@ -99,16 +102,18 @@ class Stats(TypedDict):
     wait_std: float
 
 
+HISTOGRAM_BINS = 32
 FMIN_THRESHOLDS = np.linspace(50, 100)
+type HistogramData = tuple[np.ndarray | Sequence[float], np.ndarray | Sequence[float]]
 
 
 class Details(TypedDict):
     t_cohere: float
     t_wait: float
-    rate_hist: tuple[np.ndarray, np.ndarray]  # rate histogram
-    discard_hist: tuple[np.ndarray, np.ndarray]  # discard histogram
-    fid_hist: tuple[np.ndarray, np.ndarray]  # fidelity histogram
-    wait_hist: tuple[np.ndarray, np.ndarray]  # wait-time histogram
+    rate_hist: HistogramData  # rate histogram
+    discard_hist: HistogramData  # discard histogram
+    fid_hist: HistogramData  # fidelity histogram
+    wait_hist: HistogramData  # wait-time histogram
     fid_min: float  # minimum fidelity
     fmin_rate: Sequence[float]  # FMIN_THRESHOLDS - rate curve
 
@@ -142,10 +147,10 @@ def run_row(args: Args, t_cohere: float, t_wait: float) -> tuple[Stats, Details]
     ), Details(
         t_cohere=t_cohere,
         t_wait=t_wait,
-        rate_hist=np.histogram(rate, bins=16),
-        discard_hist=np.histogram(discard, bins=16),
-        fid_hist=np.histogram(fid, bins=16),
-        wait_hist=np.histogram(wait, bins=16),
+        rate_hist=np.histogram(rate, bins=HISTOGRAM_BINS),
+        discard_hist=np.histogram(discard, bins=HISTOGRAM_BINS),
+        fid_hist=np.histogram(fid, bins=HISTOGRAM_BINS),
+        wait_hist=np.histogram(wait, bins=HISTOGRAM_BINS),
         fid_min=np.min(fid),
         fmin_rate=fmin_rates,
     )
@@ -156,8 +161,10 @@ HISTOGRAM_INFO = [
     ("wait", "wait-time (ms)", "right"),
 ]
 
+type Rows = list[tuple[Stats, Details]]
 
-def plot(rows: list[tuple[Stats, Details]], *, save_plt: str):
+
+def plot(rows: Rows, *, save_plt: str):
     unit_width, unit_height = 2.5, 2.5
     fig = plt.figure(figsize=(unit_width * 4, unit_height * (1 + len(rows))))
     fig.tight_layout()
@@ -200,15 +207,29 @@ def plot(rows: list[tuple[Stats, Details]], *, save_plt: str):
     plt_save(save_plt)
 
 
-if __name__ == "__main__":
-    freeze_support()
-    args = Args().parse_args()
-
+def main(args: Args) -> Rows:
     with Pool(processes=args.workers) as pool:
-        rows = pool.starmap(run_row, itertools.product([args], args.t_cohere, args.t_wait))
+        rows: Rows = pool.starmap(run_row, itertools.product([args], args.t_cohere, args.t_wait))
 
     if args.csv:
         df = pd.DataFrame([s for s, _ in rows])
         df.to_csv(args.csv, index=False)
+
+    if args.json:
+        with open(args.json, "w") as file:
+            json.dump(rows, file, default=json_default)
+
+    return rows
+
+
+if __name__ == "__main__":
+    freeze_support()
+    args = Args().parse_args()
+
+    if args.plt_from_json:
+        with open(args.plt_from_json, "r") as file:
+            rows: Rows = json.load(file)
+    else:
+        rows = main(args)
 
     plot(rows, save_plt=args.plt)
