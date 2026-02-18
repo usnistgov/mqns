@@ -137,6 +137,13 @@ def test_basic(epr_type: type[Entanglement]):
 
     ll_cnt_agg = LinkLayerCounters.aggregate(net.nodes)
     print("ll_cnt_agg", ll_cnt_agg)
+    assert ll_cnt_agg.n_etg == 3
+    assert ll_cnt_agg.n_attempts == 3
+    # n_decoh is only incremented on the primary node.
+    # Although there are two decoherence events in the simulation, l1.n_decoh is incremented only at t=8.3.
+    # For the t=12.6 event, the path is uninstalled, so that l1 cannot recognize itself as primary.
+    assert ll_cnt_agg.n_decoh == 1
+    assert ll_cnt_agg.decoh_ratio == pytest.approx(1 / 3, abs=1e-6)
 
 
 def test_skip_ahead():
@@ -170,6 +177,7 @@ def test_skip_ahead():
 
     ll_cnt_agg = LinkLayerCounters.aggregate(net.nodes)
     print("ll_cnt_agg", ll_cnt_agg)
+    assert 0 <= ll_cnt_agg.decoh_ratio <= 1
 
 
 def test_timing_mode_sync():

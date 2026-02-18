@@ -440,27 +440,34 @@ class LinkLayer(Application[QNode]):
         self.simulator.add_event(QubitEntangledEvent(self.node, neighbor, qubit, t=self.simulator.tc, by=self))
 
     def handle_decoh_rel(self, event: QubitDecoheredEvent | QubitReleasedEvent) -> bool:
-        qubit = event.qubit
         is_decoh = type(event) is QubitDecoheredEvent
-        if is_decoh:
-            self.cnt.n_decoh += 1
-            log.debug(f"{self.node}: qubit decohered addr={qubit.addr} old-key={qubit.active}")
-        else:
-            log.debug(f"{self.node}: qubit released addr={qubit.addr} old-key={qubit.active}")
 
+        qubit = event.qubit
+        log.debug(f"{self.node}: qubit {'decohered' if is_decoh else 'released'} addr={qubit.addr} old-key={qubit.active}")
         qubit.state, qubit.active = QubitState.RAW, None
 
         assert qubit.qchannel is not None
         ac = self.active_channels.get((qubit.qchannel, qubit.path_id))
-        if ac is None:  # this node is not the EPR initiator
-            # Check deferred reservation requests and attempt to fulfill the reservation.
-            # Only the first (oldest) request in the FIFO is processed per call.
+
+        if ac is None:  # secondary node
+            # If there is a pending reservation request, check if it can be accepted with the now vacated qubit.
             if self.fifo_reservation_req and self.try_accept_reservation(self.fifo_reservation_req[0]):
+                # XXX If the released qubit is assigned to a different qchannel+path than the first reservation request,
+                #     try_accept_reservation() would not accept the reservation, resulting to unncessary choking.
+                # TODO Refactor fifo_reservation_req to consider qchannel+path.
+                #      Pass current qubit into try_accept_reservation() to reduce unnecesary searching.
                 self.fifo_reservation_req.popleft()
-        else:  # this node is the EPR initiator
-            next_hop, _ = ac
-            if self.node.timing.is_async():
-                self.start_reservation(next_hop, qubit.qchannel, qubit)
-            elif is_decoh:
-                raise Exception(f"{self.node}: UNEXPECTED -> (t_ext + t_int) too short")
+            return True
+
+        # primary node
+        if is_decoh:
+            self.cnt.n_decoh += 1
+
+        next_hop, _ = ac
+        if self.node.timing.is_async():
+            self.start_reservation(next_hop, qubit.qchannel, qubit)
+        # SYNC timing mode
+        elif is_decoh:
+            raise RuntimeError(f"{self.node}: unexpected QubitDecoheredEvent in SYNC timing mode, (t_ext+t_int) too high")
+
         return True
