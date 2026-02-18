@@ -7,7 +7,6 @@ from mqns.entity.qchannel import LinkArchAlways, LinkArchDimBk, QuantumChannelIn
 from mqns.models.epr import Entanglement, WernerStateEntanglement
 from mqns.network.network import QuantumNetwork, TimingMode, TimingModeAsync
 from mqns.network.proactive import (
-    LinkLayer,
     MuxScheme,
     MuxSchemeBufferSpace,
     ProactiveForwarder,
@@ -15,6 +14,7 @@ from mqns.network.proactive import (
     RoutingPath,
 )
 from mqns.network.protocol.event import QubitEntangledEvent
+from mqns.network.protocol.link_layer import LinkLayer
 from mqns.network.route import RouteAlgorithm, YenRouteAlgorithm
 from mqns.network.topology import ClassicTopology, GridTopology, LinearTopology, Topology, TopologyInitKwargs, TreeTopology
 from mqns.simulator import Simulator, func_to_event
@@ -204,7 +204,6 @@ def provide_entanglements(
 
         ch.link_arch.set(
             ch=ch,
-            alpha=0,
             eta_s=1,
             eta_d=1,
             reset_time=0,

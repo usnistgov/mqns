@@ -17,7 +17,6 @@ from mqns.models.epr import Entanglement, MixedStateEntanglement, WernerStateEnt
 from mqns.models.error.input import ErrorModelInputLength
 from mqns.network.network import QuantumNetwork, TimingMode, TimingModeAsync
 from mqns.network.proactive import (
-    LinkLayer,
     MuxScheme,
     MuxSchemeBufferSpace,
     ProactiveForwarder,
@@ -28,6 +27,7 @@ from mqns.network.proactive import (
     RoutingPathMulti,
     RoutingPathSingle,
 )
+from mqns.network.protocol.link_layer import LinkLayer
 from mqns.network.route import DijkstraRouteAlgorithm, RouteAlgorithm, YenRouteAlgorithm
 from mqns.network.topology import ClassicTopology, Topology
 from mqns.network.topology.customtopo import CustomTopology, Topo, TopoController, TopoQChannel, TopoQNode

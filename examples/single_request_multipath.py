@@ -2,11 +2,10 @@ from tap import Tap
 
 from mqns.network.builder import CTRL_DELAY, NetworkBuilder
 from mqns.network.proactive import ProactiveForwarder
+from mqns.network.protocol.link_layer import LinkLayerCounters
 from mqns.network.route import YenRouteAlgorithm
 from mqns.simulator import Simulator
 from mqns.utils import log, rng
-
-from examples_common.stats import gather_etg_decoh
 
 log.set_default_level("DEBUG")
 
@@ -56,7 +55,7 @@ def run_simulation(seed: int, args: Args):
     s.run()
 
     #### get stats
-    _, _, decoh_ratio = gather_etg_decoh(net)
+    decoh_ratio = LinkLayerCounters.aggregate(net.nodes).decoh_ratio
     e2e_rate = net.get_node("S").get_app(ProactiveForwarder).cnt.n_consumed / args.sim_duration
     return e2e_rate, decoh_ratio
 

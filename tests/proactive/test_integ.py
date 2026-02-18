@@ -9,12 +9,8 @@ import pytest
 from mqns.entity.timer import Timer
 from mqns.models.epr import Entanglement, MixedStateEntanglement, WernerStateEntanglement
 from mqns.network.network import TimingModeAsync, TimingModeSync
-from mqns.network.proactive import (
-    LinkLayer,
-    ProactiveForwarder,
-    RoutingPathSingle,
-    RoutingPathStatic,
-)
+from mqns.network.proactive import ProactiveForwarder, RoutingPathSingle, RoutingPathStatic
+from mqns.network.protocol.link_layer import LinkLayer
 
 from .proactive_common import build_linear_network, build_rect_network, install_path, print_fw_counters
 

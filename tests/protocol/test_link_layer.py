@@ -17,7 +17,7 @@ from mqns.network.protocol.event import (
     QubitEntangledEvent,
     QubitReleasedEvent,
 )
-from mqns.network.protocol.link_layer import LinkLayer
+from mqns.network.protocol.link_layer import LinkLayer, LinkLayerCounters
 from mqns.network.topology import ClassicTopology, CustomTopology, LinearTopology
 from mqns.simulator import Simulator
 from mqns.utils import log
@@ -93,45 +93,50 @@ def test_basic(epr_type: type[Entanglement]):
 
     s = Simulator(0.0, 20.0, install_to=(log, net))
 
-    a1 = net.get_node("n1").get_app(NetworkLayer)
-    a2 = net.get_node("n2").get_app(NetworkLayer)
-    manage_active_channel(s, 0.5, a1, a2)
-    manage_active_channel(s, 8.4, a1, a2, stop=True)
-    a1.release_after = 2.9
-    a2.release_after = 3.2
+    ll1 = net.get_node("n1").get_app(LinkLayer)
+    ll2 = net.get_node("n2").get_app(LinkLayer)
+    nl1 = net.get_node("n1").get_app(NetworkLayer)
+    nl2 = net.get_node("n2").get_app(NetworkLayer)
+    manage_active_channel(s, 0.5, nl1, nl2)
+    manage_active_channel(s, 8.4, nl1, nl2, stop=True)
+    nl1.release_after = 2.9
+    nl2.release_after = 3.2
 
     s.run()
 
-    for app in (a1, a2):
-        print(app.node.name, app.entangle, app.decohere)
-        assert len(app.entangle) == 3
-        assert len(app.decohere) == 2
+    for ll, nl in (ll1, nl1), (ll2, nl2):
+        print(ll.node.name, ll.cnt, nl.entangle, nl.decohere)
+        assert len(nl.entangle) == 3
+        assert len(nl.decohere) == 2
         # t=0.5, n1 installs path
         # t=0.5, n1 sends RESERVE_QUBIT
         # t=0.6, n2 receives RESERVE_QUBIT and sends RESERVE_QUBIT_OK
         # t=0.7, n1 receives RESERVE_QUBIT_OK
         # t=0.9, entanglement established
         # t=0.7 is assumed time of entanglement creation
-        assert app.entangle[0] == pytest.approx((0.9, 0.7), abs=1e-3)
+        assert nl.entangle[0] == pytest.approx((0.9, 0.7), abs=1e-3)
         # t=3.8, n1 releases qubit and sends RESERVE_QUBIT
         # t=3.9, n2 receives RESERVE_QUBIT but has no qubit available
         # t=4.1, n2 releases qubit and sends RESERVE_QUBIT_OK
         # t=4.2, n1 receives RESERVE_QUBIT_OK
         # t=4.4, entanglement established
         # t=4.2 is assumed time of entanglement creation
-        assert app.entangle[1] == pytest.approx((4.4, 4.2), abs=1e-3)
+        assert nl.entangle[1] == pytest.approx((4.4, 4.2), abs=1e-3)
         # t=8.3, qubits decohered 4.1 seconds since entanglement creation
-        assert app.decohere[0] == pytest.approx(8.3, abs=1e-3)
+        assert nl.decohere[0] == pytest.approx(8.3, abs=1e-3)
         # t=8.3, n1 sends RESERVE_QUBIT
         # t=8.4, n1 uninstalls path, but this does not affect ongoing reservation
         # t=8.4, n2 receives RESERVE_QUBIT and sends RESERVE_QUBIT_OK
         # t=8.5, n1 receives RESERVE_QUBIT_OK
         # t=8.7, entanglement established
         # t=8.5 is assumed time of entanglement creation
-        assert app.entangle[2] == pytest.approx((8.7, 8.5), abs=1e-3)
+        assert nl.entangle[2] == pytest.approx((8.7, 8.5), abs=1e-3)
         # t=12.6, qubits decohered 4.1 seconds since entanglement creation
-        assert app.decohere[1] == pytest.approx(12.6, abs=1e-3)
+        assert nl.decohere[1] == pytest.approx(12.6, abs=1e-3)
         # no more entanglements because the path has been uninstalled
+
+    ll_cnt_agg = LinkLayerCounters.aggregate(net.nodes)
+    print("ll_cnt_agg", ll_cnt_agg)
 
 
 def test_skip_ahead():
@@ -146,22 +151,25 @@ def test_skip_ahead():
     net.build_route()
     net.get_qchannel("n1", "n2").assign_memory_qubits(capacity=1)
 
-    simulator = Simulator(0.0, 10.0)
-    log.install(simulator)
-    net.install(simulator)
+    simulator = Simulator(0.0, 10.0, install_to=(log, net))
 
-    a1 = net.get_node("n1").get_app(NetworkLayer)
-    a2 = net.get_node("n2").get_app(NetworkLayer)
-    manage_active_channel(simulator, 0.5, a1, a2)
+    ll1 = net.get_node("n1").get_app(LinkLayer)
+    ll2 = net.get_node("n2").get_app(LinkLayer)
+    nl1 = net.get_node("n1").get_app(NetworkLayer)
+    nl2 = net.get_node("n2").get_app(NetworkLayer)
+    manage_active_channel(simulator, 0.5, nl1, nl2)
 
     simulator.run()
 
-    for app in (a1, a2):
-        print(app.node.name, app.entangle, app.decohere)
+    for ll, nl in (ll1, nl1), (ll2, nl2):
+        print(ll.node.name, ll.cnt, nl.entangle, nl.decohere)
 
-    assert len(a1.entangle) == len(a2.entangle) > 0
-    for t1, t2 in zip(a1.entangle, a2.entangle):
+    assert len(nl1.entangle) == len(nl2.entangle) > 0
+    for t1, t2 in zip(nl1.entangle, nl2.entangle):
         assert t1 == pytest.approx(t2, abs=1e-3)
+
+    ll_cnt_agg = LinkLayerCounters.aggregate(net.nodes)
+    print("ll_cnt_agg", ll_cnt_agg)
 
 
 def test_timing_mode_sync():
@@ -184,38 +192,36 @@ def test_timing_mode_sync():
     net = QuantumNetwork(topo, classic_topo=ClassicTopology.Follow, timing=TimingModeSync(t_ext=0.6, t_int=0.4))
     net.build_route()
 
-    simulator = Simulator(0.0, 10.0)
-    log.install(simulator)
-    net.install(simulator)
+    simulator = Simulator(0.0, 10.0, install_to=(log, net))
 
-    a0 = net.get_node("n0").get_app(NetworkLayer)
-    a1 = net.get_node("n1").get_app(NetworkLayer)
-    a2 = net.get_node("n2").get_app(NetworkLayer)
-    a3 = net.get_node("n3").get_app(NetworkLayer)
-    manage_active_channel(simulator, 0.1, a0, a1)
-    manage_active_channel(simulator, 0.1, a2, a3)  # n=1, start entanglements
-    manage_active_channel(simulator, 1.1, a2, a3)  # n=2, no change
-    manage_active_channel(simulator, 4.1, a2, a3, stop=True)  # n=1, no change
-    manage_active_channel(simulator, 5.1, a2, a3, stop=True)  # n=0, stop entanglements
+    nl0 = net.get_node("n0").get_app(NetworkLayer)
+    nl1 = net.get_node("n1").get_app(NetworkLayer)
+    nl2 = net.get_node("n2").get_app(NetworkLayer)
+    nl3 = net.get_node("n3").get_app(NetworkLayer)
+    manage_active_channel(simulator, 0.1, nl0, nl1)
+    manage_active_channel(simulator, 0.1, nl2, nl3)  # n=1, start entanglements
+    manage_active_channel(simulator, 1.1, nl2, nl3)  # n=2, no change
+    manage_active_channel(simulator, 4.1, nl2, nl3, stop=True)  # n=1, no change
+    manage_active_channel(simulator, 5.1, nl2, nl3, stop=True)  # n=0, stop entanglements
 
     simulator.run()
 
-    for app in (a0, a1):
-        print(app.node.name, app.entangle, app.decohere)
+    for nl in nl0, nl1:
+        print(nl.node.name, nl.entangle, nl.decohere)
         # τ=0.2 for the channel between n0 and n1.
         # Entanglement (including reservation) requires 4τ i.e. 0.8 seconds but the EXTERNAL phase
         # has only 0.6 seconds, so that no entanglement could complete on this channel.
-        assert len(app.entangle) == 0
-        assert len(app.decohere) == 0
+        assert len(nl.entangle) == 0
+        assert len(nl.decohere) == 0
 
-    for app in (a2, a3):
-        print(app.node.name, app.entangle, app.decohere)
+    for nl in nl2, nl3:
+        print(nl.node.name, nl.entangle, nl.decohere)
         # τ=0.1 for the channel between n2 and n3.
         # Entanglement (including reservation) requires 4τ i.e. 0.4 seconds.
         # No entanglement occurs in the first EXTERNAL phase window, because reservations are only initiated
         # at the start of each EXTERNAL phase window, not when ManageActiveChannels arrives.
         # The uninstall_path stop event takes effect for the EXTERNAL phase window starting at t=6.0.
-        assert [t_notify for t_notify, _ in app.entangle] == pytest.approx([1.4, 2.4, 3.4, 4.4, 5.4], abs=1e-3)
+        assert [t_notify for t_notify, _ in nl.entangle] == pytest.approx([1.4, 2.4, 3.4, 4.4, 5.4], abs=1e-3)
         # All qubits are cleared at the start of each EXTERNAL phase, before memory decoherence occurs.
         # Decoherence events are not emitted for cleared qubits.
-        assert len(app.decohere) == 0
+        assert len(nl.decohere) == 0

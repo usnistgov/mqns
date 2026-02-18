@@ -17,6 +17,7 @@
 
 import uuid
 from collections import deque
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal, TypedDict, cast, override
 
@@ -52,6 +53,22 @@ class ReservationRequest:
 
 @json_encodable
 class LinkLayerCounters:
+    @staticmethod
+    def aggregate(nodes: Sequence[QNode]) -> "LinkLayerCounters":
+        """
+        Aggregate ``LinkLayerCounters`` from a network.
+
+        Args:
+            nodes: List of nodes, such as ``QuantumNetwork.nodes``.
+        """
+        r = LinkLayerCounters()
+        for node in nodes:
+            for ll in node.get_apps(LinkLayer):
+                r.n_etg += ll.cnt.n_etg
+                r.n_attempts += ll.cnt.n_attempts
+                r.n_decoh += ll.cnt.n_decoh
+        return r
+
     def __init__(self):
         self.n_etg = 0
         """how many entanglements generated as the primary node"""
@@ -63,6 +80,14 @@ class LinkLayerCounters:
     def increment_n_etg(self, attempts: int) -> None:
         self.n_etg += 1
         self.n_attempts += attempts
+
+    @property
+    def decoh_ratio(self) -> float:
+        """decoherence ratio, ``n_decoh/n_etg``"""
+        return self.n_decoh / self.n_etg if self.n_etg > 0 else 0
+
+    def __repr__(self) -> str:
+        return f"etg={self.n_etg} attempts={self.n_attempts} decoh={self.n_decoh} decoh_ratio={self.decoh_ratio}"
 
 
 class LinkLayer(Application[QNode]):

@@ -7,7 +7,6 @@ from tap import Tap
 
 from mqns.network.builder import CTRL_DELAY, NetworkBuilder
 from mqns.network.proactive import (
-    LinkLayer,
     MultiplexingVector,
     MuxScheme,
     MuxSchemeBufferSpace,
@@ -16,6 +15,7 @@ from mqns.network.proactive import (
     QubitAllocationType,
     RoutingPathStatic,
 )
+from mqns.network.protocol.link_layer import LinkLayer
 from mqns.simulator import Simulator
 from mqns.utils import log, rng
 

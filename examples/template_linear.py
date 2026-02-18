@@ -7,7 +7,7 @@ This template allows to:
 - build a linear topology S-R*-D via mqns.network.builder.NetworkBuilder
 - Install a single default path S-D
 - extract stats from ProactiveForwarder counters (throughput, fidelity, etc.)
-- optionally compute decoherence/expired-memory metrics via gather_etg_decoh(...)
+- optionally compute decoherence/expired-memory metrics via LinkLayerCounters
 - optionally run sweeps (parameter grids) sequentially
 - save CSV/JSON and plot
 """
@@ -23,11 +23,11 @@ from tap import Tap
 from mqns.entity.qchannel import LinkArchDimBk, LinkArchSim, LinkArchSr
 from mqns.network.builder import CTRL_DELAY, NetworkBuilder
 from mqns.network.proactive import ProactiveForwarder
+from mqns.network.protocol.link_layer import LinkLayerCounters
 from mqns.simulator import Simulator
 from mqns.utils import log, rng
 
 from examples_common.plotting import plt, plt_save
-from examples_common.stats import gather_etg_decoh
 
 _ = (LinkArchDimBk, LinkArchSim, LinkArchSr)
 
@@ -201,9 +201,9 @@ def run_simulation(
         out["mean_fidelity"] = float(fw_s.cnt.consumed_avg_fidelity)
 
     if "expired_ratio" in MEASURES:
-        _, total_decohered, decoh_ratio = gather_etg_decoh(net)
-        out["expired_ratio"] = float(decoh_ratio)
-        out["expired_per_e2e_safe"] = float(total_decohered / e2e_count) if e2e_count > 0 else 0.0
+        ll_cnt = LinkLayerCounters.aggregate(net.nodes)
+        out["expired_ratio"] = float(ll_cnt.decoh_ratio)
+        out["expired_per_e2e_safe"] = float(ll_cnt.n_decoh / e2e_count) if e2e_count > 0 else 0.0
 
     return out
 
