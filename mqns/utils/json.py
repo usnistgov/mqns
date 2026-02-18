@@ -1,5 +1,7 @@
 from typing import Any, cast
 
+import numpy as np
+
 _MARKER_ATTRIBUTE = "_json_encodable.8a8dd1ed-954e-4ca1-8262-0c8404762fc4"
 _MARKER_SENTINEL = object()
 
@@ -18,8 +20,17 @@ def json_encodable[T: type](cls: T) -> T:
 def json_default(obj: Any) -> Any:
     """
     Custom JSON encoder, passed as `json.dumps(default=json_default)`.
+
+    It accepts these types:
+
+    * ``np.ndarray``
+    * class decorated with ``json_encodable``
     """
     typ = type(obj)
+
+    if typ is np.ndarray:
+        return obj.tolist()
+
     if getattr(typ, _MARKER_ATTRIBUTE, None) is not _MARKER_SENTINEL:
         raise TypeError(f"cannot encode {typ}")
 
