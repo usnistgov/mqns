@@ -1,5 +1,6 @@
 import json
 
+import numpy as np
 import pytest
 
 from mqns.utils import json_default, json_encodable
@@ -7,7 +8,7 @@ from mqns.utils import json_default, json_encodable
 
 class DataClass:
     def __init__(self):
-        self.included_attribute = 1
+        self.included_attribute = np.array([1], dtype=np.int16)
         self._excluded_attribute = 2
 
     @property
@@ -32,4 +33,4 @@ def test_json_default():
         json.dumps(DataClass(), default=json_default)
 
     wire = json.dumps(EncodableClass(), default=json_default, sort_keys=True)
-    assert wire == '{"included_attribute": 1, "included_property": 3}'
+    assert wire == '{"included_attribute": [1], "included_property": 3}'
