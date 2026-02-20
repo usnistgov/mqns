@@ -17,6 +17,7 @@
 
 from typing import override
 
+from mqns.entity.cchannel import ClassicPacket
 from mqns.entity.memory import MemoryQubit, PathDirection
 from mqns.network.forwarder import Forwarder
 from mqns.network.network import TimingPhase, TimingPhaseEvent
@@ -24,7 +25,6 @@ from mqns.network.proactive.cutoff import CutoffScheme, CutoffSchemeWaitTime
 from mqns.network.proactive.fib import FibEntry
 from mqns.network.proactive.message import (
     InstallPathMsg,
-    UninstallPathMsg,
 )
 from mqns.network.proactive.mux import MuxScheme
 from mqns.network.proactive.mux_buffer_space import MuxSchemeBufferSpace
@@ -33,9 +33,11 @@ from mqns.network.protocol.event import ManageActiveChannels
 from mqns.utils import log
 
 
-class ProactiveForwarder(Forwarder):
+class ReactiveForwarder(Forwarder):
     """
-    ProactiveForwarder is the forwarder of QNodes and receives routing instructions from the controller.
+    ReactiveForwarder is the forwarder of QNodes. It continuously generates EPRs on all links,
+    then sends EPR link state to the controller to receive routing instructions.
+    Works only in Synchronous timing mode.
     It implements the forwarding phase (i.e., entanglement generation and swapping) while the centralized
     routing is done at the controller.
     """
@@ -56,7 +58,6 @@ class ProactiveForwarder(Forwarder):
 
         Args:
             ps: Probability of successful entanglement swapping (default: 1.0).
-            cutoff: EPR age cut-off scheme (default: wait-time).
             mux: Path multiplexing scheme (default: buffer-space).
         """
         super().__init__(ps=ps, cutoff=cutoff, mux=mux, select_purif_qubit=select_purif_qubit)
@@ -64,6 +65,27 @@ class ProactiveForwarder(Forwarder):
     @override
     def install(self, node):
         super().install(node)
+
+        # Qchannel activation is called before simulation starts, but EPR generation starts at t=0
+        self.activate_qchannels()
+
+    # instruct LinkLayer to start generating EPRs on ALL qchannels
+    # can be called from install() or at the first EXTERNAL phase (for better coordination)
+    def activate_qchannels(self):
+        for ch in self.node.qchannels:
+            if self.node == ch.node_list[0]:  # self is the EPR initiator node for this channel
+                log.debug(f"{self.node}: activate qchannel {ch.name}")
+                self.simulator.add_event(
+                    ManageActiveChannels(
+                        self.node,
+                        ch.node_list[1],
+                        ch,
+                        path_id=None,
+                        start=True,
+                        t=self.simulator.tc,
+                        by=self,
+                    )
+                )
 
     @override
     def handle_sync_phase(self, event: TimingPhaseEvent):
@@ -77,10 +99,16 @@ class ProactiveForwarder(Forwarder):
 
         Upon entering INTERNAL phase:
 
-        1. Start processing elementary entanglements that arrived during EXTERNAL phase.
+        1. Send to controller link states corresponding to entangled qubits that arrived during EXTERNAL phase
+        and wait for routing instructions.
+        2. Start processing elementary entanglements that arrived during EXTERNAL phase following routing instructions.
         """
         if event.phase == TimingPhase.EXTERNAL:
             self.remote_swapped_eprs.clear()
+        elif event.phase == TimingPhase.ROUTING:
+            log.debug(f"{self.node}: there are {len(self.waiting_etg)} etg qubits to process")
+            log.debug(f"{self.node}: send link_state for {len(self.waiting_etg)} etg qubits")
+            self.send_link_state()
         elif event.phase == TimingPhase.INTERNAL:
             log.debug(f"{self.node}: there are {len(self.waiting_etg)} etg qubits to process")
             for etg_event in self.waiting_etg:
@@ -92,10 +120,8 @@ class ProactiveForwarder(Forwarder):
         """
         Process an install_path message containing routing instructions from the controller.
 
-        1. Insert FIB entry.
-        2. Identify neighbors and qchannels.
-        3. Save the path and neighbors in the multiplexing scheme.
-        4. Notify LinkLayer to start elementary EPR generation toward the right neighbor.
+        1. Insert FIB entry -> needed for signaling
+        2. Save the path and neighbors in the multiplexing scheme -> to reuse forwarding logic
         """
         path_id = msg["path_id"]
         instructions = msg["instructions"]
@@ -130,64 +156,23 @@ class ProactiveForwarder(Forwarder):
             # associate path with qchannel and allocate qubits
             self.mux.install_path_neighbor(instructions, fib_entry, PathDirection.R, r_neighbor, r_qchannel)
 
-            # instruct LinkLayer to start generating EPRs on the qchannel toward the right neighbor
-            self.simulator.add_event(
-                ManageActiveChannels(
-                    self.node,
-                    r_neighbor,
-                    r_qchannel,
-                    path_id=path_id if self.mux.qubit_has_path_id() else None,
-                    start=True,
-                    t=self.simulator.tc,
-                    by=self,
-                )
-            )
-
-    @override
-    def handle_uninstall_path(self, msg: UninstallPathMsg):
+    def send_link_state(self):
         """
-        Process an uninstall_path message containing routing instructions from the controller.
-
-        1. Insert FIB entry.
-        2. Identify neighbors and qchannels.
-        3. Save the path and neighbors in the multiplexing scheme.
-        4. Notify LinkLayer to start elementary EPR generation toward the right neighbor.
+        Send link state message to controller. Assumes direct connection to controller.
         """
-        path_id = msg["path_id"]
+        ctrl_node = self.network.get_controller()
+        link_states = []
+        for event in self.waiting_etg:
+            link_states.append({"node": event.node.name, "neighbor": event.neighbor.name, "qubit": event.qubit.addr})
 
-        # retrieve and erase FIB entry
-        fib_entry = self.fib.get(path_id)
-        self.fib.erase(path_id)
+        msg = {"ls": link_states}
 
-        # identify left/right neighbors
-        l_neighbor = self._find_neighbor(fib_entry, -1)
-        r_neighbor = self._find_neighbor(fib_entry, +1)
+        if len(link_states) == 0:
+            log.debug(f"{self.node}: no link_state to send")
+            return
 
-        if l_neighbor:
-            l_qchannel = self.node.get_qchannel(l_neighbor)
-
-            # disassociate path with qchannel and deallocate qubits
-            _ = l_qchannel
-            self.mux.uninstall_path_neighbor(fib_entry, PathDirection.L, l_neighbor, l_qchannel)
-
-        if r_neighbor:
-            r_qchannel = self.node.get_qchannel(r_neighbor)
-
-            # disassociate path with qchannel and deallocate qubits
-            self.mux.uninstall_path_neighbor(fib_entry, PathDirection.R, r_neighbor, r_qchannel)
-
-            # instruct LinkLayer to stop generating EPRs on the qchannel toward the right neighbor
-            self.simulator.add_event(
-                ManageActiveChannels(
-                    self.node,
-                    r_neighbor,
-                    r_qchannel,
-                    path_id=path_id if self.mux.qubit_has_path_id() else None,
-                    start=False,
-                    t=self.simulator.tc,
-                    by=self,
-                )
-            )
+        log.debug(f"{self.node}: sending link_state to controller | {msg}")
+        self.node.get_cchannel(ctrl_node).send(ClassicPacket(msg, src=self.node, dest=ctrl_node), ctrl_node)
 
     @override
     def release_qubit(self, qubit: MemoryQubit, *, need_remove=False):
@@ -199,3 +184,6 @@ class ProactiveForwarder(Forwarder):
                          This should be set to True unless .read(remove=True) is already performed.
         """
         super().release_qubit(qubit, need_remove=need_remove)
+
+        # in Reactive: remove path allocation for next routing cycle
+        self.memory.deallocate(qubit.addr)

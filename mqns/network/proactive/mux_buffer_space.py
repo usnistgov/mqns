@@ -13,11 +13,11 @@ from mqns.network.proactive.select import MemoryEprIterator, MemoryEprTuple
 from mqns.utils import log, rng
 
 if TYPE_CHECKING:
-    from mqns.network.proactive.forwarder import ProactiveForwarder
+    from mqns.network.forwarder import Forwarder
 
 
 class MuxSchemeFibBase(MuxScheme):
-    type SelectSwapQubit = Callable[["ProactiveForwarder", MemoryEprTuple, FibEntry, list[MemoryEprTuple]], MemoryEprTuple]
+    type SelectSwapQubit = Callable[["Forwarder", MemoryEprTuple, FibEntry, list[MemoryEprTuple]], MemoryEprTuple]
 
     SelectSwapQubit_random: SelectSwapQubit = lambda _fw, _mt, _fe, candidates: candidates[rng.choice(len(candidates))]
 
