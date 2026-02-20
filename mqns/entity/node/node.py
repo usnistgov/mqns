@@ -127,12 +127,19 @@ class Node(Entity):
         """
         if self._app_by_type is None:  # this is called before self.install() populates _app_by_type
             self.ensure_not_installed()
-            apps = self.get_apps(app_type)
-            if len(apps) != 1:
-                raise IndexError("node does not have exactly one instance of {app_type}")
-            return apps[0]
+            return self._get_app_from_apps(app_type)
 
-        return cast(A, self._app_by_type[app_type])
+        try:
+            return cast(A, self._app_by_type[app_type])
+        except KeyError:
+            # app_type is a base class
+            return self._get_app_from_apps(app_type)
+
+    def _get_app_from_apps[A: Application](self, app_type: type[A]) -> A:
+        apps = self.get_apps(app_type)
+        if len(apps) != 1:
+            raise IndexError("node does not have exactly one instance of {app_type}")
+        return apps[0]
 
     def _add_channel[C: "BaseChannel"](self, channel: C, channels: list[C]) -> None:
         self.ensure_not_installed()
