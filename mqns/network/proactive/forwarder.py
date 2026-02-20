@@ -18,14 +18,11 @@
 from typing import override
 
 from mqns.entity.memory import MemoryQubit, PathDirection
-from mqns.network.forwarder import Forwarder
+from mqns.network.fw import Forwarder
 from mqns.network.network import TimingPhase, TimingPhaseEvent
 from mqns.network.proactive.cutoff import CutoffScheme, CutoffSchemeWaitTime
 from mqns.network.proactive.fib import FibEntry
-from mqns.network.proactive.message import (
-    InstallPathMsg,
-    UninstallPathMsg,
-)
+from mqns.network.proactive.message import InstallPathMsg, UninstallPathMsg
 from mqns.network.proactive.mux import MuxScheme
 from mqns.network.proactive.mux_buffer_space import MuxSchemeBufferSpace
 from mqns.network.proactive.select import SelectPurifQubit

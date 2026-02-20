@@ -10,7 +10,7 @@ from mqns.network.proactive.message import PathInstructions
 from mqns.network.proactive.select import MemoryEprIterator
 
 if TYPE_CHECKING:
-    from mqns.network.forwarder import Forwarder
+    from mqns.network.fw import Forwarder
 
 
 class MuxScheme(ABC):

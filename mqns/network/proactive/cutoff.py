@@ -9,7 +9,7 @@ from mqns.simulator import Simulator, func_to_event
 from mqns.utils import log
 
 if TYPE_CHECKING:
-    from mqns.network.forwarder import Forwarder
+    from mqns.network.fw import Forwarder
 
 
 class CutoffScheme(ABC):
