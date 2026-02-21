@@ -2,7 +2,7 @@ import math
 from typing import cast
 
 from mqns.entity.base_channel import default_light_speed
-from mqns.network.proactive.message import SwapSequence
+from mqns.network.fw.message import SwapSequence
 
 _predefined_swap_sequences = {
     # disable swapping (for studying isolated links)

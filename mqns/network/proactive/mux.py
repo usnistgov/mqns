@@ -5,8 +5,8 @@ from mqns.entity.memory import MemoryQubit, PathDirection, QuantumMemory
 from mqns.entity.node import QNode
 from mqns.entity.qchannel import QuantumChannel
 from mqns.models.epr import Entanglement
-from mqns.network.proactive.fib import Fib, FibEntry
-from mqns.network.proactive.message import PathInstructions
+from mqns.network.fw.fib import Fib, FibEntry
+from mqns.network.fw.message import PathInstructions
 from mqns.network.proactive.select import MemoryEprIterator
 
 if TYPE_CHECKING:

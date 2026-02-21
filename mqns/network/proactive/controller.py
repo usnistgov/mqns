@@ -19,7 +19,7 @@ from typing import override
 
 from mqns.entity.cchannel import ClassicPacket
 from mqns.entity.node import Application, Controller
-from mqns.network.proactive.message import InstallPathMsg, PathInstructions, UninstallPathMsg
+from mqns.network.fw.message import InstallPathMsg, PathInstructions, UninstallPathMsg
 from mqns.network.proactive.routing import RoutingPath
 from mqns.utils import log
 

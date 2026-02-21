@@ -17,14 +17,15 @@
 
 from typing import override
 
-from mqns.entity.cchannel import ClassicPacket, RecvClassicPacket
+from mqns.entity.cchannel import ClassicCommandDispatcherMixin, ClassicPacket, RecvClassicPacket, classic_cmd_handler
 from mqns.entity.node import Application, Controller
-from mqns.network.proactive.message import InstallPathMsg, PathInstructions
+from mqns.network.fw.message import InstallPathMsg, PathInstructions
 from mqns.network.proactive.routing import RoutingPath, RoutingPathStatic
+from mqns.network.reactive.message import LinkStateMsg
 from mqns.utils import log
 
 
-class ReactiveRoutingController(Application[Controller]):
+class ReactiveRoutingController(ClassicCommandDispatcherMixin, Application[Controller]):
     """
     Centralized control plane app for Reactive Routing.
     Works with ReactiveForwarder on quantum nodes.
@@ -41,7 +42,7 @@ class ReactiveRoutingController(Application[Controller]):
         super().__init__()
         self.swap = swap
 
-        self.add_handler(self.RecvClassicPacketHandler, RecvClassicPacket)
+        self.add_handler(self.handle_classic_command, RecvClassicPacket)
 
         self.ls_messages = []
 
@@ -53,24 +54,17 @@ class ReactiveRoutingController(Application[Controller]):
         self.next_req_id = 0
         self.next_path_id = 0
 
-    def RecvClassicPacketHandler(self, event: RecvClassicPacket) -> bool:
+    @classic_cmd_handler("LS")
+    def handle_ls(self, pkt: ClassicPacket, msg: LinkStateMsg):
         """
-        Process a received classical packet.
-        The packet is expected to contain link_states from nodes and received during the ROUTING phase.
-
-        This method recognizes a message that is a dict with "ls" key with known value.
-
-        Returns False for unrecognized message types, which allows the packet to go to the next application.
+        Process received link_states from ReactiveForwarder.
         """
-        packet = event.packet
-        msg = packet.get()
-        if not (isinstance(msg, dict) and "ls" in msg):
-            return False
+
         if not self.node.timing.is_routing():  # should be in SYNC timing mode ROUTING phase
-            log.debug(f"{self.node}: received ls message from {packet.src} outside of ROUTING phase | {msg}")
-            return False
+            log.debug(f"{self.node}: received LS message from {pkt.src} outside of ROUTING phase | {msg}")
+            return True
 
-        log.debug(f"{self.node.name}: received LS message from {packet.src} | {msg}")
+        log.debug(f"{self.node.name}: received LS message from {pkt.src} | {msg}")
 
         self.ls_messages.append(msg)
         if len(self.ls_messages) == 3:

@@ -18,11 +18,10 @@
 from typing import override
 
 from mqns.entity.memory import MemoryQubit, PathDirection
-from mqns.network.fw import Forwarder
+from mqns.network.fw import FibEntry, Forwarder, fw_control_cmd_handler
+from mqns.network.fw.message import InstallPathMsg, UninstallPathMsg
 from mqns.network.network import TimingPhase, TimingPhaseEvent
 from mqns.network.proactive.cutoff import CutoffScheme, CutoffSchemeWaitTime
-from mqns.network.proactive.fib import FibEntry
-from mqns.network.proactive.message import InstallPathMsg, UninstallPathMsg
 from mqns.network.proactive.mux import MuxScheme
 from mqns.network.proactive.mux_buffer_space import MuxSchemeBufferSpace
 from mqns.network.proactive.select import SelectPurifQubit
@@ -84,7 +83,7 @@ class ProactiveForwarder(Forwarder):
                 self.qubit_is_entangled(etg_event)
             self.waiting_etg.clear()
 
-    @override
+    @fw_control_cmd_handler("install_path")
     def handle_install_path(self, msg: InstallPathMsg):
         """
         Process an install_path message containing routing instructions from the controller.
@@ -140,7 +139,7 @@ class ProactiveForwarder(Forwarder):
                 )
             )
 
-    @override
+    @fw_control_cmd_handler("uninstall_path")
     def handle_uninstall_path(self, msg: UninstallPathMsg):
         """
         Process an uninstall_path message containing routing instructions from the controller.

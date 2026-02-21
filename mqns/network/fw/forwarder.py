@@ -16,25 +16,18 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import copy
-from typing import Any, cast, override
+from typing import cast, override
 
 import numpy as np
 
-from mqns.entity.cchannel import ClassicPacket, RecvClassicPacket
 from mqns.entity.memory import MemoryQubit, QubitState
-from mqns.entity.node import Application, Node, QNode
+from mqns.entity.node import Application, QNode
 from mqns.models.epr import Entanglement
+from mqns.network.fw.classic import ForwarderClassicMixin, fw_signaling_cmd_handler
+from mqns.network.fw.fib import Fib, FibEntry
+from mqns.network.fw.message import CutoffDiscardMsg, PurifResponseMsg, PurifSolicitMsg, SwapUpdateMsg
 from mqns.network.network import TimingPhaseEvent
 from mqns.network.proactive.cutoff import CutoffScheme, CutoffSchemeWaitTime
-from mqns.network.proactive.fib import Fib, FibEntry
-from mqns.network.proactive.message import (
-    CutoffDiscardMsg,
-    InstallPathMsg,
-    PurifResponseMsg,
-    PurifSolicitMsg,
-    SwapUpdateMsg,
-    UninstallPathMsg,
-)
 from mqns.network.proactive.mux import MuxScheme
 from mqns.network.proactive.mux_buffer_space import MuxSchemeBufferSpace
 from mqns.network.proactive.select import SelectPurifQubit, call_select_purif_qubit
@@ -117,7 +110,7 @@ class ForwarderCounters:
         )
 
 
-class Forwarder(Application[QNode]):
+class Forwarder(ForwarderClassicMixin, Application[QNode]):
     """
     Forwarder is the network layer component of QNodes implementing the forwarding phase
     (i.e., entanglement generation and swapping) while the centralized
@@ -144,6 +137,7 @@ class Forwarder(Application[QNode]):
             mux: Path multiplexing scheme (default: buffer-space).
         """
         super().__init__()
+        self._init_classic_mixin()
 
         assert 0.0 <= ps <= 1.0
         self.ps = ps
@@ -158,7 +152,6 @@ class Forwarder(Application[QNode]):
         """FIB structure."""
 
         self.add_handler(self.handle_sync_phase, TimingPhaseEvent)
-        self.add_handler(self.RecvClassicPacketHandler, RecvClassicPacket)
         self.add_handler(self.qubit_is_entangled, QubitEntangledEvent)
 
         self.waiting_etg: list[QubitEntangledEvent] = []
@@ -215,85 +208,10 @@ class Forwarder(Application[QNode]):
         """
         pass
 
-    CLASSIC_CONTROL_HANDLERS: dict[str, str] = {}
-    CLASSIC_SIGNALING_HANDLERS: dict[str, str] = {}
-
-    def RecvClassicPacketHandler(self, event: RecvClassicPacket) -> bool:
-        """
-        Dispatch or forward a received classical packet.
-
-        This method recognizes a message that is a dict with "cmd" key with known value.
-        The message is then passed to the appropriate handler function.
-
-        For a signaling message where own node is not the destination, it is forwarded along the path.
-
-        Returns False for unrecognized message types, which allows the packet to go to the next application.
-        """
-        packet = event.packet
-        msg = packet.get()
-        if not (isinstance(msg, dict) and "cmd" in msg):
-            return False
-        cmd: str = msg["cmd"]
-        handler = self.CLASSIC_CONTROL_HANDLERS.get(cmd)
-        if handler is not None:
-            log.debug(f"{self.node}: received control message from {packet.src} | {msg}")
-            getattr(self, handler)(msg)
-            return True
-
-        handler = self.CLASSIC_SIGNALING_HANDLERS.get(cmd)
-        if handler is None:
-            return False
-
-        path_id: int = msg["path_id"]
-        try:
-            fib_entry = self.fib.get(path_id)
-        except IndexError:
-            log.debug(f"{self.node}: dropping signaling message from {packet.src}, reason=no-fib-entry | {msg}")
-            return True
-
-        if packet.dest != self.node:
-            self.send_msg(packet.dest, msg, fib_entry, forward=True)
-            return True
-
-        log.debug(f"{self.node}: received signaling message from {packet.src} | {msg}")
-        getattr(self, handler)(msg, fib_entry)
-        return True
-
-    def send_msg(self, dest: Node, msg: Any, fib_entry: FibEntry, *, forward=False):
-        """
-        Send/forward a message along the path specified in FIB entry.
-        """
-        dest_idx = fib_entry.route.index(dest.name)
-        nh = fib_entry.route[fib_entry.own_idx + 1] if dest_idx > fib_entry.own_idx else fib_entry.route[fib_entry.own_idx - 1]
-        next_hop = self.network.get_node(nh)
-
-        log.debug(
-            f"{self.node}: {'forwarding' if forward else 'sending'} signaling message to {dest.name} via {next_hop.name}"
-            f" | {msg}"
-        )
-        self.node.get_cchannel(next_hop).send(ClassicPacket(msg, src=self.node, dest=dest), next_hop)
-
-    def handle_install_path(self, msg: InstallPathMsg):
-        """
-        Process an install_path message containing routing instructions from the controller.
-        """
-        pass
-
-    CLASSIC_CONTROL_HANDLERS["install_path"] = "handle_install_path"
-
-    def handle_uninstall_path(self, msg: UninstallPathMsg):
-        """
-        Process an uninstall_path message containing routing instructions from the controller.
-        """
-        pass
-
-    CLASSIC_CONTROL_HANDLERS["uninstall_path"] = "handle_uninstall_path"
-
+    @fw_signaling_cmd_handler("CUTOFF_DISCARD")
     def _handle_cutoff_discard(self, msg: CutoffDiscardMsg, fib_entry: FibEntry):
         _ = fib_entry
         self.cutoff.handle_discard(msg)
-
-    CLASSIC_SIGNALING_HANDLERS["CUTOFF_DISCARD"] = "_handle_cutoff_discard"
 
     def _find_neighbor(self, fib_entry: FibEntry, route_offset: int) -> QNode | None:
         neigh_idx = fib_entry.own_idx + route_offset
@@ -335,7 +253,7 @@ class Forwarder(Application[QNode]):
             qubit.state != QubitState.RELEASE  # qubit was released due to uninstalled path
             and su_args
         ):
-            self.handle_swap_update(*su_args)
+            self._handle_swap_update(*su_args)
 
     def qubit_is_purif(self, qubit: MemoryQubit, fib_entry: FibEntry, partner: QNode):
         """
@@ -432,6 +350,7 @@ class Forwarder(Application[QNode]):
         }
         self.send_msg(partner, msg, fib_entry)
 
+    @fw_signaling_cmd_handler("PURIF_SOLICIT")
     def handle_purif_solicit(self, msg: PurifSolicitMsg, fib_entry: FibEntry):
         """
         Process a PURIF_SOLICIT message from primary node as part of the purification protocol.
@@ -495,8 +414,7 @@ class Forwarder(Application[QNode]):
         }
         self.send_msg(primary, resp, fib_entry)
 
-    CLASSIC_SIGNALING_HANDLERS["PURIF_SOLICIT"] = "handle_purif_solicit"
-
+    @fw_signaling_cmd_handler("PURIF_RESPONSE")
     def handle_purif_response(self, msg: PurifResponseMsg, fib_entry: FibEntry):
         """
         Process a PURIF_RESPONSE message indicating the outcome of a purification attempt.
@@ -535,8 +453,6 @@ class Forwarder(Application[QNode]):
         qubit.purif_rounds += 1
         qubit.state = QubitState.PURIF
         self.qubit_is_purif(qubit, fib_entry, self.network.get_node(msg["partner"]))
-
-    CLASSIC_SIGNALING_HANDLERS["PURIF_RESPONSE"] = "handle_purif_response"
 
     def qubit_is_eligible(self, qubit: MemoryQubit, fib_entry: FibEntry | None):
         """
@@ -663,7 +579,11 @@ class Forwarder(Application[QNode]):
             # Release old qubit.
             self.release_qubit(a_qubit)
 
+    @fw_signaling_cmd_handler("SWAP_UPDATE")
     def handle_swap_update(self, msg: SwapUpdateMsg, fib_entry: FibEntry):
+        self._handle_swap_update(msg, fib_entry)
+
+    def _handle_swap_update(self, msg: SwapUpdateMsg, fib_entry: FibEntry):
         """
         Process an SWAP_UPDATE signaling message.
         It may either update local qubit state or release decohered pairs.
@@ -703,8 +623,6 @@ class Forwarder(Application[QNode]):
             self._su_parallel(msg, fib_entry, new_epr)
         else:
             log.debug(f"### {self.node}: EPR {epr_name} decohered during SU transmissions")
-
-    CLASSIC_SIGNALING_HANDLERS["SWAP_UPDATE"] = "handle_swap_update"
 
     def _su_sequential(
         self,

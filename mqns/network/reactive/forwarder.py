@@ -17,17 +17,17 @@
 
 from typing import override
 
-from mqns.entity.cchannel import ClassicPacket
 from mqns.entity.memory import MemoryQubit, PathDirection
-from mqns.network.fw import Forwarder
+from mqns.network.fw import Forwarder, fw_control_cmd_handler
+from mqns.network.fw.fib import FibEntry
+from mqns.network.fw.message import InstallPathMsg, UninstallPathMsg
 from mqns.network.network import TimingPhase, TimingPhaseEvent
 from mqns.network.proactive.cutoff import CutoffScheme, CutoffSchemeWaitTime
-from mqns.network.proactive.fib import FibEntry
-from mqns.network.proactive.message import InstallPathMsg
 from mqns.network.proactive.mux import MuxScheme
 from mqns.network.proactive.mux_buffer_space import MuxSchemeBufferSpace
 from mqns.network.proactive.select import SelectPurifQubit
 from mqns.network.protocol.event import ManageActiveChannels
+from mqns.network.reactive.message import LinkStateEntry, LinkStateMsg
 from mqns.utils import log
 
 
@@ -113,7 +113,7 @@ class ReactiveForwarder(Forwarder):
                 self.qubit_is_entangled(etg_event)
             self.waiting_etg.clear()
 
-    @override
+    @fw_control_cmd_handler("install_path")
     def handle_install_path(self, msg: InstallPathMsg):
         """
         Process an install_path message containing routing instructions from the controller.
@@ -154,23 +154,27 @@ class ReactiveForwarder(Forwarder):
             # associate path with qchannel and allocate qubits
             self.mux.install_path_neighbor(instructions, fib_entry, PathDirection.R, r_neighbor, r_qchannel)
 
+    @fw_control_cmd_handler("uninstall_path")
+    def handle_uninstall_path(self, msg: UninstallPathMsg):
+        raise NotImplementedError
+
     def send_link_state(self):
         """
         Send link state message to controller. Assumes direct connection to controller.
         """
-        ctrl_node = self.network.get_controller()
-        link_states = []
+        link_states: list[LinkStateEntry] = []
         for event in self.waiting_etg:
             link_states.append({"node": event.node.name, "neighbor": event.neighbor.name, "qubit": event.qubit.addr})
-
-        msg = {"ls": link_states}
 
         if len(link_states) == 0:
             log.debug(f"{self.node}: no link_state to send")
             return
 
-        log.debug(f"{self.node}: sending link_state to controller | {msg}")
-        self.node.get_cchannel(ctrl_node).send(ClassicPacket(msg, src=self.node, dest=ctrl_node), ctrl_node)
+        msg: LinkStateMsg = {
+            "cmd": "LS",
+            "ls": link_states,
+        }
+        self.send_ctrl(msg)
 
     @override
     def release_qubit(self, qubit: MemoryQubit, *, need_remove=False):
