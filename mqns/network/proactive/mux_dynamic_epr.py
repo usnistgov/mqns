@@ -6,7 +6,7 @@ import numpy as np
 from mqns.entity.memory import MemoryQubit, QubitState
 from mqns.entity.node import QNode
 from mqns.models.epr import Entanglement
-from mqns.network.proactive.fib import Fib, FibEntry
+from mqns.network.fw import Fib, FibEntry
 from mqns.network.proactive.mux_buffer_space import MuxSchemeFibBase
 from mqns.network.proactive.mux_statistical import MuxSchemeDynamicBase, has_intersect_tmp_path_ids
 from mqns.network.proactive.select import MemoryEprIterator

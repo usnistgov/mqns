@@ -8,10 +8,12 @@ Subpackages
    :maxdepth: 3
 
    mqns.network.network
-   mqns.network.proactive
-   mqns.network.protocol
-   mqns.network.route
    mqns.network.topology
+   mqns.network.route
+   mqns.network.protocol
+   mqns.network.fw
+   mqns.network.proactive
+   mqns.network.reactive
 
 Submodules
 ----------

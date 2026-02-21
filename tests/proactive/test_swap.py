@@ -7,9 +7,9 @@ import itertools
 import pytest
 
 from mqns.models.epr import Entanglement
+from mqns.network.fw import Fib, Forwarder
 from mqns.network.network import TimingModeSync
 from mqns.network.proactive import (
-    Fib,
     MemoryEprTuple,
     MuxSchemeDynamicEpr,
     MuxSchemeStatistical,
@@ -366,7 +366,7 @@ def test_tree2_statistical(
 ):
     """Test MuxSchemeStatistical in tree (height=2) topology."""
 
-    def select_qubit(fw: ProactiveForwarder, mt0: MemoryEprTuple, candidates: list[MemoryEprTuple]) -> MemoryEprTuple:
+    def select_qubit(fw: Forwarder, mt0: MemoryEprTuple, candidates: list[MemoryEprTuple]) -> MemoryEprTuple:
         _ = mt0
         if len(candidates) != 2:
             chosen = candidates[0]
@@ -380,7 +380,7 @@ def test_tree2_statistical(
             raise RuntimeError()
         return chosen
 
-    def select_path(fw: ProactiveForwarder, epr0: Entanglement, epr1: Entanglement, path_ids: list[int]) -> int:
+    def select_path(fw: Forwarder, epr0: Entanglement, epr1: Entanglement, path_ids: list[int]) -> int:
         _ = epr0, epr1
         if len(path_ids) != 2:
             chosen = path_ids[0]

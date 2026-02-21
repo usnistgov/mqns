@@ -4,10 +4,7 @@ Test suite for ProactiveForwarder focused on purification.
 
 import pytest
 
-from mqns.network.proactive import (
-    ProactiveForwarder,
-    RoutingPathSingle,
-)
+from mqns.network.proactive import ProactiveForwarder, RoutingPathSingle
 from mqns.utils import rng
 
 from .proactive_common import (

@@ -28,6 +28,7 @@ from mqns.network.proactive import (
     RoutingPathSingle,
 )
 from mqns.network.protocol.link_layer import LinkLayer
+from mqns.network.reactive import ReactiveForwarder, ReactiveRoutingController
 from mqns.network.route import DijkstraRouteAlgorithm, RouteAlgorithm, YenRouteAlgorithm
 from mqns.network.topology import ClassicTopology, Topology
 from mqns.network.topology.customtopo import CustomTopology, Topo, TopoController, TopoQChannel, TopoQNode
@@ -411,9 +412,32 @@ class NetworkBuilder:
         self._assert_can_add_apps()
         raise NotImplementedError
 
-    def reactive_centralized(self) -> Self:
+    def reactive_centralized(
+        self,
+        *,
+        swap: list[int] | str,
+    ) -> Self:
+        """
+        Choose proactive forwarding with centralized control.
+
+        Note:
+            This feature is in early stage.
+            Currently it only works with S-R-D topology and has one route.
+            ``.path()`` method cannot be used.
+
+        Args:
+            swap: SwapSequence for S-R-D route.
+        """
         self._assert_can_add_apps()
-        raise NotImplementedError
+
+        self.qnode_apps.append(self._make_link_layer())
+        self.qnode_apps.append(
+            ReactiveForwarder(ps=self.p_swap),
+        )
+        self.controller_apps.append(
+            ReactiveRoutingController(swap=swap),
+        )
+        return self
 
     def reactive_distributed(self) -> Self:
         self._assert_can_add_apps()

@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 
 class TimingPhase(Enum):
     EXTERNAL = auto()
+    ROUTING = auto()
     INTERNAL = auto()
 
 
@@ -52,6 +53,8 @@ class TimingMode(ABC):
         pass
 
     @abstractmethod
+    def _is_phase(self, phase: TimingPhase, t: Time | None = None) -> bool: ...
+
     def is_external(self, t: Time | None = None) -> bool:
         """
         Determine whether the network is either using ASYNC timing or in an EXTERNAL phase.
@@ -59,9 +62,17 @@ class TimingMode(ABC):
         Args:
             t: If specified, also check that the timestamp is in the same phase window.
         """
-        pass
+        return self._is_phase(TimingPhase.EXTERNAL, t)
 
-    @abstractmethod
+    def is_routing(self, t: Time | None = None) -> bool:
+        """
+        Determine whether the network is either using ASYNC timing or in a ROUTING phase.
+
+        Args:
+            t: If specified, also check that the timestamp is in the same phase window.
+        """
+        return self._is_phase(TimingPhase.ROUTING, t)
+
     def is_internal(self, t: Time | None = None) -> bool:
         """
         Determine whether the network is either using ASYNC timing or in an INTERNAL phase.
@@ -69,7 +80,7 @@ class TimingMode(ABC):
         Args:
             t: If specified, also check that the timestamp is in the same phase window.
         """
-        pass
+        return self._is_phase(TimingPhase.INTERNAL, t)
 
 
 class TimingModeAsync(TimingMode):
@@ -85,13 +96,8 @@ class TimingModeAsync(TimingMode):
         return True
 
     @override
-    def is_external(self, t: Time | None = None) -> bool:
-        _ = t
-        return True
-
-    @override
-    def is_internal(self, t: Time | None = None) -> bool:
-        _ = t
+    def _is_phase(self, phase: TimingPhase, t: Time | None = None) -> bool:
+        _ = phase, t
         return True
 
 
@@ -100,19 +106,30 @@ class TimingModeSync(TimingMode):
     Synchronous application timing mode.
     """
 
-    def __init__(self, *, name="SYNC", t_ext: float, t_int: float):
+    def __init__(
+        self,
+        *,
+        name="SYNC",
+        t_ext: float,
+        t_rtg: float = 0,
+        t_int: float,
+    ):
         """
         Args:
-            t_ext: EXTERNAL phase duration.
-            t_int: INTERNAL phase duration.
+            t_ext: EXTERNAL phase duration in seconds.
+            t_rtg: ROUTING phase duration in seconds, defaults to 0.
+            t_int: INTERNAL phase duration in seconds.
         """
         super().__init__(name)
-        self.sequence = deque[tuple[TimingPhase, float]](
-            [
-                (TimingPhase.EXTERNAL, t_ext),
-                (TimingPhase.INTERNAL, t_int),
-            ]
-        )
+
+        self.sequence = deque[tuple[TimingPhase, float]]()
+        assert t_ext > 0
+        self.sequence.append((TimingPhase.EXTERNAL, t_ext))
+        if t_rtg > 0:
+            self.sequence.append((TimingPhase.ROUTING, t_rtg))
+        assert t_int > 0
+        self.sequence.append((TimingPhase.INTERNAL, t_int))
+
         self.phase = self.sequence[-1][0]
         """Current phase."""
         self.end_time = Time.SENTINEL
@@ -145,9 +162,5 @@ class TimingModeSync(TimingMode):
         return False
 
     @override
-    def is_external(self, t: Time | None = None) -> bool:
-        return self.phase == TimingPhase.EXTERNAL and (t is None or t < self.end_time)
-
-    @override
-    def is_internal(self, t: Time | None = None) -> bool:
-        return self.phase == TimingPhase.INTERNAL and (t is None or t < self.end_time)
+    def _is_phase(self, phase: TimingPhase, t: Time | None = None) -> bool:
+        return self.phase is phase and (t is None or t < self.end_time)
