@@ -3,13 +3,13 @@ from typing import TYPE_CHECKING, override
 
 from mqns.entity.memory import MemoryQubit
 from mqns.entity.node import QNode
-from mqns.network.fw import FibEntry
+from mqns.network.fw.fib import FibEntry
 from mqns.network.fw.message import CutoffDiscardMsg
 from mqns.simulator import Simulator, func_to_event
 from mqns.utils import log
 
 if TYPE_CHECKING:
-    from mqns.network.fw import Forwarder
+    from mqns.network.fw.forwarder import Forwarder
 
 
 class CutoffScheme(ABC):

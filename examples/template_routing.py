@@ -48,20 +48,20 @@ import numpy as np
 from tap import Tap
 
 from mqns.network.builder import CTRL_DELAY, NetworkBuilder
-from mqns.network.fw import MultiplexingVector
-from mqns.network.network import QuantumNetwork
-from mqns.network.network.timing import TimingModeSync
-from mqns.network.proactive import (
+from mqns.network.fw import (
+    MultiplexingVector,
     MuxScheme,
     MuxSchemeBufferSpace,
     MuxSchemeStatistical,
-    ProactiveForwarder,
+    QubitAllocationType,
     RoutingPath,
     RoutingPathMulti,
     RoutingPathSingle,
     RoutingPathStatic,
 )
-from mqns.network.proactive.routing import QubitAllocationType
+from mqns.network.network import QuantumNetwork
+from mqns.network.network.timing import TimingModeSync
+from mqns.network.proactive import ProactiveForwarder
 from mqns.network.route import DijkstraRouteAlgorithm, YenRouteAlgorithm
 from mqns.simulator import Simulator
 from mqns.utils import log, rng

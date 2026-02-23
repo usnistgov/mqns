@@ -5,7 +5,8 @@ import numpy as np
 from tap import Tap
 
 from mqns.network.builder import CTRL_DELAY, NetworkBuilder
-from mqns.network.proactive import MuxScheme, MuxSchemeDynamicEpr, MuxSchemeStatistical, ProactiveForwarder
+from mqns.network.fw import MuxScheme, MuxSchemeDynamicEpr, MuxSchemeStatistical
+from mqns.network.proactive import ProactiveForwarder
 from mqns.simulator import Simulator
 from mqns.utils import log, rng
 

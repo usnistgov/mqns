@@ -15,7 +15,8 @@ from tap import Tap
 
 from mqns.entity.base_channel import default_light_speed
 from mqns.network.builder import CTRL_DELAY, EprTypeLiteral, LinkArchLiteral, NetworkBuilder, tap_configure
-from mqns.network.proactive import CutoffSchemeWaitTime, ProactiveForwarder
+from mqns.network.fw import CutoffSchemeWaitTime
+from mqns.network.proactive import ProactiveForwarder
 from mqns.simulator import Simulator
 from mqns.utils import json_default, log, rng
 

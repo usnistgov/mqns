@@ -7,7 +7,7 @@ from mqns.entity.qchannel import QuantumChannel
 from mqns.models.epr import Entanglement
 from mqns.network.fw.fib import Fib, FibEntry
 from mqns.network.fw.message import PathInstructions
-from mqns.network.proactive.select import MemoryEprIterator
+from mqns.network.fw.select import MemoryEprIterator
 
 if TYPE_CHECKING:
     from mqns.network.fw import Forwarder

@@ -5,14 +5,9 @@ from mqns.entity.memory import QubitState
 from mqns.entity.node import Application, Controller
 from mqns.entity.qchannel import LinkArchAlways, LinkArchDimBk, QuantumChannelInitKwargs
 from mqns.models.epr import Entanglement, WernerStateEntanglement
+from mqns.network.fw import MuxScheme, RoutingPath
 from mqns.network.network import QuantumNetwork, TimingMode, TimingModeAsync
-from mqns.network.proactive import (
-    MuxScheme,
-    MuxSchemeBufferSpace,
-    ProactiveForwarder,
-    ProactiveRoutingController,
-    RoutingPath,
-)
+from mqns.network.proactive import ProactiveForwarder, ProactiveRoutingController
 from mqns.network.protocol.event import QubitEntangledEvent
 from mqns.network.protocol.link_layer import LinkLayer
 from mqns.network.route import RouteAlgorithm, YenRouteAlgorithm
@@ -49,7 +44,7 @@ def _make_topo_args(d: BuildNetworkArgs, *, memory_capacity_factor: int) -> Topo
     nodes_apps: list[Application] = []
     if d.get("has_link_layer", False):
         nodes_apps.append(LinkLayer(init_fidelity=d.get("init_fidelity", 0.99)))
-    nodes_apps.append(ProactiveForwarder(ps=d.get("ps", 0.5), mux=d.get("mux", MuxSchemeBufferSpace())))
+    nodes_apps.append(ProactiveForwarder(ps=d.get("ps", 0.5), mux=d.get("mux")))
 
     return TopologyInitKwargs(
         nodes_apps=nodes_apps,

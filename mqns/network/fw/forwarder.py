@@ -16,7 +16,8 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import copy
-from typing import cast, override
+from abc import abstractmethod
+from typing import TypedDict, Unpack, cast, override
 
 import numpy as np
 
@@ -24,15 +25,26 @@ from mqns.entity.memory import MemoryQubit, QubitState
 from mqns.entity.node import Application, QNode
 from mqns.models.epr import Entanglement
 from mqns.network.fw.classic import ForwarderClassicMixin, fw_signaling_cmd_handler
+from mqns.network.fw.cutoff import CutoffScheme, CutoffSchemeWaitTime
 from mqns.network.fw.fib import Fib, FibEntry
 from mqns.network.fw.message import CutoffDiscardMsg, PurifResponseMsg, PurifSolicitMsg, SwapUpdateMsg
+from mqns.network.fw.mux import MuxScheme
+from mqns.network.fw.mux_buffer_space import MuxSchemeBufferSpace
+from mqns.network.fw.select import SelectPurifQubit, call_select_purif_qubit
 from mqns.network.network import TimingPhaseEvent
-from mqns.network.proactive.cutoff import CutoffScheme, CutoffSchemeWaitTime
-from mqns.network.proactive.mux import MuxScheme
-from mqns.network.proactive.mux_buffer_space import MuxSchemeBufferSpace
-from mqns.network.proactive.select import SelectPurifQubit, call_select_purif_qubit
 from mqns.network.protocol.event import QubitEntangledEvent, QubitReleasedEvent
 from mqns.utils import json_encodable, log
+
+
+class ForwarderInitKwargs(TypedDict, total=False):
+    ps: float
+    """Probability of successful entanglement swapping, default is 1.0."""
+    cutoff: CutoffScheme | None
+    """EPR age cut-off scheme, default is wait-time."""
+    mux: MuxScheme | None
+    """Path multiplexing scheme, default is buffer-space."""
+    select_purif_qubit: SelectPurifQubit
+    """Qubit selection among purification candidates, default is picking first candidate."""
 
 
 @json_encodable
@@ -117,36 +129,24 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
     routing is done at the controller.
     """
 
-    def __init__(
-        self,
-        *,
-        ps: float = 1.0,
-        cutoff: CutoffScheme = CutoffSchemeWaitTime(),
-        mux: MuxScheme = MuxSchemeBufferSpace(),
-        select_purif_qubit: SelectPurifQubit = None,
-    ):
+    def __init__(self, **kwargs: Unpack[ForwarderInitKwargs]):
         """
         This constructor sets up a node's entanglement forwarding logic in a quantum network.
         It configures the swapping success probability and preparing internal
         state for managing memory, routing instructions (via FIB), synchronization,
         and classical communication handling.
-
-        Args:
-            ps: Probability of successful entanglement swapping (default: 1.0).
-            cutoff: EPR age cut-off scheme (default: wait-time).
-            mux: Path multiplexing scheme (default: buffer-space).
         """
         super().__init__()
         self._init_classic_mixin()
 
-        assert 0.0 <= ps <= 1.0
-        self.ps = ps
+        self.ps = kwargs.get("ps", 1.0)
         """Probability of successful entanglement swapping."""
-        self.cutoff = copy.deepcopy(cutoff)
+        assert 0.0 <= self.ps <= 1.0
+        self.cutoff: CutoffScheme = copy.deepcopy(kwargs.get("cutoff")) or CutoffSchemeWaitTime()
         """EPR age cut-off scheme."""
-        self.mux = copy.deepcopy(mux)
+        self.mux: MuxScheme = copy.deepcopy(kwargs.get("mux")) or MuxSchemeBufferSpace()
         """Multiplexing scheme."""
-        self._select_purif_qubit = select_purif_qubit
+        self._select_purif_qubit = kwargs.get("select_purif_qubit")
 
         self.fib = Fib()
         """FIB structure."""
@@ -202,11 +202,12 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
         self.cutoff.fw = self
         self.mux.fw = self
 
+    @abstractmethod
     def handle_sync_phase(self, event: TimingPhaseEvent):
         """
         Handle timing phase signals, only used in SYNC timing mode.
         """
-        pass
+        _ = event
 
     @fw_signaling_cmd_handler("CUTOFF_DISCARD")
     def _handle_cutoff_discard(self, msg: CutoffDiscardMsg, fib_entry: FibEntry):

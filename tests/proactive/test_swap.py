@@ -7,17 +7,18 @@ import itertools
 import pytest
 
 from mqns.models.epr import Entanglement
-from mqns.network.fw import Fib, Forwarder
-from mqns.network.network import TimingModeSync
-from mqns.network.proactive import (
+from mqns.network.fw import (
+    Fib,
+    Forwarder,
     MemoryEprTuple,
     MuxSchemeDynamicEpr,
     MuxSchemeStatistical,
-    ProactiveForwarder,
     QubitAllocationType,
     RoutingPathMulti,
     RoutingPathSingle,
 )
+from mqns.network.network import TimingModeSync
+from mqns.network.proactive import ProactiveForwarder
 from mqns.simulator import func_to_event
 
 from .proactive_common import (

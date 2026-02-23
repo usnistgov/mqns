@@ -21,10 +21,6 @@ from mqns.entity.memory import MemoryQubit, PathDirection
 from mqns.network.fw import FibEntry, Forwarder, fw_control_cmd_handler
 from mqns.network.fw.message import InstallPathMsg, UninstallPathMsg
 from mqns.network.network import TimingPhase, TimingPhaseEvent
-from mqns.network.proactive.cutoff import CutoffScheme, CutoffSchemeWaitTime
-from mqns.network.proactive.mux import MuxScheme
-from mqns.network.proactive.mux_buffer_space import MuxSchemeBufferSpace
-from mqns.network.proactive.select import SelectPurifQubit
 from mqns.network.protocol.event import ManageActiveChannels
 from mqns.utils import log
 
@@ -35,31 +31,6 @@ class ProactiveForwarder(Forwarder):
     It implements the forwarding phase (i.e., entanglement generation and swapping) while the centralized
     routing is done at the controller.
     """
-
-    def __init__(
-        self,
-        *,
-        ps: float = 1.0,
-        cutoff: CutoffScheme = CutoffSchemeWaitTime(),
-        mux: MuxScheme = MuxSchemeBufferSpace(),
-        select_purif_qubit: SelectPurifQubit = None,
-    ):
-        """
-        This constructor sets up a node's entanglement forwarding logic in a quantum network.
-        It configures the swapping success probability and preparing internal
-        state for managing memory, routing instructions (via FIB), synchronization,
-        and classical communication handling.
-
-        Args:
-            ps: Probability of successful entanglement swapping (default: 1.0).
-            cutoff: EPR age cut-off scheme (default: wait-time).
-            mux: Path multiplexing scheme (default: buffer-space).
-        """
-        super().__init__(ps=ps, cutoff=cutoff, mux=mux, select_purif_qubit=select_purif_qubit)
-
-    @override
-    def install(self, node):
-        super().install(node)
 
     @override
     def handle_sync_phase(self, event: TimingPhaseEvent):

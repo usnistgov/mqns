@@ -19,8 +19,8 @@ from typing import override
 
 from mqns.entity.cchannel import ClassicCommandDispatcherMixin, ClassicPacket, RecvClassicPacket, classic_cmd_handler
 from mqns.entity.node import Application, Controller
+from mqns.network.fw import RoutingPath, RoutingPathStatic
 from mqns.network.fw.message import InstallPathMsg, PathInstructions
-from mqns.network.proactive.routing import RoutingPath, RoutingPathStatic
 from mqns.network.reactive.message import LinkStateMsg
 from mqns.utils import log
 
