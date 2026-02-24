@@ -17,10 +17,13 @@
 
 from mqns.entity.base_channel import NextHopNotConnectionException
 from mqns.entity.cchannel.cchannel import ClassicChannel, ClassicChannelInitKwargs, ClassicPacket, RecvClassicPacket
+from mqns.entity.cchannel.cdispatch import ClassicCommandDispatcherMixin, classic_cmd_handler
 
 __all__ = [
+    "classic_cmd_handler",
     "ClassicChannel",
     "ClassicChannelInitKwargs",
+    "ClassicCommandDispatcherMixin",
     "ClassicPacket",
     "NextHopNotConnectionException",
     "RecvClassicPacket",

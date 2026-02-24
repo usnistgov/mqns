@@ -3,7 +3,7 @@ from collections.abc import Callable, Iterator
 from mqns.entity.memory import MemoryQubit
 from mqns.entity.node import QNode
 from mqns.models.epr import Entanglement
-from mqns.network.proactive.fib import FibEntry
+from mqns.network.fw import FibEntry
 from mqns.utils import rng
 
 type MemoryEprTuple = tuple[MemoryQubit, Entanglement]

@@ -5,9 +5,9 @@ from enum import Enum, auto
 from itertools import pairwise
 from typing import TypedDict, Unpack, override
 
+from mqns.network.fw.message import MultiplexingVector, PathInstructions, SwapSequence, make_path_instructions
+from mqns.network.fw.swap_sequence import parse_swap_sequence
 from mqns.network.network import QuantumNetwork
-from mqns.network.proactive.message import MultiplexingVector, PathInstructions, SwapSequence, make_path_instructions
-from mqns.network.proactive.swap_sequence import parse_swap_sequence
 from mqns.simulator import Simulator, Time
 from mqns.utils import log
 

@@ -3,13 +3,13 @@ from typing import TYPE_CHECKING, override
 
 from mqns.entity.memory import MemoryQubit
 from mqns.entity.node import QNode
-from mqns.network.proactive.fib import FibEntry
-from mqns.network.proactive.message import CutoffDiscardMsg
+from mqns.network.fw.fib import FibEntry
+from mqns.network.fw.message import CutoffDiscardMsg
 from mqns.simulator import Simulator, func_to_event
 from mqns.utils import log
 
 if TYPE_CHECKING:
-    from mqns.network.proactive.forwarder import ProactiveForwarder
+    from mqns.network.fw.forwarder import Forwarder
 
 
 class CutoffScheme(ABC):
@@ -23,7 +23,7 @@ class CutoffScheme(ABC):
         self.name = name
         """Scheme name."""
 
-        self.fw: "ProactiveForwarder"
+        self.fw: "Forwarder"
         """
         Forwarder that uses this instance, assigned by the forwarder install function.
         """
@@ -32,7 +32,7 @@ class CutoffScheme(ABC):
         return f"<{self.name}>"
 
     @classmethod
-    def of(cls, fw: "ProactiveForwarder"):
+    def of(cls, fw: "Forwarder"):
         """
         Retrieve subclass instance from forwarder.
         """

@@ -19,7 +19,7 @@ from collections.abc import Callable, Iterator, Set
 from dataclasses import dataclass
 from typing import final
 
-from mqns.network.proactive.message import SwapSequence
+from mqns.network.fw.message import SwapSequence
 from mqns.simulator import Time
 
 

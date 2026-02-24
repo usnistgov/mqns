@@ -6,14 +6,14 @@ from mqns.entity.memory import MemoryQubit, PathDirection, QubitState
 from mqns.entity.node import QNode
 from mqns.entity.qchannel import QuantumChannel
 from mqns.models.epr import Entanglement
-from mqns.network.proactive.fib import FibEntry
-from mqns.network.proactive.message import PathInstructions, validate_path_instructions
-from mqns.network.proactive.mux import MuxScheme
-from mqns.network.proactive.select import MemoryEprIterator, MemoryEprTuple
+from mqns.network.fw.fib import FibEntry
+from mqns.network.fw.message import PathInstructions, validate_path_instructions
+from mqns.network.fw.mux import MuxScheme
+from mqns.network.fw.select import MemoryEprIterator, MemoryEprTuple
 from mqns.utils import log, rng
 
 if TYPE_CHECKING:
-    from mqns.network.proactive.forwarder import ProactiveForwarder
+    from mqns.network.fw.forwarder import Forwarder
 
 
 def has_intersect_tmp_path_ids(epr0: Set[int] | None, epr1: Iterable[int] | None) -> bool:
@@ -96,11 +96,11 @@ class MuxSchemeStatistical(MuxSchemeDynamicBase):
     Statistical multiplexing scheme.
     """
 
-    type SelectSwapQubit = Callable[["ProactiveForwarder", MemoryEprTuple, list[MemoryEprTuple]], MemoryEprTuple]
+    type SelectSwapQubit = Callable[["Forwarder", MemoryEprTuple, list[MemoryEprTuple]], MemoryEprTuple]
 
     SelectSwapQubit_random: SelectSwapQubit = lambda _fw, _mt, candidates: candidates[rng.choice(len(candidates))]
 
-    type SelectPath = Callable[["ProactiveForwarder", Entanglement, Entanglement, list[int]], int | FibEntry]
+    type SelectPath = Callable[["Forwarder", Entanglement, Entanglement, list[int]], int | FibEntry]
 
     SelectPath_random: SelectPath = lambda _fw, _e0, _e1, candidates: candidates[rng.choice(len(candidates))]
 

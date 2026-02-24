@@ -5,12 +5,12 @@ from mqns.entity.memory import MemoryQubit, PathDirection, QuantumMemory
 from mqns.entity.node import QNode
 from mqns.entity.qchannel import QuantumChannel
 from mqns.models.epr import Entanglement
-from mqns.network.proactive.fib import Fib, FibEntry
-from mqns.network.proactive.message import PathInstructions
-from mqns.network.proactive.select import MemoryEprIterator
+from mqns.network.fw.fib import Fib, FibEntry
+from mqns.network.fw.message import PathInstructions
+from mqns.network.fw.select import MemoryEprIterator
 
 if TYPE_CHECKING:
-    from mqns.network.proactive.forwarder import ProactiveForwarder
+    from mqns.network.fw import Forwarder
 
 
 class MuxScheme(ABC):
@@ -20,7 +20,7 @@ class MuxScheme(ABC):
         self.name = name
         """Scheme name."""
 
-        self.fw: "ProactiveForwarder"
+        self.fw: "Forwarder"
         """
         Forwarder that uses this instance, assigned by the forwarder install function.
         """

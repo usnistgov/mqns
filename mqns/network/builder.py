@@ -15,19 +15,19 @@ from mqns.entity.qchannel import (
 )
 from mqns.models.epr import Entanglement, MixedStateEntanglement, WernerStateEntanglement
 from mqns.models.error.input import ErrorModelInputLength
-from mqns.network.network import QuantumNetwork, TimingMode, TimingModeAsync
-from mqns.network.proactive import (
+from mqns.network.fw import (
     MuxScheme,
     MuxSchemeBufferSpace,
-    ProactiveForwarder,
-    ProactiveRoutingController,
     QubitAllocationType,
     RoutingPath,
     RoutingPathInitArgs,
     RoutingPathMulti,
     RoutingPathSingle,
 )
+from mqns.network.network import QuantumNetwork, TimingMode, TimingModeAsync
+from mqns.network.proactive import ProactiveForwarder, ProactiveRoutingController
 from mqns.network.protocol.link_layer import LinkLayer
+from mqns.network.reactive import ReactiveForwarder, ReactiveRoutingController
 from mqns.network.route import DijkstraRouteAlgorithm, RouteAlgorithm, YenRouteAlgorithm
 from mqns.network.topology import ClassicTopology, Topology
 from mqns.network.topology.customtopo import CustomTopology, Topo, TopoController, TopoQChannel, TopoQNode
@@ -380,17 +380,17 @@ class NetworkBuilder:
     def proactive_centralized(
         self,
         *,
-        mux: MuxScheme = MuxSchemeBufferSpace(),
+        mux: MuxScheme | None = None,
     ) -> Self:
         """
         Choose proactive forwarding with centralized control.
 
         Args:
-            mux: Multiplexing scheme.
+            mux: Multiplexing scheme, default is buffer-space.
         """
         self._assert_can_add_apps()
 
-        if isinstance(mux, MuxSchemeBufferSpace):
+        if mux is None or isinstance(mux, MuxSchemeBufferSpace):
             self.qubit_allocation = QubitAllocationType.FOLLOW_QCHANNEL
         elif isinstance(self.route, YenRouteAlgorithm):
             raise TypeError("YenRouteAlgorithm is only compatible with MuxSchemeBufferSpace")
@@ -411,9 +411,32 @@ class NetworkBuilder:
         self._assert_can_add_apps()
         raise NotImplementedError
 
-    def reactive_centralized(self) -> Self:
+    def reactive_centralized(
+        self,
+        *,
+        swap: list[int] | str,
+    ) -> Self:
+        """
+        Choose proactive forwarding with centralized control.
+
+        Note:
+            This feature is in early stage.
+            Currently it only works with S-R-D topology and has one route.
+            ``.path()`` method cannot be used.
+
+        Args:
+            swap: SwapSequence for S-R-D route.
+        """
         self._assert_can_add_apps()
-        raise NotImplementedError
+
+        self.qnode_apps.append(self._make_link_layer())
+        self.qnode_apps.append(
+            ReactiveForwarder(ps=self.p_swap),
+        )
+        self.controller_apps.append(
+            ReactiveRoutingController(swap=swap),
+        )
+        return self
 
     def reactive_distributed(self) -> Self:
         self._assert_can_add_apps()

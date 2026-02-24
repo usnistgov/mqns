@@ -4,7 +4,7 @@ Test suite for simple data structure objects in proactive forwarding.
 
 import pytest
 
-from mqns.network.proactive.message import validate_path_instructions
+from mqns.network.fw.message import validate_path_instructions
 
 
 def test_path_validation():

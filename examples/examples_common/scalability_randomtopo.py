@@ -9,12 +9,9 @@ from typing import Any, TypedDict
 from tap import Tap
 
 from mqns.entity.node import Controller
+from mqns.network.fw import MuxSchemeStatistical
 from mqns.network.network import QuantumNetwork
-from mqns.network.proactive import (
-    MuxSchemeStatistical,
-    ProactiveForwarder,
-    ProactiveRoutingController,
-)
+from mqns.network.proactive import ProactiveForwarder, ProactiveRoutingController
 from mqns.network.protocol.link_layer import LinkLayer
 from mqns.network.topology import ClassicTopology, RandomTopology
 from mqns.utils import rng
