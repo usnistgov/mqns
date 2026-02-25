@@ -7,21 +7,25 @@ type MultiplexingVector = list[tuple[int, int]]
 
 
 class PathInstructions(TypedDict):
+    """
+    Instructions from the controller to forwarders regarding a routing path.
+    """
+
     req_id: int
     """
-    Request identifier: nonnegative integer to uniquely identify the src-dst pair within the network.
+    Request identifier -- nonnegative integer to uniquely identify the src-dst pair within the network.
     """
 
     route: list[str]
     """
-    Path vector: a list of node names, in the order they appear in the path.
+    Path vector -- a list of node names, in the order they appear in the path.
 
     There must a qchannel and a cchannel between adjacent nodes.
     """
 
     swap: SwapSequence
     """
-    Swap sequence: nonnegative integers to control swapping order.
+    Swap sequence -- nonnegative integers to control swapping order.
 
     This list shall have the same length as `route`.
     Each element represents swapping rank of the corresponding node.
@@ -34,7 +38,7 @@ class PathInstructions(TypedDict):
 
     swap_cutoff: list[int]
     """
-    Swap cutoff time: maximum age at each swapping step.
+    Swap cutoff time -- maximum age at each swapping step.
 
     This list shall have the same length as `swap`.
     The i-th element corresponds to the i-th node in the `route` list.
@@ -58,16 +62,16 @@ class PathInstructions(TypedDict):
         route = [S,    R,     D]
         m_v   = [ (4,2), (3,0) ]
 
-        S should allocate 4 qubits on S-R channel.
-        R should allocate 2 qubits on S-R channel and 3 qubits on R-D channel.
-        D should allocate all qubits assigned to R-D channel.
+    * S should allocate 4 qubits on S-R channel.
+    * R should allocate 2 qubits on S-R channel and 3 qubits on R-D channel.
+    * D should allocate all qubits assigned to R-D channel.
     """
 
     purif: dict[str, int]
     """
     Purification scheme.
 
-    Each key is a segment name consists of two node names concatenated with a hyphen ("-"),
+    Each key is a segment name consists of two node names concatenated with a hyphen (``-``),
     where the nodes appear in the same order as in the route but do not have to be adjacent.
     Each value is an integer of the required rounds of purification at this segment.
     The default for every segment is zero i.e. no purification is performed.

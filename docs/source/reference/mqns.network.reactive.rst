@@ -1,6 +1,14 @@
 mqns.network.reactive package
 =============================
 
+mqns.network.reactive.message module
+------------------------------------
+
+.. automodule:: mqns.network.reactive.message
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 Module contents
 ---------------
 
