@@ -1,15 +1,16 @@
-from typing import TypedDict, Unpack
+from typing import Literal, TypedDict, Unpack
 
 from mqns.entity.cchannel import ClassicChannelInitKwargs
 from mqns.entity.memory import QubitState
-from mqns.entity.node import Application, Controller
+from mqns.entity.node import Application, Controller, QNode
 from mqns.entity.qchannel import LinkArchAlways, LinkArchDimBk, QuantumChannelInitKwargs
 from mqns.models.epr import Entanglement, WernerStateEntanglement
-from mqns.network.fw import MuxScheme, RoutingPath
+from mqns.network.fw import Forwarder, MuxScheme, RoutingPath
 from mqns.network.network import QuantumNetwork, TimingMode, TimingModeAsync
 from mqns.network.proactive import ProactiveForwarder, ProactiveRoutingController
 from mqns.network.protocol.event import QubitEntangledEvent
 from mqns.network.protocol.link_layer import LinkLayer
+from mqns.network.reactive import ReactiveForwarder, ReactiveRoutingController
 from mqns.network.route import RouteAlgorithm, YenRouteAlgorithm
 from mqns.network.topology import ClassicTopology, GridTopology, LinearTopology, Topology, TopologyInitKwargs, TreeTopology
 from mqns.simulator import Simulator, func_to_event
@@ -26,6 +27,7 @@ dflt_cchannel_args = ClassicChannelInitKwargs(
 
 
 class BuildNetworkArgs(TypedDict, total=False):
+    mode: Literal["P", "R"]
     t_cohere: float  # memory dephasing time, defaults to 5.0 seconds
     qchannel_capacity: int  # quantum channel capacity, defaults to 1
     qchannel_args: QuantumChannelInitKwargs
@@ -41,10 +43,16 @@ class BuildNetworkArgs(TypedDict, total=False):
 
 def _make_topo_args(d: BuildNetworkArgs, *, memory_capacity_factor: int) -> TopologyInitKwargs:
     qchannel_capacity = d.get("qchannel_capacity", 1)
-    nodes_apps: list[Application] = []
+
+    nodes_apps: list[Application[QNode]] = []
     if d.get("has_link_layer", False):
         nodes_apps.append(LinkLayer(init_fidelity=d.get("init_fidelity", 0.99)))
-    nodes_apps.append(ProactiveForwarder(ps=d.get("ps", 0.5), mux=d.get("mux")))
+
+    match d.get("mode", "P"):
+        case "P":
+            nodes_apps.append(ProactiveForwarder(ps=d.get("ps", 0.5), mux=d.get("mux")))
+        case "R":
+            nodes_apps.append(ReactiveForwarder(ps=d.get("ps", 0.5), mux=d.get("mux")))
 
     return TopologyInitKwargs(
         nodes_apps=nodes_apps,
@@ -65,7 +73,12 @@ def _build_network_finish(
 ):
     qchannel_capacity = d.get("qchannel_capacity", 1)
 
-    topo.controller = Controller("ctrl", apps=[ProactiveRoutingController()])
+    match d.get("mode", "P"):
+        case "P":
+            ctrl = ProactiveRoutingController()
+        case "R":
+            ctrl = ReactiveRoutingController(route=["n1", "n2", "n3"], swap=[1, 0, 1])
+    topo.controller = Controller("ctrl", apps=[ctrl])
 
     net = QuantumNetwork(
         topo=topo,
@@ -154,7 +167,7 @@ def build_rect_network(
 
 def print_fw_counters(net: QuantumNetwork):
     for node in net.nodes:
-        fw = node.get_app(ProactiveForwarder)
+        fw = node.get_app(Forwarder)
         print(node.name, fw.cnt)
 
 
@@ -181,7 +194,7 @@ def install_path(
 
 
 def provide_entanglements(
-    *etgs: tuple[float, ProactiveForwarder, ProactiveForwarder],
+    *etgs: tuple[float, Forwarder, Forwarder],
     fidelity=0.99,
 ):
     """

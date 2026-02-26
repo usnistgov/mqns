@@ -31,13 +31,21 @@ class ReactiveRoutingController(ClassicCommandDispatcherMixin, RoutingController
 
     def __init__(
         self,
+        *,
+        route: list[str] = ["S", "R", "D"],
         swap: list[int] | str,
     ):
         """
         Args:
-            swap: swapping policy to apply to all paths.
+            route: static path.
+            swap: swapping policy.
+
+        Note:
+            This feature is in early stage.
+            Currently it only installed a static path defined in ``route`` and ``swap``.
         """
         super().__init__()
+        self.route = route
         self.swap = swap
 
         self.add_handler(self.handle_classic_command, RecvClassicPacket)
@@ -64,13 +72,12 @@ class ReactiveRoutingController(ClassicCommandDispatcherMixin, RoutingController
         log.debug(f"{self.node.name}: received LS message from {pkt.src} | {msg}")
 
         self.ls_messages.append(msg)
-        if len(self.ls_messages) == 3:
+        if len(self.ls_messages) == len(self.route):
             self.do_routing()
             self.ls_messages.clear()
 
         return True
 
-    # For test: always install the same static path!
     def do_routing(self):
-        rpath = RoutingPathStatic(["S", "R", "D"], swap=self.swap)
+        rpath = RoutingPathStatic(self.route, swap=self.swap)
         self.install_path(rpath)

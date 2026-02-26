@@ -13,7 +13,7 @@ from mqns.network.network import TimingModeAsync, TimingModeSync
 from mqns.network.proactive import ProactiveForwarder
 from mqns.network.protocol.link_layer import LinkLayer
 
-from .proactive_common import build_linear_network, build_rect_network, install_path, print_fw_counters
+from .fw_common import build_linear_network, build_rect_network, install_path, print_fw_counters
 
 
 @pytest.mark.parametrize(

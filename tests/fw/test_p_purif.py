@@ -8,7 +8,7 @@ from mqns.network.fw import RoutingPathSingle
 from mqns.network.proactive import ProactiveForwarder
 from mqns.utils import rng
 
-from .proactive_common import (
+from .fw_common import (
     build_linear_network,
     install_path,
     print_fw_counters,

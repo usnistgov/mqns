@@ -138,7 +138,7 @@ class Node(Entity):
     def _get_app_from_apps[A: Application](self, app_type: type[A]) -> A:
         apps = self.get_apps(app_type)
         if len(apps) != 1:
-            raise IndexError("node does not have exactly one instance of {app_type}")
+            raise IndexError(f"node does not have exactly one instance of {app_type}")
         return apps[0]
 
     def _add_channel[C: "BaseChannel"](self, channel: C, channels: list[C]) -> None:
