@@ -26,5 +26,6 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           format: python
+          fail-on-error: false
         if: matrix.python-version == '3.14'
     timeout-minutes: 30
