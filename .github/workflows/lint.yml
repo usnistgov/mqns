@@ -1,28 +1,20 @@
-# .github/workflows/lint.yml
 name: Lint with Ruff
-
-on: [push, pull_request]
-
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
 jobs:
   lint:
-    runs-on: ubuntu-latest
-
+    runs-on: ubuntu-24.04
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-
-      - name: Install Ruff
-        run: pip install ruff
-
-      - name: Run Ruff linting
-        run: ruff check .
-
-      - name: Run Ruff formatter
-        run: ruff format --check .
-
+          cache: pip
+      - run: pip install ruff
+      - run: |
+          ruff check . --output-format=github
+          ruff format --check .
     timeout-minutes: 5

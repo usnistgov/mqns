@@ -22,6 +22,7 @@ from tap import Tap
 
 from mqns.entity.qchannel import LinkArchDimBk, LinkArchSim, LinkArchSr
 from mqns.network.builder import CTRL_DELAY, NetworkBuilder
+from mqns.network.fw import SwapSequenceInput
 from mqns.network.proactive import ProactiveForwarder
 from mqns.network.protocol.link_layer import LinkLayerCounters
 from mqns.simulator import Simulator
@@ -112,10 +113,10 @@ FREQUENCY = 1e6  # entanglement source / memory frequency
 # ──────────────────────────────────────────────────────────────────────────────
 # swap:
 #   - preset string:
-#       - 1 router: "swap_1"
+#       - 1 router: "asap"
 #       - 2 to 5 routers: "asap", "l2r", "r2l", "baln"
 #   - explicit list[int] sequence (for custom swap order) [see REDiP for syntax]
-SWAP: str | list[int] = "l2r"
+SWAP: SwapSequenceInput = "l2r"
 
 # p_swap:
 #   - Swapping success probability used by ProactiveForwarder(ps=p_swap)
@@ -131,7 +132,7 @@ SWEEP = True
 
 # Supported sweep variables:
 t_cohere_values = [0.005, 0.01, 0.02]  # seconds
-swap_values: list[str | list[int]] = ["l2r", "r2l", "asap"]  # see SWAP
+swap_values: list[SwapSequenceInput] = ["l2r", "r2l", "asap"]  # see SWAP
 channel_capacity_values = [CHANNEL_CAPACITY]  # include alternative allocations if desired
 
 
@@ -147,7 +148,7 @@ def run_simulation(
     *,
     seed: int,
     t_cohere: float,
-    swap: str | list[int],
+    swap: SwapSequenceInput,
     channel_capacity: int | list[int] | list[tuple[int, int]],
     channel_length: float | list[float] = CHANNEL_LENGTH,
     nodes: int | list[str] = NODES,
@@ -212,7 +213,7 @@ def run_row(
     *,
     n_runs: int,
     t_cohere: float,
-    swap: str | list[int],
+    swap: SwapSequenceInput,
     channel_capacity: int | list[int] | list[tuple[int, int]],
 ) -> dict[str, Any]:
     """

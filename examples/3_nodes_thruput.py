@@ -84,9 +84,9 @@ def run_simulation(seed: int, args: Args, t_cohere: float) -> Stats:
 
     match args.mode:
         case "P":
-            b.proactive_centralized().path("S-D", swap="swap_1")
+            b.proactive_centralized().path("S-D")
         case "R":
-            b.reactive_centralized(swap="swap_1")
+            b.reactive_centralized()
 
     net = b.make_network()
     del b

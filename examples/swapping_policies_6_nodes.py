@@ -25,6 +25,7 @@ import numpy as np
 from tap import Tap
 
 from mqns.network.builder import CTRL_DELAY, NetworkBuilder
+from mqns.network.fw import SwapPolicy
 from mqns.network.proactive import ProactiveForwarder
 from mqns.network.protocol.link_layer import LinkLayerCounters
 from mqns.simulator import Simulator
@@ -47,7 +48,7 @@ sim_duration = 3
 def run_simulation(
     ch_capacities: list[tuple[int, int]],
     t_cohere: float,
-    swapping_order: str,
+    swapping_order: SwapPolicy,
     seed: int,
 ):
     rng.reseed(seed)
@@ -77,7 +78,7 @@ def run_simulation(
     return e2e_rate, decoh_ratio, mean_fidelity
 
 
-type Results = dict[str, dict[str, dict[float, tuple[float, float]]]]
+type Results = dict[str, dict[SwapPolicy, dict[float, tuple[float, float]]]]
 
 
 def plot_results(results: Results) -> None:
@@ -106,8 +107,7 @@ def plot_results(results: Results) -> None:
 
     for ax_idx, (mem_label, policy_dict) in enumerate(results.items()):
         ax = axs[ax_idx]
-        for full_policy, t_dict in policy_dict.items():
-            policy = full_policy.replace("swap_4_", "")
+        for policy, t_dict in policy_dict.items():
             means = [t_dict[t][0] for t in t_cohere_values]
             stds = [t_dict[t][1] for t in t_cohere_values]
             ax.errorbar(
@@ -144,7 +144,7 @@ if __name__ == "__main__":
     args = Args().parse_args()
 
     # Define swapping policies to test
-    swapping_order_configs = ["swap_4_baln", "swap_4_baln2", "swap_4_l2r", "swap_4_r2l", "swap_4_asap"]
+    swapping_order_configs: list[SwapPolicy] = ["baln", "baln2", "l2r", "r2l", "asap"]
     ch_capacities_configs = {
         "[3, 3, 3, 3, 3]": [(3, 3), (3, 3), (3, 3), (3, 3), (3, 3)],
         "[4, 2, 4, 2, 4]": [(4, 4), (2, 2), (4, 4), (2, 2), (4, 4)],

@@ -4,6 +4,7 @@ numpy>=2.4.0,<3
 pandas[plot]>=2.3.3,<3
 pytest>=9.0.2,<10
 pytest-cov>=7.0.0,<8
+pytest-timeout>=2.4.0,<3
 scipy>=1.17.0,<2
 scipy-stubs>=1.17.0,<2
 setuptools>=80

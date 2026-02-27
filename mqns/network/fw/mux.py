@@ -64,7 +64,6 @@ class MuxScheme(ABC):
             neighbor: Neighbor node.
             qchannel: Quantum channel to the neighbor.
         """
-        pass
 
     @abstractmethod
     def uninstall_path_neighbor(
@@ -83,14 +82,12 @@ class MuxScheme(ABC):
             neighbor: Neighbor node.
             qchannel: Quantum channel to the neighbor.
         """
-        pass
 
     @abstractmethod
     def qubit_has_path_id(self) -> bool:
         """
         Indicate whether each memory qubit shall be assigned to specific path_id.
         """
-        pass
 
     @abstractmethod
     def qubit_is_entangled(self, qubit: MemoryQubit, epr: Entanglement, neighbor: QNode) -> None:
@@ -99,7 +96,6 @@ class MuxScheme(ABC):
 
         This can only be invoked in ASYNC timing mode or INTERNAL phase.
         """
-        pass
 
     @abstractmethod
     def find_swap_candidate(
@@ -123,7 +119,6 @@ class MuxScheme(ABC):
             [0]: Another qubit in ELIGIBLE state.
             [1]: FIB entry for `fw.do_swapping()`.
         """
-        pass
 
     @abstractmethod
     def swapping_succeeded(self, prev_epr: Entanglement, next_epr: Entanglement, new_epr: Entanglement) -> None:
@@ -135,7 +130,6 @@ class MuxScheme(ABC):
             next_epr: An EPR with a partner node to the right
             new_epr: Locally swapped EPR made from prev_epr+next_epr.
         """
-        pass
 
     @abstractmethod
     def su_parallel_has_conflict(self, my_new_epr: Entanglement, su_path_id: int) -> bool:
@@ -150,7 +144,6 @@ class MuxScheme(ABC):
             If True, a conflict is detected and the SWAP_UPDATE is discarded.
             Otherwise, the SWAP_UPDATE continues processing.
         """
-        pass
 
     @abstractmethod
     def su_parallel_succeeded(self, merged_epr: Entanglement, new_epr: Entanglement, other_epr: Entanglement) -> None:
@@ -164,4 +157,3 @@ class MuxScheme(ABC):
             new_epr: Remotely swapped EPR from the sender of SWAP_UPDATE message.
             other_epr: An EPR between local and the other partner.
         """
-        pass

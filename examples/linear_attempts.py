@@ -86,7 +86,7 @@ def run_simulation(seed: int, sim_duration: float, L: list[float], M: int, link_
             t_cohere=0.1,
         )
         .proactive_centralized()
-        .path("S-D", swap=[0] * (len(L) + 1))
+        .path("S-D", swap="disabled")
         .make_network()
     )
 

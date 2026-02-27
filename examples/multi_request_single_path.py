@@ -52,8 +52,8 @@ def run_simulation(seed: int, args: Args, mux: MuxScheme, t_cohere: float):
             t_cohere=t_cohere,
         )
         .proactive_centralized(mux=mux)
-        .path("S1-D1", swap="asap")
-        .path("S2-D2", swap="asap")
+        .path("S1-D1")
+        .path("S2-D2")
         .make_network()
     )
 

@@ -1,10 +1,41 @@
 """
-Test suite for simple data structure objects in proactive forwarding.
+Test suite for simple data structure objects in forwarding.
 """
 
 import pytest
 
+from mqns.network.fw import parse_swap_sequence
 from mqns.network.fw.message import validate_path_instructions
+
+
+def test_parse_swap_sequence():
+    """Test ``parse_swap_sequence`` function."""
+
+    route3 = ["S", "R", "D"]
+    route4 = ["S", "R1", "R2", "D"]
+    route5 = ["S", "R1", "R2", "R3", "D"]
+    route6 = ["S", "R1", "R2", "R3", "R4", "D"]
+    route7 = ["S", "R1", "R2", "R3", "R4", "R5", "D"]
+
+    assert parse_swap_sequence("disabled", route3) == [0, 0, 0]
+    assert parse_swap_sequence("asap", route3) == [1, 0, 1]
+    assert parse_swap_sequence("asap", route4) == [1, 0, 0, 1]
+    assert parse_swap_sequence("l2r", route4) == [2, 0, 1, 2]
+    assert parse_swap_sequence("r2l", route4) == [2, 1, 0, 2]
+    assert parse_swap_sequence("asap", route5) == [1, 0, 0, 0, 1]
+    assert parse_swap_sequence("baln", route5) == [2, 0, 1, 0, 2]
+    assert parse_swap_sequence("l2r", route5) == [3, 0, 1, 2, 3]
+    assert parse_swap_sequence("r2l", route5) == [3, 2, 1, 0, 3]
+    assert parse_swap_sequence("asap", route6) == [1, 0, 0, 0, 0, 1]
+    assert parse_swap_sequence("baln", route6) == [3, 0, 1, 0, 2, 3]
+    assert parse_swap_sequence("baln2", route6) == [3, 2, 0, 1, 0, 3]
+    assert parse_swap_sequence("l2r", route6) == [4, 0, 1, 2, 3, 4]
+    assert parse_swap_sequence("r2l", route6) == [4, 3, 2, 1, 0, 4]
+    assert parse_swap_sequence("asap", route7) == [1, 0, 0, 0, 0, 0, 1]
+    assert parse_swap_sequence("baln", route7) == [3, 0, 1, 0, 2, 0, 3]
+    assert parse_swap_sequence("baln2", route7) == [3, 0, 2, 0, 1, 0, 3]
+    assert parse_swap_sequence("l2r", route7) == [5, 0, 1, 2, 3, 4, 5]
+    assert parse_swap_sequence("r2l", route7) == [5, 4, 3, 2, 1, 0, 5]
 
 
 def test_path_validation():

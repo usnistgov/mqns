@@ -51,6 +51,7 @@ import pandas as pd
 from tap import Tap
 
 from mqns.network.builder import CTRL_DELAY, NetworkBuilder
+from mqns.network.fw import SwapPolicy, SwapSequenceInput
 from mqns.network.network import QuantumNetwork
 from mqns.network.proactive import ProactiveForwarder, compute_vora_swap_sequence
 from mqns.network.protocol.link_layer import LinkLayerCounters
@@ -150,9 +151,9 @@ class ParameterSet:
             assert type(d.get(f"{n}-{p}", None)) is list, f"missing {n}-{p} in precomputed vora swapping orders"
         self._precomputed_vora = d
 
-    def get_swap_sequence(self) -> str | list[int]:
+    def get_swap_sequence(self) -> SwapSequenceInput:
         if self.swapping_config != "vora":
-            return f"swap_{self.number_of_routers}_{self.swapping_config}"
+            return cast(SwapPolicy, self.swapping_config)
         return self._precomputed_vora[f"{self.number_of_routers}-{self.distance_proportion}"]
 
 
@@ -160,7 +161,7 @@ def vora_train_row(p: ParameterSet, num_routers: int, dist_prop: str) -> str:
     """
     Generate linear_attempts.py command line for collecting training data for the given topology.
     """
-    p = p.clone_with(num_routers, dist_prop, "no_swap")
+    p = p.clone_with(num_routers, dist_prop, "disabled")
 
     distances = p.compute_distances()
     L = " ".join([str(d) for d in distances])
@@ -172,7 +173,7 @@ def vora_regen_row(p: ParameterSet, num_routers: int, dist_prop: str, indir: str
     """
     Regenerate vora swapping order from the output of linear_attempts.py.
     """
-    p = p.clone_with(num_routers, dist_prop, "no_swap")
+    p = p.clone_with(num_routers, dist_prop, "disabled")
     data = pd.read_csv(os.path.join(indir, p.to_linear_attempts_csv_filename()))
     return compute_vora_swap_sequence(
         lengths=list(data["L"]),

@@ -18,41 +18,68 @@
 from typing import override
 
 from mqns.entity.cchannel import ClassicCommandDispatcherMixin, ClassicPacket, RecvClassicPacket, classic_cmd_handler
-from mqns.entity.node import Application, Controller
-from mqns.network.fw import RoutingPath, RoutingPathStatic
-from mqns.network.fw.message import InstallPathMsg, PathInstructions
+from mqns.network.fw import RoutingController, RoutingPathStatic, SwapSequenceInput
 from mqns.network.reactive.message import LinkStateMsg
-from mqns.utils import log
+from mqns.utils import json_encodable, log
 
 
-class ReactiveRoutingController(ClassicCommandDispatcherMixin, Application[Controller]):
+@json_encodable
+class ReactiveRoutingControllerCounters:
+    """Counters related to ``ReactiveRoutingController``."""
+
+    def __init__(self):
+        self.n_ls = 0
+        """How many link-state message arrived."""
+        self.n_decision = 0
+        """How many routing decisions sent."""
+
+    def __repr__(self) -> str:
+        return f"ls={self.n_ls} decision={self.n_decision}"
+
+
+class ReactiveRoutingController(ClassicCommandDispatcherMixin, RoutingController):
     """
-    Centralized control plane app for Reactive Routing.
-    Works with ReactiveForwarder on quantum nodes.
+    Centralized control plane for reactive routing.
+    Works with ``ReactiveForwarder`` on quantum nodes.
     """
 
     def __init__(
         self,
-        swap: list[int] | str,
+        *,
+        route: list[str] = ["S", "R", "D"],
+        swap: SwapSequenceInput = "asap",
     ):
         """
         Args:
-            swap: swapping policy to apply to all paths.
+            route: static path.
+            swap: swapping policy.
+
+        Note:
+            This feature is in early stage.
+            Currently it only installed a static path defined in ``route`` and ``swap``.
         """
         super().__init__()
-        self.swap = swap
+        self.route = route
+        self.swap: SwapSequenceInput = swap
+
+        self.ls_messages: list[LinkStateMsg] = []
+        """
+        Received but unprocessed link-state messages.
+        """
+
+        self.cnt = ReactiveRoutingControllerCounters()
+        """
+        Counters.
+        """
 
         self.add_handler(self.handle_classic_command, RecvClassicPacket)
 
-        self.ls_messages = []
-
     @override
     def install(self, node):
-        self._application_install(node, Controller)
-        self.net = self.node.network
-        self.requests = self.net.requests  # requests to satisfy in each routing phase
-        self.next_req_id = 0
-        self.next_path_id = 0
+        super().install(node)
+
+        self.requests = self.net.requests
+        """Requests to satisfy in each routing phase."""
 
     @classic_cmd_handler("LS")
     def handle_ls(self, pkt: ClassicPacket, msg: LinkStateMsg):
@@ -65,40 +92,20 @@ class ReactiveRoutingController(ClassicCommandDispatcherMixin, Application[Contr
             return True
 
         log.debug(f"{self.node.name}: received LS message from {pkt.src} | {msg}")
-
+        self.cnt.n_ls += 1
         self.ls_messages.append(msg)
-        if len(self.ls_messages) == 3:
+
+        if len(self.ls_messages) == len(self.route):
             self.do_routing()
-            self.ls_messages = []
+            self.ls_messages.clear()
 
         return True
 
-    # For test: always install the same static path!
     def do_routing(self):
-        rpath = RoutingPathStatic(["S", "R", "D"], swap=self.swap)
+        rpath = RoutingPathStatic(self.route, swap=self.swap)
         self.install_path(rpath)
 
-    # Try to reuse RoutingPath and instructions
-    def install_path(self, rp: RoutingPath):
-        """
-        Compute routing path(s) and send install commands to nodes.
-        """
-        if rp.req_id < 0:
-            rp.req_id = self.next_req_id
-        self.next_req_id = max(self.next_req_id, rp.req_id + 1)
-
-        if rp.path_id < 0:
-            rp.path_id = self.next_path_id
-
-        for path_id_add, instructions in enumerate(rp.compute_paths(self.net)):
-            path_id = rp.path_id + path_id_add
-            self.next_path_id = max(self.next_path_id, path_id + 1)
-            self._send_instructions(path_id, instructions)
-
-    def _send_instructions(self, path_id: int, instructions: PathInstructions):
-        verb, msg = ("install", InstallPathMsg(cmd="install_path", path_id=path_id, instructions=instructions))
-
-        for node_name in instructions["route"]:
-            qnode = self.net.get_node(node_name)
-            self.node.get_cchannel(qnode).send(ClassicPacket(msg, src=self.node, dest=qnode), next_hop=qnode)
-            log.debug(f"{self.node}: {verb} path #{path_id} at {qnode}: {instructions}")
+    @override
+    def install_path(self, rp):
+        self.cnt.n_decision += 1
+        super().install_path(rp)

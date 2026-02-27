@@ -106,14 +106,12 @@ class CutoffScheme(ABC):
         Handle a qubit that has become ELIGIBLE for swapping.
         The qubit would not be consumed.
         """
-        pass
 
     @abstractmethod
     def filter_swap_candidate(self, qubit: MemoryQubit) -> bool:
         """
         Determine whether a qubit can be used as swap candidate.
         """
-        pass
 
     @abstractmethod
     def before_swap(self, mq0: MemoryQubit, mq1: MemoryQubit | None, fib_entry: FibEntry | None) -> None:
@@ -122,10 +120,9 @@ class CutoffScheme(ABC):
         This should be invoked in the same time_slot as qubit_is_eligible.
 
         Args:
-            mq0: Newly eligible qubits.
+            mq0: Newly eligible qubit.
             mq1: If None, mq0 is stored; otherwise, mq0-mq1 will swap.
         """
-        pass
 
 
 class CutoffSchemeWaitTimeCounters:

@@ -21,7 +21,7 @@ from mqns.network.network import TimingModeSync
 from mqns.network.proactive import ProactiveForwarder
 from mqns.simulator import func_to_event
 
-from .proactive_common import (
+from .fw_common import (
     build_linear_network,
     build_rect_network,
     build_tree_network,

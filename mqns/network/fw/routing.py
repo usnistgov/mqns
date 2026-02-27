@@ -5,8 +5,8 @@ from enum import Enum, auto
 from itertools import pairwise
 from typing import TypedDict, Unpack, override
 
-from mqns.network.fw.message import MultiplexingVector, PathInstructions, SwapSequence, make_path_instructions
-from mqns.network.fw.swap_sequence import parse_swap_sequence
+from mqns.network.fw.message import MultiplexingVector, PathInstructions, make_path_instructions
+from mqns.network.fw.swap_sequence import SwapSequenceInput, parse_swap_sequence
 from mqns.network.network import QuantumNetwork
 from mqns.simulator import Simulator, Time
 from mqns.utils import log
@@ -51,7 +51,7 @@ class RoutingPathInitArgs(TypedDict, total=False):
     """Request identifier, defaults to auto-assignment."""
     path_id: int
     """Path identifier for the first path, defaults to auto-assignment."""
-    swap: SwapSequence | str
+    swap: SwapSequenceInput
     """Predefined or explicitly specified swapping order, defaults to ASAP."""
     swap_cutoff: list[float] | None
     """Swap cut-off times in seconds."""
@@ -88,7 +88,7 @@ class RoutingPath(ABC):
         When ``compute_paths`` yields multiple paths, this is the path_id on the first path,
         while subsequent paths are given consecutive path_ids.
         """
-        self.swap = kwargs.get("swap") or "asap"
+        self.swap: SwapSequenceInput = kwargs.get("swap") or "asap"
         self.swap_cutoff = kwargs.get("swap_cutoff")
         self.purif = kwargs.get("purif") or {}
 

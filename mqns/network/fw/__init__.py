@@ -1,4 +1,5 @@
 from mqns.network.fw.classic import fw_control_cmd_handler, fw_signaling_cmd_handler
+from mqns.network.fw.controller import RoutingController
 from mqns.network.fw.cutoff import CutoffScheme, CutoffSchemeWaitTime, CutoffSchemeWaitTimeCounters
 from mqns.network.fw.fib import Fib, FibEntry
 from mqns.network.fw.forwarder import Forwarder, ForwarderCounters
@@ -21,7 +22,7 @@ from mqns.network.fw.select import (
     SelectPurifQubit,
     select_purif_qubit_random,
 )
-from mqns.network.fw.swap_sequence import parse_swap_sequence
+from mqns.network.fw.swap_sequence import SwapPolicy, SwapSequenceInput, parse_swap_sequence
 
 __all__ = [
     "CutoffScheme",
@@ -42,6 +43,7 @@ __all__ = [
     "MuxSchemeStatistical",
     "parse_swap_sequence",
     "QubitAllocationType",
+    "RoutingController",
     "RoutingPath",
     "RoutingPathInitArgs",
     "RoutingPathMulti",
@@ -49,10 +51,20 @@ __all__ = [
     "RoutingPathStatic",
     "select_purif_qubit_random",
     "SelectPurifQubit",
+    "SwapPolicy",
     "SwapSequence",
+    "SwapSequenceInput",
 ]
 
 for name in __all__:
-    if name in ("MemoryEprIterator", "MemoryEprTuple", "MultiplexingVector", "SelectPurifQubit", "SwapSequence"):
+    if name in (
+        "MemoryEprIterator",
+        "MemoryEprTuple",
+        "MultiplexingVector",
+        "SelectPurifQubit",
+        "SwapPolicy",
+        "SwapSequence",
+        "SwapSequenceInput",
+    ):
         continue
     globals()[name].__module__ = __name__
