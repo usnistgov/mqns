@@ -80,7 +80,9 @@ class Monitor(Entity):
             )
 
         for event_type in self.watch_event:
-            simulator.watch_event[event_type].append(self)
+            if not simulator.watchers:
+                simulator.watchers = {}
+            simulator.watchers.setdefault(event_type, []).append(self)
 
     @override
     def handle(self, event: Event) -> None:

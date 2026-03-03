@@ -18,7 +18,6 @@
 import math
 import os
 import time
-from collections import defaultdict
 from collections.abc import Iterable
 from pstats import SortKey
 from typing import TYPE_CHECKING, Any, Protocol, overload
@@ -45,6 +44,8 @@ class Simulator:
     """
     Discrete-event driven simulator core.
     """
+
+    watchers: dict[type[Event], list["Monitor"]] | None = None
 
     def __init__(
         self,
@@ -74,8 +75,6 @@ class Simulator:
 
         self.event_pool = DefaultEventPool(self.ts.time_slot, None if self.te is None else self.te.time_slot)
         self.total_events = 0
-
-        self.watch_event = defaultdict[type[Event], list["Monitor"]](lambda: [])
 
         self._running = False
 
@@ -152,10 +151,14 @@ class Simulator:
                 if event.is_canceled:
                     continue
                 event.invoke()
-                for monitor in self.watch_event.get(event.__class__, []):
-                    monitor.handle(event)
+
+                if self.watchers is not None and (monitors := self.watchers.get(event.__class__)) is not None:
+                    for monitor in monitors:
+                        monitor.handle(event)
+
             elif is_continuous:
                 time.sleep(0.001)  # idle briefly to wait for external events
+
             else:  # all events completed
                 self._running = False
                 break
