@@ -278,7 +278,7 @@ class LinkLayer(Application[QNode]):
 
         Notes:
             - Qubits assigned to memory are retrieved using the channel's name.
-            - Qubit reservations are spaced out in time using a fixed `attempt_rate`.
+            - Qubit reservations are spaced out in time using a fixed ``attempt_rate``.
 
         """
         qubits = list(self.memory.find(lambda *_: True, qchannel=qchannel))
@@ -295,9 +295,9 @@ class LinkLayer(Application[QNode]):
         Start the exchange with neighbor node for reserving a qubit for entanglement
         generation over a specified quantum channel. It performs the following steps:
 
-        1. Construct a random reservation `key`.
+        1. Construct a random reservation key.
         2. Mark the qubit as active using the reservation key.
-        3. Store reservation metadata in `pending_init_reservation`.
+        3. Store reservation metadata in ``self.pending_init_reservation``.
         4. Send a classical message to the next hop to request qubit reservation.
 
         Args:
@@ -310,9 +310,9 @@ class LinkLayer(Application[QNode]):
                    or if no classical channel to the destination node is found.
 
         Notes:
-            - The `key` uniquely identifies the reservation context.
-              Key format: `<node1>_<node2>_[<path_id>]_<local_qubit_addr>`
-            - The reservation is communicated via a classical message using the `RESERVE_QUBIT` command.
+            - The key uniquely identifies the reservation context.
+              Key format: ``<node1>_<node2>_[<path_id>]_<local_qubit_addr>``
+            - The reservation is communicated via a classical message using the ``RESERVE_QUBIT`` command.
         """
 
         key = uuid.uuid4().hex
@@ -327,10 +327,10 @@ class LinkLayer(Application[QNode]):
 
     def handle_reserve_req(self, msg: ReserveMsg, cchannel: ClassicChannel):
         """
-        Handle `RESERVE_QUBIT` control message sent by the initiating node to request a memory qubit reservation.
+        Handle ``RESERVE_QUBIT`` control message sent by the initiating node to request a memory qubit reservation.
 
         1. If an available memory qubit is found, it is reserved (marked active using the given key).
-        2. A `RESERVE_QUBIT_OK` response is sent back to confirm the reservation.
+        2. A ``RESERVE_QUBIT_OK`` response is sent back to confirm the reservation.
         3. If no available qubit is found, the request is enqueued for future retry (FIFO).
         """
         from_node = cchannel.find_peer(self.node)
@@ -345,10 +345,10 @@ class LinkLayer(Application[QNode]):
         Accept a reservation if a qubit is available.
 
         Returns:
-            True if the reservation is accepted and `RESERVE_QUBIT_OK` is sent.
+            True if the reservation is accepted and ``RESERVE_QUBIT_OK`` is sent.
             False if the reservation is not accepted.
 
-        Notes: Caller is responsible for managing `fifo_reservation_req` queue.
+        Notes: Caller is responsible for managing ``fifo_reservation_req`` queue.
         """
         qubit, _ = next(
             self.memory.find(
@@ -373,7 +373,7 @@ class LinkLayer(Application[QNode]):
 
     def handle_reserve_res(self, msg: ReserveMsg):
         """
-        Handle `RESERVE_QUBIT_OK` control messages received as a response to a reservation request.
+        Handle ``RESERVE_QUBIT_OK`` control messages received as a response to a reservation request.
 
         1. Trigger the entanglement generation process using the reserved memory qubit.
         """

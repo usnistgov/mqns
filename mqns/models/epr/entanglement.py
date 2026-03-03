@@ -159,7 +159,7 @@ class Entanglement(QuantumModel):
         ps=1.0,
     ) -> E | None:
         """
-        Perform swapping between `epr0` and `epr1`, and distribute a new entanglement.
+        Perform swapping between ``epr0`` and ``epr1``, and distribute a new entanglement.
 
         Args:
             epr0: left entanglement.
@@ -222,7 +222,7 @@ class Entanglement(QuantumModel):
 
     def purify(self, epr1: Self, *, now: Time) -> bool:
         """
-        Perform purification on `self` consuming `epr1`.
+        Perform purification on ``self`` consuming ``epr1``.
 
         Args:
             self: kept entanglement.
@@ -284,7 +284,7 @@ class Entanglement(QuantumModel):
 
     def teleportation(self, qubit: Qubit) -> Qubit:
         """
-        Use `self` and `qubit` to perform teleportation.
+        Use ``self`` and ``qubit`` to perform teleportation.
         """
         q1, q2 = self.to_qubits()
         CNOT(qubit, q1)

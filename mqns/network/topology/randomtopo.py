@@ -24,7 +24,7 @@ from mqns.utils import rng
 
 
 class RandomTopology(Topology):
-    """RandomTopology includes `nodes_number` Qnodes. The topology is randomly generated."""
+    """RandomTopology includes ``nodes_number`` nodes. The topology is randomly generated."""
 
     def __init__(self, nodes_number: int, lines_number: int, **kwargs: Unpack[TopologyInitKwargs]):
         """Args:

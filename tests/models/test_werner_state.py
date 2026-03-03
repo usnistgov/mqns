@@ -8,7 +8,7 @@ from mqns.models.core.state import (
     qubit_state_equal,
 )
 from mqns.models.epr import Entanglement, WernerStateEntanglement
-from mqns.models.error import make_time_decay_func
+from mqns.models.error import parse_time_decay
 from mqns.simulator import Time
 from mqns.utils import rng
 
@@ -46,7 +46,7 @@ def test_swap_fidelity():
     Validate fidelity calculation after swaps.
     """
     mem_dt = micros(1000000)  # memory dephasing time: 1 second
-    dephase = make_time_decay_func(t_cohere=mem_dt)
+    dephase = parse_time_decay(None, mem_dt)
 
     e1, e2, e3 = (
         WernerStateEntanglement(fidelity=0.99, fidelity_time=c, decohere_time=c + mem_dt, store_decays=(dephase, dephase))

@@ -34,29 +34,29 @@ class TopoQNode(TypedDict):
     """
     Memory parameters.
 
-    If omitted, use `memory_args` passed to CustomTopo constructor.
+    If omitted, use ``memory_args`` passed to CustomTopo constructor.
     """
     apps: NotRequired[list[Application]]
     """
     Applications installed on the node.
 
-    If omitted, use `nodes_apps` passed to CustomTopo constructor.
+    If omitted, use ``nodes_apps`` passed to CustomTopo constructor.
     """
 
 
 class TopoQChannel(TypedDict):
     node1: str
-    """first node name"""
+    """First node name."""
     node2: str
-    """second node name"""
+    """Second node name."""
     capacity1: NotRequired[int]
-    """quantity of memory qubits assigned to this qchannel at node1, defaults to `capacity`"""
+    """Quantity of memory qubits assigned to this qchannel at node1, defaults to ``capacity``."""
     capacity2: NotRequired[int]
-    """quantity of memory qubits assigned to this qchannel at node2, defaults to `capacity`"""
+    """Quantity of memory qubits assigned to this qchannel at node2, defaults to ``capacity``."""
     capacity: NotRequired[int]
-    """quantity of memory qubits assigned to this qchannel at each node, defaults to 1"""
+    """Quantity of memory qubits assigned to this qchannel at each node, defaults to 1."""
     parameters: QuantumChannelInitKwargs
-    """qchannel constructor arguments"""
+    """Qchannel constructor arguments."""
 
 
 class TopoCChannel(TypedDict):
@@ -130,7 +130,7 @@ class CustomTopology(Topology):
             qn.add_apps(node["apps"] if "apps" in node else copy.deepcopy(self.nodes_apps))
 
             # Assign a new memory
-            memory_args = node.get("memory", self.memory_args)
+            memory_args = self.memory_args | node.get("memory", {})
             qn.memory = QuantumMemory(f"{qn.name}.memory", **memory_args)
 
             qnl.append(qn)

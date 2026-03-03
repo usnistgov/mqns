@@ -27,7 +27,7 @@ class PathInstructions(TypedDict):
     """
     Swap sequence -- nonnegative integers to control swapping order.
 
-    This list shall have the same length as `route`.
+    This list shall have the same length as ``route``.
     Each element represents swapping rank of the corresponding node.
     A node with smaller rank shall perform swapping before a node with larger rank.
 
@@ -40,12 +40,12 @@ class PathInstructions(TypedDict):
     """
     Swap cutoff time -- maximum age at each swapping step.
 
-    This list shall have the same length as `swap`.
-    The i-th element corresponds to the i-th node in the `route` list.
-    Each element is a duration in time_slot unit (see `Time` class); `-1` means no restriction.
+    This list shall have the same length as ``swap``.
+    The i-th element corresponds to the i-th node in the ``route`` list.
+    Each element is a duration in time_slot unit (see ``Time`` class); ``-1`` means no restriction.
 
     The semantics of "age" depend on the CutoffScheme passed to ProactiveForwarder.
-    Since the first and last nodes in `route` do not perform swapping, the first and last elements
+    Since the first and last nodes in ``route`` do not perform swapping, the first and last elements
     in this list have no effect. Likewise, if swapping has been disabled, this list has no effect.
     """
 
@@ -53,7 +53,7 @@ class PathInstructions(TypedDict):
     """
     Multiplexing vector, used in buffer-space multiplexing scheme only.
 
-    This list shall have one element per qchannel, i.e. one less than `route`.
+    This list shall have one element per qchannel, i.e. one less than ``route``.
     Each element is a pair of nonnegative integers, corresponding to left and right qchannels.
     Each integer indicates how many memory qubits shall be allocated on the left/right qchannel for this path.
     If an integer is zero, it means allocating all qubits assigned to that qchannel for this path.

@@ -45,7 +45,7 @@ class Operator:
             state: either a state vector or a density matrix for ``self.n`` qubits.
 
         Raises:
-            ValueError - mismatch between operator size and state size.
+            ValueError: mismatch between operator size and state size.
 
         Returns: Transformed state vector or density matrix.
         """
@@ -67,8 +67,8 @@ class Operator:
             n: number of qubits in the state vector or density matrix.
 
         Raises:
-            AssertionError - this is not a single-qubit operator.
-            ValueError - i or n is out of range.
+            AssertionError: this is not a single-qubit operator.
+            ValueError: i or n is out of range.
 
         Returns: n-qubit operator.
         """

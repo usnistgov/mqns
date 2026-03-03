@@ -43,7 +43,6 @@ class MuxScheme(ABC):
     @abstractmethod
     def validate_path_instructions(self, instructions: PathInstructions) -> None:
         """Validate install_path instructions are compatible."""
-        pass
 
     @abstractmethod
     def install_path_neighbor(
@@ -112,12 +111,12 @@ class MuxScheme(ABC):
             input: Candidates iterator. They are in ELIGIBLE state and assigned to a different channel.
             qubit: A qubit in ELIGIBLE state.
             epr: The EPR associated with this qubit. This is not an end-to-end entanglement.
-            fib_entry: FIB entry passed to `fw.qubit_is_eligible()`.
+            fib_entry: FIB entry passed to ``fw.qubit_is_eligible()``.
 
         Returns:
             None: No candidate, do not swap.
             [0]: Another qubit in ELIGIBLE state.
-            [1]: FIB entry for `fw.do_swapping()`.
+            [1]: FIB entry for ``fw.do_swapping()``.
         """
 
     @abstractmethod
@@ -150,7 +149,7 @@ class MuxScheme(ABC):
         """
         Handle a successful parallel swap at the recipient of SWAP_UPDATE message.
 
-        See the diagram in `ProactiveForwarder._su_parallel` for an explanation of the arguments.
+        See the diagram in ``Forwarder._su_parallel`` for an explanation of the arguments.
 
         Args:
             merged_epr: Locally merged EPR made from other_epr+new_epr.

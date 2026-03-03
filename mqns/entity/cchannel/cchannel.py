@@ -37,11 +37,12 @@ class ClassicPacket:
     """ClassicPacket is the message that transfer on a ClassicChannel"""
 
     def __init__(self, msg: Any, *, src: Node, dest: Node):
-        """Args:
-        msg (Union[str, bytes, Any]): the message content.
-            It can be a `str` or `bytes` type or can be dumpped to json.
-        src (Node): the source of this message
-        dest (Node): the destination of this message
+        """
+        Args:
+            msg: the message content.
+                 It can be a ``str`` or ``bytes`` type or can be serialized as JSON.
+            src: the source of this message.
+            dest: the destination of this message,
 
         """
         self.is_json, self.msg = (False, msg) if isinstance(msg, (str, bytes)) else (True, json.dumps(msg))
@@ -49,24 +50,14 @@ class ClassicPacket:
         self.dest = dest
 
     def encode(self) -> bytes:
-        """Encode the self.msg if it is a `str`
-
-        Return:
-            (bytes) a `bytes` object
-
-        """
+        """Encode the self.msg if it is a ``str``."""
         if isinstance(self.msg, str):
             return self.msg.encode(encoding="utf-8")
         assert isinstance(self.msg, bytes)
         return self.msg
 
     def get(self) -> Any:
-        """Get the message from packet
-
-        Return:
-            (Union[str, bytes, Any])
-
-        """
+        """Get the message from packet."""
         return json.loads(self.msg) if self.is_json else self.msg
 
     def __len__(self) -> int:

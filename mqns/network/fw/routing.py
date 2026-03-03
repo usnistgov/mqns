@@ -105,7 +105,6 @@ class RoutingPath(ABC):
             A generator of path instructions.
             They will be installed into the nodes.
         """
-        pass
 
     def query_routes(self, net: QuantumNetwork) -> Iterator[list[str]]:
         """

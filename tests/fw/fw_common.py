@@ -223,7 +223,7 @@ def provide_entanglements(
 
         t_creation = simulator.time(sec=t)
         epr = src.network.epr_type(
-            decohere_time=t_creation + min(src.memory.decoherence_delay, dst.memory.decoherence_delay),
+            decohere_time=t_creation + min(src.memory.t_decohere, dst.memory.t_decohere),
             fidelity_time=t_creation,
             src=src.node,
             dst=dst.node,

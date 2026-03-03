@@ -50,7 +50,6 @@ def plt_save(save_to: str, /, **kwargs) -> None:
     Args:
         save_to: Output filename; empty string skips saving.
     """
-    pass
 
 
 @overload
@@ -61,7 +60,6 @@ def plt_save(*save_to: tuple[Figure, str], **kwargs) -> None:
     Args:
         save_to: Pairs of figure and output filename; empty string skips saving.
     """
-    pass
 
 
 def plt_save(*save_to: str | tuple[Figure, str], **kwargs) -> None:

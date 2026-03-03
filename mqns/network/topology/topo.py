@@ -52,7 +52,9 @@ class ClassicTopology(Enum):
 
 
 class Topology(ABC):
-    """Topology is a factory for QuantumNetwork"""
+    """
+    Topology is a factory for quantum and classic network topology used to build QuantumNetwork.
+    """
 
     def __init__(self, nodes_number: int, **kwargs: Unpack[TopologyInitKwargs]):
         """Args:
@@ -72,30 +74,29 @@ class Topology(ABC):
 
     @abstractmethod
     def build(self) -> tuple[list[QNode], list[QuantumChannel]]:
-        """Build the special topology
+        """
+        Build the special topology.
 
         Returns:
             the list of QNodes and the list of QuantumChannel
-
         """
-        pass
 
-    def _add_apps(self, nl: list[QNode]):
-        """Add apps for all nodes in `nl`
+    def _add_apps(self, nl: Iterable[QNode]):
+        """
+        Add apps for all nodes in ``nl``.
 
         Args:
-            nl (List[QNode]): a list of quantum nodes
-
+            nl: a list of quantum nodes
         """
         for n in nl:
             n.add_apps(copy.deepcopy(self.nodes_apps))
 
-    def _add_memories(self, nl: list[QNode]):
-        """Add quantum memories to all nodes in `nl`
+    def _add_memories(self, nl: Iterable[QNode]):
+        """
+        Add quantum memories to all nodes in ``nl``.
 
         Args:
-            nl (List[QNode]): a list of quantum nodes
-
+            nl: a list of quantum nodes.
         """
         for node in nl:
             node.memory = QuantumMemory(f"{node.name}.memory", **self.memory_args)
@@ -147,7 +148,7 @@ class Topology(ABC):
             List of classical channels.
 
         Raises:
-            RuntimeError - controller does not exist.
+            RuntimeError: controller does not exist.
 
         Notes:
             If the controller is part of a network, newly created cchannels are automatically added to the network.

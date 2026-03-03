@@ -219,7 +219,7 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
 
         Upon entering EXTERNAL phase:
 
-        1. Clear `remote_swapped_eprs`.
+        1. Clear ``remote_swapped_eprs``.
            All memory qubits are being discarded by LinkLayer, so that these have become useless.
 
         Upon entering INTERNAL phase:

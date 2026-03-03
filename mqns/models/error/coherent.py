@@ -21,7 +21,7 @@ class CoherentErrorModel(ErrorModel):
         self.set(length=length)
 
     @override
-    def set(self, **kwargs):
+    def _set(self, **kwargs):
         length = kwargs.get("length")
         if length is None:
             raise TypeError("CoherentErrorModel must be set with length")

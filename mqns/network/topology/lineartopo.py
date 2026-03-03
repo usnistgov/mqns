@@ -23,7 +23,7 @@ from mqns.network.topology.topo import TopologyInitKwargs
 
 class LinearTopology(GridTopology):
     """
-    LinearTopology creates a linear topology with `nodes_number` nodes.
+    LinearTopology creates a linear topology with ``nodes_number`` nodes.
     """
 
     @override

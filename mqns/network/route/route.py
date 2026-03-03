@@ -93,7 +93,6 @@ class RouteAlgorithm[N: Node, C: BaseChannel](ABC):
             nodes: a list of quantum nodes or classic nodes.
             channels: a list of quantum channels or classic channels.
         """
-        pass
 
     @abstractmethod
     def query(self, src: N, dst: N) -> list[RouteQueryResult[N]]:
@@ -107,4 +106,3 @@ class RouteAlgorithm[N: Node, C: BaseChannel](ABC):
         Returns:
             A list of route paths. The result should be sorted by priority.
         """
-        pass

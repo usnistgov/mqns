@@ -26,6 +26,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from collections import defaultdict
+from collections.abc import Iterable
 from typing import TYPE_CHECKING, cast, override
 
 from mqns.entity.entity import Entity
@@ -78,32 +79,31 @@ class Node(Entity):
     @override
     def handle(self, event: Event) -> None:
         """
-        Dispatch an `Event` that happens on this Node.
+        Dispatch an ``Event`` that happens on this Node.
         This event is passed to every application in apps list in order.
 
         Args:
-            event (Event): the event that happens on this Node
-
+            event: the event that happens on this Node.
         """
         for app in self.apps:
             skip = app.handle(event)
             if skip:
                 break
 
-    def add_apps(self, app: Application | list[Application]):
+    def add_apps(self, app: Application | Iterable[Application]):
         """
         Insert one or more applications into the app list.
 
         Args:
             app: an application or a list of applications.
-                 The caller is responsible for `deepcopy` if needed, so that each node has a separate instance.
+                 The caller is responsible for ``deepcopy`` if needed, so that each node has a separate instance.
 
         """
         self.ensure_not_installed()
-        if isinstance(app, list):
-            self.apps += app
-        else:
+        if isinstance(app, Application):
             self.apps.append(app)
+        else:
+            self.apps.extend(app)
 
     def get_apps[A: Application](self, app_type: type[A]) -> list[A]:
         """
@@ -123,7 +123,7 @@ class Node(Entity):
             app_type: Application type/class.
 
         Raises:
-            IndexError - application does not exist, or there are multiple instances
+            IndexError: application does not exist, or there are multiple instances
         """
         if self._app_by_type is None:  # this is called before self.install() populates _app_by_type
             self.ensure_not_installed()
@@ -168,10 +168,10 @@ class Node(Entity):
 
     def get_cchannel(self, dst: "Node") -> "ClassicChannel":
         """
-        Retrieve the classic channel that connects to `dst`.
+        Retrieve the classic channel that connects to ``dst``.
 
         Raises:
-            IndexError - channel does not exist
+            IndexError: channel does not exist
         """
         return self._get_channel(dst, self._cchannel_by_dst)
 

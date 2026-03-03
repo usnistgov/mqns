@@ -106,7 +106,7 @@ class QuantumChannel(BaseChannel[QNode]):
                       where every node connected to the qchannel must appear in the dict.
 
         Raises:
-            OverflowError - insufficient qubits.
+            OverflowError: insufficient qubits.
         """
         for node in self.node_list:
             cap = capacity if isinstance(capacity, int) else capacity[node.name]

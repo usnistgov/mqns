@@ -25,10 +25,11 @@ class NodeProcessDelayApp(Application[Node]):
     """
 
     def __init__(self, delay: float = 0, delay_event_list: type | tuple[type, ...] | None = None):
-        """Args:
-        delay (float): the processing delay
-        delay_event_list: a list of Event classic list that will add a delay.
-            If `delay_event_list` is None, all events will be added a delay.
+        """
+        Args:
+            delay: the processing delay.
+            delay_event_list: a list of Event classic list that will add a delay.
+                              If None, all events will be added a delay.
 
         """
         super().__init__()

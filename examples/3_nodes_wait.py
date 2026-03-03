@@ -14,6 +14,8 @@ import pandas as pd
 from tap import Tap
 
 from mqns.entity.base_channel import default_light_speed
+from mqns.models.error import TimeDecayInput
+from mqns.models.error.input import ErrorModelInputLength
 from mqns.network.builder import CTRL_DELAY, EprTypeLiteral, LinkArchLiteral, NetworkBuilder, tap_configure
 from mqns.network.fw import CutoffSchemeWaitTime
 from mqns.network.proactive import ProactiveForwarder
@@ -31,11 +33,12 @@ class Args(Tap):
     sim_duration: float = 5.0  # simulation duration in seconds
     L: tuple[float, float] = (32, 18)  # qchannel lengths (km)
     t_cohere: list[float] = [0.1]  # memory coherence time (s)
+    memory_decay: TimeDecayInput = None  # memory error model with decoherence rate
     t_wait: list[float] = [0.0025, 0.005, 0.01, 0.02, 1000]  # wait-time cutoff values (s), empty for auto-sweep
     epr_type: EprTypeLiteral  # network-wide EPR type
     link_arch: LinkArchLiteral  # link architecture
     link_arch_sim: bool = False  # determine fidelity with LinkArch mini simulation
-    fiber_error: str = "DEPOLAR:0.01"  # fiber error model with decoherence rate
+    fiber_error: ErrorModelInputLength = "DEPOLAR:0.01"  # fiber error model with decoherence rate
     csv: str = ""  # save stats as CSV file
     json: str = ""  # save stats and details as JSON file
     plt: str = ""  # save plot as image file
@@ -61,6 +64,7 @@ def run_simulation(seed: int, args: Args, t_cohere: float, t_wait: float):
         .topo_linear(
             nodes=("S", "R", "D"),
             t_cohere=t_cohere,
+            memory_decay=args.memory_decay,
             channel_length=args.L,
             fiber_error=args.fiber_error,
             link_arch=args.link_arch,

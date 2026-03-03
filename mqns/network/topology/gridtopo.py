@@ -28,8 +28,8 @@ from mqns.network.topology.topo import Topology, TopologyInitKwargs
 class GridTopology(Topology):
     """
     GridTopology builds a grid topology with a rectangle shape.
-    If `shape` is a tuple, it specifies how many rows and columns are in the topology.
-    If `shape` is an integer, it specifies total number of nodes and must be a perfect square number.
+    If ``shape`` is a tuple, it specifies how many rows and columns are in the topology.
+    If ``shape`` is an integer, it specifies total number of nodes and must be a perfect square number.
     """
 
     def __init__(self, shape: int | tuple[int, int], **kwargs: Unpack[TopologyInitKwargs]):

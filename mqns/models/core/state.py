@@ -23,7 +23,7 @@ def check_qubit_state(state: np.ndarray, n=1) -> QubitState:
         n: expected number of qubits.
 
     Raises:
-        AssertionError - ``state`` has wrong shape or is not normalized.
+        AssertionError: ``state`` has wrong shape or is not normalized.
 
     Returns: Validated input.
     """
@@ -95,7 +95,7 @@ def check_qubit_rho(rho: np.ndarray, n=1, *, maybe_zero=False) -> QubitRho:
         maybe_zero: if True, don't error if the matrix is all zeros.
 
     Raises:
-        AssertionError - ``rho`` has wrong shape or is not normalized.
+        AssertionError: ``rho`` has wrong shape or is not normalized.
 
     Returns: Validated input.
     """
@@ -125,7 +125,7 @@ def normalize_qubit_rho(rho: np.ndarray, n=1, *, maybe_zero=False) -> QubitRho:
         maybe_zero: if True, don't error if the matrix is all zeros.
 
     Raises:
-        AssertionError - ``rho`` has wrong shape.
+        AssertionError: ``rho`` has wrong shape.
 
     Returns: Validated input.
     """

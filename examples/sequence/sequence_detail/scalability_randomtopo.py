@@ -38,7 +38,7 @@ def _EntanglementGenerationA_emit_event(self: EntanglementGenerationA) -> None:
 
     If the protocol is in round 1, the memory will be first set to the |+> state.
     Otherwise, it will apply an x_gate to the memory.
-    Regardless of the round, the memory `excite` method will be invoked.
+    Regardless of the round, the memory ``excite`` method will be invoked.
 
     Side Effects:
         May change state of attached memory.
@@ -59,7 +59,7 @@ def _EntanglementSwappingA_start(self: EntanglementSwappingA) -> None:
     Will run circuit and send measurement results to other protocols.
 
     Side Effects:
-        Will call `update_resource_manager` method.
+        Will call ``update_resource_manager`` method.
         Will send messages to other protocols.
     """
 
@@ -149,7 +149,7 @@ def _EntanglementSwappingB_received_message(self: EntanglementSwappingB, src: st
         msg (EntanglementSwappingMesssage): message sent.
 
     Side Effects:
-        Will invoke `update_resource_manager` method.
+        Will invoke ``update_resource_manager`` method.
     """
 
     if src != self.remote_node_name:

@@ -94,13 +94,11 @@ class Simulator:
 
     @overload
     def time(self, *, time_slot: int) -> Time:
-        """Produce `Time` from time slot."""
-        pass
+        """Produce ``Time`` from time slot."""
 
     @overload
     def time(self, *, sec: float) -> Time:
-        """Produce `Time` from seconds."""
-        pass
+        """Produce ``Time`` from seconds."""
 
     def time(self, *, time_slot: int | None = None, sec: float = math.nan) -> Time:
         if time_slot is not None:

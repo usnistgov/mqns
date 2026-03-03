@@ -19,7 +19,7 @@ mean ± std end-to-end entanglement consumption rate (eps). It also records mean
 
 How to use it:
 1) Pick a scenario:
-   Set `ACTIVE_SCENARIO_KEY` to one of:
+   Set ``ACTIVE_SCENARIO_KEY`` to one of:
      - "one_flow_buffer_space_single"
      - "two_flows_statistical_single"
      - "two_flows_buffer_space_single"
@@ -33,7 +33,7 @@ How to use it:
      - `measured_sources`: which source nodes to read counters from for reporting
 
 3) (Optional) Customize the topology:
-   Edit `TOPO_SPEC` to change:
+   Edit ``TOPO_SPEC`` to change:
      - nodes and links
      - link lengths and capacities (e.g., to make the trunk more/less contested)
 

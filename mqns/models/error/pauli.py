@@ -109,8 +109,7 @@ class PauliErrorModel(PauliErrorModelBase):
 
     @override
     def qubit(self, q) -> None:
-        ops, prob = self._stochastic_ops
-        q.stochastic_operate(ops, prob)
+        q.stochastic_operate(*self._stochastic_ops)
 
 
 class DepolarErrorModel(PauliErrorModel):

@@ -31,29 +31,29 @@ class QubitState(Enum):
     ACTIVE = auto()
     """
     The link layer has started a reservation on the qubit as the primary node.
-    `qubit.active` contains the reservation key.
+    ``qubit.active`` contains the reservation key.
     """
     RESERVED = auto()
     """
     Qubit is part of a reservation in link layer and a remote qubit has been found.
-    `qubit.active` contains the reservation key.
+    ``qubit.active`` contains the reservation key.
 
     This state is set on the qubit at both primary and secondary node of the reservation.
     """
     ENTANGLED0 = auto()
     """
     Qubit is half of an elementary entanglement delivered from link layer.
-    `QubitEntangledEvent` has not been processed by forwarder.
+    ``QubitEntangledEvent`` has not been processed by forwarder.
     """
     ENTANGLED1 = auto()
     """
     Qubit is half of an elementary entanglement delivered from link layer.
-    `QubitEntangledEvent` has been processed by forwarder.
+    ``QubitEntangledEvent`` has been processed by forwarder.
     """
     PURIF = auto()
     """
     Qubit is used by forwarder for zero or more rounds of purification.
-    `qubit.qubit_rounds` indicates how many purification rounds have been completed.
+    ``qubit.qubit_rounds`` indicates how many purification rounds have been completed.
 
     This state is set on the qubit at both primary and secondary node of a purification segment,
     but only the primary node is permitted to initiate purification.
@@ -61,7 +61,7 @@ class QubitState(Enum):
     PENDING = auto()
     """
     The forwarder has initiated purification of the qubit with its partner on a segment.
-    `qubit.qubit_rounds` indicates how many purification rounds have been completed, excluding the current round.
+    ``qubit.qubit_rounds`` indicates how many purification rounds have been completed, excluding the current round.
     """
     ELIGIBLE = auto()
     """
@@ -155,8 +155,8 @@ class MemoryQubit:
         Associate an event with the qubit that would be canceled upon entering RELEASE state.
 
         Args:
-            owner: Owner type, such as `QuantumMemory`. Existing event of the same owner is canceled.
-            new_event: New event to store, or `None` to cancel existing event only.
+            owner: Owner type, such as ``QuantumMemory``. Existing event of the same owner is canceled.
+            new_event: New event to store, or ``None`` to cancel existing event only.
         """
         old_event = self._events.pop(owner, None)
         if old_event is not None:

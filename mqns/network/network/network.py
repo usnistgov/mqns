@@ -170,7 +170,7 @@ class QuantumNetwork:
         Get QNode by name.
 
         Raises:
-            IndexError - node does not exist.
+            IndexError: node does not exist.
         """
         try:
             return self._node_by_name[name]
@@ -190,7 +190,7 @@ class QuantumNetwork:
         Get the Controller of this network.
 
         Raises:
-            IndexError - controller does not exist.
+            IndexError: controller does not exist.
         """
         if self.controller is None:
             raise IndexError("network does not have a controller")
@@ -209,9 +209,8 @@ class QuantumNetwork:
         Retrieve QuantumChannel by name.
 
         Raises:
-            IndexError - channel does not exist.
+            IndexError: channel does not exist.
         """
-        pass
 
     @overload
     def get_qchannel(self, a: str, b: str, /) -> QuantumChannel:
@@ -219,9 +218,8 @@ class QuantumNetwork:
         Retrieve QuantumChannel by node names.
 
         Raises:
-            IndexError - channel does not exist.
+            IndexError: channel does not exist.
         """
-        pass
 
     def get_qchannel(self, *q: str) -> QuantumChannel:
         return _get_channel(self.qchannels, self._qchannel_by_ends, q)
@@ -239,9 +237,8 @@ class QuantumNetwork:
         Retrieve ClassicalChannel by name.
 
         Raises:
-            IndexError - channel does not exist.
+            IndexError: channel does not exist.
         """
-        pass
 
     @overload
     def get_cchannel(self, a: str, b: str, /) -> ClassicChannel:
@@ -249,9 +246,8 @@ class QuantumNetwork:
         Retrieve ClassicalChannel by node names.
 
         Raises:
-            IndexError - channel does not exist.
+            IndexError: channel does not exist.
         """
-        pass
 
     def get_cchannel(self, *q: str) -> ClassicChannel:
         return _get_channel(self.cchannels, self._cchannel_by_ends, q)
@@ -278,7 +274,7 @@ class QuantumNetwork:
         """
         Add a request (src, dst) pair to the network.
 
-        The request is placed in `self.requests` list.
+        The request is placed in ``self.requests`` list.
         The scenario must manually pass these requests to relevant applications (e.g. ProactiveRoutingController).
 
         Args:
@@ -303,12 +299,12 @@ class QuantumNetwork:
         """
         Generate random (src, dst) pairs requests.
 
-        The requests are placed in `self.requests` list.
+        The requests are placed in ``self.requests`` list.
         The scenario must manually pass these requests to relevant applications (e.g. ProactiveRoutingController).
 
         Args:
             n: number of requests to generate
-            clear: if True, clear existing requests in `self.requests`
+            clear: if True, clear existing requests in ``self.requests``
             allow_overlay: allow nodes to be the source or destination in multiple requests
             min_hops: minimum number of hops (inclusive)
             max_hops: maximum number of hops (inclusive)

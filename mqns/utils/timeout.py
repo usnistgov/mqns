@@ -12,7 +12,7 @@ class WallClockTimeout:
         """
         Args:
             timeout: wall-clock timeout in seconds.
-            stop: function to stop the simulator, e.g. `simulator.stop()`.
+            stop: function to stop the simulator, e.g. ``simulator.stop()``.
         """
         self.occurred = False
         """

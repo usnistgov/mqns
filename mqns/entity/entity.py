@@ -44,7 +44,7 @@ class Entity(ABC):
     def install(self, simulator: Simulator) -> None:
         """
         Initialize the entity and schedule initial events.
-        This must be invoked before `simulator.run()`.
+        This must be invoked before ``simulator.run()``.
 
         Args:
             simulator: the simulator.
@@ -62,9 +62,7 @@ class Entity(ABC):
 
         Args:
             event: the event that targets this entity.
-
         """
-        pass
 
     def __repr__(self) -> str:
         return f"<entity {self.name}>"

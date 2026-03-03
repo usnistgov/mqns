@@ -65,7 +65,7 @@ class QNode(Node):
         Retrieve associated QuantumMemory.
 
         Raises:
-            IndexError - memory does not exist
+            IndexError: memory does not exist
         """
         if self._memory is None:
             raise IndexError(f"node {self} does not have memory")
@@ -102,10 +102,10 @@ class QNode(Node):
 
     def get_qchannel(self, dst: "QNode") -> "QuantumChannel":
         """
-        Retrieve the quantum channel that connects to `dst`.
+        Retrieve the quantum channel that connects to ``dst``.
 
         Raises:
-            IndexError - channel does not exist
+            IndexError: channel does not exist
         """
         return self._get_channel(dst, self._qchannel_by_dst)
 

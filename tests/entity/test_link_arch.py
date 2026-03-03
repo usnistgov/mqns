@@ -9,7 +9,7 @@ from mqns.entity.node import QNode
 from mqns.entity.qchannel import LinkArch, LinkArchDimBk, LinkArchDimBkSeq, LinkArchDimDual, LinkArchSim, LinkArchSr
 from mqns.models.delay import ConstantDelayModel, DelayModel
 from mqns.models.epr import Entanglement, MixedStateEntanglement, WernerStateEntanglement
-from mqns.models.error import DepolarErrorModel, ErrorModel, PerfectErrorModel, make_time_decay_func
+from mqns.models.error import DepolarErrorModel, ErrorModel, parse_time_decay, time_decay_nop
 from mqns.simulator import Simulator, Time
 
 
@@ -92,7 +92,6 @@ def make_epr(link_arch: LinkArch, t_cohere: Time):
 def test_perfect_error(LA: type[LinkArch], E: type[Entanglement]):
     ch = FakeQuantumChannel(0)
     t_cohere = Time.from_sec(1, accuracy=ACCURACY)
-    store_decay = make_time_decay_func(PerfectErrorModel(), t_cohere=t_cohere)
     link_arch = LA()
     link_arch.set(
         ch=ch,
@@ -102,7 +101,7 @@ def test_perfect_error(LA: type[LinkArch], E: type[Entanglement]):
         tau_0=0,
         epr_type=E,
         t0=t_cohere,
-        store_decays=(store_decay, store_decay),
+        store_decays=(time_decay_nop, time_decay_nop),
         bsa_error={"p_error": 0},
     )
 
@@ -133,7 +132,7 @@ def test_realistic_error(LA: type[LinkArch], w_or_probv: float | tuple[float, fl
         transfer_error_rate=0.001,  # 0.001 for typical fiber, 0.0051 for noisy fiber
     )
     t_cohere = Time.from_sec(0.100, accuracy=ACCURACY)  # coherence of an NV-center or Ion-Trap
-    store_decay = make_time_decay_func(t_cohere=t_cohere)
+    store_decay = parse_time_decay(None, t_cohere)
     link_arch = LA()
     link_arch.set(
         ch=ch,

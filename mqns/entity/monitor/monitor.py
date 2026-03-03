@@ -133,7 +133,7 @@ class Monitor(Entity):
         """
         Watch the final status after the simulation.
 
-        This does not work in a continuous simulation or if the simulation is stopped with `Simulator.stop()`.
+        This does not work in a continuous simulation or if the simulation is stopped with ``Simulator.stop()``.
         """
         self.ensure_not_installed()
         self.watch_at_finish = True

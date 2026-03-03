@@ -28,8 +28,8 @@ class CustomAdapter(LoggerAdapter):
         """
         Configure logging level.
 
-        If `MQNS_LOGLVL` environment variable contains a valid log level, it is used.
-        Otherwise, `dflt_level` is used as the logging level.
+        If ``MQNS_LOGLVL`` environment variable contains a valid log level, it is used.
+        Otherwise, ``dflt_level`` is used as the logging level.
         """
         try:
             env_level = os.getenv("MQNS_LOGLVL", dflt_level)

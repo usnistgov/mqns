@@ -23,8 +23,9 @@ from mqns.network.topology.topo import Topology, TopologyInitKwargs
 
 
 class TreeTopology(Topology):
-    """TreeTopology includes `nodes_number` Qnodes.
-    The topology is a tree pattern, where each parent has `children_num` children.
+    """
+    TreeTopology includes ``nodes_number`` nodes.
+    The topology is a tree pattern, where each parent has ``children_num`` children.
     """
 
     def __init__(self, nodes_number, children_number: int = 2, **kwargs: Unpack[TopologyInitKwargs]):

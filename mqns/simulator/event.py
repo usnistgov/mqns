@@ -40,7 +40,6 @@ class Event(ABC):
     @abstractmethod
     def invoke(self) -> None:
         """Invoke the event."""
-        pass
 
     def cancel(self) -> None:
         """Cancel this event"""
@@ -92,16 +91,16 @@ class WrapperEvent(Event):
 
 
 def func_to_event(t: Time, fn: Callable, *args, name: str | None = None, by: Any = None, **kwargs):
-    """Convert a function to an event, the function `fn` will be called at `t`.
+    """
+    Convert a function to an event, the function ``fn`` will be called at ``t``.
     It is a simple method to wrap a function to an event.
 
     Args:
-        t: the function will be called at `t`
-        fn: the function
-        *args: the function's positional parameters
-        name: event name
-        by: the entity or application that will causes this event
-        **kwargs: the function's keyword parameters
-
+        t: timestamp to call the function.
+        fn: the function.
+        *args: the function's positional parameters.
+        name: event name.
+        by: the entity or application that will causes this event.
+        **kwargs: the function's keyword parameters.
     """
     return WrapperEvent(t, name, by, fn, args, kwargs)

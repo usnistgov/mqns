@@ -70,10 +70,10 @@ class FibEntry:
 
         Returns:
             [0]: The node index in the route.
-            [1]: Swapping rank of the node, explained in `PathInstructions`.
+            [1]: Swapping rank of the node, explained in ``PathInstructions``.
 
         Raises:
-            IndexError - node does not exist in route.
+            IndexError: node does not exist in route.
         """
         idx = self.route.index(node_name)
         return idx, self.swap[idx]
@@ -128,7 +128,7 @@ class Fib:
         Retrieve an entry by path_id.
 
         Raises:
-            IndexError - Entry not found.
+            IndexError: Entry not found.
         """
         try:
             return self.table[path_id]

@@ -71,7 +71,10 @@ class ErrorModel(ABC):
         It's possible to use other length units, as long as ``length`` and ``rate`` are inverse of each other.
         """
 
-    def set(
+    def set(self, **kwargs) -> Self:
+        return self._set(**kwargs)
+
+    def _set(
         self,
         *,
         p_survival=1.0,

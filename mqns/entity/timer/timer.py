@@ -22,17 +22,16 @@ from mqns.simulator import Event, Simulator, Time
 
 
 class Timer(Entity):
-    """A `Timer` is an `Entity` that trigger the function `trigger_func` one-shot or periodically."""
+    """Timer is an entity that trigger the function ``trigger_func`` one-shot or periodically."""
 
     def __init__(self, name: str, start_time: float, end_time: float = 0, step_time: float = 1, trigger_func=None):
-        """Args:
-        name: the timer's name
-        start_time (float): the start time of the first event
-        end_time (float): the time of the final trigger event.
-            If `end_time` is 0, it will be trigger only once.
-        step_time (float): the period of trigger events. Default value is 1 second.
-        trigger_func: the function that will be triggered.
-
+        """
+        Args:
+            name: timer name,
+            start_time: time of the first event.
+            end_time: time of the final event; if zero, event is triggered only once.
+            step_time: the period of trigger events, defaults to 1 second.
+            trigger_func: the function that will be triggered.
         """
         super().__init__(name=name)
         self.start_time = start_time

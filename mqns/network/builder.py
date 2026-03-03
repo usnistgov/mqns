@@ -14,7 +14,8 @@ from mqns.entity.qchannel import (
     QuantumChannel,
 )
 from mqns.models.epr import Entanglement, MixedStateEntanglement, WernerStateEntanglement
-from mqns.models.error.input import ErrorModelInputLength
+from mqns.models.error import TimeDecayInput
+from mqns.models.error.input import ErrorModelInputBasic, ErrorModelInputLength, ErrorModelInputTime
 from mqns.network.fw import (
     MuxScheme,
     MuxSchemeBufferSpace,
@@ -70,12 +71,18 @@ def tap_configure(tap: Tap) -> None:
 
     * ``EprTypeLiteral``
     * ``LinkArchLiteral``
+    * ``ErrorModelInput*``
+    * ``TimeDecayInput``
     """
     for key, typ in tap._annotations.items():
         if typ is EprTypeLiteral:
             tap.add_argument(f"--{key}", type=str, default="W", choices=EPR_TYPE_MAP.keys())
         elif typ is LinkArchLiteral:
             tap.add_argument(f"--{key}", type=str, default="DIM-BK-SeQUeNCe", choices=LINK_ARCH_MAP.keys())
+        elif typ is ErrorModelInputBasic:
+            tap.add_argument(f"--{key}", type=str, metavar="ErrorModelType:p_error")
+        elif typ in (ErrorModelInputTime, ErrorModelInputLength, TimeDecayInput):
+            tap.add_argument(f"--{key}", type=str, metavar="ErrorModelType:rate")
 
 
 CTRL_DELAY = 5e-06
@@ -90,6 +97,8 @@ so that the QNodes can perform entanglement forwarding for the full intended dur
 class TopoCommonArgs(TypedDict, total=False):
     t_cohere: float
     """Memory coherence time in seconds, defaults to ``0.02``."""
+    memory_decay: TimeDecayInput
+    """Memory time decay function, defaults to dephasing in ``t_cohere``."""
     entg_attempt_rate: float
     """Maximum entanglement attempts per second, defaults to ``50_000_000`` but currently ineffective."""
     init_fidelity: float | None
@@ -172,12 +181,47 @@ class NetworkBuilder:
 
     def _parse_topo_args(self, d: TopoCommonArgs) -> None:
         self.t_cohere = d.get("t_cohere", 0.02)
+        self.memory_decay = d.get("memory_decay")
         self.entg_attempt_rate = d.get("entg_attempt_rate", 50e6)
         self.init_fidelity = d.get("init_fidelity", 0.99)
         self.eta_d = d.get("eta_d", 0.95)
         self.eta_s = d.get("eta_s", 0.95)
         self.frequency = d.get("frequency", 1e6)
         self.p_swap = d.get("p_swap", 0.5)
+
+    def _add_qnode(self, name: str, mem_cap: int) -> TopoQNode:
+        node: TopoQNode = {
+            "name": name,
+            "memory": {"capacity": mem_cap},
+        }
+        self.qnodes.append(node)
+        return node
+
+    def _add_qchannel(
+        self,
+        node1: str,
+        node2: str,
+        cap1: int,
+        cap2: int,
+        length: float,
+        fiber_alpha: float,
+        fiber_error: ErrorModelInputLength,
+        la: LinkArchDef,
+    ):
+        self.qchannels.append(
+            {
+                "node1": node1,
+                "node2": node2,
+                "capacity1": cap1,
+                "capacity2": cap2,
+                "parameters": {
+                    "length": length,
+                    "alpha": fiber_alpha,
+                    "transfer_error": fiber_error,
+                    "link_arch": _convert_link_arch(la),
+                },
+            }
+        )
 
     def topo(
         self,
@@ -227,7 +271,7 @@ class NetworkBuilder:
                 node["memory"]["capacity"] += ch_cap
                 return
 
-            # found existing node
+            # need to create new node
             if mem_capacity is None:
                 mem_cap, defined_mem_cap = ch_cap, False
             elif isinstance(mem_capacity, int):
@@ -237,14 +281,7 @@ class NetworkBuilder:
             else:
                 mem_cap, defined_mem_cap = ch_cap, False
 
-            node = TopoQNode(
-                name=name,
-                memory={
-                    "t_cohere": self.t_cohere,
-                    "capacity": mem_cap,
-                },
-            )
-            self.qnodes.append(node)
+            node = self._add_qnode(name, mem_cap)
             node_by_name[name] = True if defined_mem_cap else node
 
         for (np, length, *opt_cap), la in zip(channels, link_arch, strict=True):
@@ -252,20 +289,7 @@ class NetworkBuilder:
             cap1, cap2 = _split_channel_capacity(opt_cap[0] if len(opt_cap) > 0 else channel_capacity)
             ensure_node(node1, cap1)
             ensure_node(node2, cap2)
-            self.qchannels.append(
-                {
-                    "node1": node1,
-                    "node2": node2,
-                    "capacity1": cap1,
-                    "capacity2": cap2,
-                    "parameters": {
-                        "length": length,
-                        "alpha": fiber_alpha,
-                        "transfer_error": fiber_error,
-                        "link_arch": _convert_link_arch(la),
-                    },
-                }
-            )
+            self._add_qchannel(node1, node2, cap1, cap2, length, fiber_alpha, fiber_error, la)
 
         return self
 
@@ -293,7 +317,7 @@ class NetworkBuilder:
                 If specified as number, it is broadcast to all nodes.
                 If ``None``, it is derived from ``channel_capacity``.
             channel_length: Lengths of qchannels between adjacent nodes in kilometer.
-                If specified as list, it must have length as ``len(nodes)-1``.
+                If specified as list, it must have length ``len(nodes)-1``.
                 If specified as number, all qchannels have uniform length.
             channel_capacity: Qubit allocation per qchannel.
                 If specified as list, it must have same length as ``channel_length``.
@@ -333,33 +357,12 @@ class NetworkBuilder:
             mem_capacity = _broadcast("mem_capacity", mem_capacity, n_nodes)
 
         for name, mem_capacity in zip(nodes, mem_capacity, strict=True):
-            self.qnodes.append(
-                {
-                    "name": name,
-                    "memory": {
-                        "t_cohere": self.t_cohere,
-                        "capacity": mem_capacity,
-                    },
-                }
-            )
+            self._add_qnode(name, mem_capacity)
 
         for i, (length, caps, la) in enumerate(zip(channel_length, channel_capacity, link_arch, strict=True)):
             node1, node2 = nodes[i], nodes[i + 1]
             cap1, cap2 = _split_channel_capacity(caps)
-            self.qchannels.append(
-                {
-                    "node1": node1,
-                    "node2": node2,
-                    "capacity1": cap1,
-                    "capacity2": cap2,
-                    "parameters": {
-                        "length": length,
-                        "alpha": fiber_alpha,
-                        "transfer_error": fiber_error,
-                        "link_arch": _convert_link_arch(la),
-                    },
-                }
-            )
+            self._add_qchannel(node1, node2, cap1, cap2, length, fiber_alpha, fiber_error, la)
 
         return self
 
@@ -369,13 +372,15 @@ class NetworkBuilder:
         if len(self.qnode_apps) + len(self.controller_apps) > 0:
             raise TypeError("applications already installed")
 
-    def _make_link_layer(self) -> LinkLayer:
-        return LinkLayer(
-            attempt_rate=self.entg_attempt_rate,
-            init_fidelity=self.init_fidelity,
-            eta_d=self.eta_d,
-            eta_s=self.eta_s,
-            frequency=self.frequency,
+    def _add_link_layer(self):
+        self.qnode_apps.append(
+            LinkLayer(
+                attempt_rate=self.entg_attempt_rate,
+                init_fidelity=self.init_fidelity,
+                eta_d=self.eta_d,
+                eta_s=self.eta_s,
+                frequency=self.frequency,
+            )
         )
 
     def proactive_centralized(
@@ -398,14 +403,16 @@ class NetworkBuilder:
         else:
             self.qubit_allocation = QubitAllocationType.DISABLED
 
-        self.qnode_apps.append(self._make_link_layer())
+        self._add_link_layer()
         self.qnode_apps.append(
             ProactiveForwarder(
                 ps=self.p_swap,
                 mux=mux,
             )
         )
-        self.controller_apps.append(ProactiveRoutingController())
+        self.controller_apps.append(
+            ProactiveRoutingController(),
+        )
         return self
 
     def proactive_distributed(self) -> Self:
@@ -415,6 +422,7 @@ class NetworkBuilder:
     def reactive_centralized(
         self,
         *,
+        mux: MuxScheme | None = None,
         swap: SwapSequenceInput = "asap",
     ) -> Self:
         """
@@ -426,13 +434,17 @@ class NetworkBuilder:
             ``.path()`` method cannot be used.
 
         Args:
+            mux: Multiplexing scheme, default is buffer-space.
             swap: SwapSequence for S-R-D route.
         """
         self._assert_can_add_apps()
 
-        self.qnode_apps.append(self._make_link_layer())
+        self._add_link_layer()
         self.qnode_apps.append(
-            ReactiveForwarder(ps=self.p_swap),
+            ReactiveForwarder(
+                ps=self.p_swap,
+                mux=mux,
+            ),
         )
         self.controller_apps.append(
             ReactiveRoutingController(swap=swap),
@@ -486,7 +498,14 @@ class NetworkBuilder:
         topo = Topo(qnodes=self.qnodes, qchannels=self.qchannels)
         if len(self.controller_apps) > 0:
             topo["controller"] = TopoController(name="ctrl", apps=self.controller_apps)
-        return CustomTopology(topo, nodes_apps=self.qnode_apps)
+        return CustomTopology(
+            topo,
+            nodes_apps=self.qnode_apps,
+            memory_args={
+                "t_cohere": self.t_cohere,
+                "time_decay": self.memory_decay,
+            },
+        )
 
     def make_network(
         self,

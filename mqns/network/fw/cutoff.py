@@ -140,7 +140,7 @@ class CutoffSchemeWaitTime(CutoffScheme):
     EPR age cut-off with individual wait-time budget.
 
     This cut-off scheme assigns a wait-time budget to each repeater node along a path.
-    The controller provides these wait-time budgets in `PathInstructions.swap_cutoff` field.
+    The controller provides these wait-time budgets in ``PathInstructions.swap_cutoff`` field.
 
     Each node individually tracks how long an EPR has been waiting in memory until it can be swapped.
     If an EPR has waited for more than the budget at this node, it cannot be used in a swap and should

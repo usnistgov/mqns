@@ -49,8 +49,8 @@ def parse_swap_sequence(input: SwapSequenceInput, route: list[str]) -> SwapSeque
         The swap sequence.
 
     Raises:
-        IndexError - a predefined swap sequence is requested but not defined.
-        ValueError - specified or retrieved swap sequence does not match the route length.
+        IndexError: a predefined swap sequence is requested but not defined.
+        ValueError: specified or retrieved swap sequence does not match the route length.
     """
     if isinstance(input, list):
         swap = input

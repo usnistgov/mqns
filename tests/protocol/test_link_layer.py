@@ -45,7 +45,7 @@ class NetworkLayer(Application[QNode]):
     def handle_entangle(self, event: QubitEntangledEvent):
         qubit, epr = self.memory.read(event.qubit.addr, has=self.epr_type)
         assert qubit is event.qubit
-        t_create = epr.decohere_time - self.memory.decoherence_delay
+        t_create = epr.decohere_time - self.memory.t_decohere
         self.entangle.append((event.t.sec, t_create.sec))
 
         if not isinstance(self.release_after, float):

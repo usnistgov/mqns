@@ -8,7 +8,7 @@ _MARKER_SENTINEL = object()
 
 def json_encodable[T: type](cls: T) -> T:
     """
-    Class decorator to indicate compatibility with `json_default`.
+    Class decorator to indicate compatibility with ``json_default``.
 
     A class instance encodes as a JSON object that contains static attributes and
     `@property`-decorated properties, except those starting with '_'.
@@ -19,7 +19,7 @@ def json_encodable[T: type](cls: T) -> T:
 
 def json_default(obj: Any) -> Any:
     """
-    Custom JSON encoder, passed as `json.dumps(default=json_default)`.
+    Custom JSON encoder, passed as ``json.dumps(default=json_default)``.
 
     It accepts these types:
 
