@@ -23,7 +23,7 @@ from pstats import SortKey
 from typing import TYPE_CHECKING, Any, Protocol, overload
 
 from mqns.simulator.event import Event
-from mqns.simulator.pool import DefaultEventPool
+from mqns.simulator.pool import HeapEventPool
 from mqns.simulator.time import Time
 from mqns.utils import log
 
@@ -73,7 +73,7 @@ class Simulator:
         self.time_spend: float = 0
         """Wall-clock time for entire simulation run."""
 
-        self.event_pool = DefaultEventPool(self.ts.time_slot, None if self.te is None else self.te.time_slot)
+        self.pool = HeapEventPool(self.ts.time_slot, None if self.te is None else self.te.time_slot)
         self.total_events = 0
 
         self._running = False
@@ -84,7 +84,7 @@ class Simulator:
     @property
     def tc(self) -> Time:
         """Current simulation time."""
-        return self.time(time_slot=self.event_pool.tc)
+        return self.time(time_slot=self.pool.tc)
 
     @property
     def running(self) -> bool:
@@ -109,7 +109,7 @@ class Simulator:
         Add an event into simulator event pool.
         """
         assert event.t.accuracy == self.accuracy
-        if self.event_pool.add_event(event):
+        if self.pool.insert(event):
             self.total_events += 1
 
     def run(self) -> None:
@@ -144,22 +144,23 @@ class Simulator:
             profile.print_stats(SortKey.TIME)
 
     def _run(self) -> None:
-        is_continuous = self.te is None
         while self._running:
-            event = self.event_pool.next_event()
+            event = self.pool.pop()
+
             if event is not None:
                 if event.is_canceled:
                     continue
+
                 event.invoke()
 
                 if self.watchers is not None and (monitors := self.watchers.get(event.__class__)) is not None:
                     for monitor in monitors:
                         monitor.handle(event)
 
-            elif is_continuous:
+            elif self.te is None:  # continuous mode but no event available
                 time.sleep(0.001)  # idle briefly to wait for external events
 
-            else:  # all events completed
+            else:  # finite simulation is finished
                 self._running = False
                 break
 
