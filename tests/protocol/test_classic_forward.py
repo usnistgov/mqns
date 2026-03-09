@@ -19,7 +19,7 @@ class SendApp(Application[Node]):
     @override
     def install(self, node):
         self._application_install(node, Node)
-        self.simulator.add_event(func_to_event(self.simulator.ts, self.send_packet, by=self))
+        self.simulator.add_event(func_to_event(self.simulator.ts, self.send_packet))
 
     def send_packet(self):
         packet = ClassicPacket(msg=f"Hello,world from {self.node}", src=self.node, dest=self.dest)
@@ -36,7 +36,7 @@ class SendApp(Application[Node]):
         t = self.simulator.tc + 1 / self.send_rate
 
         # insert the next send event to the simulator
-        event = func_to_event(t, self.send_packet, by=self)
+        event = func_to_event(t, self.send_packet)
         self.simulator.add_event(event)
 
 

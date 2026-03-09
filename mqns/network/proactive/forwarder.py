@@ -50,6 +50,5 @@ class ProactiveForwarder(Forwarder):
                     path_id=path_id if self.mux.qubit_has_path_id() else None,
                     start=not uninstall,
                     t=self.simulator.tc,
-                    by=self,
                 )
             )

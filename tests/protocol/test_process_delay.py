@@ -1,4 +1,4 @@
-from typing import Any, cast, final, override
+from typing import cast, final, override
 
 from mqns.entity.node import Application, Node
 from mqns.network.protocol import NodeProcessDelayApp
@@ -7,8 +7,8 @@ from mqns.simulator import Event, Simulator, Time
 
 @final
 class ProcessEvent(Event):
-    def __init__(self, t: Time, dest: Node, name: str | None = None, by: Any = None):
-        super().__init__(t, name=name, by=by)
+    def __init__(self, t: Time, dest: Node, name: str | None = None):
+        super().__init__(t, name)
         self.dest = dest
 
     @override
@@ -27,7 +27,7 @@ class ProcessApp(Application[Node]):
 
         for i in range(0, 10):
             t = self.simulator.time(sec=i)
-            event = ProcessEvent(t=t, dest=self.node, by=self)
+            event = ProcessEvent(t=t, dest=self.node)
             self.simulator.add_event(event)
 
     def EventHandler(self, event: Event) -> bool | None:

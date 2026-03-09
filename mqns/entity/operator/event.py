@@ -15,7 +15,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from typing import TYPE_CHECKING, Any, final, override
+from typing import TYPE_CHECKING, final, override
 
 from mqns.entity.node.qnode import QNode
 from mqns.models.core import QuantumModel
@@ -36,9 +36,8 @@ class OperateRequestEvent(Event):
         *,
         t: Time,
         name: str | None = None,
-        by: Any = None,
     ):
-        super().__init__(t=t, name=name, by=by)
+        super().__init__(t, name)
         self.operator = operator
         self.qubits = qubits
 
@@ -59,9 +58,8 @@ class OperateResponseEvent(Event):
         request: OperateRequestEvent,
         t: Time,
         name: str | None = None,
-        by: Any = None,
     ):
-        super().__init__(t=t, name=name, by=by)
+        super().__init__(t, name)
         self.node = node
         self.result = result
         self.request = request

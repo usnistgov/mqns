@@ -57,7 +57,6 @@ class ReactiveForwarder(Forwarder):
                         path_id=None,
                         start=True,
                         t=self.simulator.tc,
-                        by=self,
                     )
                 )
 

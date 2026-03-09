@@ -34,8 +34,8 @@ type AttributionFunc = Callable[[Simulator, "QuantumNetwork|None", Event], Any]
 class MonitorEvent(Event):
     """the event that notify the monitor to write down network status"""
 
-    def __init__(self, t: Time, monitor: "Monitor", *, period: Time | None = None, name: str | None = None, by: Any = None):
-        super().__init__(t, name, by)
+    def __init__(self, t: Time, monitor: "Monitor", *, period: Time | None = None, name: str | None = None):
+        super().__init__(t, name)
         self.monitor = monitor
         self.period = period
 
@@ -69,15 +69,13 @@ class Monitor(Entity):
         super().install(simulator)
 
         if self.watch_at_start:
-            simulator.add_event(MonitorEvent(simulator.ts, self, name="start watch event", by=self))
+            simulator.add_event(MonitorEvent(simulator.ts, self, name="start watch event"))
 
         if simulator.te is not None and self.watch_at_finish:
-            simulator.add_event(MonitorEvent(simulator.te, self, name="finish watch event", by=self))
+            simulator.add_event(MonitorEvent(simulator.te, self, name="finish watch event"))
 
         for p in self.watch_period:
-            simulator.add_event(
-                MonitorEvent(simulator.ts, self, period=simulator.time(sec=p), name=f"period watch event({p})", by=self)
-            )
+            simulator.add_event(MonitorEvent(simulator.ts, self, period=simulator.time(sec=p), name=f"period watch event({p})"))
 
         for event_type in self.watch_event:
             if not simulator.watchers:

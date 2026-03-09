@@ -15,7 +15,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from typing import Any, final, override
+from typing import final, override
 
 from mqns.entity.entity import Entity
 from mqns.simulator import Event, Simulator, Time
@@ -54,7 +54,7 @@ class Timer(Entity):
 
         for t in time_list:
             time = self.simulator.time(sec=t)
-            event = TimerEvent(timer=self, t=time, by=self)
+            event = TimerEvent(timer=self, t=time)
             self.simulator.add_event(event)
 
     @override
@@ -72,8 +72,8 @@ class Timer(Entity):
 class TimerEvent(Event):
     """TimerEvent is the event that triggers the Timer's `trigger_func`"""
 
-    def __init__(self, timer: Timer, t: Time, name: str | None = None, by: Any = None):
-        super().__init__(t=t, name=name, by=by)
+    def __init__(self, timer: Timer, t: Time, name: str | None = None):
+        super().__init__(t, name)
         self.timer = timer
 
     @override

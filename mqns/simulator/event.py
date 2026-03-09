@@ -23,18 +23,11 @@ from mqns.simulator.time import Time
 
 
 class Event(ABC):
-    """Basic event class in simulator"""
+    """Event in simulator."""
 
-    def __init__(self, t: Time, name: str | None = None, by: Any = None):
-        """Args:
-        t (Time): the time slot of this event
-        by: the entity or application that causes this event
-        name (str): the name of this event
-
-        """
+    def __init__(self, t: Time, name: str | None = None):
         self.t = t
         self.name = name
-        self.by = by
         self._is_canceled: bool = False
 
     @abstractmethod
@@ -47,10 +40,7 @@ class Event(ABC):
 
     @property
     def is_canceled(self) -> bool:
-        """Returns:
-        whether this event has been canceled
-
-        """
+        """Returns: whether this event has been canceled."""
         return self._is_canceled
 
     def __eq__(self, other: object) -> bool:
@@ -79,8 +69,8 @@ class Event(ABC):
 
 
 class WrapperEvent(Event):
-    def __init__(self, t: Time, name: str | None, by: Any, fn: Callable, args: Any, kwargs: Any):
-        super().__init__(t, name, by)
+    def __init__(self, t: Time, name: str | None, fn: Callable, args: Any, kwargs: Any):
+        super().__init__(t, name)
         self.fn = fn
         self.args = args
         self.kwargs = kwargs
@@ -90,7 +80,7 @@ class WrapperEvent(Event):
         self.fn(*self.args, **self.kwargs)
 
 
-def func_to_event(t: Time, fn: Callable, *args, name: str | None = None, by: Any = None, **kwargs):
+def func_to_event(t: Time, fn: Callable, *args, name: str | None = None, **kwargs):
     """
     Convert a function to an event, the function ``fn`` will be called at ``t``.
     It is a simple method to wrap a function to an event.
@@ -100,7 +90,6 @@ def func_to_event(t: Time, fn: Callable, *args, name: str | None = None, by: Any
         fn: the function.
         *args: the function's positional parameters.
         name: event name.
-        by: the entity or application that will causes this event.
         **kwargs: the function's keyword parameters.
     """
-    return WrapperEvent(t, name, by, fn, args, kwargs)
+    return WrapperEvent(t, name, fn, args, kwargs)

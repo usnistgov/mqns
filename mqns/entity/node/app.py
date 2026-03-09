@@ -34,9 +34,7 @@ class Application[N: "Node"](ABC):
     """
 
     def __init__(self):
-        self._dispatch_table = defaultdict[type[Event], list[tuple[set[Any] | None, Callable[[Event], bool | None]]]](
-            lambda: []
-        )
+        self._dispatch_table = defaultdict[type[Event], list[Callable[[Event], bool | None]]](lambda: [])
 
     def install(self, node: "Node"):
         """
@@ -65,26 +63,23 @@ class Application[N: "Node"](ABC):
         Dispatch an event in the application.
 
         Args:
-            event: the event
+            event: the event.
 
-        Return:
-            skip (bool, None): if True, further applications will not handle this event
+        Return: if True, further applications will not handle this event
         """
         return self._dispatch(event)
 
     def _dispatch(self, event: Event) -> bool:
-        for eb, handler in self._dispatch_table.get(type(event), []):
-            if eb is None or event.by in eb:
-                skip = handler(event)
-                if skip is True:
-                    return skip
+        for handler in self._dispatch_table.get(type(event), []):
+            skip = handler(event)
+            if skip is True:
+                return skip
         return False
 
     def add_handler[E: Event](
         self,
         handler: Callable[[E], bool | None],
         event_type: type[E] | Iterable[type[E]],
-        event_by: Iterable[Any] | None = None,
     ):
         """
         Add an event handler function.
@@ -92,11 +87,9 @@ class Application[N: "Node"](ABC):
         Args:
             handler: Event handler function.
             event_type: Event type(s). Each class must be marked `@final`.
-            event_by: filter by event source entity (`event.by`), defaults to any source.
         """
         ets = [event_type] if isinstance(event_type, type) else event_type
-        eb = None if event_by is None else set(event_by)
         eh = cast(Any, handler)
         for et in cast(Iterable[type[E]], ets):
             assert getattr(et, "__final__", False) is True, f"event type {et} must be marked @final"
-            self._dispatch_table[et].append((eb, eh))
+            self._dispatch_table[et].append(eh)

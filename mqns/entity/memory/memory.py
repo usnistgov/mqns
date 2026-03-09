@@ -128,11 +128,11 @@ class QuantumMemory(Entity):
         if isinstance(event, MemoryReadRequestEvent):
             result = self.read(event.key)  # will not update fidelity
             t = self.simulator.tc + self.delay.calculate()
-            self.simulator.add_event(MemoryReadResponseEvent(self.node, result, request=event, t=t, by=self))
+            self.simulator.add_event(MemoryReadResponseEvent(self.node, result, request=event, t=t))
         elif isinstance(event, MemoryWriteRequestEvent):
             result = self.write(None, event.qubit)
             t = self.simulator.tc + self.delay.calculate()
-            self.simulator.add_event(MemoryWriteResponseEvent(self.node, result, request=event, t=t, by=self))
+            self.simulator.add_event(MemoryWriteResponseEvent(self.node, result, request=event, t=t))
 
     @property
     def count(self) -> int:

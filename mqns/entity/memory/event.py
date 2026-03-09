@@ -16,7 +16,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-from typing import TYPE_CHECKING, Any, final, override
+from typing import TYPE_CHECKING, final, override
 
 from mqns.entity.memory.memory_qubit import MemoryQubit
 from mqns.entity.node import QNode
@@ -38,9 +38,8 @@ class MemoryReadRequestEvent(Event):
         *,
         t: Time,
         name: str | None = None,
-        by: Any = None,
     ):
-        super().__init__(t=t, name=name, by=by)
+        super().__init__(t, name)
         self.memory = memory
         self.key = key
 
@@ -61,9 +60,8 @@ class MemoryReadResponseEvent(Event):
         request: MemoryReadRequestEvent,
         t: Time,
         name: str | None = None,
-        by: Any = None,
     ):
-        super().__init__(t=t, name=name, by=by)
+        super().__init__(t, name)
         self.node = node
         self.result = result
         self.request = request
@@ -77,8 +75,8 @@ class MemoryReadResponseEvent(Event):
 class MemoryWriteRequestEvent(Event):
     """``MemoryWriteRequestEvent`` is the event that request a memory write"""
 
-    def __init__(self, memory: "QuantumMemory", qubit: QuantumModel, *, t: Time, name: str | None = None, by: Any = None):
-        super().__init__(t=t, name=name, by=by)
+    def __init__(self, memory: "QuantumMemory", qubit: QuantumModel, *, t: Time, name: str | None = None):
+        super().__init__(t, name)
         self.memory = memory
         self.qubit = qubit
 
@@ -99,9 +97,8 @@ class MemoryWriteResponseEvent(Event):
         request: MemoryWriteRequestEvent,
         t: Time,
         name: str | None = None,
-        by: Any = None,
     ):
-        super().__init__(t=t, name=name, by=by)
+        super().__init__(t, name)
         self.node = node
         self.result = result
         self.request = request

@@ -97,7 +97,7 @@ class ClassicChannel(BaseChannel[Node]):
         if drop:
             return
 
-        send_event = RecvClassicPacket(t=recv_time, by=self, cchannel=self, packet=packet, dest=next_hop)
+        send_event = RecvClassicPacket(t=recv_time, cchannel=self, packet=packet, dest=next_hop)
         self.simulator.add_event(send_event)
 
     def __repr__(self) -> str:
@@ -108,10 +108,8 @@ class ClassicChannel(BaseChannel[Node]):
 class RecvClassicPacket(Event):
     """The event for a Node to receive a classic packet"""
 
-    def __init__(
-        self, *, t: Time, name: str | None = None, by: Any = None, cchannel: ClassicChannel, packet: ClassicPacket, dest: Node
-    ):
-        super().__init__(t=t, name=name, by=by)
+    def __init__(self, *, t: Time, name: str | None = None, cchannel: ClassicChannel, packet: ClassicPacket, dest: Node):
+        super().__init__(t, name)
         self.cchannel = cchannel
         self.packet = packet
         self.dest = dest

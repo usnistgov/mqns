@@ -897,4 +897,4 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
             self.memory.read(qubit.addr, remove=True)
 
         qubit.state = QubitState.RELEASE
-        self.simulator.add_event(QubitReleasedEvent(self.node, qubit, t=self.simulator.tc, by=self))
+        self.simulator.add_event(QubitReleasedEvent(self.node, qubit, t=self.simulator.tc))

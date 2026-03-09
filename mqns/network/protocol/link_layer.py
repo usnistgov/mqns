@@ -416,8 +416,8 @@ class LinkLayer(Application[QNode]):
             f"notify-times={t_notify_a},{t_notify_b}"
         )
 
-        self.simulator.add_event(LinkArchSuccessEvent(self.node, epr, t=t_notify_a, by=self, attempts=k))
-        self.simulator.add_event(LinkArchSuccessEvent(next_hop, epr, t=t_notify_b, by=self, attempts=k))
+        self.simulator.add_event(LinkArchSuccessEvent(self.node, epr, t=t_notify_a, attempts=k))
+        self.simulator.add_event(LinkArchSuccessEvent(next_hop, epr, t=t_notify_b, attempts=k))
 
     def handle_success_entangle(self, event: LinkArchSuccessEvent):
         assert self.node.timing.is_external()
@@ -436,7 +436,7 @@ class LinkLayer(Application[QNode]):
             raise Exception(f"{self.node}: Failed to store EPR {epr.name}")
 
         qubit.state = QubitState.ENTANGLED0
-        self.simulator.add_event(QubitEntangledEvent(self.node, neighbor, qubit, t=self.simulator.tc, by=self))
+        self.simulator.add_event(QubitEntangledEvent(self.node, neighbor, qubit, t=self.simulator.tc))
 
     def handle_decoh_rel(self, event: QubitDecoheredEvent | QubitReleasedEvent) -> bool:
         is_decoh = type(event) is QubitDecoheredEvent

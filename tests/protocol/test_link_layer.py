@@ -52,7 +52,7 @@ class NetworkLayer(Application[QNode]):
             return
         self.memory.read(event.qubit.addr, remove=True)
         event.qubit.state = QubitState.RELEASE
-        self.simulator.add_event(QubitReleasedEvent(self.node, event.qubit, t=event.t + self.release_after, by=self))
+        self.simulator.add_event(QubitReleasedEvent(self.node, event.qubit, t=event.t + self.release_after))
         self.release_after = None
 
     def handle_decohere(self, event: QubitDecoheredEvent):
@@ -67,7 +67,6 @@ def manage_active_channel(simulator: Simulator, t: float, src: NetworkLayer, dst
             src.node.get_qchannel(dst.node),
             start=not stop,
             t=simulator.time(sec=t),
-            by=src,
         )
     )
 
