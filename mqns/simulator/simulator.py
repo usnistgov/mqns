@@ -3,7 +3,7 @@ import os
 import time
 from collections.abc import Iterable
 from pstats import SortKey
-from typing import TYPE_CHECKING, Any, Protocol, overload
+from typing import TYPE_CHECKING, Any, Literal, Protocol, overload
 
 from mqns.simulator.event import Event, func_to_event
 from mqns.simulator.pool import HeapEventPool, SynchronizedEventPool
@@ -176,10 +176,25 @@ class Simulator:
         """
         self._pool.stop()
 
-    def update_gate(self, gate: Time) -> None:
+    @overload
+    def update_gate(self, gate: Time, *, direct: Literal[True]) -> None: ...
+
+    @overload
+    def update_gate(self, gate: Time, *, priority=0xFFFFFFFF) -> Event: ...
+
+    def update_gate(self, gate: Time, *, direct=False, priority=0xFFFFFFFF) -> Any:
         """
         Update the gate time to support external synchronization.
         Simulation is paused at this time slot until it's advanced.
+
+        Args:
+            gate: New gate time.
+            direct: If True, update directly without scheduling an event.
+                    This option should not be used from a secondary thread.
+            priority: Event priority, defaults to 2^31-1 that represents a low priority.
+
+        Returns: the gate update event.
+        The secondary thread must cancel previously scheduled gate update events.
 
         Calling this function is mandatory when using thread-safe event pool.
         It is no-op when using non-thread-safe event pool.
@@ -187,31 +202,18 @@ class Simulator:
         When the external program has released the gate, it should not schedule new events
         before the gate time, but may schedule new events at or after gate time.
         This restriction does not apply to internally scheduled events.
-
-        Note: in a multi-threaded environment, if a secondary thread adds one or more events and then
-        releases the gate, the gate update may occur before scheduled events are executed.
-        See ``schedule_update_gate``.
         """
-        assert gate.accuracy == self.accuracy
-        log.debug(f"Simulator.update_gate({gate.time_slot})")
-        self._pool.update_gate(gate.time_slot)
+        if direct:
+            self._update_gate(gate)
+            return
 
-    def schedule_update_gate(self, last_t: Time, gate: Time, priority=0xFFFFFFFF) -> Event:
-        """
-        Schedule ``update_gate`` action as an event.
-        A secondary thread may use this function in place of ``update_gate`` to ensure the events
-        it added take effect before releasing the gate.
-
-        Args:
-            last_t: Timestamp of the latest event added by the secondary thread.
-                    This must be earlier than or equal to the current gate time.
-            gate: New gate time.
-            priority: Event priority, defaults to 2^31-1 that represents a low priority.
-
-        The secondary thread must keep track of ``t`` and cancel previously scheduled gate update events.
-        """
-        event = func_to_event(max(last_t, self.tc), self.update_gate, gate)
+        event = func_to_event(self.tc, self._update_gate, gate)
         event.name = "Simulator.update_gate"
         event.priority = priority
         self.add_event(event)
         return event
+
+    def _update_gate(self, gate: Time) -> None:
+        assert gate.accuracy == self.accuracy
+        log.debug(f"Simulator.update_gate({gate.time_slot})")
+        self._pool.update_gate(gate.time_slot)

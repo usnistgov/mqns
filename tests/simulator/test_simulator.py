@@ -131,7 +131,7 @@ def test_ordering():
 )
 def test_stop(*, te: float):
     s = Simulator(0, te, accuracy=1000)
-    s.update_gate(s.time(sec=60))
+    s.update_gate(s.time(sec=60), direct=True)
 
     e = StopEvent(s.time(sec=9.5), name="s0", simulator=s)
     s.add_event(e)
@@ -159,7 +159,7 @@ def test_gate():
     s.add_event(SimpleEvent(s.time(sec=0), "z0"))  # before s.ts, dropped
 
     # set initial gate to 5s, schedule events
-    s.update_gate(s.time(sec=5))
+    s.update_gate(s.time(sec=5), direct=True)
     s.add_event(SimpleEvent(s.time(sec=2), "b2"))
     s.add_event(SimpleEvent(s.time(sec=5), "b5"))
     s.add_event(SimpleEvent(s.time(sec=8), "a8"))
@@ -181,7 +181,7 @@ def test_gate():
     s.add_event(SimpleEvent(s.time(sec=5), "a5"))
 
     # let the Simulator run again, verify a5,a8 invoked
-    update_gate_event = s.schedule_update_gate(s.time(sec=4), s.time(sec=10))
+    update_gate_event = s.update_gate(s.time(sec=10))
     assert update_gate_event.t == s.time(sec=5)
     assert update_gate_event.priority > 0
     time.sleep(0.2)

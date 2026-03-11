@@ -55,8 +55,8 @@ bash demo.sh --sim_accuracy 200000
 # proactive mode, enable S1-D1 path with asap swap order
 bash demo.sh -- --mode P -- --path1 asap --path2 disabled
 
-# proactive mode, enable both paths with r2l swap order
-bash demo.sh -- --mode P -- --path1 r2l --path2 r2l
+# proactive mode, enable both paths with r2l swap order, install paths at different times
+bash demo.sh -- --mode P -- --sim_duration 60 --path1 r2l --path1_i 0 --path2 r2l --path2_i 30
 ```
 
 During the scenario execution, you can view NATS messages on a separate console:

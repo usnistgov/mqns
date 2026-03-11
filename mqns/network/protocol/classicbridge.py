@@ -61,16 +61,17 @@ class ClassicConnector:
     * Subject: ``<PREFIX>._.gate`` (note: ``_`` is a keyword for ClassicConnector and should not be used as a node name)
     * Header ``t``: new upper-bound in simulation time slots
 
-    The external program must ensure that all packets for a given time slot ``t`` are published BEFORE the gate is
-    advanced beyond ``t``. Once the gate moves forward, any incoming packets with a timestamp strictly smaller than
-    the new gate will be considered causality violations and crash the simulation.
-
     The external program may stop the simulator by publishing:
 
     * Subject: ``<PREFIX>._.stop``
     * Header ``t``: stop time in simulation time slots
 
     The external program must also release the gate to or beyond the stop time, for stopping to occur.
+
+    The external program must publish all packets and gate updates in non-decreasing order. In other words,
+    the header ``t`` for every message must be greater than or equal to the timestamp on all previous messages.
+    Once the clock moves forward, any incoming messages with a timestamp strictly smaller than a previous message
+    will be considered causality violations, and could either crash the simulation or cause a deadlock.
     """
 
     def __init__(self, simulator: Simulator, nats_prefix: str):
@@ -84,7 +85,7 @@ class ClassicConnector:
         self.nats_servers = os.getenv("NATS_URL", "nats://127.0.0.1:4222").split(",")
         self.nats_prefix = nats_prefix
 
-        self._last_inject_t = 0
+        self._last_t = 0
         self._last_gate_event: Event | None = None
 
         self.queue = queue.Queue[ClassicBridgePacket](maxsize=4096)
@@ -168,15 +169,17 @@ class ClassicConnector:
 
     def _rx(self, dst: str, src: str, headers: dict[str, str], payload: bytes):
         t = int(headers.get("t", 0))
+        if t < self._last_t:
+            raise RuntimeError(f"ClassicConnector received timestamp {t} earlier than previous timestamp {self._last_t}")
+        self._last_t = t
+
         if dst == "_":
             t = self.simulator.time(time_slot=t)
             match src:
                 case "gate":
                     if self._last_gate_event:
                         self._last_gate_event.cancel()
-                    self._last_gate_event = self.simulator.schedule_update_gate(
-                        self.simulator.time(time_slot=self._last_inject_t), t
-                    )
+                    self._last_gate_event = self.simulator.update_gate(t)
                 case "stop":
                     self.simulator.add_event(func_to_event(t, self.simulator.stop))
                 case _:
@@ -186,7 +189,6 @@ class ClassicConnector:
         if not (bridge := self.bridges.get(src)):
             return
 
-        self._last_inject_t = t
         cbp = ClassicBridgePacket(
             t=t,
             src=src,

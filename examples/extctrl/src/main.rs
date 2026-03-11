@@ -61,9 +61,17 @@ struct Args {
     #[bpaf(fallback(PathOpt::L2R))]
     path1: PathOpt,
 
+    /// S1-D1 path install time in seconds
+    #[bpaf(long("path1_i"), fallback(0))]
+    path1_i: u64,
+
     /// S2-D2 path enablement and swap order
     #[bpaf(fallback(PathOpt::Disabled))]
     path2: PathOpt,
+
+    /// S2-D2 path install time in seconds
+    #[bpaf(long("path2_i"), fallback(0))]
+    path2_i: u64,
 }
 
 #[tokio::main]
@@ -81,37 +89,40 @@ async fn main() -> Result<()> {
 }
 
 async fn tx_loop(args: &Args, sb: &Southbound) -> Result<()> {
-    let step = 1 * args.sim_accuracy;
-    let stop_time = args.sim_duration * step;
+    for sec in 0..=args.sim_duration {
+        println!("Simulation Time: {} / {}", sec, args.sim_duration);
+        let t = sec * args.sim_accuracy;
 
-    sb.stop(stop_time).await?;
+        if args.path1 != PathOpt::Disabled && args.path1_i == sec {
+            let path = PathInstructions {
+                req_id: 10,
+                route: "S1-R1-R2-D1".split('-').map(String::from).collect(),
+                swap: args.path1.to_swap(),
+                swap_cutoff: vec![-1, -1, -1, -1],
+                m_v: Some(vec![vec![1, 1], vec![1, 1], vec![1, 1]]),
+                purif: HashMap::new(),
+            };
+            println!("    Installing path1");
+            sb.install_path(t, 10, &path).await?;
+        }
 
-    if args.path1 != PathOpt::Disabled {
-        let path = PathInstructions {
-            req_id: 10,
-            route: "S1-R1-R2-D1".split('-').map(String::from).collect(),
-            swap: args.path1.to_swap(),
-            swap_cutoff: vec![-1, -1, -1, -1],
-            m_v: Some(vec![vec![1, 1], vec![1, 1], vec![1, 1]]),
-            purif: HashMap::new(),
-        };
-        sb.install_path(0, 10, &path).await?;
-    }
+        if args.path2 != PathOpt::Disabled && args.path2_i == sec {
+            let path = PathInstructions {
+                req_id: 20,
+                route: "S2-R1-R2-D2".split('-').map(String::from).collect(),
+                swap: args.path2.to_swap(),
+                swap_cutoff: vec![-1, -1, -1, -1],
+                m_v: Some(vec![vec![1, 1], vec![1, 1], vec![1, 1]]),
+                purif: HashMap::new(),
+            };
+            println!("    Installing path2");
+            sb.install_path(t, 20, &path).await?;
+        }
 
-    if args.path2 != PathOpt::Disabled {
-        let path = PathInstructions {
-            req_id: 20,
-            route: "S2-R1-R2-D2".split('-').map(String::from).collect(),
-            swap: args.path2.to_swap(),
-            swap_cutoff: vec![-1, -1, -1, -1],
-            m_v: Some(vec![vec![1, 1], vec![1, 1], vec![1, 1]]),
-            purif: HashMap::new(),
-        };
-        sb.install_path(0, 20, &path).await?;
-    }
+        if args.sim_duration == sec {
+            sb.stop(t).await?;
+        }
 
-    for t in (step..=stop_time).step_by(step as usize) {
-        println!("Simulation Time: {t} / {stop_time}");
         sb.update_gate(t).await?;
         tokio::time::sleep(Duration::from_millis(100)).await;
     }
