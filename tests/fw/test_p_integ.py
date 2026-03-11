@@ -8,7 +8,7 @@ import pytest
 
 from mqns.entity.timer import Timer
 from mqns.models.epr import Entanglement, MixedStateEntanglement, WernerStateEntanglement
-from mqns.network.fw import RoutingPathSingle, RoutingPathStatic
+from mqns.network.fw import RoutingPathSingle, RoutingPathStatic, SwapSequenceInput
 from mqns.network.network import TimingModeAsync, TimingModeSync
 from mqns.network.proactive import ProactiveForwarder
 from mqns.network.protocol.link_layer import LinkLayer
@@ -17,14 +17,14 @@ from .fw_common import build_linear_network, build_rect_network, install_path, p
 
 
 @pytest.mark.parametrize(
-    ("epr_type", "timing_mode", "swap_order"),
+    ("epr_type", "timing_mode", "swap"),
     itertools.product(
         (WernerStateEntanglement, MixedStateEntanglement),
         ("ASYNC", "SYNC"),
         ("asap", "l2r", "r2l"),
     ),
 )
-def test_4_swap(epr_type: type[Entanglement], timing_mode: str, swap_order: str):
+def test_4_swap(epr_type: type[Entanglement], timing_mode: str, swap: SwapSequenceInput):
     """Test swapping in 4-node topology."""
     timing = TimingModeAsync() if timing_mode == "ASYNC" else TimingModeSync(t_ext=0.006, t_int=0.004)
     net, simulator = build_linear_network(4, end_time=3.0, timing=timing, epr_type=epr_type, has_link_layer=True)
@@ -33,7 +33,7 @@ def test_4_swap(epr_type: type[Entanglement], timing_mode: str, swap_order: str)
     f3 = net.get_node("n3").get_app(ProactiveForwarder)
     f4 = net.get_node("n4").get_app(ProactiveForwarder)
 
-    install_path(net, RoutingPathSingle("n1", "n4", swap=swap_order))
+    install_path(net, RoutingPathSingle("n1", "n4", swap=swap))
     simulator.run()
     print_fw_counters(net)
 
