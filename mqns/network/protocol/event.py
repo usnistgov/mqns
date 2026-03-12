@@ -15,7 +15,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from typing import Any, final, override
+from typing import final, override
 
 from mqns.entity.memory import MemoryQubit, QuantumMemory, QubitState
 from mqns.entity.node import QNode
@@ -40,9 +40,8 @@ class ManageActiveChannels(Event):
         start: bool,
         t: Time,
         name: str | None = None,
-        by: Any = None,
     ):
-        super().__init__(t, name, by)
+        super().__init__(t, name)
         self.node = node
         self.neighbor = neighbor
         self.qchannel = qchannel
@@ -67,10 +66,9 @@ class LinkArchSuccessEvent(Event):
         *,
         t: Time,
         name: str | None = None,
-        by: Any = None,
         attempts: int,
     ):
-        super().__init__(t, name, by)
+        super().__init__(t, name)
         self.node = node
         self.epr = epr
         self.attempts = attempts
@@ -94,9 +92,8 @@ class QubitEntangledEvent(Event):
         *,
         t: Time,
         name: str | None = None,
-        by: Any = None,
     ):
-        super().__init__(t, name, by)
+        super().__init__(t, name)
         self.node = node
         self.neighbor = neighbor
         self.qubit = qubit
@@ -122,9 +119,8 @@ class QubitDecoheredEvent(Event):
         *,
         t: Time,
         name: str | None = None,
-        by: Any = None,
     ):
-        super().__init__(t, name, by)
+        super().__init__(t, name)
         self.memory = memory
         self.qubit = qubit
         self.epr = epr
@@ -149,9 +145,8 @@ class QubitReleasedEvent(Event):
         *,
         t: Time,
         name: str | None = None,
-        by: Any = None,
     ):
-        super().__init__(t, name, by)
+        super().__init__(t, name)
         self.node = node
         self.qubit = qubit
         assert self.qubit.state == QubitState.RELEASE

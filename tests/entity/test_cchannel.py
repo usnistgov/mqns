@@ -1,4 +1,4 @@
-from typing import Any, override
+from typing import override
 
 from mqns.entity.cchannel import ClassicChannel, ClassicPacket, RecvClassicPacket
 from mqns.entity.node import Node
@@ -23,7 +23,7 @@ class ClassicSendNode(Node):
         t = 0
         while t < 10:
             time = simulator.time(sec=t)
-            event = SendEvent(time, node=self, by=self)
+            event = SendEvent(time, node=self)
             simulator.add_event(event)
             t += 0.25
 
@@ -36,8 +36,8 @@ class ClassicSendNode(Node):
 
 
 class SendEvent(Event):
-    def __init__(self, t: Time, node: ClassicSendNode, *, name: str | None = None, by: Any = None):
-        super().__init__(t=t, name=name, by=by)
+    def __init__(self, t: Time, node: ClassicSendNode, *, name: str | None = None):
+        super().__init__(t, name)
         self.node: ClassicSendNode = node
 
     @override

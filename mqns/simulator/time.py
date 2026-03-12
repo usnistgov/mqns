@@ -15,20 +15,19 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import functools
 from typing import final
 
 
-def _to_time_slot(sec: int | float, accuracy: int) -> int:
-    return round(sec * accuracy)
-
-
 @final
+@functools.total_ordering
 class Time:
     """
     Timestamp or duration used in the simulator.
     """
 
     SENTINEL: "Time"
+    """Invalid Time instance as placeholder."""
 
     def __init__(self, time_slot: int, *, accuracy: int):
         """
@@ -42,6 +41,13 @@ class Time:
         self.accuracy = accuracy
 
     @staticmethod
+    def sec_to_time_slot(sec: float, accuracy: int) -> int:
+        """
+        Convert seconds to time slots at given accuracy.
+        """
+        return round(sec * accuracy)
+
+    @staticmethod
     def from_sec(sec: float, *, accuracy: int) -> "Time":
         """
         Construct Time from seconds.
@@ -50,7 +56,7 @@ class Time:
             sec: seconds.
             accuracy: how many time slots per second.
         """
-        return Time(_to_time_slot(sec, accuracy), accuracy=accuracy)
+        return Time(Time.sec_to_time_slot(sec, accuracy), accuracy=accuracy)
 
     @property
     def sec(self) -> float:
@@ -64,14 +70,12 @@ class Time:
         Equality comparison operator.
 
         Time instance is equal to the other object only if:
+
         * The other object is also a Time instance.
         * They have the same accuracy.
         * They have the same time slot.
         """
         return type(other) is Time and self.accuracy == other.accuracy and self.time_slot == other.time_slot
-
-    def __ne__(self, other: object) -> bool:
-        return not self == other
 
     def __lt__(self, other: "Time") -> bool:
         """
@@ -80,18 +84,6 @@ class Time:
         """
         assert self.accuracy == other.accuracy
         return self.time_slot < other.time_slot
-
-    def __le__(self, other: "Time") -> bool:
-        assert self.accuracy == other.accuracy
-        return self.time_slot <= other.time_slot
-
-    def __gt__(self, other: "Time") -> bool:
-        assert self.accuracy == other.accuracy
-        return self.time_slot > other.time_slot
-
-    def __ge__(self, other: "Time") -> bool:
-        assert self.accuracy == other.accuracy
-        return self.time_slot >= other.time_slot
 
     def __hash__(self) -> int:
         return hash(self.time_slot)
@@ -107,7 +99,7 @@ class Time:
             assert ts.accuracy == self.accuracy
             time_slot = ts.time_slot
         else:
-            time_slot = _to_time_slot(ts, self.accuracy)
+            time_slot = Time.sec_to_time_slot(ts, self.accuracy)
         return Time(time_slot=self.time_slot + time_slot, accuracy=self.accuracy)
 
     def __sub__(self, ts: "Time|int|float") -> "Time":
@@ -121,7 +113,7 @@ class Time:
             assert ts.accuracy == self.accuracy
             time_slot = ts.time_slot
         else:
-            time_slot = _to_time_slot(ts, self.accuracy)
+            time_slot = Time.sec_to_time_slot(ts, self.accuracy)
         return Time(time_slot=self.time_slot - time_slot, accuracy=self.accuracy)
 
     def __repr__(self) -> str:

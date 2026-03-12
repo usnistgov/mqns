@@ -79,7 +79,7 @@ class ForwarderClassicMixin(ClassicCommandDispatcherMixin):
     def send_ctrl(self, msg: Mapping):
         ctrl = self.network.get_controller()
         log.debug(f"{self.node}: sending control message to controller | {msg}")
-        self.node.get_cchannel(ctrl).send(ClassicPacket(msg, src=self.node, dest=ctrl), ctrl)
+        self.node.send_cpacket(ctrl, ClassicPacket(msg, src=self.node, dest=ctrl))
 
     def send_msg(self, dest: Node, msg: Mapping, fib_entry: FibEntry, *, forward=False):
         """
@@ -93,4 +93,4 @@ class ForwarderClassicMixin(ClassicCommandDispatcherMixin):
             f"{self.node}: {'forwarding' if forward else 'sending'} signaling message to {dest.name} via {next_hop.name}"
             f" | {msg}"
         )
-        self.node.get_cchannel(next_hop).send(ClassicPacket(msg, src=self.node, dest=dest), next_hop)
+        self.node.send_cpacket(next_hop, ClassicPacket(msg, src=self.node, dest=dest))

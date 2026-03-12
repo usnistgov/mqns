@@ -17,12 +17,12 @@ class SendApp(Application[QNode]):
     @override
     def install(self, node):
         self._application_install(node, QNode)
-        self.simulator.add_event(func_to_event(self.simulator.ts, self.send, by=self))
+        self.simulator.add_event(func_to_event(self.simulator.ts, self.send))
 
     def send(self):
         self.qchannel.send(qubit=Qubit(), next_hop=self.dest)
         self.count += 1
-        self.simulator.add_event(func_to_event(self.simulator.tc + self.send_interval, self.send, by=self))
+        self.simulator.add_event(func_to_event(self.simulator.tc + self.send_interval, self.send))
 
 
 class RecvApp(Application[QNode]):

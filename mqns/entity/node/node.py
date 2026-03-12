@@ -35,7 +35,7 @@ from mqns.simulator import Event, Simulator
 
 if TYPE_CHECKING:
     from mqns.entity.base_channel import BaseChannel
-    from mqns.entity.cchannel import ClassicChannel
+    from mqns.entity.cchannel import ClassicChannel, ClassicPacket
     from mqns.network.network import QuantumNetwork, TimingMode
 
 
@@ -174,6 +174,16 @@ class Node(Entity):
             IndexError: channel does not exist
         """
         return self._get_channel(dst, self._cchannel_by_dst)
+
+    def send_cpacket(self, next_hop: "Node", pkt: "ClassicPacket") -> None:
+        """
+        Send a classic packet to an adjacent node.
+
+        Args:
+            next_hop: an adjacent node that shares a classic channel with this node.
+            pkt: the packet.
+        """
+        self.get_cchannel(next_hop).send(pkt, next_hop)
 
     def add_network(self, network: "QuantumNetwork"):
         """

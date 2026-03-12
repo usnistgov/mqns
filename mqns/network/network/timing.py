@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from collections import deque
 from enum import Enum, auto
-from typing import TYPE_CHECKING, Any, final, override
+from typing import TYPE_CHECKING, final, override
 
 from mqns.simulator import Event, Time, func_to_event
 from mqns.utils import log
@@ -22,8 +22,8 @@ class TimingPhaseEvent(Event):
     Event that indicates a timing phase change, emitted in SYNC timing mode only.
     """
 
-    def __init__(self, phase: TimingPhase, *, t: Time, name: str | None = None, by: Any = None):
-        super().__init__(t, name, by)
+    def __init__(self, phase: TimingPhase, *, t: Time, name: str | None = None):
+        super().__init__(t, name)
         self.phase = phase
 
     @override
@@ -139,7 +139,7 @@ class TimingModeSync(TimingMode):
     def install(self, network: "QuantumNetwork"):
         super().install(network)
         self.end_time = self.simulator.ts
-        self.simulator.add_event(func_to_event(self.simulator.ts, self.signal_phase, by=self))
+        self.simulator.add_event(func_to_event(self.simulator.ts, self.signal_phase))
 
     def signal_phase(self):
         this_phase = self.sequence.popleft()
@@ -150,7 +150,7 @@ class TimingModeSync(TimingMode):
         self.end_time = self.simulator.tc + duration
 
         # schedule next sync signal
-        self.simulator.add_event(func_to_event(self.end_time, self.signal_phase, by=self))
+        self.simulator.add_event(func_to_event(self.end_time, self.signal_phase))
 
         log.debug(f"TIME_SYNC: signal {phase.name} phase")
         event = TimingPhaseEvent(phase, t=self.simulator.tc)

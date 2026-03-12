@@ -1,71 +1,143 @@
-#    SimQN: a discrete-event simulator for the quantum networks
-#    Copyright (C) 2021-2022 Lutong Chen, Jian Li, Kaiping Xue
-#    University of Science and Technology of China, USTC.
-#
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
 import heapq
-import math
+import threading
+import time
+from abc import ABC, abstractmethod
+from typing import override
 
 from mqns.simulator.event import Event
 
 
-class DefaultEventPool:
+class EventPool(ABC):
     """
-    Heap-based event pool.
+    EventPool stores events scheduled through the simulator and returns them in timeline order.
     """
 
     def __init__(self, ts: int, te: int | None):
         """
-        Constructor.
-
         Args:
             ts: Start time slot.
-            te: End time slot.
+            te: End time slot, None means continuous.
         """
+        self.running = False
+        """Whether the simulator is running."""
         self.tc = ts
-        self.te = math.inf if te is None else te
-        self.event_list: list[Event] = []
+        """Current time slot."""
+        self.te = te
+        """End time slot, None means continuous."""
+        self._list: list[Event] = []
 
-    def add_event(self, event: Event) -> bool:
+    def start(self) -> None:
+        """Set ``running = True``."""
+        self.running = True
+
+    def stop(self) -> None:
+        """Set ``running = False``."""
+        self.running = False
+
+    def update_gate(self, t: int) -> None:
         """
-        Add an event.
+        Update the gate time to support external synchronization.
+        Simulation is paused at this time slot until it's advanced.
+        """
+        _ = t
+
+    @abstractmethod
+    def insert(self, event: Event) -> None:
+        """
+        Insert an event.
 
         Args:
             event: The event; its time accuracy must be consistent.
-
-        Returns:
-            Whether the event has been inserted.
         """
-        if event.t.time_slot < self.tc or event.t.time_slot > self.te:
-            return False
 
-        heapq.heappush(self.event_list, event)
-        return True
-
-    def next_event(self) -> Event | None:
+    @abstractmethod
+    def pop(self) -> Event | None:
         """
         Pop the next event to be executed.
 
         Returns:
-            The next event, or None if the simulation has ended.
+            The next event, or None if there are no more events.
         """
-        try:
-            event = heapq.heappop(self.event_list)
-            self.tc = event.t.time_slot
-            return event
-        except IndexError:
-            if not math.isinf(self.te):
-                self.tc = int(self.te)
+
+
+class HeapEventPool(EventPool):
+    """
+    Heap-based event pool (non thread safe).
+    """
+
+    @override
+    def insert(self, event: Event) -> None:
+        heapq.heappush(self._list, event)
+
+    @override
+    def pop(self) -> Event | None:
+        if not self._list:
+            if self.te is None:
+                time.sleep(0.001)  # idle briefly to wait for external events
+            else:
+                self.tc = self.te
             return None
+
+        event = heapq.heappop(self._list)
+        self.tc = event.t.time_slot
+        return event
+
+    def __repr__(self):
+        return "<HeapEventPool>"
+
+
+class SynchronizedEventPool(EventPool):
+    """
+    Synchronized event pool (thread safe).
+    """
+
+    def __init__(self, ts: int, te: int | None):
+        super().__init__(ts, te)
+        self._cv = threading.Condition()
+        self._gate = ts
+
+    @override
+    def stop(self) -> None:
+        super().stop()
+        with self._cv:
+            self._cv.notify_all()  # wake up .pop() so it can return
+
+    @override
+    def update_gate(self, t: int) -> None:
+        assert self._gate <= t
+        with self._cv:
+            self._gate = t
+            self._cv.notify_all()  # wake up .pop() if it's waiting at the gate
+
+    @override
+    def insert(self, event: Event) -> None:
+        with self._cv:
+            heapq.heappush(self._list, event)
+            self._cv.notify_all()  # wake up .pop() if it's waiting for events
+
+    @override
+    def pop(self) -> Event | None:
+        while True:
+            with self._cv:
+                if not self.running:  # simulator stopped
+                    return None
+
+                if not self._list and self.te is not None:  # finite simulation finished
+                    self.tc = self.te
+                    return None
+
+                if self._list:  # has events
+                    next_t = self._list[0].t.time_slot
+
+                    if next_t <= self._gate:  # event is before gate and can be executed
+                        event = heapq.heappop(self._list)
+                        self.tc = next_t
+                        return event
+
+                # no event or event is after gate
+                self._cv.wait(timeout=1)
+
+            # release conditional variable so that the thread can be interrupted
+
+    def __repr__(self):
+        return "<SynchronizedEventPool>"

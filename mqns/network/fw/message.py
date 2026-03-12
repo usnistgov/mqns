@@ -1,7 +1,5 @@
 from typing import Literal, NotRequired, TypedDict
 
-from mqns.simulator import Time
-
 type SwapSequence = list[int]
 type MultiplexingVector = list[tuple[int, int]]
 
@@ -78,30 +76,6 @@ class PathInstructions(TypedDict):
     """
 
 
-def make_path_instructions(
-    req_id: int,
-    route: list[str],
-    swap: SwapSequence,
-    swap_cutoff: list[Time | None] | None,
-    m_v: MultiplexingVector | None,
-    purif: dict[str, int],
-) -> PathInstructions:
-    instructions: PathInstructions = {
-        "req_id": req_id,
-        "route": route,
-        "swap": swap,
-        "swap_cutoff": [-1] * len(swap),
-        "purif": purif,
-    }
-    if swap_cutoff is not None:
-        instructions["swap_cutoff"] = [-1 if t is None else t.time_slot for t in swap_cutoff]
-    if m_v is not None:
-        instructions["m_v"] = m_v
-
-    validate_path_instructions(instructions)
-    return instructions
-
-
 def validate_path_instructions(instructions: PathInstructions) -> None:
     def check_purif_segment(segment_name: str) -> bool:
         try:
@@ -129,13 +103,13 @@ def validate_path_instructions(instructions: PathInstructions) -> None:
 
 
 class InstallPathMsg(TypedDict):
-    cmd: Literal["install_path"]
+    cmd: Literal["INSTALL_PATH"]
     path_id: int
     instructions: PathInstructions
 
 
 class UninstallPathMsg(TypedDict):
-    cmd: Literal["uninstall_path"]
+    cmd: Literal["UNINSTALL_PATH"]
     path_id: int
 
 

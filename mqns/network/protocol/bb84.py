@@ -96,7 +96,7 @@ class BB84SendApp(Application[QNode]):
         self.bit_leak = 0
         self.successful_key = []
 
-        self.add_handler(self.handleClassicPacket, RecvClassicPacket, [self.cchannel])
+        self.add_handler(self.handleClassicPacket, RecvClassicPacket)
 
     @override
     def install(self, node: Node):
@@ -106,7 +106,7 @@ class BB84SendApp(Application[QNode]):
         time_list.append(self.simulator.ts)
 
         t = self.simulator.ts
-        event = func_to_event(t, self.send_qubit, by=self)
+        event = func_to_event(t, self.send_qubit)
         self.simulator.add_event(event)
         # while t <= simulator.te:
         #     time_list.append(t)
@@ -116,6 +116,8 @@ class BB84SendApp(Application[QNode]):
         #     self._simulator.add_event(event)
 
     def handleClassicPacket(self, event: RecvClassicPacket):
+        if event.cchannel is not self.cchannel:
+            return False
         return (
             self.check_basis(event)
             or self.recv_error_estimate_packet(event)
@@ -173,7 +175,7 @@ class BB84SendApp(Application[QNode]):
         self.qchannel.send(qubit=qubit, next_hop=self.dest)
 
         t = self.simulator.tc + 1 / self.send_rate
-        event = func_to_event(t, self.send_qubit, by=self)
+        event = func_to_event(t, self.send_qubit)
         self.simulator.add_event(event)
 
     def recv_error_estimate_packet(self, event: RecvClassicPacket):
@@ -403,13 +405,17 @@ class BB84RecvApp(Application[QNode]):
         self.bit_leak = 0
         self.successful_key = []
 
-        self.add_handler(self.handleQuantumPacket, RecvQubitPacket, [self.qchannel])
-        self.add_handler(self.handleClassicPacket, RecvClassicPacket, [self.cchannel])
+        self.add_handler(self.handleQuantumPacket, RecvQubitPacket)
+        self.add_handler(self.handleClassicPacket, RecvClassicPacket)
 
     def handleQuantumPacket(self, event: RecvQubitPacket):
+        if event.qchannel is not self.qchannel:
+            return False
         return self.recv(event)
 
     def handleClassicPacket(self, event: RecvClassicPacket):
+        if event.cchannel is not self.cchannel:
+            return False
         return (
             self.check_basis(event)
             or self.recv_error_estimate_reply_packet(event)

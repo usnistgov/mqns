@@ -19,13 +19,13 @@ class SendApp(Application[QNode]):
     @override
     def install(self, node):
         self._application_install(node, QNode)
-        self.simulator.add_event(func_to_event(self.simulator.ts, self.send, by=self))
+        self.simulator.add_event(func_to_event(self.simulator.ts, self.send))
 
     def send(self):
         qubit = Qubit()
         self.qchannel.send(qubit, next_hop=self.dest)
         self.count += 1
-        self.simulator.add_event(func_to_event(self.simulator.tc + 1 / self.send_rate, self.send, by=self))
+        self.simulator.add_event(func_to_event(self.simulator.tc + 1 / self.send_rate, self.send))
 
 
 class RecvApp(Application[QNode]):
@@ -128,7 +128,7 @@ def test_monitor_full_finite():
 
 
 def test_monitor_full_continuous():
-    simulator = Simulator(0, math.inf, accuracy=1000)
+    simulator = Simulator(0, math.inf, accuracy=1000, need_synchronized=False)
     sp, rp = build_network(simulator)
     m = make_monitor(simulator, sp, rp)
 

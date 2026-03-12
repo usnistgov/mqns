@@ -4,7 +4,7 @@ from mqns.entity.cchannel import ClassicChannel
 from mqns.entity.node import QNode
 from mqns.entity.qchannel import QuantumChannel
 from mqns.models.error import CoherentErrorModel
-from mqns.network.protocol import BB84RecvApp, BB84SendApp
+from mqns.network.protocol.bb84 import BB84RecvApp, BB84SendApp
 from mqns.simulator import Simulator
 
 

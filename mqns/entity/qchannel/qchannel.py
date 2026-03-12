@@ -26,7 +26,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import copy
-from typing import Any, Unpack, final, override
+from typing import Unpack, final, override
 
 from mqns.entity.base_channel import BaseChannel, BaseChannelInitKwargs, calc_transmission_prob
 from mqns.entity.node import QNode
@@ -137,7 +137,7 @@ class QuantumChannel(BaseChannel[QNode]):
 
         # operation on the qubit
         qubit.apply_error(self.transfer_error)
-        send_event = RecvQubitPacket(t=recv_time, by=self, qchannel=self, qubit=qubit, dest=next_hop)
+        send_event = RecvQubitPacket(t=recv_time, qchannel=self, qubit=qubit, dest=next_hop)
         self.simulator.add_event(send_event)
 
     def __repr__(self) -> str:
@@ -150,10 +150,8 @@ class RecvQubitPacket(Event):
     Event dispatched on recipient QNode for receiving a qubit.
     """
 
-    def __init__(
-        self, *, t: Time, name: str | None = None, by: Any = None, qchannel: QuantumChannel, qubit: QuantumModel, dest: QNode
-    ):
-        super().__init__(t=t, name=name, by=by)
+    def __init__(self, *, t: Time, name: str | None = None, qchannel: QuantumChannel, qubit: QuantumModel, dest: QNode):
+        super().__init__(t, name)
         self.qchannel = qchannel
         self.qubit = qubit
         self.dest = dest

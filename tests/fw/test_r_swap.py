@@ -1,5 +1,5 @@
 """
-Test suite for ProactiveForwarder focused on swapping.
+Test suite for ReactiveForwarder focused on swapping.
 """
 
 from mqns.network.network import TimingModeSync

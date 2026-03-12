@@ -174,14 +174,15 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
         self.waiting_su: dict[int, tuple[SwapUpdateMsg, FibEntry]] = {}
         """
         SwapUpdates received prior to QubitEntangledEvent.
-        Key: MemoryQubit addr.
-        Value: SwapUpdateMsg and FibEntry.
+
+        * Key: MemoryQubit addr.
+        * Value: SwapUpdateMsg and FibEntry.
         """
 
         self.parallel_swappings: dict[str, tuple[Entanglement, Entanglement, Entanglement]] = {}
         """
         Records for potential parallel swappings.
-        See `_su_parallel` method.
+        See ``_su_parallel`` method.
         """
 
         self.remote_swapped_eprs: dict[str, Entanglement] = {}
@@ -234,10 +235,10 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
                 self.qubit_is_entangled(etg_event)
             self.waiting_etg.clear()
 
-    @fw_control_cmd_handler("install_path")
+    @fw_control_cmd_handler("INSTALL_PATH")
     def handle_install_path(self, msg: InstallPathMsg):
         """
-        Process an install_path message containing routing instructions from the controller.
+        Process an INSTALL_PATH message from the controller.
 
         1. Insert FIB entry.
         2. Identify neighbors and qchannels.
@@ -276,10 +277,10 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
             r_neighbor=r_neighbor,
         )
 
-    @fw_control_cmd_handler("uninstall_path")
+    @fw_control_cmd_handler("UNINSTALL_PATH")
     def handle_uninstall_path(self, msg: UninstallPathMsg):
         """
-        Process an uninstall_path message containing routing instructions from the controller.
+        Process an UNINSTALL_PATH message from the controller.
 
         1. Insert FIB entry.
         2. Identify neighbors and qchannels.
@@ -712,6 +713,10 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
 
         If QubitEntangledEvent for the qubit has not been processed, the SwapUpdate is buffered
         in ``self.waiting_su`` and will be re-tried after processing the QubitEntangledEvent.
+        This may happen, for example in S-R-D linear topology, when node R performs a swap as soon as
+        it is notified about R-D entanglement, before D is notified.
+        This cannot be resolved with ``Event.priority`` mechanism because R and D may be notified
+        at different times depending on the link architecture.
 
         Args:
             msg: The SWAP_UPDATE message.
@@ -897,4 +902,4 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
             self.memory.read(qubit.addr, remove=True)
 
         qubit.state = QubitState.RELEASE
-        self.simulator.add_event(QubitReleasedEvent(self.node, qubit, t=self.simulator.tc, by=self))
+        self.simulator.add_event(QubitReleasedEvent(self.node, qubit, t=self.simulator.tc))

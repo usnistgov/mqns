@@ -35,7 +35,9 @@ class RoutingController(Application[Controller]):
         for path_id_add, instructions in enumerate(rp.compute_paths(self.net)):
             path_id = rp.path_id + path_id_add
             self.next_path_id = max(self.next_path_id, path_id + 1)
-            self._send_instructions(path_id, instructions)
+            self._send_instructions(
+                InstallPathMsg(cmd="INSTALL_PATH", path_id=path_id, instructions=instructions), instructions
+            )
 
     def uninstall_path(self, rp: RoutingPath):
         """
@@ -45,16 +47,10 @@ class RoutingController(Application[Controller]):
         assert rp.path_id >= 0
 
         for path_id_add, instructions in enumerate(rp.compute_paths(self.net)):
-            self._send_instructions(rp.path_id + path_id_add, instructions, uninstall=True)
+            self._send_instructions(UninstallPathMsg(cmd="UNINSTALL_PATH", path_id=rp.path_id + path_id_add), instructions)
 
-    def _send_instructions(self, path_id: int, instructions: PathInstructions, *, uninstall=False):
-        verb, msg = (
-            ("uninstall", UninstallPathMsg(cmd="uninstall_path", path_id=path_id))
-            if uninstall
-            else ("install", InstallPathMsg(cmd="install_path", path_id=path_id, instructions=instructions))
-        )
-
+    def _send_instructions(self, msg: InstallPathMsg | UninstallPathMsg, instructions: PathInstructions):
         for node_name in instructions["route"]:
             qnode = self.net.get_node(node_name)
-            self.node.get_cchannel(qnode).send(ClassicPacket(msg, src=self.node, dest=qnode), next_hop=qnode)
-            log.debug(f"{self.node}: {verb} path #{path_id} at {qnode}: {instructions}")
+            self.node.send_cpacket(qnode, ClassicPacket(msg, src=self.node, dest=qnode))
+            log.debug(f"{self.node}: {msg['cmd']} #{msg['path_id']} at {qnode}: {instructions}")

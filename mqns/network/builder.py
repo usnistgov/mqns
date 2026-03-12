@@ -28,6 +28,7 @@ from mqns.network.fw import (
 )
 from mqns.network.network import QuantumNetwork, TimingMode, TimingModeAsync
 from mqns.network.proactive import ProactiveForwarder, ProactiveRoutingController
+from mqns.network.protocol.classicbridge import ClassicBridge
 from mqns.network.protocol.link_layer import LinkLayer
 from mqns.network.reactive import ReactiveForwarder, ReactiveRoutingController
 from mqns.network.route import DijkstraRouteAlgorithm, RouteAlgorithm, YenRouteAlgorithm
@@ -454,6 +455,28 @@ class NetworkBuilder:
     def reactive_distributed(self) -> Self:
         self._assert_can_add_apps()
         raise NotImplementedError
+
+    def external_controller(
+        self,
+        *,
+        nats_prefix=ClassicBridge.DEFAULT_NATS_PREFIX,
+    ) -> Self:
+        """
+        Replace the controller application with ``ClassicBridge``.
+
+        Args:
+            nats_prefix: Prefix of NATS subjects.
+
+        This must be called after ``proactive_centralized`` or ``reactive_centralized``.
+        The internal controller application is deleted and replaced with ``ClassicBridge``, which allows
+        the controller logic to be implemented in an external program connected over NATS.
+
+        ``.path()`` method cannot be used.
+        Instead, routing paths should be defined in the external controller.
+        """
+        self.controller_apps.clear()
+        self.controller_apps.append(ClassicBridge(nats_prefix=nats_prefix))
+        return self
 
     def _assert_can_add_paths(self) -> None:
         if len(self.controller_apps) == 0:

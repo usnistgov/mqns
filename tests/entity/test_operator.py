@@ -50,7 +50,7 @@ def test_operator_async():
     s = Simulator(0, 10, accuracy=1000, install_to=(n1,))
 
     qubit = Qubit()
-    request = OperateRequestEvent(o1, qubits=[qubit], t=s.time(sec=0), by=n1)
+    request = OperateRequestEvent(o1, qubits=[qubit], t=s.time(sec=0))
     s.add_event(request)
 
     s.run()
