@@ -11,11 +11,6 @@ from mqns.utils import WallClockTimeout, json_default, log
 
 from srt_detail.defs import RequestStats, RunArgs, RunResult, build_network
 
-"""
-This script is typically invoked as part of scalability_randomtopo experiment.
-See scalability_randomtopo.sh for how to run this script.
-"""
-
 log.set_default_level("CRITICAL")
 
 

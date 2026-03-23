@@ -18,13 +18,6 @@ from srt_detail.defs import build_network as mqns_build_network
 from srt_detail.resource_reservation import create_rules
 from srt_detail.sequence_app import EntanglementRequestApp, ResetApp, set_parameters
 
-"""
-This script is part of scalability_randomtopo experiment for comparison with SeQUeNCe simulator.
-It can be invoked in the same way as mqns/examples/scalability_randomtopo_run.py .
-The topology and end-to-end entanglement requests are generated in MQNS and then converted to SeQUeNCe.
-"""
-
-
 COUNTER_NAMES = (
     "success_number",
     "attempts_number",

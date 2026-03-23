@@ -1,21 +1,3 @@
-"""
-The scalability_randomtopo experiment measures how simulation performance and outcomes scale as the network size increases.
-
-* A random topology is used with an average node degree of 2.5.
-* For each network size, the number of entanglement requests is chosen to be proportional to the number of nodes,
-  with 20% of nodes involved in src-dst requests (plus intermediate nodes).
-* Proactive forwarding is used with Statistical multiplexing and SWAP-ASAP swapping policy.
-* Each simulation reports execution time, along with other metrics for verification.
-
-Example scripts related to this experiment are:
-
-* ``scalability_randomtopo_run.py``: run the scenario with MQNS.
-* ``sequence/scalability_randomtopo_run.py``: run the scenario with SeQUeNCe simulator.
-* ``scalability_randomtopo_plot.py``: plot the execution time results.
-
-See ``scalability_randomtopo.sh`` for how to run these scripts.
-"""
-
 import json
 import os.path
 import sys
