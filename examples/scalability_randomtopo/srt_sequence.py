@@ -13,7 +13,7 @@ from sequence.topology.router_net_topo import RouterNetTopo
 from mqns.network.network import QuantumNetwork, Request
 from mqns.utils import WallClockTimeout
 
-from srt_detail.defs import RequestStats, RunArgs, RunResult, parse_run_args
+from srt_detail.defs import RequestStats, RunArgs, RunResult
 from srt_detail.defs import build_network as mqns_build_network
 from srt_detail.resource_reservation import create_rules
 from srt_detail.sequence_app import EntanglementRequestApp, ResetApp, set_parameters
@@ -202,7 +202,7 @@ def run_simulation(args: RunArgs) -> RunResult:
 
 
 if __name__ == "__main__":
-    args = parse_run_args()
+    args = RunArgs().parse_args()
     result = run_simulation(args)
     with open(os.path.join(args.outdir, f"{args.basename}.sequence.json"), "w") as file:
         json.dump(result, file)

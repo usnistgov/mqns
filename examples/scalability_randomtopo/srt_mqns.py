@@ -9,7 +9,7 @@ from mqns.network.protocol.link_layer import LinkLayer
 from mqns.simulator import Simulator
 from mqns.utils import WallClockTimeout, json_default, log
 
-from srt_detail.defs import RequestStats, RunArgs, RunResult, build_network, parse_run_args
+from srt_detail.defs import RequestStats, RunArgs, RunResult, build_network
 
 """
 This script is typically invoked as part of scalability_randomtopo experiment.
@@ -62,7 +62,7 @@ def run_simulation(args: RunArgs) -> RunResult:
 
 
 if __name__ == "__main__":
-    args = parse_run_args()
+    args = RunArgs().parse_args()
     result = run_simulation(args)
     with open(os.path.join(args.outdir, f"{args.basename}.json"), "w") as file:
         json.dump(result, file, default=json_default)
