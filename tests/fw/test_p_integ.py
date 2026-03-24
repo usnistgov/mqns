@@ -26,9 +26,8 @@ from .fw_common import build_linear_network, build_rect_network, install_path, p
 )
 def test_4_swap(epr_type: type[Entanglement], timing_mode: str, swap: SwapSequenceInput):
     """Test swapping in 4-node topology."""
-    end_time = 10.0 if swap == "asap" else 3.0
     timing = TimingModeAsync() if timing_mode == "ASYNC" else TimingModeSync(t_ext=0.006, t_int=0.004)
-    net, simulator = build_linear_network(4, end_time=end_time, timing=timing, epr_type=epr_type, has_link_layer=True)
+    net, simulator = build_linear_network(4, end_time=3.0, timing=timing, epr_type=epr_type, has_link_layer=True)
     f1 = net.get_node("n1").get_app(ProactiveForwarder)
     f2 = net.get_node("n2").get_app(ProactiveForwarder)
     f3 = net.get_node("n3").get_app(ProactiveForwarder)
