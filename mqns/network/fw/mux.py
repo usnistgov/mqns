@@ -16,29 +16,23 @@ if TYPE_CHECKING:
 class MuxScheme(ABC):
     """Path multiplexing scheme."""
 
+    fw: "Forwarder"
+    node: QNode
+    memory: QuantumMemory
+    fib: Fib
+
     def __init__(self, name: str):
         self.name = name
         """Scheme name."""
 
-        self.fw: "Forwarder"
-        """
-        Forwarder that uses this instance, assigned by the forwarder install function.
-        """
-
     def __repr__(self):
         return f"<{self.name}>"
 
-    @property
-    def node(self) -> QNode:
-        return self.fw.node
-
-    @property
-    def memory(self) -> QuantumMemory:
-        return self.fw.memory
-
-    @property
-    def fib(self) -> Fib:
-        return self.fw.fib
+    def install(self, fw: "Forwarder"):
+        self.fw = fw
+        self.node = fw.node
+        self.memory = fw.memory
+        self.fib = fw.fib
 
     @abstractmethod
     def validate_path_instructions(self, instructions: PathInstructions) -> None:

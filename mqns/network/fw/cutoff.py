@@ -19,17 +19,21 @@ class CutoffScheme(ABC):
     This determines how PathInstructions.swap_cutoff is interpreted.
     """
 
+    fw: "Forwarder"
+    simulator: Simulator
+    node: QNode
+
     def __init__(self, name: str):
         self.name = name
         """Scheme name."""
 
-        self.fw: "Forwarder"
-        """
-        Forwarder that uses this instance, assigned by the forwarder install function.
-        """
-
     def __repr__(self):
         return f"<{self.name}>"
+
+    def install(self, fw: "Forwarder"):
+        self.fw = fw
+        self.simulator = fw.simulator
+        self.node = fw.node
 
     @classmethod
     def of(cls, fw: "Forwarder"):
@@ -38,14 +42,6 @@ class CutoffScheme(ABC):
         """
         assert isinstance(fw.cutoff, cls)
         return fw.cutoff
-
-    @property
-    def node(self) -> QNode:
-        return self.fw.node
-
-    @property
-    def simulator(self) -> Simulator:
-        return self.node.simulator
 
     def initiate_discard(self, qubit: MemoryQubit, fib_entry: FibEntry, *, round=-1):
         """

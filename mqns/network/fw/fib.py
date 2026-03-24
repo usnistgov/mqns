@@ -50,13 +50,10 @@ class FibEntry:
         """
         Determine whether swapping has been disabled.
 
-        To disable swapping, set swap_sequence to a list of zeros.
+        To disable swapping, set SwapSequence to a list of zeros.
 
         When swapping is disabled, the forwarder will consume entanglement upon completing purification,
         without attempting entanglement swapping.
-
-        Args:
-            fib_entry: a FIB entry.
         """
         return self.swap[0] == 0 == self.swap[-1]
 
@@ -65,7 +62,6 @@ class FibEntry:
         Determine the swapping rank of a node.
 
         Args:
-            fib_entry: a FIB entry.
             node_name: a node name that exists in route.
 
         Returns:

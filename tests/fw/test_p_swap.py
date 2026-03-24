@@ -174,7 +174,7 @@ def test_5_asap(
     f3 = net.get_node("n3").get_app(ProactiveForwarder)
     f4 = net.get_node("n4").get_app(ProactiveForwarder)
     f5 = net.get_node("n5").get_app(ProactiveForwarder)
-    f3.ps = ps3
+    f3.swap.ps = ps3
 
     install_path(net, RoutingPathSingle("n1", "n5", swap=[1, 0, 0, 0, 1]))
     provide_entanglements(
