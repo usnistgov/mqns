@@ -16,12 +16,12 @@ class Args(Tap):
     nats_prefix: str = ClassicBridge.DEFAULT_NATS_PREFIX  # prefix of NATS subjects
     sim_accuracy: int = 1_000_000  # simulation accuracy in time slots per second
     seed: int | None = None  # random seed
-    mode: Literal["P", "R"] = "P"  # choose proactive or reactive mode
+    mode: Literal["PCA", "RCS"] = "PCA"
+    sync_timing: list[float] = [0.03, 0.00005, 0.0002]
     epr_type: EprTypeLiteral  # network-wide EPR type
 
     @override
     def configure(self) -> None:
-        super().configure()
         tap_configure(self)
 
 
@@ -38,14 +38,15 @@ def run_simulation(args: Args) -> dict[str, ForwarderCounters]:
             ("R1-R2", 10, 4),
             ("R2-D1", 50, 2),
             ("R2-D2", 50, 2),
-        ]
+        ],
+        t_cohere=0.05,
     )
 
     match args.mode:
-        case "P":
+        case "PCA":
             b.proactive_centralized()
-        case "R":
-            b.reactive_centralized()
+        case "RCS":
+            b.reactive_centralized(timing=args.sync_timing)
 
     b.external_controller(nats_prefix=args.nats_prefix)
 

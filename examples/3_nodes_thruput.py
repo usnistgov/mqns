@@ -22,7 +22,6 @@ from tap import Tap
 
 from mqns.network.builder import CTRL_DELAY, EprTypeLiteral, LinkArchLiteral, NetworkBuilder, tap_configure
 from mqns.network.fw import Forwarder
-from mqns.network.network import TimingModeSync
 from mqns.network.protocol.link_layer import LinkLayerCounters
 from mqns.simulator import Simulator
 from mqns.utils import log, rng
@@ -36,7 +35,8 @@ class Args(Tap):
     workers: int = 1  # number of workers for parallel execution
     runs: int = 100  # number of trials per parameter set
     sim_duration: float = 3  # simulation duration in seconds
-    mode: Literal["P", "R"] = "P"  # choose proactive or reactive mode
+    mode: Literal["PCA", "RCS"] = "PCA"
+    sync_timing: list[float] = [0.03, 0.00005, 0.0002]
     L: tuple[float, float] = (32, 18)  # qchannel lengths (km)
     t_cohere: list[float] = [0.002, 0.005, 0.01, 0.015, 0.02, 0.025, 0.05, 0.1]  # memory coherence time (s)
     qchannel_capacity: int = 1  # qchannel capacity
@@ -48,7 +48,6 @@ class Args(Tap):
 
     @override
     def configure(self) -> None:
-        super().configure()
         tap_configure(self)
 
 
@@ -66,15 +65,7 @@ class Stats(TypedDict):
 def run_simulation(seed: int, args: Args, t_cohere: float) -> Stats:
     rng.reseed(seed)
 
-    match args.mode:
-        case "P":
-            b = NetworkBuilder()
-            total_duration = args.sim_duration + CTRL_DELAY
-        case "R":
-            b = NetworkBuilder(timing=TimingModeSync(t_ext=0.03, t_rtg=0.00005, t_int=0.0002))
-            total_duration = args.sim_duration
-
-    b.topo_linear(
+    b = NetworkBuilder().topo_linear(
         nodes=("S", "R", "D"),
         t_cohere=t_cohere,
         channel_length=args.L,
@@ -83,10 +74,12 @@ def run_simulation(seed: int, args: Args, t_cohere: float) -> Stats:
     )
 
     match args.mode:
-        case "P":
+        case "PCA":
+            total_duration = args.sim_duration + CTRL_DELAY
             b.proactive_centralized().path("S-D")
-        case "R":
-            b.reactive_centralized()
+        case "RCS":
+            total_duration = args.sim_duration
+            b.reactive_centralized(timing=args.sync_timing)
 
     net = b.make_network()
     del b

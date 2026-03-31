@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
 from collections import deque
+from collections.abc import Iterable
 from enum import Enum, auto
-from typing import TYPE_CHECKING, final, override
+from typing import TYPE_CHECKING, final, overload, override
 
 from mqns.simulator import Event, Time, func_to_event
 from mqns.utils import log
@@ -106,6 +107,7 @@ class TimingModeSync(TimingMode):
     Synchronous application timing mode.
     """
 
+    @overload
     def __init__(
         self,
         *,
@@ -117,17 +119,52 @@ class TimingModeSync(TimingMode):
         """
         Args:
             t_ext: EXTERNAL phase duration in seconds.
-            t_rtg: ROUTING phase duration in seconds, defaults to 0.
+            t_rtg: ROUTING phase duration in seconds, defaults to zero.
             t_int: INTERNAL phase duration in seconds.
         """
+
+    @overload
+    def __init__(
+        self,
+        *,
+        name="SYNC",
+        durations: Iterable[float],
+    ):
+        """
+        Args:
+            durations: EXTERNAL, ROUTING, INTERNAL phase durations in seconds.
+        """
+
+    def __init__(
+        self,
+        *,
+        name="SYNC",
+        t_ext: float = 0,
+        t_rtg: float = 0,
+        t_int: float = 0,
+        durations: Iterable[float] | None = None,
+    ):
         super().__init__(name)
 
+        if durations is not None:
+            try:
+                t_ext, t_rtg, t_int = durations
+            except ValueError:
+                raise ValueError("durations= must have exactly three values")
+
         self.sequence = deque[tuple[TimingPhase, float]]()
-        assert t_ext > 0
+
+        if t_ext <= 0:
+            raise ValueError("EXTERNAL phase duration must be positive")
         self.sequence.append((TimingPhase.EXTERNAL, t_ext))
-        if t_rtg > 0:
+
+        if t_rtg < 0:
+            raise ValueError("ROUTING phase duration must be non-negative")
+        elif t_rtg > 0:
             self.sequence.append((TimingPhase.ROUTING, t_rtg))
-        assert t_int > 0
+
+        if t_int <= 0:
+            raise ValueError("INTERNAL phase duration must be positive")
         self.sequence.append((TimingPhase.INTERNAL, t_int))
 
         self.phase = self.sequence[-1][0]

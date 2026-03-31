@@ -24,7 +24,7 @@ for A in "$@"; do
     continue
   fi
   if [[ "$A" == '-h' || "$A" == '--help' ]]; then
-    info 'Usage: bash demo.sh [COMMON-ARGS] -- [PY-ARGS] -- [RS-ARGS]'
+    info 'Usage: bash run.sh [COMMON-ARGS] -- [PY-ARGS] -- [RS-ARGS]'
     info '  COMMON-ARGS: passed to both Python and Rust'
     info '  PY-ARGS: passed to Python script'
     info '  RS-ARGS: passed to Rust crate'
