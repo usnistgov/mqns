@@ -40,14 +40,14 @@ class ClassicConnector:
 
     When a *split node* receives a classic packet, it is published as:
 
-    * Subject: ``<PREFIX>.<dst>.<src>``
+    * Subject: ``<PREFIX>.O.<dst>.<src>``
     * Payload: the classic packet payload
     * Header ``t``: packet receipt time in simulation time slots
     * Header ``fmt``: packet format, either ``"json"`` or ``"bytes"``
 
     If the external program wants to transmit a packet out of a node *src*, it should publish:
 
-    * Subject: ``<PREFIX>.<dst>.<src>``
+    * Subject: ``<PREFIX>.I.<dst>.<src>``
     * Payload: the classic packet payload
     * Header ``t``: packet transmission time in simulation time slots
     * Header ``fmt``: packet format, either ``"json"`` or ``"bytes"``
@@ -58,12 +58,12 @@ class ClassicConnector:
     pausing the simulation at the first time slot until an external gate update is received.
     The external program is responsible for advancing this gate by publishing a heartbeat:
 
-    * Subject: ``<PREFIX>._.gate`` (note: ``_`` is a keyword for ClassicConnector and should not be used as a node name)
+    * Subject: ``<PREFIX>.I._.gate`` (note: ``_`` is a keyword for ClassicConnector and cannot be used as a node name)
     * Header ``t``: new upper-bound in simulation time slots
 
     The external program may stop the simulator by publishing:
 
-    * Subject: ``<PREFIX>._.stop``
+    * Subject: ``<PREFIX>.I._.stop``
     * Header ``t``: stop time in simulation time slots
 
     The external program must also release the gate to or beyond the stop time, for stopping to occur.
@@ -102,7 +102,7 @@ class ClassicConnector:
             log.info(f"ClassicConnector connected to NATS server {nc.connected_url} as client_id={nc.client_id}")
             async with nc:
                 self._js = nc.jetstream()
-                self._sub = await self._js.pull_subscribe(f"{self.nats_prefix}.*.*")
+                self._sub = await self._js.pull_subscribe(f"{self.nats_prefix}.I.*.*")
 
                 done, _ = await asyncio.wait(
                     [
@@ -134,7 +134,7 @@ class ClassicConnector:
     async def _tx(self, cbp: ClassicBridgePacket):
         from nats.js.errors import BadRequestError  # noqa: PLC0415
 
-        subject = f"{self.nats_prefix}.{cbp.dst}.{cbp.src}"
+        subject = f"{self.nats_prefix}.O.{cbp.dst}.{cbp.src}"
         headers = {
             "t": f"{cbp.t}",
             "fmt": "json" if cbp.is_json else "bytes",

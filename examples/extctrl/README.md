@@ -62,5 +62,5 @@ bash demo.sh -- --mode P -- --sim_duration 60 --path1 r2l --path1_i 0 --path2 r2
 During the scenario execution, you can view NATS messages on a separate console:
 
 ```bash
-nats sub 'mqns.classicbridge.*.*'
+nats sub 'mqns.classicbridge.>'
 ```

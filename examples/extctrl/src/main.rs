@@ -57,20 +57,20 @@ struct Args {
     #[bpaf(long("sim_duration"), argument("DURATION"), fallback(60))]
     sim_duration: u64,
 
-    /// S1-D1 path enablement and swap order
+    /// S1-D1 path enablement and swap order (asap|l2r|r2l|disabled)
     #[bpaf(fallback(PathOpt::L2R))]
     path1: PathOpt,
 
     /// S1-D1 path install time in seconds
-    #[bpaf(long("path1_i"), fallback(0))]
+    #[bpaf(long("path1_i"), argument("SEC"), fallback(0))]
     path1_i: u64,
 
-    /// S2-D2 path enablement and swap order
+    /// S2-D2 path enablement and swap order (asap|l2r|r2l|disabled)
     #[bpaf(fallback(PathOpt::Disabled))]
     path2: PathOpt,
 
     /// S2-D2 path install time in seconds
-    #[bpaf(long("path2_i"), fallback(0))]
+    #[bpaf(long("path2_i"), argument("SEC"), fallback(0))]
     path2_i: u64,
 }
 

@@ -61,7 +61,8 @@ nats stream rm $STREAM -f || true
 
 info Defining NATS stream
 nats stream add $STREAM \
-  --subjects "$NATS_PREFIX.*.*" \
+  --subjects "$NATS_PREFIX.I.*.*" \
+  --subjects "$NATS_PREFIX.O.*.*" \
   --storage memory \
   --retention limits \
   --discard old \
