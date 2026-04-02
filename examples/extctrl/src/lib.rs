@@ -1,29 +1,29 @@
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use async_nats::{self, HeaderMap, jetstream};
 use bytes::Bytes;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json;
 use std::collections::HashMap;
 
 const CMD_INSTALL_PATH: &str = "INSTALL_PATH";
 const CMD_UNINSTALL_PATH: &str = "UNINSTALL_PATH";
 
-#[derive(Serialize)]
+#[derive(Debug, Clone, Serialize)]
 struct InstallPathCmd<'a> {
-    cmd: String,
+    cmd: String, // CMD_INSTALL_PATH
     path_id: u32,
     instructions: &'a PathInstructions,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 struct UninstallPathCmd {
-    cmd: String,
+    cmd: String, // CMD_UNINSTALL_PATH
     path_id: u32,
 }
 
 /// Instructions from the controller to forwarders regarding a routing path.
 /// See mqns.network.fw.PathInstructions struct for details.
-#[derive(Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct PathInstructions {
     pub req_id: u32,
     pub route: Vec<String>,
@@ -34,6 +34,7 @@ pub struct PathInstructions {
 }
 
 /// Southbound interface to interact with simulated quantum nodes.
+#[derive(Debug, Clone)]
 pub struct Southbound {
     js: jetstream::Context,
     nats_prefix: String,
@@ -46,7 +47,7 @@ impl Southbound {
         Self {
             js,
             nats_prefix: nats_prefix.into(),
-            gate_subject: format!("{nats_prefix}._.gate"),
+            gate_subject: format!("{nats_prefix}.I._.gate"),
         }
     }
 
@@ -67,7 +68,7 @@ impl Southbound {
     ///
     /// * `t`: Simulation stop time in time slots.
     pub async fn stop(&self, t: u64) -> Result<()> {
-        let subject = format!("{}._.stop", self.nats_prefix);
+        let subject = format!("{}.I._.stop", self.nats_prefix);
         let mut headers = HeaderMap::new();
         headers.insert("t", t.to_string());
         self.js
@@ -123,14 +124,18 @@ impl Southbound {
         instructions: &PathInstructions,
     ) -> Result<()> {
         for dst in &instructions.route {
-            let subject = format!("{}.{dst}.ctrl", self.nats_prefix);
+            let subject = format!("{}.I.{dst}.ctrl", self.nats_prefix);
             let mut headers = HeaderMap::new();
             headers.insert("t", t.to_string());
             headers.insert("fmt", "json");
-            self.js
+            if let Err(e) = self
+                .js
                 .publish_with_headers(subject, headers, payload.clone())
                 .await?
-                .await?;
+                .await
+            {
+                return Err(anyhow!("Failed to deliver instructions to {}: {}", dst, e));
+            }
         }
         Ok(())
     }
