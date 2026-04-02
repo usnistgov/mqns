@@ -53,10 +53,13 @@ bash run.sh
 bash run.sh --sim_accuracy 200000
 
 # proactive-centralized-async mode, enable S1-D1 path with asap swap order
-bash run.sh -- --mode PCA -- --path1 asap --path2 disabled
+bash run.sh --mode PCA -- -- --path1 asap --path2 disabled
 
 # proactive-centralized-async mode, enable both paths with r2l swap order, install paths at different times
-bash run.sh -- --mode PCA -- --sim_duration 60 --path1 r2l --path1_i 0 --path2 r2l --path2_i 30
+bash run.sh --mode PCA -- -- --sim_duration 60 --path1 r2l --path1_i 0 --path2 r2l --path2_i 30
+
+# reactive-centralized-sync mode
+bash run.sh --mode RCS
 ```
 
 During the scenario execution, you can view NATS messages on a separate console:

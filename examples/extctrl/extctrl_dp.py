@@ -18,11 +18,16 @@ class Args(Tap):
     seed: int | None = None  # random seed
     mode: Literal["PCA", "RCS"] = "PCA"
     sync_timing: list[float] = [0.03, 0.00005, 0.0002]
+    L: tuple[float, float] = (50, 10)  # qchannel lengths (km)
+    M: tuple[int, int] = (2, 4)  # qchannel capacity
+    t_cohere: float = 0.05  # memory coherence time (s)
     epr_type: EprTypeLiteral  # network-wide EPR type
 
     @override
     def configure(self) -> None:
         tap_configure(self)
+        self.add_argument("--L", metavar=("L_edge", "L_center"))
+        self.add_argument("--M", metavar=("M_edge", "M_center"))
 
 
 def run_simulation(args: Args) -> dict[str, ForwarderCounters]:
@@ -33,13 +38,13 @@ def run_simulation(args: Args) -> dict[str, ForwarderCounters]:
     )
     b.topo(
         channels=[
-            ("S1-R1", 50, 2),
-            ("S2-R1", 50, 2),
-            ("R1-R2", 10, 4),
-            ("R2-D1", 50, 2),
-            ("R2-D2", 50, 2),
+            ("S1-R1", args.L[0], args.M[0]),
+            ("S2-R1", args.L[0], args.M[0]),
+            ("R1-R2", args.L[1], args.M[1]),
+            ("R2-D1", args.L[0], args.M[0]),
+            ("R2-D2", args.L[0], args.M[0]),
         ],
-        t_cohere=0.05,
+        t_cohere=args.t_cohere,
     )
 
     match args.mode:

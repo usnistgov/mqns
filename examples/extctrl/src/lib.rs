@@ -4,9 +4,19 @@ use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::collections::HashMap;
+use tokio::sync::mpsc;
+use tokio_stream::StreamExt;
+
+pub const CTRL_DELAY: f64 = 5e-6;
+
+/// Convert seconds to time slots at given accuracy.
+pub fn sec_to_time_slot(sec: f64, accuracy: u64) -> u64 {
+    (sec * accuracy as f64).round() as u64
+}
 
 const CMD_INSTALL_PATH: &str = "INSTALL_PATH";
 const CMD_UNINSTALL_PATH: &str = "UNINSTALL_PATH";
+const CMD_LS: &str = "LS";
 
 #[derive(Debug, Clone, Serialize)]
 struct InstallPathCmd<'a> {
@@ -31,6 +41,21 @@ pub struct PathInstructions {
     pub swap_cutoff: Vec<i32>,
     pub m_v: Option<Vec<Vec<i32>>>,
     pub purif: HashMap<String, String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct LinkStateMsg {
+    #[serde(skip)]
+    pub t: u64,
+    pub cmd: String, // CMD_LS
+    pub ls: Vec<LinkStateEntry>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct LinkStateEntry {
+    pub node: String,
+    pub neighbor: String,
+    pub qubit: i32,
 }
 
 /// Southbound interface to interact with simulated quantum nodes.
@@ -137,6 +162,45 @@ impl Southbound {
                 return Err(anyhow!("Failed to deliver instructions to {}: {}", dst, e));
             }
         }
+        Ok(())
+    }
+
+    pub async fn recv_link_states(&self, ch: mpsc::Sender<LinkStateMsg>) -> Result<()> {
+        let subject = format!("{}.O.ctrl.*", self.nats_prefix);
+        let stream_name = self.js.stream_by_subject(&subject).await?;
+        let stream = self.js.get_stream(stream_name).await?;
+        let consumer = stream
+            .create_consumer(jetstream::consumer::pull::Config {
+                filter_subject: subject,
+                ..Default::default()
+            })
+            .await?;
+
+        let mut messages = consumer.messages().await?;
+        while let Some(result) = messages.next().await {
+            match result {
+                Ok(message) => {
+                    let t = message
+                        .headers
+                        .as_ref()
+                        .and_then(|h| h.get("t"))
+                        .and_then(|s| s.as_str().parse::<u64>().ok())
+                        .unwrap_or(0);
+                    message.ack().await.ok();
+
+                    if let Ok(mut msg) = serde_json::from_slice::<LinkStateMsg>(&message.payload) {
+                        if msg.cmd == CMD_LS {
+                            msg.t = t;
+                            if let Err(_) = ch.send(msg).await {
+                                break; // channel receiver closed
+                            }
+                        }
+                    }
+                }
+                Err(e) => return Err(anyhow!(e)),
+            }
+        }
+
         Ok(())
     }
 }
