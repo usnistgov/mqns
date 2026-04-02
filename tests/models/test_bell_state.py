@@ -27,7 +27,7 @@ def test_to_qubits():
     e = BellStateEntanglement()
 
     q0, q1 = e.to_qubits()
-    assert e.is_decoherenced
+    assert e.is_decohered
 
     assert q0.state is q1.state
     assert qubit_rho_classify_noise(BELL_RHO_PHI_P, q0.state.rho) == "IDENTICAL"

@@ -356,7 +356,7 @@ class QuantumMemory(Entity):
             raise ValueError(f"{self}: data at {qubit.addr} is not {has}")
 
         if set_fidelity and isinstance(data, Entanglement) and not data.read:
-            data.apply_store_decays(self.simulator.tc, update_fidelity_time=False)
+            data.apply_store_decays(self.simulator.tc)
 
         if remove in (True, data):
             qubit.set_event(QuantumMemory, None)  # cancel scheduled decoherence event
@@ -434,7 +434,7 @@ class QuantumMemory(Entity):
             Whether the event should be dispatched to inform LinkLayer.
         """
 
-        epr.is_decoherenced = True
+        epr.is_decohered = True
 
         _, new_qm = self.read(qubit.addr, must=True, remove=epr)
         if new_qm is not epr:

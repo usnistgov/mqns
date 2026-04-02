@@ -107,7 +107,7 @@ def test_to_qubits_maximal(i: float, z: float, x: float, y: float, state: QubitS
     e = MixedStateEntanglement(i=i, z=z, x=x, y=y)
 
     q0, q1 = e.to_qubits()
-    assert e.is_decoherenced
+    assert e.is_decohered
 
     assert q0.state is q1.state
     assert qubit_rho_classify_noise(rho, q0.state.rho) == "IDENTICAL"
@@ -141,7 +141,7 @@ def test_to_qubits_mixed(error: ErrorModelInputBasic, probv: list[float], classi
     assert e.probv == pytest.approx(probv)
 
     q0, q1 = e.to_qubits()
-    assert e.is_decoherenced
+    assert e.is_decohered
 
     assert q0.state is q1.state
     print(q0.state)

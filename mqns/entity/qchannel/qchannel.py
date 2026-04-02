@@ -132,7 +132,7 @@ class QuantumChannel(BaseChannel[QNode]):
         if drop:
             # photon is lost -> flag this pair as decoherenced to inform receiver node
             if isinstance(qubit, Entanglement):
-                qubit.is_decoherenced = True
+                qubit.is_decohered = True
             return
 
         # operation on the qubit

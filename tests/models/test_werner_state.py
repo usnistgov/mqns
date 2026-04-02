@@ -38,7 +38,7 @@ def test_swap_success(monkeypatch: pytest.MonkeyPatch):
     assert ne.fidelity < min(e1.fidelity, e2.fidelity)  # swapping reduces fidelity
     assert ne.fidelity_time == now
     assert ne.decohere_time == micros(3000)
-    assert not ne.is_decoherenced
+    assert not ne.is_decohered
 
 
 def test_swap_fidelity():
@@ -80,8 +80,8 @@ def test_swap_failure(monkeypatch: pytest.MonkeyPatch):
     ne = Entanglement.swap(e1, e2, now=now, ps=0.5)
 
     assert ne is None
-    assert e1.is_decoherenced
-    assert e2.is_decoherenced
+    assert e1.is_decohered
+    assert e2.is_decohered
 
 
 def test_swap_decohered_inputs():
@@ -89,7 +89,7 @@ def test_swap_decohered_inputs():
     decohere = now + 1.0
     e1 = WernerStateEntanglement(fidelity=0.9, fidelity_time=now, decohere_time=decohere)
     e2 = WernerStateEntanglement(fidelity=0.8, fidelity_time=now, decohere_time=decohere)
-    e1.is_decoherenced = True
+    e1.is_decohered = True
 
     assert Entanglement.swap(e1, e2, now=now) is None
 
@@ -102,8 +102,8 @@ def test_purify_success(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(rng, "random", lambda: 0.1)
     assert e1.purify(e2, now=now) is True
 
-    assert not e1.is_decoherenced
-    assert e2.is_decoherenced
+    assert not e1.is_decohered
+    assert e2.is_decohered
     assert e1.fidelity > 0.85
 
 
@@ -115,26 +115,24 @@ def test_purify_failure(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(rng, "random", lambda: 0.99)
     assert e1.purify(e2, now=now) is False
 
-    assert e1.is_decoherenced
-    assert e2.is_decoherenced
-    assert e1.fidelity == 0
+    assert e1.is_decohered
+    assert e2.is_decohered
 
 
 def test_purify_decohered_input():
     now = Time(0, accuracy=1000000)
     e1 = WernerStateEntanglement(fidelity=0.85)
     e2 = WernerStateEntanglement(fidelity=0.85)
-    e1.is_decoherenced = True
+    e1.is_decohered = True
 
     assert e1.purify(e2, now=now) is False
-    assert e1.is_decoherenced
-    assert e1.fidelity == 0
+    assert e1.is_decohered
 
 
 def test_to_qubits_maximal():
     e = WernerStateEntanglement()
     q0, q1 = e.to_qubits()
-    assert e.is_decoherenced
+    assert e.is_decohered
 
     assert q0.state is q1.state
     print(q0.state)
@@ -152,7 +150,7 @@ def test_to_qubits_maximal():
 def test_to_qubits_mixed():
     e = WernerStateEntanglement(fidelity=0.9)
     q0, q1 = e.to_qubits()
-    assert e.is_decoherenced
+    assert e.is_decohered
 
     assert q0.state is q1.state
     print(q0.state)
@@ -162,9 +160,9 @@ def test_to_qubits_mixed():
 
 def test_to_qubits_decohered():
     e = WernerStateEntanglement()
-    e.is_decoherenced = True
+    e.is_decohered = True
     q0, q1 = e.to_qubits()
-    assert e.is_decoherenced
+    assert e.is_decohered
 
     assert q0.state is not q1.state  # disjoint state
     for q in q0, q1:

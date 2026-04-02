@@ -58,6 +58,34 @@ class EntanglementInitKwargs(TypedDict, total=False):
 class Entanglement(QuantumModel):
     """Base entanglement model."""
 
+    is_decohered: bool = False
+    """
+    Whether the entanglement has decohered.
+
+    This reflects the hidden physical state.
+    It must not be used to guide decision prior to measurement.
+    """
+
+    read: bool = False
+    """
+    Whether the entanglement has been read from the memory by either node.
+
+    Note: This is a legacy attribute, planned for removal.
+    """
+
+    key: str | None = None
+    """Reservation key used by LinkLayer."""
+
+    ch_index: int = -1
+    """
+    Index of elementary entanglement in a path, smaller indices are on the left side.
+    Negative means this is not an elementary entanglement.
+    """
+    orig_eprs: list[Self] | None = None
+    """Elementary entanglements that swapped into this entanglement."""
+    tmp_path_ids: frozenset[int] | None = None
+    """Possible path IDs, used by MuxSchemeStatistical and MuxSchemeDynamicEpr."""
+
     def __init__(self, **kwargs: Unpack[EntanglementInitKwargs]):
         """
         Constructor.
@@ -74,8 +102,6 @@ class Entanglement(QuantumModel):
         self.name = uuid.uuid4().hex if name is None else name
         """Descriptive name."""
 
-        self.is_decoherenced = False
-        """Whether the entanglement has decohered."""
         self.decohere_time = kwargs.get("decohere_time", Time.SENTINEL)
         """
         EPR decoherence time point, when it would be removed from memory.
@@ -94,11 +120,7 @@ class Entanglement(QuantumModel):
         * This may be updated to the current time at any time, while ``store_decays`` is applied to the EPR.
         * Some operations are unavailable if this is ``Time.SENTINEL``.
         """
-        self.read = False
-        """Whether the entanglement has been read from the memory by either node."""
 
-        self.key: str | None = None
-        """Reservation key used by LinkLayer."""
         self.src = kwargs.get("src")
         """Left node that holds one of the entangled qubits."""
         self.dst = kwargs.get("dst")
@@ -107,47 +129,33 @@ class Entanglement(QuantumModel):
         self.store_decays = (decay0 or time_decay_nop, decay1 or time_decay_nop)
         """Memory time-based decay functions at src and dst."""
 
-        self.ch_index = -1
-        """
-        Index of elementary entanglement in a path, smaller indices are on the left side.
-        Negative means this is not an elementary entanglement.
-        """
-        self.orig_eprs: list[Self] = []
-        """Elementary entanglements that swapped into this entanglement."""
-        self.tmp_path_ids: frozenset[int] | None = None
-        """Possible path IDs, used by MuxSchemeStatistical and MuxSchemeDynamicEpr."""
-
     @property
     @abstractmethod
     def fidelity(self) -> float:
-        pass
+        """
+        Calculate fidelity.
+
+        This value is valid only if ``is_decohered`` is False.
+        """
 
     @fidelity.setter
     @abstractmethod
     def fidelity(self, value: float):
         pass
 
-    def _mark_decoherenced(self) -> None:
-        """Mark the EPR as decoherenced."""
-        self.is_decoherenced = True
-
-    def apply_store_decays(self, now: Time, *, update_fidelity_time=True) -> None:
+    def apply_store_decays(self, now: Time) -> None:
         """
         Apply memory time-based decays for both qubits in this EPR.
 
         Args:
             now: Current time point.
-            update_fidelity_time: Whether to update ``fidelity_time`` to ``now``.
-                                  This is temporary during refactoring.
         """
         t = now - self.fidelity_time
         if self.read or t.time_slot == 0:
             return
         for se in self.store_decays:
-            if se is not None:
-                se(self, t)
-        if update_fidelity_time:
-            self.fidelity_time = now
+            se(self, t)
+        self.fidelity_time = now
         self.read = True
 
     @staticmethod
@@ -174,24 +182,26 @@ class Entanglement(QuantumModel):
         assert type(epr0) is type(epr1)
         assert epr0.dst == epr1.src  # it's okay for src and dst to be None
 
-        if epr0.is_decoherenced or epr1.is_decoherenced:
-            epr0._mark_decoherenced()
-            epr1._mark_decoherenced()
+        if epr0.is_decohered or epr1.is_decohered:
+            # XXX setting .is_decohered may leak information faster-than-light
+            epr0.is_decohered = True
+            epr1.is_decohered = True
             return None
 
         if ps < 1.0 and rng.random() >= ps:  # swap failed
-            epr0._mark_decoherenced()
-            epr1._mark_decoherenced()
+            # XXX setting .is_decohered may leak information faster-than-light
+            epr0.is_decohered = True
+            epr1.is_decohered = True
             return None
 
         orig_eprs: list[E] = []
         for epr in (epr0, epr1):
-            epr.apply_store_decays(now, update_fidelity_time=False)
+            epr.apply_store_decays(now)
 
             if epr.ch_index > -1:
                 orig_eprs.append(epr)
             else:
-                orig_eprs.extend(cast(list[E], epr.orig_eprs))
+                orig_eprs.extend(cast(list[E], epr.orig_eprs or []))
 
         orig_names = "-".join((e.name for e in orig_eprs))
         name = hashlib.sha256(orig_names.encode()).hexdigest()[:32]  # same length as `uuid.uuid4().hex`
@@ -236,17 +246,17 @@ class Entanglement(QuantumModel):
         assert type(self) is type(epr1)
         assert (self.src, self.dst) == (epr1.src, epr1.dst)  # it's okay for src and dst to be None
 
-        if self.is_decoherenced or epr1.is_decoherenced:
-            self._mark_decoherenced()
-            epr1._mark_decoherenced()
+        if self.is_decohered or epr1.is_decohered:
+            self.is_decohered = True
+            epr1.is_decohered = True
             return False
 
         _ = now
         ok = self._do_purify(epr1)
 
         if not ok:
-            self._mark_decoherenced()
-        epr1._mark_decoherenced()
+            self.is_decohered = True
+        epr1.is_decohered = True
 
         return ok
 
@@ -262,7 +272,7 @@ class Entanglement(QuantumModel):
         Returns:
             A tuple of two qubits.
         """
-        if self.is_decoherenced:
+        if self.is_decohered:
             q0 = Qubit(QUBIT_STATE_P, name="q0")
             q1 = Qubit(QUBIT_STATE_P, name="q1")
             return (q0, q1)
@@ -273,7 +283,7 @@ class Entanglement(QuantumModel):
         q0.state = qs
         q1.state = qs
 
-        self.is_decoherenced = True
+        self.is_decohered = True
         return (q0, q1)
 
     def _to_qubits_rho(self) -> QubitRho:
@@ -298,7 +308,7 @@ class Entanglement(QuantumModel):
         elif c1 == 1 and c0 == 1:
             Y(q2)
             U(q2, Operator(np.complex128(1j) * OPERATOR_PAULI_I.u, 1))
-        self.is_decoherenced = True
+        self.is_decohered = True
         return q2
 
     def __repr__(self) -> str:
@@ -311,8 +321,8 @@ class Entanglement(QuantumModel):
 def _describe(epr: Entanglement) -> Iterable[str]:
     yield f"EPR({epr.name}"
 
-    if epr.is_decoherenced:
-        yield "DECOHERENCED"
+    if epr.is_decohered:
+        yield "DECOHERED"
     else:
         yield from epr._describe_fidelity()
 
@@ -326,7 +336,7 @@ def _describe(epr: Entanglement) -> Iterable[str]:
         yield f"dst={epr.dst.name}"
         if epr.ch_index >= 0:
             yield f"ch_index={epr.ch_index}"
-        elif len(epr.orig_eprs) > 0:
+        elif epr.orig_eprs:
             orig_eprs = ",".join(e.name for e in epr.orig_eprs)
             yield f"orig_eprs=[{orig_eprs}]"
 

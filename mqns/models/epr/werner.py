@@ -75,11 +75,6 @@ class WernerStateEntanglement(Entanglement):
         assert 0.0 <= value <= 1.0
         self.w = _fidelity_to_w(value)
 
-    @override
-    def _mark_decoherenced(self) -> None:
-        self.is_decoherenced = True
-        self.w = _w_0
-
     @staticmethod
     @override
     def _make_swapped(
