@@ -23,11 +23,6 @@ linear_attempts example
 
 .. automodule:: linear_attempts
 
-scalability_randomtopo example
-------------------------------
-
-.. automodule:: scalability_randomtopo_plot
-
 swapping_policies_6_nodes example
 ---------------------------------
 

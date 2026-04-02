@@ -1,0 +1,27 @@
+# scalability_randomtopo experiment parameters
+
+# random seed for the first run
+seed_base = 200
+# number of runs
+runs = 5
+# simulation duration, seconds on simulated clock
+sim_duration = 3.0
+# how many pairs of qubits per quantum channel
+qchannel_capacity = 10
+# wall-clock time limit, seconds on wall clock
+time_limit = 10800.0
+# whether to compare with SeQUeNCe simulation
+enable_sequence = true
+
+# how many nodes and edges in the randomly generated networks
+network_sizes = [
+    { nodes =  16, edges =  20 },
+    { nodes =  32, edges =  40 },
+    { nodes =  64, edges =  80 },
+    { nodes = 128, edges = 160 },
+    { nodes = 256, edges = 320 },
+    { nodes = 512, edges = 640 },
+]
+
+# CPU cores for parallel execution
+cpuset_cpus = [2, 3, 4, 5, 6]

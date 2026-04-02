@@ -1,73 +1,45 @@
-"""
-The scalability_randomtopo experiment measures how simulation performance and outcomes scale as the network size increases.
-
-* A random topology is used with an average node degree of 2.5.
-* For each network size, the number of entanglement requests is chosen to be proportional to the number of nodes,
-  with 20% of nodes involved in src-dst requests (plus intermediate nodes).
-* Proactive forwarding is used with Statistical multiplexing and SWAP-ASAP swapping policy.
-* Each simulation reports execution time, along with other metrics for verification.
-
-Example scripts related to this experiment are:
-
-* ``scalability_randomtopo_run.py``: run the scenario with MQNS.
-* ``sequence/scalability_randomtopo_run.py``: run the scenario with SeQUeNCe simulator.
-* ``scalability_randomtopo_plot.py``: plot the execution time results.
-
-See ``scalability_randomtopo.sh`` for how to run these scripts.
-"""
-
 import json
 import os.path
+import sys
 
 import numpy as np
 import pandas as pd
-from tap import Tap
 
+from srt_detail.defs import ParamsArgs, RunResult
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from examples_common.plotting import plt, plt_save
-from examples_common.scalability_randomtopo import RunResult
 
 
-class Args(Tap):
+class Args(ParamsArgs):
     indir: str  # input directory
     sequence: bool = False  # compare with SeQUeNCe
-    runs: int = 1  # number of simulation runs per parameter set
-    qchannel_capacity: int = 10  # quantum channel capacity
-    time_limit: float = 10800.0  # wall-clock limit in seconds
     csv: str = ""  # save results as CSV file
     plt: str = ""  # save plot as image file
 
 
-network_sizes: list[tuple[int, int]] = [
-    (16, 20),
-    (32, 40),
-    (64, 80),
-    (128, 160),
-    (256, 320),
-    (512, 640),
-]
-
-SEED_BASE = 200
-
-
 def load_results(args: Args) -> pd.DataFrame:
-    """Load intermediate files saved by scalability_randomtopo_run.py."""
+    """Load intermediate files saved by srt_mqns.py and srt_sequence.py."""
+    seed_base = args.params["seed_base"]
+    runs = args.params["runs"]
+    network_sizes = args.params["network_sizes"]
+
     rows: list[dict] = []
     for enabled, simulator_name, suffix in (True, "MQNS", ".json"), (args.sequence, "SeQUeNCe", ".sequence.json"):
         if not enabled:
             continue
-        for nnodes, nedges in network_sizes:
-            values = np.zeros(args.runs, dtype=np.float64)
-            for j in range(args.runs):
-                seed = SEED_BASE + j
-                filename = f"{args.qchannel_capacity}-{nnodes}-{nedges}-{seed}{suffix}"
+        for ns in network_sizes:
+            values = np.zeros(runs, dtype=np.float64)
+            for j in range(runs):
+                filename = f"{args.qchannel_capacity}-{ns['nodes']}-{ns['edges']}-{seed_base + j}{suffix}"
                 with open(os.path.join(args.indir, filename)) as file:
                     data1 = RunResult(json.load(file))
                     values[j] = data1["time_spent"] / data1["sim_progress"]
             rows.append(
                 {
                     "simulator": simulator_name,
-                    "nnodes": nnodes,
-                    "nedges": nedges,
+                    "nodes": ns["nodes"],
+                    "edges": ns["edges"],
                     "mean": np.mean(values).item(),
                     "std": np.std(values).item(),
                     "values": values,
@@ -78,8 +50,10 @@ def load_results(args: Args) -> pd.DataFrame:
 
 
 def plot_results(args: Args, df: pd.DataFrame) -> None:
+    network_sizes = args.params["network_sizes"]
+
     x_ticks = list(range(len(network_sizes)))
-    x_ticklabels = [f"({n},{e})" for (n, e) in network_sizes]
+    x_ticklabels = [f"({ns['nodes']},{ns['edges']})" for ns in network_sizes]
 
     # Set plot style.
     plt.rcParams.update(
@@ -97,7 +71,7 @@ def plot_results(args: Args, df: pd.DataFrame) -> None:
     n_simulators = 0
     for simulator_name, data in df.groupby("simulator"):
         n_simulators += 1
-        data1 = data.sort_values("nnodes")
+        data1 = data.sort_values("nodes")
         assert len(data1) == len(network_sizes)
         ax.errorbar(x_ticks, data1["mean"], yerr=data1["std"], marker="o", linestyle="-", label=simulator_name)
 

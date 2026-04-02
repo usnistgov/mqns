@@ -36,5 +36,5 @@ lint.ignore = [
 ]
 lint.isort.known-local-folder = [
   "examples_common",
-  "sequence_detail",
+  "srt_detail",
 ]

@@ -13,6 +13,10 @@ This software is developed at the [Smart Connected Systems Division](https://www
 This project is part of an ongoing research effort to evaluate the quantum networking approaches presented in our survey:
 🔗 [Entanglement Routing in Quantum Networks: A Comprehensive Survey](https://ieeexplore.ieee.org/document/10882978).
 
+If you use MQNS in your research, please cite the MQNS paper:
+
+> A. Abane, J. Shi, V. S. Mai, A. Amlou and A. Battou, "[**Multiverse: A Simulator for Evaluating Entanglement Routing in Quantum Networks**](https://ieeexplore.ieee.org/abstract/document/11334170)," in IEEE Internet Computing, vol. 30, no. 1, pp. 7-15, Jan.-Feb. 2026, doi: [10.1109/MIC.2026.3651126](https://doi.org/10.1109/MIC.2026.3651126).
+
 ## Current Features
 
 ### Routing Model
@@ -20,7 +24,7 @@ This project is part of an ongoing research effort to evaluate the quantum netwo
 * Assumes **proactive centralized routing** defined in the survey taxonomy.
 * Global path computation at simulation start:
   * **Dijkstra's algorithm** for single-path routing.
-  * **Yen’s algorithm** for multipath routing.
+  * **Yen's algorithm** for multipath routing.
 * Paths can be installed/uninstalled at quantum routers; simulation focuses on the **forwarding phase**.
 
 ### Forwarding Phase Components
