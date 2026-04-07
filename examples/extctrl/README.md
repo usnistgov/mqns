@@ -59,7 +59,7 @@ bash run.sh --mode PCA -- -- --path1 asap --path2 disabled
 bash run.sh --mode PCA -- -- --sim_duration 60 --path1 r2l --path1_i 0 --path2 r2l --path2_i 30
 
 # reactive-centralized-sync mode
-bash run.sh --mode RCS
+bash run.sh --mode RCS -- --L 2 1 -- --sim_duration 10 --path1 l2r --path2 l2r
 ```
 
 During the scenario execution, you can view NATS messages on a separate console:

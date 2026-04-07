@@ -182,15 +182,18 @@ class LinkLayer(Application[QNode]):
 
         Upon entering EXTERNAL phase:
 
-        1. Clear existing memory qubits.
-        2. Run all active channels from reservation step.
+        1. Run all active channels from reservation step.
 
-        Upon entering INTERNAL phase: do nothing.
+        Upon exiting INTERNAL phase:
+
+        1. Clear existing memory qubits.
         """
-        if event.phase == TimingPhase.EXTERNAL:
-            self.memory.clear()
-            for (qchannel, path_id), (neighbor, _) in self.active_channels.items():
-                self.run_active_channel(qchannel, path_id, neighbor)
+        match event.action:
+            case TimingPhase.INTERNAL, False:
+                self.memory.clear()
+            case TimingPhase.EXTERNAL, True:
+                for (qchannel, path_id), (neighbor, _) in self.active_channels.items():
+                    self.run_active_channel(qchannel, path_id, neighbor)
 
     def RecvClassicPacketHandler(self, event: RecvClassicPacket) -> bool:
         msg = event.packet.get()

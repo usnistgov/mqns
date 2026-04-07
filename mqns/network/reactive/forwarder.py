@@ -17,7 +17,6 @@
 
 from typing import override
 
-from mqns.entity.memory import MemoryQubit
 from mqns.network.fw import Forwarder
 from mqns.network.network import TimingPhase, TimingPhaseEvent
 from mqns.network.protocol.event import ManageActiveChannels
@@ -69,13 +68,20 @@ class ReactiveForwarder(Forwarder):
 
         1. Send to controller link states corresponding to entangled qubits that arrived during EXTERNAL phase
            and wait for routing instructions.
+
+        Upon exiting INTERNAL phase:
+
+        1. Clear path assignments.
+           In reactive forwarding, path assignments are only useful for one slot.
         """
-        if event.phase == TimingPhase.ROUTING:
-            log.debug(f"{self.node}: there are {len(self.waiting_etg)} etg qubits to process")
-            log.debug(f"{self.node}: send link_state for {len(self.waiting_etg)} etg qubits")
-            self.send_link_state()
-        else:
-            super().handle_sync_phase(event)
+        super().handle_sync_phase(event)
+
+        match event.action:
+            case TimingPhase.ROUTING, True:
+                log.debug(f"{self.node}: send link_state for {len(self.waiting_etg)} etg qubits")
+                self.send_link_state()
+            case TimingPhase.INTERNAL, False:
+                self.memory.deallocate(*(qubit.addr for qubit, _ in self.memory.find(lambda q, _: q.path_id is not None)))
 
     @override
     def handle_path_change(self, **_):
@@ -103,17 +109,3 @@ class ReactiveForwarder(Forwarder):
             "ls": link_states,
         }
         self.send_ctrl(msg)
-
-    @override
-    def release_qubit(self, qubit: MemoryQubit, *, need_remove=False):
-        """
-        Release a qubit.
-
-        Args:
-            need_remove: whether to remove the data associated with the qubit.
-                         This should be set to True unless .read(remove=True) is already performed.
-        """
-        super().release_qubit(qubit, need_remove=need_remove)
-
-        # in Reactive: remove path allocation for next routing cycle
-        self.memory.deallocate(qubit.addr)
