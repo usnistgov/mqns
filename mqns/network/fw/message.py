@@ -1,7 +1,11 @@
+from collections.abc import Sequence
 from typing import Literal, NotRequired, TypedDict
 
-type SwapSequence = list[int]
-type MultiplexingVector = list[tuple[int, int]]
+type SwapSequence = Sequence[int]
+"""Swap sequence -- nonnegative integers to control swapping order."""
+
+type MultiplexingVector = Sequence[tuple[int, int] | str]
+"""Multiplexing vector -- guides memory allocation in buffer-space multiplexing scheme."""
 
 
 class PathInstructions(TypedDict):
@@ -49,7 +53,7 @@ class PathInstructions(TypedDict):
 
     m_v: NotRequired[MultiplexingVector]
     """
-    Multiplexing vector, used in buffer-space multiplexing scheme only.
+    Multiplexing vector -- guides memory allocation in buffer-space multiplexing scheme.
 
     This list shall have one element per qchannel, i.e. one less than ``route``.
     Each element is a pair of nonnegative integers, corresponding to left and right qchannels.
@@ -63,6 +67,9 @@ class PathInstructions(TypedDict):
     * S should allocate 4 qubits on S-R channel.
     * R should allocate 2 qubits on S-R channel and 3 qubits on R-D channel.
     * D should allocate all qubits assigned to R-D channel.
+
+    In reactive forwarding, each element can also be a qubit reservation key.
+    Only the qubit with that specific reservation key would be allocated.
     """
 
     purif: dict[str, int]

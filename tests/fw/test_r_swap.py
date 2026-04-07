@@ -2,6 +2,8 @@
 Test suite for ReactiveForwarder focused on swapping.
 """
 
+from collections import defaultdict
+
 from mqns.entity.cchannel import ClassicCommandDispatcherMixin, ClassicPacket, RecvClassicPacket, classic_cmd_handler
 from mqns.entity.timer import Timer
 from mqns.network.fw import RoutingController, RoutingPathStatic
@@ -87,8 +89,35 @@ def test_tree2_two():
     def do_routing():
         assert len(ctrl.ls_pkts) == 7
         assert len(ctrl.ls_entries) == 16
-        ctrl.install_path(RoutingPathStatic(["n4", "n2", "n1", "n3", "n6"], swap=[2, 0, 1, 0, 2], m_v=[(1, 1)] * 4))
-        ctrl.install_path(RoutingPathStatic(["n5", "n2", "n1", "n3", "n7"], swap=[2, 0, 1, 0, 2], m_v=[(1, 1)] * 4))
+
+        qubits_by_channel = defaultdict[str, list[str]](lambda: [])
+        for entry in ctrl.ls_entries:
+            qubits_by_channel[f"{entry['node']}{entry['neighbor']}"].append(entry["qubit"])
+
+        ctrl.install_path(
+            RoutingPathStatic(
+                ["n4", "n2", "n1", "n3", "n6"],
+                swap=[2, 0, 1, 0, 2],
+                m_v=[
+                    qubits_by_channel["n4n2"].pop(),
+                    qubits_by_channel["n2n1"].pop(),
+                    qubits_by_channel["n1n3"].pop(),
+                    qubits_by_channel["n3n6"].pop(),
+                ],
+            )
+        )
+        ctrl.install_path(
+            RoutingPathStatic(
+                ["n5", "n2", "n1", "n3", "n7"],
+                swap=[2, 0, 1, 0, 2],
+                m_v=[
+                    qubits_by_channel["n5n2"].pop(),
+                    qubits_by_channel["n2n1"].pop(),
+                    qubits_by_channel["n1n3"].pop(),
+                    qubits_by_channel["n3n7"].pop(),
+                ],
+            )
+        )
 
     timer = Timer("do_routing", 0.0065, trigger_func=do_routing)
     timer.install(simulator)

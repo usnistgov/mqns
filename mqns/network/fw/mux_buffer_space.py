@@ -81,16 +81,24 @@ class MuxSchemeBufferSpace(MuxSchemeFibBase):
     ) -> None:
         _ = neighbor
         assert "m_v" in instructions
-        m_v = instructions["m_v"]
-        m_v_offset, ch_side = (-1, 1) if direction == PathDirection.L else (0, 0)
+        mv = instructions["m_v"]
+        mv_offset, ch_side = (-1, 1) if direction == PathDirection.L else (0, 0)
+        mv_element = mv[fib_entry.own_idx + mv_offset]
 
-        n_qubits = m_v[fib_entry.own_idx + m_v_offset][ch_side]
-        addrs = self.memory.allocate(
-            qchannel,
-            fib_entry.path_id,
-            direction,
-            n="all" if n_qubits == 0 else n_qubits,
-        )
+        if isinstance(mv_element, str):
+            # allocate a specific memory qubit identified with reservation key (only used in reactive forwarding)
+            qubit, _ = next(self.memory.find(lambda q, _: q.active == mv_element))
+            qubit.path_id, qubit.path_direction = fib_entry.path_id, direction
+            addrs = [qubit.addr]
+        else:
+            # allocate memory qubit(s) assigned to the channel (typically used in proactive forwarding)
+            n_qubits = mv_element[ch_side]
+            addrs = self.memory.allocate(
+                qchannel,
+                fib_entry.path_id,
+                direction,
+                n="all" if n_qubits == 0 else n_qubits,
+            )
         log.debug(f"{self.node}: allocated {direction} qubits: {addrs}")
 
     @override

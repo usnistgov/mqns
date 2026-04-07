@@ -2,9 +2,14 @@ use anyhow::Result;
 use async_nats::{self, jetstream};
 use bpaf::Bpaf;
 use mqns_example_extctrl::{
-    LinkStateEntry, LinkStateMsg, PathInstructions, Southbound, sec_to_time_slot,
+    LinkStateEntry, LinkStateMsg, MultiplexingVectorElem, PathInstructions, Southbound,
+    sec_to_time_slot,
 };
-use std::{collections::HashMap, env, time::Duration};
+use std::{
+    collections::{HashMap, HashSet},
+    env,
+    time::Duration,
+};
 use tokio::sync::mpsc;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Bpaf)]
@@ -159,9 +164,19 @@ fn make_path(req_id: u32, nodes: &str, opt: PathOpt) -> PathInstructions {
         route,
         swap: opt.to_swap(),
         swap_cutoff: vec![-1; len],
-        m_v: Some(vec![vec![1, 1]; len - 1]),
+        m_v: Some(vec![MultiplexingVectorElem::Count(1, 1); len - 1]),
         purif: HashMap::new(),
     }
+}
+
+fn replace_path_mv(mut path: PathInstructions, qubits: Vec<String>) -> PathInstructions {
+    path.m_v = Some(
+        qubits
+            .iter()
+            .map(|key| MultiplexingVectorElem::Key(key.clone()))
+            .collect(),
+    );
+    path
 }
 
 async fn tx_loop_pca(args: &Args, sb: &Southbound) -> Result<()> {
@@ -199,7 +214,7 @@ async fn rx_loop_rcs(sb: &Southbound, link_state_ch: mpsc::Sender<LinkStateMsg>)
 
 #[derive(Debug, Clone)]
 struct TopoLinkState {
-    etgs: HashMap<String, i32>,
+    etgs: HashMap<String, HashSet<String>>,
 }
 
 impl TopoLinkState {
@@ -207,40 +222,45 @@ impl TopoLinkState {
         Self {
             etgs: ["S1-R1", "S2-R1", "R1-R2", "R2-D1", "R2-D2"]
                 .into_iter()
-                .map(|k| (k.to_string(), 0))
+                .map(|link| (link.to_string(), HashSet::new()))
                 .collect(),
         }
     }
 
     fn clear(&mut self) {
-        for value in self.etgs.values_mut() {
-            *value = 0;
+        for qubits in self.etgs.values_mut() {
+            qubits.clear();
         }
     }
 
     fn add(&mut self, entry: &LinkStateEntry) {
-        let key = format!("{}-{}", entry.node, entry.neighbor);
-        if let Some(count) = self.etgs.get_mut(&key) {
-            *count += 1
+        let link = format!("{}-{}", entry.node, entry.neighbor);
+        if let Some(qubits) = self.etgs.get_mut(&link) {
+            qubits.insert(entry.qubit.clone());
         }
     }
 
-    fn try_consume(&mut self, route: &Vec<String>) -> bool {
+    fn try_consume(&mut self, route: &Vec<String>) -> Option<Vec<String>> {
+        let mut path = Vec::with_capacity(route.len() - 1);
+
         for pair in route.windows(2) {
-            let key = format!("{}-{}", pair[0], pair[1]);
-            match self.etgs.get(&key) {
-                Some(&count) if count > 0 => continue,
-                _ => return false,
+            let link = format!("{}-{}", pair[0], pair[1]);
+            if let Some(qubits) = self.etgs.get(&link) {
+                if let Some(qubit) = qubits.iter().next() {
+                    path.push(qubit.clone());
+                    continue;
+                }
             }
+            return None;
         }
 
-        for pair in route.windows(2) {
-            let key = format!("{}-{}", pair[0], pair[1]);
-            let value = self.etgs.get_mut(&key).unwrap();
-            *value -= 1;
+        for (i, pair) in route.windows(2).enumerate() {
+            let link = format!("{}-{}", pair[0], pair[1]);
+            let qubits = self.etgs.get_mut(&link).unwrap();
+            qubits.remove(&path[i]);
         }
 
-        true
+        Some(path)
     }
 }
 
@@ -279,16 +299,18 @@ async fn tx_loop_rcs(
 
         if args.path1 != PathOpt::Disabled && args.path1_i <= sec {
             let path = make_path(10, "S1-R1-R2-D1", args.path1);
-            if tls.try_consume(&path.route) {
-                println!("    Installing path1");
+            if let Some(consumed) = tls.try_consume(&path.route) {
+                let path = replace_path_mv(path, consumed);
+                println!("    Installing path1: {:?}", path.m_v);
                 sb.install_path(t, 10, &path).await?;
             }
         }
 
         if args.path2 != PathOpt::Disabled && args.path2_i <= sec {
             let path = make_path(20, "S2-R1-R2-D2", args.path2);
-            if tls.try_consume(&path.route) {
-                println!("    Installing path2");
+            if let Some(consumed) = tls.try_consume(&path.route) {
+                let path = replace_path_mv(path, consumed);
+                println!("    Installing path2: {:?}", path.m_v);
                 sb.install_path(t, 20, &path).await?;
             }
         }
