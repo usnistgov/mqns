@@ -39,8 +39,16 @@ pub struct PathInstructions {
     pub route: Vec<String>,
     pub swap: Vec<i32>,
     pub swap_cutoff: Vec<i32>,
-    pub m_v: Option<Vec<Vec<i32>>>,
+    pub m_v: Option<Vec<MultiplexingVectorElem>>,
     pub purif: HashMap<String, String>,
+}
+
+/// Multiplexing Vector element in PathInstructions.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum MultiplexingVectorElem {
+    Count(i32, i32),
+    Key(String),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -55,7 +63,7 @@ pub struct LinkStateMsg {
 pub struct LinkStateEntry {
     pub node: String,
     pub neighbor: String,
-    pub qubit: i32,
+    pub qubit: String,
 }
 
 /// Southbound interface to interact with simulated quantum nodes.

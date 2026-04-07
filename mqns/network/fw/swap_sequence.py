@@ -17,11 +17,11 @@ Swap policies.
 type SwapSequenceInput = SwapSequence | SwapPolicy
 
 
-def _l2r(n: int) -> SwapSequence:
+def _l2r(n: int) -> list[int]:
     return [n] + list(range(n + 1))
 
 
-def _baln(n: int) -> SwapSequence:
+def _baln(n: int) -> list[int]:
     if n == 0:
         return [0, 0]
     so = [0] * (n + 1)

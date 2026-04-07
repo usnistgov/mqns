@@ -1,3 +1,4 @@
+import uuid
 from typing import Literal, TypedDict, Unpack
 
 from mqns.entity.cchannel import ClassicChannelInitKwargs
@@ -233,8 +234,10 @@ def provide_entanglements(
         )
         epr.fidelity = fidelity
 
+        key = f"provide_entanglements.key:{uuid.uuid4().hex}"
         for node, neighbor, d_notify in (src, dst, d_notify_a), (dst, src, d_notify_b):
             q, _ = next(node.memory.find(lambda _, v: v is None, qchannel=ch))
             node.memory.write(q.addr, epr)
+            q.active = key
             q._state = QubitState.ENTANGLED0
             simulator.add_event(QubitEntangledEvent(node.node, neighbor.node, q, t=t_creation + d_notify))

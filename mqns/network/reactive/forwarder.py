@@ -91,7 +91,8 @@ class ReactiveForwarder(Forwarder):
         """
         link_states: list[LinkStateEntry] = []
         for event in self.waiting_etg:
-            link_states.append({"node": event.node.name, "neighbor": event.neighbor.name, "qubit": event.qubit.addr})
+            assert event.qubit.active is not None
+            link_states.append({"node": event.node.name, "neighbor": event.neighbor.name, "qubit": event.qubit.active})
 
         if len(link_states) == 0:
             log.debug(f"{self.node}: no link_state to send")
