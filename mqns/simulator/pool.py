@@ -2,6 +2,7 @@ import heapq
 import threading
 import time
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from typing import override
 
 from mqns.simulator.event import Event
@@ -40,6 +41,12 @@ class EventPool(ABC):
         Simulation is paused at this time slot until it's advanced.
         """
         _ = t
+
+    def set_gate_reached_handler(self, h: Callable[[int], None]) -> None:
+        """
+        Set a callback function when the gate time has been reached.
+        """
+        _ = h
 
     @abstractmethod
     def insert(self, event: Event) -> None:
@@ -91,10 +98,15 @@ class SynchronizedEventPool(EventPool):
     Synchronized event pool (thread safe).
     """
 
+    @staticmethod
+    def _gate_handler(t: int, /):
+        _ = t
+
     def __init__(self, ts: int, te: int | None):
         super().__init__(ts, te)
         self._cv = threading.Condition()
         self._gate = ts
+        self._reached = -1
 
     @override
     def stop(self) -> None:
@@ -108,6 +120,10 @@ class SynchronizedEventPool(EventPool):
         with self._cv:
             self._gate = t
             self._cv.notify_all()  # wake up .pop() if it's waiting at the gate
+
+    @override
+    def set_gate_reached_handler(self, h: Callable[[int], None]) -> None:
+        self._gate_handler = h
 
     @override
     def insert(self, event: Event) -> None:
@@ -132,9 +148,14 @@ class SynchronizedEventPool(EventPool):
                     if next_t <= self._gate:  # event is before gate and can be executed
                         event = heapq.heappop(self._list)
                         self.tc = next_t
+                        self._reached = -1
                         return event
 
                 # no event or event is after gate
+                if (reached := max(self.tc, self._gate)) > self._reached:
+                    # report reaching the gate, but don't send duplicate reports unless new events were executed
+                    self._reached = reached
+                    self._gate_handler(reached)
                 self._cv.wait(timeout=1)
 
             # release conditional variable so that the thread can be interrupted

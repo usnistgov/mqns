@@ -1,10 +1,14 @@
 use anyhow::Result;
-use async_nats::{self, jetstream};
+use async_nats;
 use bpaf::Bpaf;
 use mqns_example_extctrl::{
-    LinkStateEntry, LinkStateMsg, PathInstructions, Southbound, sec_to_time_slot,MultiplexingVectorElem
+    LinkStateEntry, LinkStateMsg, MultiplexingVectorElem, PathInstructions, Southbound,
+    sec_to_time_slot,
 };
-use std::{collections::{HashMap,HashSet}, env, time::Duration};
+use std::{
+    collections::{HashMap, HashSet},
+    env,
+};
 use tokio::sync::mpsc;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Bpaf)]
@@ -130,9 +134,7 @@ async fn main() -> Result<()> {
     let args = args().run();
 
     let nc = async_nats::connect(nats_url).await?;
-    let js = jetstream::new(nc);
-
-    let sb = Southbound::new(js, &args.nats_prefix);
+    let sb = Southbound::new(nc, &args.nats_prefix).await?;
 
     match args.mode {
         Mode::PCA => tx_loop_pca(&args, &sb).await,
@@ -165,7 +167,12 @@ fn make_path(req_id: u32, nodes: &str, opt: PathOpt) -> PathInstructions {
 }
 
 fn replace_path_mv(mut path: PathInstructions, qubits: Vec<String>) -> PathInstructions {
-    path.m_v = Some(qubits.iter().map(|key| MultiplexingVectorElem::Key(key.clone())).collect());
+    path.m_v = Some(
+        qubits
+            .iter()
+            .map(|key| MultiplexingVectorElem::Key(key.clone()))
+            .collect(),
+    );
     path
 }
 
@@ -188,10 +195,9 @@ async fn tx_loop_pca(args: &Args, sb: &Southbound) -> Result<()> {
 
         if args.sim_duration == sec {
             sb.stop(t).await?;
+        } else {
+            sb.update_gate(t).await?;
         }
-
-        sb.update_gate(t).await?;
-        tokio::time::sleep(Duration::from_millis(100)).await;
     }
 
     Ok(())
@@ -231,7 +237,7 @@ impl TopoLinkState {
     }
 
     fn try_consume(&mut self, route: &Vec<String>) -> Option<Vec<String>> {
-        let mut path = Vec::with_capacity(route.len()-1);
+        let mut path = Vec::with_capacity(route.len() - 1);
 
         for pair in route.windows(2) {
             let link = format!("{}-{}", pair[0], pair[1]);
@@ -274,7 +280,6 @@ async fn tx_loop_rcs(
 
         println!("Simulation Time: {} / {}", t, t_stop);
         sb.update_gate(t).await?;
-        tokio::time::sleep(Duration::from_millis(1000)).await;
 
         tls.clear();
         while let Ok(msg) = link_state_ch.try_recv() {
@@ -298,7 +303,7 @@ async fn tx_loop_rcs(
 
         if args.path2 != PathOpt::Disabled && args.path2_i <= sec {
             let path = make_path(20, "S2-R1-R2-D2", args.path2);
-            if let Some(consumed) =tls.try_consume(&path.route) {
+            if let Some(consumed) = tls.try_consume(&path.route) {
                 let path = replace_path_mv(path, consumed);
                 println!("    Installing path2: {:?}", path.m_v);
                 sb.install_path(t, 20, &path).await?;
@@ -309,7 +314,6 @@ async fn tx_loop_rcs(
     }
 
     sb.stop(t_stop).await?;
-    sb.update_gate(t_stop).await?;
 
     Ok(())
 }
