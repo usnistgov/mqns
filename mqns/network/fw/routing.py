@@ -55,7 +55,7 @@ class RoutingPathInitArgs(TypedDict, total=False):
 
 class RoutingPath(ABC):
     """
-    Compute routing path(s) for installing through ProactiveRoutingController.
+    Compute routing path(s) for installing through RoutingController.
     """
 
     def __init__(self, src: str, dst: str, **kwargs: Unpack[RoutingPathInitArgs]):
@@ -138,7 +138,7 @@ class RoutingPath(ABC):
 
 class RoutingPathStatic(RoutingPath):
     """
-    Define a static routing path for installing through ProactiveRoutingController.
+    Define a static routing path for installing through RoutingController.
     """
 
     def __init__(
@@ -160,7 +160,7 @@ class RoutingPathStatic(RoutingPath):
 
 class RoutingPathSingle(RoutingPath):
     """
-    Compute a single shortest path for installing through ProactiveRoutingController.
+    Compute a single shortest path for installing through RoutingController.
     """
 
     def __init__(
@@ -183,7 +183,7 @@ class RoutingPathSingle(RoutingPath):
 
 class RoutingPathMulti(RoutingPath):
     """
-    Compute multiple shortest paths for installing through ProactiveRoutingController.
+    Compute multiple shortest paths for installing through RoutingController.
 
     This should be used with YenRouteAlgorithm in the QuantumNetwork.
     The number of paths for each request is determined by the routing algorithm.

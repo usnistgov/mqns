@@ -1,4 +1,5 @@
-from collections.abc import Iterable, Mapping, Sequence
+import functools
+from collections.abc import Mapping, Sequence
 from typing import Literal, Self, TypedDict, Unpack, cast, overload
 
 from tap import Tap
@@ -24,7 +25,7 @@ from mqns.network.fw import (
     RoutingPathInitArgs,
     RoutingPathMulti,
     RoutingPathSingle,
-    SwapSequenceInput,
+    SwapPolicy,
 )
 from mqns.network.network import QuantumNetwork, TimingMode, TimingModeAsync, TimingModeSync
 from mqns.network.proactive import ProactiveForwarder, ProactiveRoutingController
@@ -137,7 +138,7 @@ class TopoCommonArgs(TypedDict, total=False):
 
 
 class AppsCommonArgs(TypedDict, total=False):
-    timing: TimingMode | Iterable[float] | None
+    timing: TimingMode | Sequence[float] | None
     """
     Network timing mode, defaults to ASYNC.
     If specified as three floats, construct ``TimingModeSync`` with these durations.
@@ -203,6 +204,9 @@ class NetworkBuilder:
         self.qnode_apps: list[Application] = []
         self.qchannels: list[TopoQChannel] = []
         self.controller_apps: list[Application] = []
+
+        self.qubit_allocation = QubitAllocationType.DISABLED
+        self.requests: list[tuple[str, str]] = []
 
     def _parse_topo_args(self, d: TopoCommonArgs) -> None:
         self.t_cohere = d.get("t_cohere", 0.02)
@@ -436,8 +440,6 @@ class NetworkBuilder:
             self.qubit_allocation = QubitAllocationType.FOLLOW_QCHANNEL
         elif isinstance(self.route, YenRouteAlgorithm):
             raise TypeError("YenRouteAlgorithm is only compatible with MuxSchemeBufferSpace")
-        else:
-            self.qubit_allocation = QubitAllocationType.DISABLED
 
         self._add_link_layer()
         self.qnode_apps.append(
@@ -459,20 +461,17 @@ class NetworkBuilder:
         self,
         *,
         mux: MuxScheme | None = None,
-        swap: SwapSequenceInput = "asap",
+        swap: SwapPolicy = "asap",
         **kwargs: Unpack[AppsCommonArgs],
     ) -> Self:
         """
         Choose reactive forwarding with centralized control.
 
-        Note:
-            This feature is in early stage.
-            Currently it only works with S-R-D topology and has one route.
-            ``.path()`` method cannot be used.
-
         Args:
             mux: Multiplexing scheme, default is buffer-space.
-            swap: SwapSequence for S-R-D route.
+            swap: SwapPolicy for routes.
+
+        When using ``.path()`` method, only src-dst is considered, other parameters are ignored.
         """
         self._assert_can_add_apps()
         self._parse_apps_args(kwargs)
@@ -515,9 +514,19 @@ class NetworkBuilder:
         self.controller_apps.append(ClassicBridge(nats_prefix=nats_prefix))
         return self
 
-    def _assert_can_add_paths(self) -> None:
-        if len(self.controller_apps) == 0:
-            raise TypeError("must install applications first")
+    @functools.singledispatchmethod
+    def _add_path(self, ctrl: Application, rp: RoutingPath) -> None:
+        _ = ctrl, rp
+        raise NotImplementedError()
+
+    @_add_path.register
+    def _(self, ctrl: ProactiveRoutingController, rp: RoutingPath) -> None:
+        ctrl.paths.append(rp)
+
+    @_add_path.register
+    def _(self, ctrl: ReactiveRoutingController, rp: RoutingPath) -> None:
+        _ = ctrl
+        self.requests.append((rp.src, rp.dst))
 
     @overload
     def path(self, rp: RoutingPath, /) -> Self: ...
@@ -534,18 +543,17 @@ class NetworkBuilder:
         """
         Add a routing path.
         """
-        self._assert_can_add_paths()
-        ctrl = self.controller_apps[0]
-        if not isinstance(ctrl, ProactiveRoutingController):
-            raise NotImplementedError
+        if len(self.controller_apps) == 0:
+            raise TypeError("must install applications first")
 
         if isinstance(arg1, RoutingPath):
-            path = arg1
+            rp = arg1
         elif isinstance(self.route, YenRouteAlgorithm):
-            path = RoutingPathMulti(*_split_node_pair(arg1), **kwargs)
+            rp = RoutingPathMulti(*_split_node_pair(arg1), **kwargs)
         else:
-            path = RoutingPathSingle(*_split_node_pair(arg1), **kwargs, qubit_allocation=self.qubit_allocation)
-        ctrl.paths.append(path)
+            rp = RoutingPathSingle(*_split_node_pair(arg1), **kwargs, qubit_allocation=self.qubit_allocation)
+
+        self._add_path(self.controller_apps[0], rp)
         return self
 
     def make_topo(self) -> Topology:
@@ -590,6 +598,8 @@ class NetworkBuilder:
             timing=self.timing,
             epr_type=self.epr_type,
         )
+        for src, dst in self.requests:
+            net.add_request(net.get_node(src), net.get_node(dst))
 
         if connect_controller and topo.controller:
             topo.connect_controller(net.nodes, delay=CTRL_DELAY)

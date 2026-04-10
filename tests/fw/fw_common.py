@@ -80,7 +80,7 @@ def _build_network_finish(
             case "P":
                 ctrl = ProactiveRoutingController()
             case "R":
-                ctrl = ReactiveRoutingController(route=["n1", "n2", "n3"], swap=[1, 0, 1])
+                ctrl = ReactiveRoutingController()
     topo.controller = Controller("ctrl", apps=[ctrl])
 
     net = QuantumNetwork(
