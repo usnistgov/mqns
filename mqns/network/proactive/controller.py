@@ -24,6 +24,9 @@ class ProactiveRoutingController(RoutingController):
     """
     Centralized control plane for proactive routing.
     Works with ``ProactiveForwarder`` on quantum nodes.
+
+    This controller does not pick up requests from ``QuantumNetwork.requests`` list.
+    If desired, scenario script should manually pass requests to ``ProactiveRoutingController.install_path()``.
     """
 
     def __init__(

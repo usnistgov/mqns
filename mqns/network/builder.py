@@ -472,14 +472,11 @@ class NetworkBuilder:
         """
         Choose reactive forwarding with centralized control.
 
-        Note:
-            This feature is in early stage.
-            Currently it only works with S-R-D topology and has one route.
-            ``.request()`` method cannot be used.
-
         Args:
             mux: Multiplexing scheme, default is buffer-space.
             swap: SwapPolicy for routes.
+
+        ``.request()`` method only accepts src-dst nodes, but does not support ``RoutingPath``.
         """
         self._assert_can_add_apps()
         self._parse_apps_args(kwargs)
@@ -537,6 +534,13 @@ class NetworkBuilder:
     @_add_request.register
     def _(self, ctrl: ProactiveRoutingController, arg1: RoutingPath | NodePair, d: RoutingPathInitArgs) -> None:
         ctrl.paths.append(self._to_path(arg1, d))
+
+    @_add_request.register
+    def _(self, ctrl: ReactiveRoutingController, arg1: RoutingPath | NodePair, d: RoutingPathInitArgs) -> None:
+        _ = d
+        if isinstance(arg1, RoutingPath):
+            raise TypeError(f"{type(ctrl)} does not support .request(RoutingPath)")
+        self.requests.append(_split_node_pair(arg1))
 
     @overload
     def request(self, src_dst: NodePair, /, **kwargs: Unpack[RoutingPathInitArgs]) -> Self:
@@ -603,6 +607,8 @@ class NetworkBuilder:
             timing=self.timing,
             epr_type=self.epr_type,
         )
+        for src, dst in self.requests:
+            net.add_request(net.get_node(src), net.get_node(dst))
 
         if connect_controller and topo.controller:
             topo.connect_controller(net.nodes, delay=CTRL_DELAY)

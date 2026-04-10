@@ -76,11 +76,12 @@ def run_simulation(seed: int, args: Args, t_cohere: float) -> Stats:
     match args.mode:
         case "PCA":
             total_duration = args.sim_duration + CTRL_DELAY
-            b.proactive_centralized().request("S-D")
+            b.proactive_centralized()
         case "RCS":
             total_duration = args.sim_duration
             b.reactive_centralized(timing=args.sync_timing)
 
+    b.request("S-D")
     net = b.make_network()
     del b
 
