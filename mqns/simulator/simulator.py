@@ -1,7 +1,7 @@
 import math
 import os
 import time
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from pstats import SortKey
 from typing import TYPE_CHECKING, Any, Literal, Protocol, overload
 
@@ -217,3 +217,9 @@ class Simulator:
         assert gate.accuracy == self.accuracy
         log.debug(f"Simulator.update_gate({gate.time_slot})")
         self._pool.update_gate(gate.time_slot)
+
+    def set_gate_reached_handler(self, h: Callable[[int], None]) -> None:
+        """
+        Set a callback function when the gate time has been reached.
+        """
+        self._pool.set_gate_reached_handler(h)

@@ -24,7 +24,7 @@ for A in "$@"; do
     continue
   fi
   if [[ "$A" == '-h' || "$A" == '--help' ]]; then
-    info 'Usage: bash demo.sh [COMMON-ARGS] -- [PY-ARGS] -- [RS-ARGS]'
+    info 'Usage: bash run.sh [COMMON-ARGS] -- [PY-ARGS] -- [RS-ARGS]'
     info '  COMMON-ARGS: passed to both Python and Rust'
     info '  PY-ARGS: passed to Python script'
     info '  RS-ARGS: passed to Rust crate'
@@ -61,7 +61,8 @@ nats stream rm $STREAM -f || true
 
 info Defining NATS stream
 nats stream add $STREAM \
-  --subjects "$NATS_PREFIX.*.*" \
+  --subjects "$NATS_PREFIX.I.*.*" \
+  --subjects "$NATS_PREFIX.O.*.*" \
   --storage memory \
   --retention limits \
   --discard old \

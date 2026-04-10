@@ -142,10 +142,8 @@ class CustomTopology(Topology):
             link = QuantumChannel(name=f"q_{node1},{node2}", **ch["parameters"])
             qcl.append(link)
 
-            # Attach quantum channel to nodes
-            for qn in qnl:
-                if qn.name in (node1, node2):
-                    qn.add_qchannel(link)
+            cast(QNode, self._node_by_name[node1]).add_qchannel(link)
+            cast(QNode, self._node_by_name[node2]).add_qchannel(link)
 
             link.assign_memory_qubits(
                 capacity={
@@ -165,7 +163,7 @@ class CustomTopology(Topology):
     def add_cchannels(self, *, classic_topo: ClassicTopology = ClassicTopology.Empty, **_):
         if classic_topo == ClassicTopology.Follow:
             assert "cchannels" not in self.topo
-            return self._add_cchannels_from((_qchannel_to_cchannel(qc) for qc in self.topo["qchannels"]))
+            return self._add_cchannels_from(_qchannel_to_cchannel(qc) for qc in self.topo["qchannels"])
         else:
             assert classic_topo == ClassicTopology.Empty
             assert "cchannels" in self.topo

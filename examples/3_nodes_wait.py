@@ -46,7 +46,6 @@ class Args(Tap):
 
     @override
     def configure(self) -> None:
-        super().configure()
         tap_configure(self)
 
 

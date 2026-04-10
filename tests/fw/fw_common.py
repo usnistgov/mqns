@@ -1,3 +1,4 @@
+import uuid
 from typing import Literal, TypedDict, Unpack
 
 from mqns.entity.cchannel import ClassicChannelInitKwargs
@@ -5,7 +6,7 @@ from mqns.entity.memory import QubitState
 from mqns.entity.node import Application, Controller, QNode
 from mqns.entity.qchannel import LinkArchAlways, LinkArchDimBk, QuantumChannelInitKwargs
 from mqns.models.epr import Entanglement, WernerStateEntanglement
-from mqns.network.fw import Forwarder, MuxScheme, RoutingPath
+from mqns.network.fw import Forwarder, MuxScheme, RoutingController, RoutingPath
 from mqns.network.network import QuantumNetwork, TimingMode, TimingModeAsync
 from mqns.network.proactive import ProactiveForwarder, ProactiveRoutingController
 from mqns.network.protocol.event import QubitEntangledEvent
@@ -32,6 +33,7 @@ class BuildNetworkArgs(TypedDict, total=False):
     qchannel_capacity: int  # quantum channel capacity, defaults to 1
     qchannel_args: QuantumChannelInitKwargs
     cchannel_args: ClassicChannelInitKwargs
+    ctrl: RoutingController  # replacing controller application
     ps: float  # probability of successful swap, defaults to 0.5
     mux: MuxScheme  # multiplexing scheme, defaults to buffer-space
     end_time: float  # simulation end time, defaults to 10.0 seconds
@@ -73,11 +75,12 @@ def _build_network_finish(
 ):
     qchannel_capacity = d.get("qchannel_capacity", 1)
 
-    match d.get("mode", "P"):
-        case "P":
-            ctrl = ProactiveRoutingController()
-        case "R":
-            ctrl = ReactiveRoutingController(route=["n1", "n2", "n3"], swap=[1, 0, 1])
+    if (ctrl := d.get("ctrl")) is None:
+        match d.get("mode", "P"):
+            case "P":
+                ctrl = ProactiveRoutingController()
+            case "R":
+                ctrl = ReactiveRoutingController()
     topo.controller = Controller("ctrl", apps=[ctrl])
 
     net = QuantumNetwork(
@@ -231,8 +234,10 @@ def provide_entanglements(
         )
         epr.fidelity = fidelity
 
+        key = f"provide_entanglements.key:{uuid.uuid4().hex}"
         for node, neighbor, d_notify in (src, dst, d_notify_a), (dst, src, d_notify_b):
             q, _ = next(node.memory.find(lambda _, v: v is None, qchannel=ch))
             node.memory.write(q.addr, epr)
+            q.active = key
             q._state = QubitState.ENTANGLED0
             simulator.add_event(QubitEntangledEvent(node.node, neighbor.node, q, t=t_creation + d_notify))

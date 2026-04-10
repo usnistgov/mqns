@@ -3,7 +3,7 @@ import os
 import queue
 import threading
 from dataclasses import dataclass
-from typing import override
+from typing import Protocol, override
 
 from mqns.entity.cchannel import ClassicPacket, RecvClassicPacket
 from mqns.entity.node import Application, Node
@@ -16,13 +16,29 @@ except ImportError:
     nats = None
 
 
+class TransmittableItem(Protocol):
+    def encode(self) -> tuple[str, bytes, dict[str, str]]: ...
+
+
 @dataclass
-class ClassicBridgePacket:
+class GateReached(TransmittableItem):
+    t: int
+
+    def encode(self) -> tuple[str, bytes, dict[str, str]]:
+        return "_.gate", b"", {"t": f"{self.t}"}
+
+
+@dataclass
+class ClassicBridgePacket(TransmittableItem):
     t: int
     src: str
     dst: str
     payload: bytes
     is_json: bool
+
+    def encode(self) -> tuple[str, bytes, dict[str, str]]:
+        headers = {"t": f"{self.t}", "fmt": "json" if self.is_json else "bytes"}
+        return f"{self.dst}.{self.src}", self.payload, headers
 
 
 class ClassicConnector:
@@ -40,14 +56,14 @@ class ClassicConnector:
 
     When a *split node* receives a classic packet, it is published as:
 
-    * Subject: ``<PREFIX>.<dst>.<src>``
+    * Subject: ``<PREFIX>.O.<dst>.<src>``
     * Payload: the classic packet payload
     * Header ``t``: packet receipt time in simulation time slots
     * Header ``fmt``: packet format, either ``"json"`` or ``"bytes"``
 
     If the external program wants to transmit a packet out of a node *src*, it should publish:
 
-    * Subject: ``<PREFIX>.<dst>.<src>``
+    * Subject: ``<PREFIX>.I.<dst>.<src>``
     * Payload: the classic packet payload
     * Header ``t``: packet transmission time in simulation time slots
     * Header ``fmt``: packet format, either ``"json"`` or ``"bytes"``
@@ -58,15 +74,21 @@ class ClassicConnector:
     pausing the simulation at the first time slot until an external gate update is received.
     The external program is responsible for advancing this gate by publishing a heartbeat:
 
-    * Subject: ``<PREFIX>._.gate`` (note: ``_`` is a keyword for ClassicConnector and should not be used as a node name)
+    * Subject: ``<PREFIX>.I._.gate`` (note: ``_`` is a keyword for ClassicConnector and cannot be used as a node name)
     * Header ``t``: new upper-bound in simulation time slots
+
+    When the simulator reaches the gate, it would notify the external program by publishing:
+
+    * Subject: ``<PREFIX>.O._.gate``
+    * Header ``t``: stop time in simulation time slots
 
     The external program may stop the simulator by publishing:
 
-    * Subject: ``<PREFIX>._.stop``
+    * Subject: ``<PREFIX>.I._.stop``
     * Header ``t``: stop time in simulation time slots
 
-    The external program must also release the gate to or beyond the stop time, for stopping to occur.
+    Publishing the stop message implies releasing the gate to the stop time.
+    However, the simulator will not publish ``<PREFIX>.O._.gate`` before stopping.
 
     The external program must publish all packets and gate updates in non-decreasing order. In other words,
     the header ``t`` for every message must be greater than or equal to the timestamp on all previous messages.
@@ -85,10 +107,13 @@ class ClassicConnector:
         self.nats_servers = os.getenv("NATS_URL", "nats://127.0.0.1:4222").split(",")
         self.nats_prefix = nats_prefix
 
+        self._gate_subject = f"{nats_prefix}.O._.gate"
+        simulator.set_gate_reached_handler(lambda t: self.queue.put(GateReached(t)))
+
         self._last_t = 0
         self._last_gate_event: Event | None = None
 
-        self.queue = queue.Queue[ClassicBridgePacket](maxsize=4096)
+        self.queue = queue.Queue[TransmittableItem](maxsize=4096)
         self._worker_thread = threading.Thread(target=self._worker_loop, daemon=True)
         self._worker_thread.start()
 
@@ -102,7 +127,7 @@ class ClassicConnector:
             log.info(f"ClassicConnector connected to NATS server {nc.connected_url} as client_id={nc.client_id}")
             async with nc:
                 self._js = nc.jetstream()
-                self._sub = await self._js.pull_subscribe(f"{self.nats_prefix}.*.*")
+                self._sub = await self._js.pull_subscribe(f"{self.nats_prefix}.I.*.*")
 
                 done, _ = await asyncio.wait(
                     [
@@ -131,17 +156,14 @@ class ClassicConnector:
 
             await asyncio.sleep(0)
 
-    async def _tx(self, cbp: ClassicBridgePacket):
+    async def _tx(self, item: TransmittableItem):
         from nats.js.errors import BadRequestError  # noqa: PLC0415
 
-        subject = f"{self.nats_prefix}.{cbp.dst}.{cbp.src}"
-        headers = {
-            "t": f"{cbp.t}",
-            "fmt": "json" if cbp.is_json else "bytes",
-        }
+        subject_suffix, payload, headers = item.encode()
+        subject = f"{self.nats_prefix}.O.{subject_suffix}"
 
         try:
-            ack = await self._js.publish(subject, cbp.payload, headers=headers)
+            ack = await self._js.publish(subject, payload, headers=headers)
             _ = ack.seq
         except BadRequestError:
             log.error(f"JetStream Error: Subject {subject} does not match a stream.")
@@ -181,7 +203,11 @@ class ClassicConnector:
                         self._last_gate_event.cancel()
                     self._last_gate_event = self.simulator.update_gate(t)
                 case "stop":
-                    self.simulator.add_event(func_to_event(t, self.simulator.stop))
+                    event = func_to_event(t, self.simulator.stop)
+                    event.name = "ClassicConnector.stop"
+                    event.priority = 0xFFFFFFFF
+                    self.simulator.add_event(event)
+                    self.simulator.update_gate(t)
                 case _:
                     log.error(f"ClassicConnector received unexpected special subject ._.{src}")
             return

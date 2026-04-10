@@ -1,3 +1,4 @@
+import functools
 from collections.abc import Mapping, Sequence
 from typing import Literal, Self, TypedDict, Unpack, cast, overload
 
@@ -24,9 +25,9 @@ from mqns.network.fw import (
     RoutingPathInitArgs,
     RoutingPathMulti,
     RoutingPathSingle,
-    SwapSequenceInput,
+    SwapPolicy,
 )
-from mqns.network.network import QuantumNetwork, TimingMode, TimingModeAsync
+from mqns.network.network import QuantumNetwork, TimingMode, TimingModeAsync, TimingModeSync
 from mqns.network.proactive import ProactiveForwarder, ProactiveRoutingController
 from mqns.network.protocol.classicbridge import ClassicBridge
 from mqns.network.protocol.link_layer import LinkLayer
@@ -68,6 +69,11 @@ def tap_configure(tap: Tap) -> None:
     """
     When called from ``Tap.configure()`` function, define command line arguments for supported literal types.
 
+    Recognized keys:
+
+    * ``mode``
+    * ``sync_timing``
+
     Recognized types:
 
     * ``EprTypeLiteral``
@@ -76,7 +82,21 @@ def tap_configure(tap: Tap) -> None:
     * ``TimeDecayInput``
     """
     for key, typ in tap._annotations.items():
-        if typ is EprTypeLiteral:
+        if key == "mode":
+            tap.add_argument(
+                f"--{key}",
+                help=f"(default={getattr(tap, key)}) choose mode: [P]roactive/[R]eactive forwarding, "
+                "[C]entralized/[D]istributed control, [A]sync/[S]ync timing",
+            )
+        elif key == "sync_timing":
+            tap.add_argument(
+                f"--{key}",
+                type=float,
+                nargs=3,
+                metavar=("t_ext", "t_rtg", "t_int"),
+                help=f"(list[float], default={getattr(tap, key)}) SYNC timing mode phase durations in seconds",
+            )
+        elif typ is EprTypeLiteral:
             tap.add_argument(f"--{key}", type=str, default="W", choices=EPR_TYPE_MAP.keys())
         elif typ is LinkArchLiteral:
             tap.add_argument(f"--{key}", type=str, default="DIM-BK-SeQUeNCe", choices=LINK_ARCH_MAP.keys())
@@ -115,6 +135,14 @@ class TopoCommonArgs(TypedDict, total=False):
     """Entanglement source frequency, defaults to ``1_000_000``."""
     p_swap: float
     """Probability of successful entanglement swapping in forwarder, defaults to ``0.5``."""
+
+
+class AppsCommonArgs(TypedDict, total=False):
+    timing: TimingMode | Sequence[float] | None
+    """
+    Network timing mode, defaults to ASYNC.
+    If specified as three floats, construct ``TimingModeSync`` with these durations.
+    """
 
 
 def _broadcast[T](name: str, input: T | Sequence[T], n: int) -> Sequence[T]:
@@ -159,7 +187,6 @@ class NetworkBuilder:
         self,
         *,
         route: RouteAlgorithm[QNode, QuantumChannel] = DijkstraRouteAlgorithm(),
-        timing: TimingMode = TimingModeAsync(),
         epr_type: type[Entanglement] | EprTypeLiteral = "W",
     ):
         """
@@ -167,18 +194,19 @@ class NetworkBuilder:
 
         Args:
             route: Route algorithm, defaults to Dijkstra.
-            timing: Network timing mode, defaults to ASYNC.
             epr_type: Network-wide EPR model, defaults to Werner state.
         """
 
         self.route = route
-        self.timing = timing
         self.epr_type = epr_type if isinstance(epr_type, type) else EPR_TYPE_MAP[epr_type]
 
         self.qnodes: list[TopoQNode] = []
         self.qnode_apps: list[Application] = []
         self.qchannels: list[TopoQChannel] = []
         self.controller_apps: list[Application] = []
+
+        self.qubit_allocation = QubitAllocationType.DISABLED
+        self.requests: list[tuple[str, str]] = []
 
     def _parse_topo_args(self, d: TopoCommonArgs) -> None:
         self.t_cohere = d.get("t_cohere", 0.02)
@@ -373,6 +401,15 @@ class NetworkBuilder:
         if len(self.qnode_apps) + len(self.controller_apps) > 0:
             raise TypeError("applications already installed")
 
+    def _parse_apps_args(self, d: AppsCommonArgs) -> None:
+        timing = d.get("timing")
+        if isinstance(timing, TimingMode):
+            self.timing = timing
+        elif timing is None:
+            self.timing = TimingModeAsync()
+        else:
+            self.timing = TimingModeSync(durations=timing)
+
     def _add_link_layer(self):
         self.qnode_apps.append(
             LinkLayer(
@@ -388,6 +425,7 @@ class NetworkBuilder:
         self,
         *,
         mux: MuxScheme | None = None,
+        **kwargs: Unpack[AppsCommonArgs],
     ) -> Self:
         """
         Choose proactive forwarding with centralized control.
@@ -396,13 +434,12 @@ class NetworkBuilder:
             mux: Multiplexing scheme, default is buffer-space.
         """
         self._assert_can_add_apps()
+        self._parse_apps_args(kwargs)
 
         if mux is None or isinstance(mux, MuxSchemeBufferSpace):
             self.qubit_allocation = QubitAllocationType.FOLLOW_QCHANNEL
         elif isinstance(self.route, YenRouteAlgorithm):
             raise TypeError("YenRouteAlgorithm is only compatible with MuxSchemeBufferSpace")
-        else:
-            self.qubit_allocation = QubitAllocationType.DISABLED
 
         self._add_link_layer()
         self.qnode_apps.append(
@@ -424,21 +461,20 @@ class NetworkBuilder:
         self,
         *,
         mux: MuxScheme | None = None,
-        swap: SwapSequenceInput = "asap",
+        swap: SwapPolicy = "asap",
+        **kwargs: Unpack[AppsCommonArgs],
     ) -> Self:
         """
         Choose reactive forwarding with centralized control.
 
-        Note:
-            This feature is in early stage.
-            Currently it only works with S-R-D topology and has one route.
-            ``.path()`` method cannot be used.
-
         Args:
             mux: Multiplexing scheme, default is buffer-space.
-            swap: SwapSequence for S-R-D route.
+            swap: SwapPolicy for routes.
+
+        When using ``.path()`` method, only src-dst is considered, other parameters are ignored.
         """
         self._assert_can_add_apps()
+        self._parse_apps_args(kwargs)
 
         self._add_link_layer()
         self.qnode_apps.append(
@@ -478,9 +514,19 @@ class NetworkBuilder:
         self.controller_apps.append(ClassicBridge(nats_prefix=nats_prefix))
         return self
 
-    def _assert_can_add_paths(self) -> None:
-        if len(self.controller_apps) == 0:
-            raise TypeError("must install applications first")
+    @functools.singledispatchmethod
+    def _add_path(self, ctrl: Application, rp: RoutingPath) -> None:
+        _ = ctrl, rp
+        raise NotImplementedError()
+
+    @_add_path.register
+    def _(self, ctrl: ProactiveRoutingController, rp: RoutingPath) -> None:
+        ctrl.paths.append(rp)
+
+    @_add_path.register
+    def _(self, ctrl: ReactiveRoutingController, rp: RoutingPath) -> None:
+        _ = ctrl
+        self.requests.append((rp.src, rp.dst))
 
     @overload
     def path(self, rp: RoutingPath, /) -> Self: ...
@@ -497,18 +543,17 @@ class NetworkBuilder:
         """
         Add a routing path.
         """
-        self._assert_can_add_paths()
-        ctrl = self.controller_apps[0]
-        if not isinstance(ctrl, ProactiveRoutingController):
-            raise NotImplementedError
+        if len(self.controller_apps) == 0:
+            raise TypeError("must install applications first")
 
         if isinstance(arg1, RoutingPath):
-            path = arg1
+            rp = arg1
         elif isinstance(self.route, YenRouteAlgorithm):
-            path = RoutingPathMulti(*_split_node_pair(arg1), **kwargs)
+            rp = RoutingPathMulti(*_split_node_pair(arg1), **kwargs)
         else:
-            path = RoutingPathSingle(*_split_node_pair(arg1), **kwargs, qubit_allocation=self.qubit_allocation)
-        ctrl.paths.append(path)
+            rp = RoutingPathSingle(*_split_node_pair(arg1), **kwargs, qubit_allocation=self.qubit_allocation)
+
+        self._add_path(self.controller_apps[0], rp)
         return self
 
     def make_topo(self) -> Topology:
@@ -553,6 +598,8 @@ class NetworkBuilder:
             timing=self.timing,
             epr_type=self.epr_type,
         )
+        for src, dst in self.requests:
+            net.add_request(net.get_node(src), net.get_node(dst))
 
         if connect_controller and topo.controller:
             topo.connect_controller(net.nodes, delay=CTRL_DELAY)

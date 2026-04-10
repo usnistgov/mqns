@@ -196,22 +196,23 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
         """
         Handle timing phase signals, only used in SYNC timing mode.
 
-        Upon entering EXTERNAL phase:
-
-        1. Clear ``remote_swapped_eprs``.
-           All memory qubits are being discarded by LinkLayer, so that these have become useless.
-
         Upon entering INTERNAL phase:
 
         1. Start processing elementary entanglements that arrived during EXTERNAL phase.
+
+        Upon exiting INTERNAL phase:
+
+        1. Clear ``remote_swapped_eprs``.
+           All memory qubits are being discarded by LinkLayer, so that these have become useless.
         """
-        if event.phase is TimingPhase.EXTERNAL:
-            self.swap.remote_swapped_eprs.clear()
-        elif event.phase is TimingPhase.INTERNAL:
-            log.debug(f"{self.node}: there are {len(self.waiting_etg)} etg qubits to process")
-            for etg_event in self.waiting_etg:
-                self.qubit_is_entangled(etg_event)
-            self.waiting_etg.clear()
+        match event.action:
+            case TimingPhase.INTERNAL, True:
+                log.debug(f"{self.node}: there are {len(self.waiting_etg)} etg qubits to process")
+                for etg_event in self.waiting_etg:
+                    self.qubit_is_entangled(etg_event)
+                self.waiting_etg.clear()
+            case TimingPhase.INTERNAL, False:
+                self.swap.remote_swapped_eprs.clear()
 
     @fw_control_cmd_handler("INSTALL_PATH")
     def handle_install_path(self, msg: InstallPathMsg):
