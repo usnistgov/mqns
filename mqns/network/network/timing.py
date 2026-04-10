@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from collections import deque
-from collections.abc import Iterable
+from collections.abc import Sequence
 from enum import Enum, auto
 from typing import TYPE_CHECKING, final, overload, override
 
@@ -135,7 +135,7 @@ class TimingModeSync(TimingMode):
         self,
         *,
         name="SYNC",
-        durations: Iterable[float],
+        durations: Sequence[float],
     ):
         """
         Args:
@@ -149,40 +149,44 @@ class TimingModeSync(TimingMode):
         t_ext: float = 0,
         t_rtg: float = 0,
         t_int: float = 0,
-        durations: Iterable[float] | None = None,
+        durations: Sequence[float] | None = None,
     ):
         super().__init__(name)
 
-        if durations is not None:
-            try:
-                t_ext, t_rtg, t_int = durations
-            except ValueError:
-                raise ValueError("durations= must have exactly three values")
-
-        self.sequence = deque[tuple[TimingPhase, float]]()
-
-        if t_ext <= 0:
-            raise ValueError("EXTERNAL phase duration must be positive")
-        self.sequence.append((TimingPhase.EXTERNAL, t_ext))
-
-        if t_rtg < 0:
-            raise ValueError("ROUTING phase duration must be non-negative")
-        elif t_rtg > 0:
-            self.sequence.append((TimingPhase.ROUTING, t_rtg))
-
-        if t_int <= 0:
-            raise ValueError("INTERNAL phase duration must be positive")
-        self.sequence.append((TimingPhase.INTERNAL, t_int))
-
-        self.phase = self.sequence[-1][0]
-        """Current phase."""
-        self.end_time = Time.SENTINEL
-        """Current phase end time (exclusive)."""
+        self._seconds = (t_ext, t_rtg, t_int) if durations is None else durations
+        if len(self._seconds) != 3:
+            raise ValueError("durations= must have exactly three values")
 
     @override
     def install(self, network: "QuantumNetwork"):
         super().install(network)
+
+        t_ext, t_rtg, t_int = self._seconds
+        if t_ext <= 0:
+            raise ValueError("EXTERNAL phase duration must be positive")
+        if t_rtg < 0:
+            raise ValueError("ROUTING phase duration must be non-negative")
+        if t_int <= 0:
+            raise ValueError("INTERNAL phase duration must be positive")
+
+        self.t_ext = self.simulator.time(sec=t_ext)
+        """EXTERNAL phase duration."""
+        self.t_rtg = self.simulator.time(sec=t_rtg)
+        """ROUTING phase duration."""
+        self.t_int = self.simulator.time(sec=t_int)
+        """INTERNAL phase duration."""
+
+        self._sequence = deque[tuple[TimingPhase, Time]]()
+        self._sequence.append((TimingPhase.EXTERNAL, self.t_ext))
+        if t_rtg > 0:
+            self._sequence.append((TimingPhase.ROUTING, self.t_rtg))
+        self._sequence.append((TimingPhase.INTERNAL, self.t_int))
+
+        self.phase = self._sequence[-1][0]
+        """Current phase."""
         self.end_time = self.simulator.ts
+        """Current phase end time (exclusive)."""
+
         self.simulator.add_event(func_to_event(self.simulator.ts, self._enter_phase))
 
     def _change_phase(self):
@@ -194,8 +198,8 @@ class TimingModeSync(TimingMode):
         self._enter_phase()
 
     def _enter_phase(self):
-        this_phase = self.sequence.popleft()
-        self.sequence.append(this_phase)
+        this_phase = self._sequence.popleft()
+        self._sequence.append(this_phase)
         phase, duration = this_phase
 
         self.phase = phase
