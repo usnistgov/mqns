@@ -125,7 +125,7 @@ class ParameterSet:
                 channel_capacity=self.qchannel_capacity,
             )
             .proactive_centralized()
-            .path("S-D", swap=swap)
+            .request("S-D", swap=swap)
             .make_network()
         )
 

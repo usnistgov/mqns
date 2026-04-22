@@ -1,3 +1,4 @@
+import functools
 from collections.abc import Mapping, Sequence
 from typing import Literal, Self, TypedDict, Unpack, cast, overload
 
@@ -24,7 +25,7 @@ from mqns.network.fw import (
     RoutingPathInitArgs,
     RoutingPathMulti,
     RoutingPathSingle,
-    SwapSequenceInput,
+    SwapPolicy,
 )
 from mqns.network.network import QuantumNetwork, TimingMode, TimingModeAsync, TimingModeSync
 from mqns.network.proactive import ProactiveForwarder, ProactiveRoutingController
@@ -181,7 +182,7 @@ class NetworkBuilder:
 
     1. Call one ``.topo*()`` method to define topology shape.
     2. Call one ``.{proactive|reactive}_{centralized|distributed}()`` method to choose applications.
-    3. Call ``.path()`` method one or more times to install routes.
+    3. Call ``.request()`` method to define end-to-end requests or routing paths.
     4. Call ``.make_network()`` method to construct ``QuantumNetwork`` ready for simulation.
     """
 
@@ -206,6 +207,9 @@ class NetworkBuilder:
         self.qnode_apps: list[Application] = []
         self.qchannels: list[TopoQChannel] = []
         self.controller_apps: list[Application] = []
+
+        self.qubit_allocation = QubitAllocationType.DISABLED
+        self.requests: list[tuple[str, str]] = []
 
     def _parse_topo_args(self, d: TopoCommonArgs) -> None:
         self.t_cohere = d.get("t_cohere", 0.02)
@@ -441,8 +445,6 @@ class NetworkBuilder:
             self.qubit_allocation = QubitAllocationType.FOLLOW_QCHANNEL
         elif isinstance(self.route, YenRouteAlgorithm):
             raise TypeError("YenRouteAlgorithm is only compatible with MuxSchemeBufferSpace")
-        else:
-            self.qubit_allocation = QubitAllocationType.DISABLED
 
         self._add_link_layer()
         self.qnode_apps.append(
@@ -464,7 +466,7 @@ class NetworkBuilder:
         self,
         *,
         mux: MuxScheme | None = None,
-        swap: SwapSequenceInput = "asap",
+        swap: SwapPolicy = "asap",
         **kwargs: Unpack[AppsCommonArgs],
     ) -> Self:
         """
@@ -473,11 +475,11 @@ class NetworkBuilder:
         Note:
             This feature is in early stage.
             Currently it only works with S-R-D topology and has one route.
-            ``.path()`` method cannot be used.
+            ``.request()`` method cannot be used.
 
         Args:
             mux: Multiplexing scheme, default is buffer-space.
-            swap: SwapSequence for S-R-D route.
+            swap: SwapPolicy for routes.
         """
         self._assert_can_add_apps()
         self._parse_apps_args(kwargs)
@@ -513,44 +515,50 @@ class NetworkBuilder:
         The internal controller application is deleted and replaced with ``ClassicBridge``, which allows
         the controller logic to be implemented in an external program connected over NATS.
 
-        ``.path()`` method cannot be used.
-        Instead, routing paths should be defined in the external controller.
+        ``.request()`` method cannot be used.
+        Instead, requests or routing paths should be defined in the external controller.
         """
         self.controller_apps.clear()
         self.controller_apps.append(ClassicBridge(nats_prefix=nats_prefix))
         return self
 
-    def _assert_can_add_paths(self) -> None:
-        if len(self.controller_apps) == 0:
-            raise TypeError("must install applications first")
+    def _to_path(self, arg1: RoutingPath | NodePair, d: RoutingPathInitArgs) -> RoutingPath:
+        if isinstance(arg1, RoutingPath):
+            return arg1
+        if isinstance(self.route, YenRouteAlgorithm):
+            return RoutingPathMulti(*_split_node_pair(arg1), **d)
+        return RoutingPathSingle(*_split_node_pair(arg1), **d, qubit_allocation=self.qubit_allocation)
+
+    @functools.singledispatchmethod
+    def _add_request(self, ctrl: Application, arg1: RoutingPath | NodePair, d: RoutingPathInitArgs) -> None:
+        _ = arg1, d
+        raise NotImplementedError(f"{type(ctrl)} does not support .request() method")
+
+    @_add_request.register
+    def _(self, ctrl: ProactiveRoutingController, arg1: RoutingPath | NodePair, d: RoutingPathInitArgs) -> None:
+        ctrl.paths.append(self._to_path(arg1, d))
 
     @overload
-    def path(self, rp: RoutingPath, /) -> Self: ...
+    def request(self, src_dst: NodePair, /, **kwargs: Unpack[RoutingPathInitArgs]) -> Self:
+        """
+        Define a request that may use one or more paths determined by routing algorithm.
+        """
 
     @overload
-    def path(self, src_dst: NodePair, /, **kwargs: Unpack[RoutingPathInitArgs]) -> Self: ...
+    def request(self, rp: RoutingPath, /) -> Self:
+        """
+        Define a request that is constrained to a specific path.
+        """
 
-    def path(
+    def request(
         self,
         arg1: RoutingPath | NodePair,
         /,
         **kwargs: Unpack[RoutingPathInitArgs],
     ) -> Self:
-        """
-        Add a routing path.
-        """
-        self._assert_can_add_paths()
-        ctrl = self.controller_apps[0]
-        if not isinstance(ctrl, ProactiveRoutingController):
-            raise NotImplementedError
-
-        if isinstance(arg1, RoutingPath):
-            path = arg1
-        elif isinstance(self.route, YenRouteAlgorithm):
-            path = RoutingPathMulti(*_split_node_pair(arg1), **kwargs)
-        else:
-            path = RoutingPathSingle(*_split_node_pair(arg1), **kwargs, qubit_allocation=self.qubit_allocation)
-        ctrl.paths.append(path)
+        if len(self.controller_apps) == 0:
+            raise TypeError("must install controller application first")
+        self._add_request(self.controller_apps[0], arg1, kwargs)
         return self
 
     def make_topo(self) -> Topology:

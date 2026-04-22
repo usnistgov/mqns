@@ -282,7 +282,7 @@ def build_network(route_algo: Any, t_cohere: float) -> QuantumNetwork:
     b.proactive_centralized(mux=SC.mux)
 
     for flow in SC.install_paths:
-        b.path(flow)
+        b.request(flow)
 
     return b.make_network()
 

@@ -46,7 +46,7 @@ class RoutingPathInitArgs(TypedDict, total=False):
     path_id: int
     """Path identifier for the first path, defaults to auto-assignment."""
     swap: SwapSequenceInput
-    """Predefined or explicitly specified swapping order, defaults to ASAP."""
+    """Swap sequence or swap policy, defaults to ASAP."""
     swap_cutoff: list[float] | None
     """Swap cut-off times in seconds."""
     purif: dict[str, int] | None

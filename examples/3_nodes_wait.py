@@ -70,7 +70,7 @@ def run_simulation(seed: int, args: Args, t_cohere: float, t_wait: float):
             init_fidelity=None if args.link_arch_sim else 0.99,
         )
         .proactive_centralized()
-        .path(
+        .request(
             "S-D",
             swap=[1, 0, 1],
             swap_cutoff=[0, t_wait, 0],

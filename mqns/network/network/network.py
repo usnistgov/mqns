@@ -32,7 +32,7 @@ from mqns.entity.cchannel import ClassicChannel
 from mqns.entity.node import Controller, Node, QNode
 from mqns.entity.qchannel import QuantumChannel
 from mqns.models.epr import Entanglement, WernerStateEntanglement
-from mqns.network.network.request import Request
+from mqns.network.network.request import Request, RequestAttr
 from mqns.network.network.timing import TimingMode, TimingModeAsync
 from mqns.network.route import DijkstraRouteAlgorithm, RouteAlgorithm, RouteQueryResult
 from mqns.network.topology import ClassicTopology, Topology
@@ -151,9 +151,10 @@ class QuantumNetwork:
         if self.controller:
             self.all_nodes.append(self.controller)
 
+        self.timing.install(self)
+
         for node in self.all_nodes:
             node.install(simulator)
-        self.timing.install(self)
 
     def add_node(self, node: QNode):
         """
@@ -263,26 +264,20 @@ class QuantumNetwork:
             src: the source node
             dest: the destination node
 
-        Returns:
-            A list of route paths. The result should be sorted by the priority.
-            The element is a tuple containing: metric, the next-hop and the whole path.
-
+        Returns: list of route paths, sorted by priority.
         """
         return self.route.query(src, dest)
 
-    def add_request(self, src: QNode, dst: QNode, attr: dict = {}):
+    def add_request(self, src: QNode, dst: QNode, attr: RequestAttr | None = None):
         """
-        Add a request (src, dst) pair to the network.
-
-        The request is placed in ``self.requests`` list.
-        The scenario must manually pass these requests to relevant applications (e.g. ProactiveRoutingController).
+        Add a request (src, dst) pair to the network, placed in ``self.requests`` list.
 
         Args:
-            src: the source node
-            dst: the destination node
-            attr: other attributions
+            src: Source node.
+            dst: Destination node.
+            attr: Other attributes.
         """
-        req = Request(src, dst, attr)
+        req = Request(src, dst, **(attr or {}))
         self.requests.append(req)
 
     def random_requests(
@@ -293,26 +288,22 @@ class QuantumNetwork:
         allow_overlay=False,
         min_hops=1,
         max_hops=10,
-        attr: dict | None = None,
+        attr: RequestAttr | None = None,
         forbid_endpoint_internal=True,  # reject endpoint-vs-internal conflicts
     ):
         """
-        Generate random (src, dst) pairs requests.
-
-        The requests are placed in ``self.requests`` list.
-        The scenario must manually pass these requests to relevant applications (e.g. ProactiveRoutingController).
+        Generate random (src, dst) pairs requests into ``self.requests`` list.
 
         Args:
-            n: number of requests to generate
-            clear: if True, clear existing requests in ``self.requests``
-            allow_overlay: allow nodes to be the source or destination in multiple requests
-            min_hops: minimum number of hops (inclusive)
-            max_hops: maximum number of hops (inclusive)
-            attr: request attributes
-            forbid_endpoint_internal: if True, eliminate requests that
+            n: Number of requests to generate.
+            clear: If True, clear existing requests in ``self.requests``.
+            allow_overlay: Allow nodes to be the source or destination in multiple requests.
+            min_hops: Minimum number of hops (inclusive).
+            max_hops: Maximum number of hops (inclusive).
+            attr: Request attributes.
+            forbid_endpoint_internal: If True, eliminate requests that
                 would fail the rank-based endpoint-vs-internal check in SWAP-ASAP.
         """
-        attr = {} if attr is None else attr
         used_nodes: list[int] = []
         nnodes = len(self.nodes)
 
