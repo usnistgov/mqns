@@ -357,7 +357,7 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
         self.cnt.n_entg += 1
 
         qubit = event.qubit
-        assert qubit.state == QubitState.ENTANGLED1
+        assert qubit.state is QubitState.ENTANGLED1, f"unexpected state {qubit.state}"
         _, epr = self.memory.read(qubit.addr, has=self.epr_type)
         log.debug(f"{self.node}: ENTANGLED {qubit} | {epr}")
         self.mux.qubit_is_entangled(qubit, epr, event.neighbor)
@@ -379,7 +379,7 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
             fib_entry: FIB entry containing routing and purification instructions.
             partner: The node with which the qubit shares an EPR.
         """
-        assert qubit.state == QubitState.PURIF
+        assert qubit.state is QubitState.PURIF, f"unexpected state {qubit.state}"
         assert qubit.qchannel is not None
 
         own_idx, own_rank = fib_entry.own_idx, fib_entry.own_swap_rank
@@ -411,7 +411,7 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
         candidates = self.memory.find(
             lambda q, v: (
                 q.addr != qubit.addr  # not the same qubit
-                and q.state == QubitState.PURIF  # in PURIF state
+                and q.state is QubitState.PURIF  # in PURIF state
                 and q.purif_rounds == qubit.purif_rounds  # with same number of purif rounds
                 and partner in (v.src, v.dst)  # with the same partner
                 and q.path_id == fib_entry.path_id  # on the same path_id
@@ -441,7 +441,7 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
             qubit: The qubit that became eligible.
             fib_entry: FIB entry (not available with MuxSchemeStatistical).
         """
-        assert qubit.state == QubitState.ELIGIBLE
+        assert qubit.state is QubitState.ELIGIBLE, f"unexpected state {qubit.state}"
         if not self.node.timing.is_internal():
             log.debug(f"{self.node}: INT phase is over -> stop swaps")
             return
@@ -455,7 +455,7 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
 
         swap_candidates = self.memory.find(
             lambda q, _: (
-                q.state == QubitState.ELIGIBLE  # in ELIGIBLE state
+                q.state is QubitState.ELIGIBLE  # in ELIGIBLE state
                 and q.qchannel != qubit.qchannel  # assigned to a different channel
                 and self.cutoff.filter_swap_candidate(q)
             ),

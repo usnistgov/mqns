@@ -140,7 +140,7 @@ class MemoryQubit:
         if value not in ALLOWED_STATE_TRANSITIONS[self._state]:
             raise ValueError(f"MemoryQubit: unexpected state transition from <{self._state}> to <{value}>; {self}")
         self._state = value
-        if value == QubitState.RELEASE:
+        if value is QubitState.RELEASE:
             self._clear_events()
 
     def reset_state(self) -> None:

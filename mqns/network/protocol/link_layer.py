@@ -287,7 +287,7 @@ class LinkLayer(Application[QNode]):
         qubits = list(self.memory.find(lambda *_: True, qchannel=qchannel))
         log.debug(f"{self.node}: {qchannel.name} has assigned qubits: {qubits}")
         for qb, data in qubits:
-            if qb.path_id != path_id or qb.state != QubitState.RAW:
+            if qb.path_id != path_id or qb.state is not QubitState.RAW:
                 continue
             assert qb.active is None
             assert data is None, f"{self.node}: qubit {qb} has data {data}"

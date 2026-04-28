@@ -77,8 +77,8 @@ class ForwarderSwapProc:
         Partners are notified with SWAP_UPDATE messages.
         """
         assert mq0.addr != mq1.addr
-        assert mq0.state == QubitState.ELIGIBLE
-        assert mq1.state == QubitState.ELIGIBLE
+        assert mq0.state is QubitState.ELIGIBLE, f"unexpected state {mq0.state}"
+        assert mq1.state is QubitState.ELIGIBLE, f"unexpected state {mq1.state}"
 
         # Read both qubits and remove them from memory.
         #
@@ -150,7 +150,7 @@ class ForwarderSwapProc:
     def pop_waiting_su(self, qubit: MemoryQubit):
         su_args = self.waiting_su.pop(qubit.addr, None)
         if (
-            qubit.state != QubitState.RELEASE  # qubit was released due to uninstalled path
+            qubit.state is not QubitState.RELEASE  # qubit was released due to uninstalled path
             and su_args
         ):
             self.handle_update(*su_args)
@@ -188,7 +188,7 @@ class ForwarderSwapProc:
         qubit_pair = self.memory.read(epr_name)
         if qubit_pair is not None:
             qubit, _ = qubit_pair
-            if qubit.state == QubitState.ENTANGLED0:
+            if qubit.state is QubitState.ENTANGLED0:
                 if new_epr is not None:
                     self.remote_swapped_eprs[cast(str, new_epr_name)] = new_epr
                 self.waiting_su[qubit.addr] = (msg, fib_entry)

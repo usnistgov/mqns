@@ -111,7 +111,7 @@ def test_decoherence_event_removes_qubit():
 
     res = mem.read("epr3")
     assert res is None
-    assert qubit.state == QubitState.RELEASE
+    assert qubit.state is QubitState.RELEASE, f"unexpected state {qubit.state}"
 
 
 def test_memory_clear_and_deallocate():
