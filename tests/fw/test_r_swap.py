@@ -37,7 +37,7 @@ def test_tree2_one():
     net, simulator = build_tree_network(
         2,
         mode="R",
-        ps=1.0,
+        fw={"p_swap": 1.0},
         end_time=0.010,
         timing=TimingModeSync(t_ext=0.006, t_rtg=0.001, t_int=0.003),
         ctrl=ctrl,
@@ -74,7 +74,7 @@ def test_tree2_two():
         2,
         mode="R",
         qchannel_capacity=2,
-        ps=1.0,
+        fw={"p_swap": 1.0},
         end_time=0.010,
         timing=TimingModeSync(t_ext=0.006, t_rtg=0.001, t_int=0.003),
         ctrl=ctrl,
@@ -162,7 +162,7 @@ def test_3_minimal(req_active: tuple[float, float], etg12: list[float], etg23: l
         3,
         qchannel_capacity=2,
         mode="R",
-        ps=1.0,
+        fw={"p_swap": 1.0},
         end_time=0.020,
         timing=TimingModeSync(t_ext=0.006, t_rtg=0.001, t_int=0.003),
     )

@@ -92,7 +92,7 @@ class ForwarderPurifProc:
         # TODO: handle the exception case when an EPR is decohered and not found in memory
 
         for mq in (mq0, mq1):
-            assert mq.state == QubitState.PURIF
+            assert mq.state is QubitState.PURIF, f"unexpected state {mq.state}"
             assert mq.purif_rounds == msg["round"]
 
         assert msg["partner"] == self.node.name

@@ -243,7 +243,6 @@ class LinkLayer(Application[QNode]):
             init_fidelity=self.init_fidelity,
             t0=self.simulator.tc,
             store_decays=(self.memory.time_decay, neighbor.memory.time_decay),
-            bsa_error=None,
         )
 
         epr_tpl, t_notify_a, t_notify_b = qchannel.link_arch.make_epr(
@@ -287,7 +286,7 @@ class LinkLayer(Application[QNode]):
         qubits = list(self.memory.find(lambda *_: True, qchannel=qchannel))
         log.debug(f"{self.node}: {qchannel.name} has assigned qubits: {qubits}")
         for qb, data in qubits:
-            if qb.path_id != path_id or qb.state != QubitState.RAW:
+            if qb.path_id != path_id or qb.state is not QubitState.RAW:
                 continue
             assert qb.active is None
             assert data is None, f"{self.node}: qubit {qb} has data {data}"

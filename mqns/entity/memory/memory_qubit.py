@@ -69,6 +69,11 @@ class QubitState(Enum):
 
     This state is set on the qubit only if own node has a swapping rank no less than the other node in the entanglement.
     """
+    SWAPPING = auto()
+    """
+    The forwarder is performing local swapping between this and another memory qubit.
+    If the qubit is released from this state, the local swapping would be aborted.
+    """
     RELEASE = auto()
     """
     Qubit is not used by the forwarder.
@@ -84,7 +89,8 @@ ALLOWED_STATE_TRANSITIONS: dict[QubitState, tuple[QubitState, ...]] = {
     QubitState.ENTANGLED1: (QubitState.RELEASE, QubitState.PURIF),
     QubitState.PURIF: (QubitState.RELEASE, QubitState.PENDING, QubitState.ELIGIBLE),
     QubitState.PENDING: (QubitState.RELEASE, QubitState.PURIF),
-    QubitState.ELIGIBLE: (QubitState.RELEASE,),
+    QubitState.ELIGIBLE: (QubitState.SWAPPING, QubitState.RELEASE),
+    QubitState.SWAPPING: (QubitState.RELEASE,),
     QubitState.RELEASE: (QubitState.RAW,),
 }
 
@@ -140,7 +146,7 @@ class MemoryQubit:
         if value not in ALLOWED_STATE_TRANSITIONS[self._state]:
             raise ValueError(f"MemoryQubit: unexpected state transition from <{self._state}> to <{value}>; {self}")
         self._state = value
-        if value == QubitState.RELEASE:
+        if value is QubitState.RELEASE:
             self._clear_events()
 
     def reset_state(self) -> None:
@@ -185,5 +191,5 @@ def _describe(mq: MemoryQubit) -> Iterable[str]:
     match mq._state:
         case QubitState.ACTIVE | QubitState.RESERVED:
             yield f"active={mq.active}"
-        case QubitState.PURIF | QubitState.PENDING | QubitState.ELIGIBLE:
+        case QubitState.PURIF | QubitState.PENDING | QubitState.ELIGIBLE | QubitState.SWAPPING:
             yield f"purif_rounds={mq.purif_rounds}"

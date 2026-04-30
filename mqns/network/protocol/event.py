@@ -97,7 +97,7 @@ class QubitEntangledEvent(Event):
         self.node = node
         self.neighbor = neighbor
         self.qubit = qubit
-        assert self.qubit.state == QubitState.ENTANGLED0
+        assert self.qubit.state is QubitState.ENTANGLED0, f"unexpected state {qubit.state}"
 
     @override
     def invoke(self) -> None:
@@ -128,7 +128,7 @@ class QubitDecoheredEvent(Event):
     @override
     def invoke(self) -> None:
         if self.memory.handle_decohere_qubit(self.qubit, self.epr):
-            assert self.qubit.state == QubitState.RELEASE
+            assert self.qubit.state is QubitState.RELEASE, f"unexpected state {self.qubit.state}"
             self.memory.node.handle(self)
 
 
@@ -149,9 +149,9 @@ class QubitReleasedEvent(Event):
         super().__init__(t, name)
         self.node = node
         self.qubit = qubit
-        assert self.qubit.state == QubitState.RELEASE
+        assert self.qubit.state is QubitState.RELEASE, f"unexpected state {self.qubit.state}"
 
     @override
     def invoke(self) -> None:
-        assert self.qubit.state == QubitState.RELEASE
+        assert self.qubit.state is QubitState.RELEASE, f"unexpected state {self.qubit.state}"
         self.node.handle(self)

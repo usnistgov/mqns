@@ -1,21 +1,36 @@
+import copy
 import uuid
-from typing import Literal, TypedDict, Unpack
+from typing import Literal, TypedDict, Unpack, override
 
 from mqns.entity.cchannel import ClassicChannelInitKwargs
 from mqns.entity.memory import QubitState
 from mqns.entity.node import Application, Controller, QNode
 from mqns.entity.qchannel import LinkArchAlways, LinkArchDimBk, QuantumChannelInitKwargs
 from mqns.models.epr import Entanglement, WernerStateEntanglement
-from mqns.network.fw import Forwarder, MuxScheme, RoutingController, RoutingPath
+from mqns.network.fw import Forwarder, ForwarderInitKwargs, RoutingController, RoutingPath
 from mqns.network.network import QuantumNetwork, TimingMode, TimingModeAsync
 from mqns.network.proactive import ProactiveForwarder, ProactiveRoutingController
-from mqns.network.protocol.event import QubitEntangledEvent
+from mqns.network.protocol.event import QubitEntangledEvent, QubitReleasedEvent
 from mqns.network.protocol.link_layer import LinkLayer
 from mqns.network.reactive import ReactiveForwarder, ReactiveRoutingController
 from mqns.network.route import RouteAlgorithm, YenRouteAlgorithm
 from mqns.network.topology import ClassicTopology, GridTopology, LinearTopology, Topology, TopologyInitKwargs, TreeTopology
-from mqns.simulator import Simulator, func_to_event
+from mqns.simulator import Event, Simulator, Time, func_to_event
 from mqns.utils import log
+
+
+class QubitReleaseLoggerApp(Application):
+    def __init__(self):
+        super().__init__()
+        self.history: list[tuple[int, Time]] = []
+
+    @override
+    def handle(self, event: Event) -> bool | None:
+        if type(event) is QubitReleasedEvent:
+            self.history.append((event.qubit.addr, event.t))
+            log.debug(f"{self.node}: RELEASE {event.qubit}")
+        return False
+
 
 dflt_qchannel_args = QuantumChannelInitKwargs(
     length=100,  # delay is 0.0005 seconds
@@ -34,8 +49,7 @@ class BuildNetworkArgs(TypedDict, total=False):
     qchannel_args: QuantumChannelInitKwargs
     cchannel_args: ClassicChannelInitKwargs
     ctrl: RoutingController  # replacing controller application
-    ps: float  # probability of successful swap, defaults to 0.5
-    mux: MuxScheme  # multiplexing scheme, defaults to buffer-space
+    fw: ForwarderInitKwargs  # forwarder parameters (`p_swap` defaults to 0.5)
     end_time: float  # simulation end time, defaults to 10.0 seconds
     timing: TimingMode  # network timing mode, defaults to ASYNC
     epr_type: type[Entanglement]  # entanglement type, defaults to werner state
@@ -49,12 +63,16 @@ def _make_topo_args(d: BuildNetworkArgs, *, memory_capacity_factor: int) -> Topo
     nodes_apps: list[Application[QNode]] = []
     if d.get("has_link_layer", False):
         nodes_apps.append(LinkLayer(init_fidelity=d.get("init_fidelity", 0.99)))
+    else:
+        nodes_apps.append(QubitReleaseLoggerApp())
 
+    fw_args = copy.copy(d.get("fw")) or {}
+    fw_args.setdefault("p_swap", 0.6)
     match d.get("mode", "P"):
         case "P":
-            nodes_apps.append(ProactiveForwarder(ps=d.get("ps", 0.5), mux=d.get("mux")))
+            nodes_apps.append(ProactiveForwarder(**fw_args))
         case "R":
-            nodes_apps.append(ReactiveForwarder(ps=d.get("ps", 0.5), mux=d.get("mux")))
+            nodes_apps.append(ReactiveForwarder(**fw_args))
 
     return TopologyInitKwargs(
         nodes_apps=nodes_apps,

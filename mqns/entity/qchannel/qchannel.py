@@ -35,7 +35,7 @@ from mqns.entity.qchannel.link_arch_dim import LinkArchDimBkSeq
 from mqns.models.core import QuantumModel
 from mqns.models.epr import Entanglement
 from mqns.models.error import DepolarErrorModel
-from mqns.models.error.input import ErrorModelInputLength, parse_error
+from mqns.models.error.input import ErrorModelInputBasic, ErrorModelInputLength, parse_error
 from mqns.simulator import Event, Time
 
 
@@ -55,6 +55,13 @@ class QuantumChannelInitKwargs(BaseChannelInitKwargs, total=False):
     transfer_error: ErrorModelInputLength
     """
     Transfer error model for loss of quantum information.
+
+    In ``LinkArch``, this parameter determines the decoherence / quality of the state
+    given the photon arrived, but does not affect the success probability.
+    """
+    bsa_error: ErrorModelInputBasic
+    """
+    Bell-state analyzer or absorptive memory capture error model, defaults to perfect.
 
     In ``LinkArch``, this parameter determines the decoherence / quality of the state
     given the photon arrived, but does not affect the success probability.
@@ -89,6 +96,11 @@ class QuantumChannel(BaseChannel[QNode]):
 
         It reflects loss of quantum information when a qubit/EPR is sent through the fiber.
         It does not reflect loss of photons.
+        """
+
+        self.bsa_error = parse_error(kwargs.get("bsa_error"), DepolarErrorModel, -1)
+        """
+        Bell-state analyzer or absorptive memory capture (depending on link architecture) error model.
         """
 
     @override

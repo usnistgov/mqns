@@ -111,7 +111,7 @@ def build_network(args: RunArgs) -> QuantumNetwork:
                 eta_s=eta_s,
                 frequency=frequency,
             ),
-            ProactiveForwarder(ps=p_swap, mux=MuxSchemeStatistical()),
+            ProactiveForwarder(p_swap=p_swap, mux=MuxSchemeStatistical()),
         ],
     )
     topo.controller = Controller("ctrl", apps=[ProactiveRoutingController()])

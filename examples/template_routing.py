@@ -275,11 +275,13 @@ def build_network(route_algo: Any, t_cohere: float) -> QuantumNetwork:
         entg_attempt_rate=ENTG_ATTEMPT_RATE,
         frequency=MEMORY_FREQUENCY,
         init_fidelity=INIT_FIDELITY,
-        p_swap=P_SWAP,
         t_cohere=t_cohere,
     )
 
-    b.proactive_centralized(mux=SC.mux)
+    b.proactive_centralized(
+        p_swap=P_SWAP,
+        mux=SC.mux,
+    )
 
     for flow in SC.install_paths:
         b.request(flow)

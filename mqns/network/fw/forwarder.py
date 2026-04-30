@@ -24,7 +24,10 @@ import numpy as np
 from mqns.entity.memory import MemoryQubit, PathDirection, QubitState
 from mqns.entity.node import Application, QNode
 from mqns.entity.qchannel import QuantumChannel
+from mqns.models.delay import DelayInput, parse_delay
 from mqns.models.epr import Entanglement
+from mqns.models.error import PerfectErrorModel
+from mqns.models.error.input import ErrorModelInputBasic, parse_error
 from mqns.network.fw.cutoff import CutoffScheme, CutoffSchemeWaitTime
 from mqns.network.fw.fib import Fib, FibEntry
 from mqns.network.fw.fw_classic import ForwarderClassicMixin, fw_control_cmd_handler, fw_signaling_cmd_handler
@@ -47,8 +50,12 @@ from mqns.utils import json_encodable, log
 
 
 class ForwarderInitKwargs(TypedDict, total=False):
-    ps: float
+    p_swap: float
     """Probability of successful entanglement swapping, default is 1.0."""
+    swap_delay: DelayInput
+    """Swapping delay model, default is zero."""
+    swap_error: ErrorModelInputBasic
+    """Swapping error model, default is perfect."""
     cutoff: CutoffScheme | None
     """EPR age cut-off scheme, default is wait-time."""
     mux: MuxScheme | None
@@ -161,7 +168,11 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
         self.fib = Fib()
         """FIB structure."""
         self.purif = ForwarderPurifProc()
-        self.swap = ForwarderSwapProc(ps=kwargs.get("ps", 1.0))
+        self.swap = ForwarderSwapProc(
+            ps=kwargs.get("p_swap", 1.0),
+            delay=parse_delay(kwargs.get("swap_delay", 0)),
+            error=parse_error(kwargs.get("swap_error"), PerfectErrorModel, -1),
+        )
 
         self.add_handler(self.handle_sync_phase, TimingPhaseEvent)
         self.add_handler(self.qubit_is_entangled, QubitEntangledEvent)
@@ -202,7 +213,7 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
 
         Upon exiting INTERNAL phase:
 
-        1. Clear ``remote_swapped_eprs``.
+        1. Clear ``self.swap.remote_swapped``.
            All memory qubits are being discarded by LinkLayer, so that these have become useless.
         """
         match event.action:
@@ -212,7 +223,7 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
                     self.qubit_is_entangled(etg_event)
                 self.waiting_etg.clear()
             case TimingPhase.INTERNAL, False:
-                self.swap.remote_swapped_eprs.clear()
+                self.swap.remote_swapped.clear()
 
     @fw_control_cmd_handler("INSTALL_PATH")
     def handle_install_path(self, msg: InstallPathMsg):
@@ -357,7 +368,7 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
         self.cnt.n_entg += 1
 
         qubit = event.qubit
-        assert qubit.state == QubitState.ENTANGLED1
+        assert qubit.state is QubitState.ENTANGLED1, f"unexpected state {qubit.state}"
         _, epr = self.memory.read(qubit.addr, has=self.epr_type)
         log.debug(f"{self.node}: ENTANGLED {qubit} | {epr}")
         self.mux.qubit_is_entangled(qubit, epr, event.neighbor)
@@ -379,7 +390,7 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
             fib_entry: FIB entry containing routing and purification instructions.
             partner: The node with which the qubit shares an EPR.
         """
-        assert qubit.state == QubitState.PURIF
+        assert qubit.state is QubitState.PURIF, f"unexpected state {qubit.state}"
         assert qubit.qchannel is not None
 
         own_idx, own_rank = fib_entry.own_idx, fib_entry.own_swap_rank
@@ -411,7 +422,7 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
         candidates = self.memory.find(
             lambda q, v: (
                 q.addr != qubit.addr  # not the same qubit
-                and q.state == QubitState.PURIF  # in PURIF state
+                and q.state is QubitState.PURIF  # in PURIF state
                 and q.purif_rounds == qubit.purif_rounds  # with same number of purif rounds
                 and partner in (v.src, v.dst)  # with the same partner
                 and q.path_id == fib_entry.path_id  # on the same path_id
@@ -441,7 +452,7 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
             qubit: The qubit that became eligible.
             fib_entry: FIB entry (not available with MuxSchemeStatistical).
         """
-        assert qubit.state == QubitState.ELIGIBLE
+        assert qubit.state is QubitState.ELIGIBLE, f"unexpected state {qubit.state}"
         if not self.node.timing.is_internal():
             log.debug(f"{self.node}: INT phase is over -> stop swaps")
             return
@@ -455,7 +466,7 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
 
         swap_candidates = self.memory.find(
             lambda q, _: (
-                q.state == QubitState.ELIGIBLE  # in ELIGIBLE state
+                q.state is QubitState.ELIGIBLE  # in ELIGIBLE state
                 and q.qchannel != qubit.qchannel  # assigned to a different channel
                 and self.cutoff.filter_swap_candidate(q)
             ),

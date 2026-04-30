@@ -6,7 +6,10 @@ import itertools
 
 import pytest
 
-from mqns.models.epr import Entanglement
+from mqns.entity.timer import Timer
+from mqns.models.delay import ConstantDelayModel
+from mqns.models.epr import Entanglement, MixedStateEntanglement
+from mqns.models.error import PerfectErrorModel
 from mqns.network.fw import (
     Fib,
     Forwarder,
@@ -22,6 +25,7 @@ from mqns.network.proactive import ProactiveForwarder
 from mqns.simulator import func_to_event
 
 from .fw_common import (
+    QubitReleaseLoggerApp,
     build_linear_network,
     build_rect_network,
     build_tree_network,
@@ -33,7 +37,7 @@ from .fw_common import (
 
 def test_3_disabled():
     """Test swap disabled mode."""
-    net, simulator = build_linear_network(3, ps=1.0)
+    net, simulator = build_linear_network(3, fw={"p_swap": 1.0})
     f1 = net.get_node("n1").get_app(ProactiveForwarder)
     f2 = net.get_node("n2").get_app(ProactiveForwarder)
     f3 = net.get_node("n3").get_app(ProactiveForwarder)
@@ -92,7 +96,7 @@ def test_3_disabled():
 def test_4_sync(t_ext: float, expected: tuple[int, int, int, int]):
     """Test TimingModeSync in 4-node topology."""
     timing = TimingModeSync(t_ext=t_ext, t_int=0.010000 - t_ext)
-    net, simulator = build_linear_network(4, ps=1.0, timing=timing)
+    net, simulator = build_linear_network(4, fw={"p_swap": 1.0}, timing=timing)
     f1 = net.get_node("n1").get_app(ProactiveForwarder)
     f2 = net.get_node("n2").get_app(ProactiveForwarder)
     f3 = net.get_node("n3").get_app(ProactiveForwarder)
@@ -121,7 +125,7 @@ def test_4_sync(t_ext: float, expected: tuple[int, int, int, int]):
 )
 def test_4_asap(etg_ms: tuple[int, int, int], n_swapped_p: int):
     """Test SWAP-ASAP in 4-node topology with various entanglement arrival orders."""
-    net, simulator = build_linear_network(4, ps=1.0)
+    net, simulator = build_linear_network(4, fw={"p_swap": 1.0})
     f1 = net.get_node("n1").get_app(ProactiveForwarder)
     f2 = net.get_node("n2").get_app(ProactiveForwarder)
     f3 = net.get_node("n3").get_app(ProactiveForwarder)
@@ -139,6 +143,110 @@ def test_4_asap(etg_ms: tuple[int, int, int], n_swapped_p: int):
     assert f1.cnt.n_consumed == 1 == f4.cnt.n_consumed
     assert f2.cnt.n_swapped_s == 1 == f3.cnt.n_swapped_s
     assert f2.cnt.n_swapped_p == n_swapped_p == f3.cnt.n_swapped_p
+
+
+@pytest.mark.parametrize(
+    ("ps3", "delay3", "n_swap2", "n_consumed", "t_release"),
+    [
+        # 1. t=1.0110, n2-n3 arrives, both n2 and n3 start swapping.
+        # 2. t=1.0110, n3 completes swapping with success and sends n2-n4 heralding to n2 & n4.
+        # 3. t=1.0115, n2 & n4 receive n2-n4 heralding.
+        # 4. t=1.0610, n2 completes swapping with success and sends n1-n4 heralding to n1 & n4.
+        # 5. t=1.0615, n1 receives n1-n4 heralding and consumes EPR.
+        # 6. t=1.0620, n4 receives n1-n4 heralding and consumes EPR.
+        (1.0, 0.0000, 1, 1, (1.0615, 1.0620)),
+        # 1. t=1.0110, n2-n3 arrives, both n2 and n3 start swapping.
+        # 2. t=1.0110, n3 completes swapping with failure and sends failure heralding to n2 & n4.
+        # 3. t=1.0115, n2 & n4 receive failure heralding , both release qubits.
+        # 4. t=1.0610, n2 aborts swapping and sends failure heralding to n1 only.
+        # 5. t=1.0615, n1 receives failure heralding and releases qubit.
+        (0.0, 0.0000, 0, 0, (1.0615, 1.0115)),
+        # 1. t=1.0110, n2-n3 arrives, both n2 and n3 start swapping.
+        # 2. t=1.0609, n3 completes swapping with success and sends n2-n4 heralding to n2 & n4.
+        # 3. t=1.0610, n2 completes swapping with success and sends n1-n3 heralding to n1 & n3.
+        # 4. t=1.0614, n2 receives n2-n4 heralding and sends n1-n4 heralding to n1 only.
+        # 5. t=1.0615, n3 receives n1-n3 heralding and sends n1-n4 heralding to n4 only.
+        # 6. t=1.0619, n1 receives n1-n4 heralding and consumes EPR.
+        # 7. t=1.0620, n4 receives n1-n4 heralding and consumes EPR.
+        # XXX n_swap2==2 because step4 stitching is currently counted as another swap.
+        (1.0, 0.0499, 2, 1, (1.0619, 1.0620)),
+        # 1. t=1.0110, n2-n3 arrives, both n2 and n3 start swapping.
+        # 2. t=1.0609, n3 completes swapping with failure and sends failure heralding to n2 & n4.
+        # 3. t=1.0610, n2 completes swapping with success and sends n1-n3 heralding to n1 & n3.
+        # 4. t=1.0614, n4 receives failure heralding and releases qubit.
+        # 5. t=1.0614, n2 receives failure heralding and sends failure heralding to n1 only.
+        # 6. t=1.0615, n3 receives n1-n3 heralding, but could not stitch because n3-n4 is released.
+        # 7. t=1.0619, n1 receives failure heralding and releases qubit.
+        (0.0, 0.0499, 1, 0, (1.0619, 1.0614)),
+        # 1. t=1.0110, n2-n3 arrives, both n2 and n3 start swapping.
+        # 2. t=1.0610, n2 completes swapping with success and sends n1-n3 heralding to n1 & n3.
+        # 3. t=1.0611, n3 completes swapping with success and sends n2-n4 heralding to n2 & n4.
+        # 4. t=1.0615, n3 receives n1-n3 heralding and sends n1-n4 heralding to n4 only.
+        # 5. t=1.0616, n2 receives n2-n4 heralding and sends n1-n4 heralding to n1 only.
+        # 6. t=1.0620, n4 receives n1-n4 heralding and consumes EPR.
+        # 7. t=1.0621, n1 receives n1-n4 heralding and consumes EPR.
+        # XXX n_swap2==2 because step5 stitching is currently counted as another swap.
+        (1.0, 0.0501, 2, 1, (1.0621, 1.0620)),
+        # 1. t=1.0110, n2-n3 arrives, both n2 and n3 start swapping.
+        # 2. t=1.0610, n2 completes swapping with success and sends n1-n3 heralding to n1 & n3.
+        # 3. t=1.0611, n3 completes swapping with failure and sends failure heralding to n2 & n4.
+        # 4. t=1.0615, n3 receives n1-n3 heralding and sends n1-n4 heralding to n4 only.
+        # 5. t=1.0616, n4 receives failure heralding and releases qubit.
+        # 6. t=1.0616, n2 receives failure heralding and sends failure heralding to n1 only.
+        # 7. t=1.0620, n4 receives n1-n4 heralding but finds the qubit already released in step5.
+        # 8. t=1.0621, n1 receives failure heralding and releases qubit.
+        (0.0, 0.0501, 1, 0, (1.0621, 1.0616)),
+    ],
+)
+def test_4_delayed(ps3: float, delay3: float, n_swap2: int, n_consumed: int, t_release: tuple[float, float]):
+    """Test swap delay model and error model in 4-node topology."""
+    net, simulator = build_linear_network(
+        4,
+        epr_type=MixedStateEntanglement,
+        fw={
+            "p_swap": 1.0,
+            "swap_delay": 0.050,
+            "swap_error": "DEPOLAR:0.3",
+        },
+    )
+    f1 = net.get_node("n1").get_app(ProactiveForwarder)
+    f2 = net.get_node("n2").get_app(ProactiveForwarder)
+    f3 = net.get_node("n3").get_app(ProactiveForwarder)
+    f4 = net.get_node("n4").get_app(ProactiveForwarder)
+
+    f3.swap.ps = ps3
+    f3.swap.delay = ConstantDelayModel(delay3)
+    f3.swap.error = PerfectErrorModel()
+
+    f2_n_swapped_values: list[int] = []
+
+    def save_counter():
+        f2_n_swapped_values.append(f2.cnt.n_swapped)
+
+    timer = Timer("save_counters", start_time=1.018, end_time=1.088, step_time=0.010, trigger_func=save_counter)
+    timer.install(simulator)
+
+    install_path(net, RoutingPathSingle("n1", "n4", swap=[1, 0, 0, 1]))
+    provide_entanglements(
+        (1.000, f1, f2),
+        (1.000, f3, f4),
+        (1.010, f2, f3),
+        fidelity=1,
+    )
+    simulator.run()
+    print_fw_counters(net)
+
+    assert f2_n_swapped_values == [0, 0, 0, 0, 0, n_swap2, n_swap2, n_swap2]
+    assert f1.cnt.n_consumed == n_consumed
+    if n_consumed > 0:
+        # XXX https://github.com/usnistgov/mqns/issues/92#issuecomment-4056069219
+        # Currently, two ends are receiving distinct EPR objects.
+        # Until this is fixed, verify that BSA error model is applied to at least one of them.
+        assert 0.5 < min(f1.cnt.consumed_avg_fidelity, f4.cnt.consumed_avg_fidelity) <= 0.75
+
+    t_release1, t_release4 = t_release
+    assert f1.node.get_app(QubitReleaseLoggerApp).history == [(0, simulator.time(sec=t_release1))]
+    assert f4.node.get_app(QubitReleaseLoggerApp).history == [(0, simulator.time(sec=t_release4))]
 
 
 @pytest.mark.parametrize(
@@ -168,7 +276,7 @@ def test_5_asap(
     n_consumed: int,
 ):
     """Test SWAP-ASAP in 5-node topology with various entanglement arrival orders."""
-    net, simulator = build_linear_network(5, ps=1.0)
+    net, simulator = build_linear_network(5, fw={"p_swap": 1.0})
     f1 = net.get_node("n1").get_app(ProactiveForwarder)
     f2 = net.get_node("n2").get_app(ProactiveForwarder)
     f3 = net.get_node("n3").get_app(ProactiveForwarder)
@@ -204,7 +312,7 @@ def test_5_asap(
 )
 def test_5_sequential(swap: list[int], etg_ms: tuple[int, int, int, int]):
     """Test sequential swap orders with various entanglement arrival orders."""
-    net, simulator = build_linear_network(5, ps=1.0)
+    net, simulator = build_linear_network(5, fw={"p_swap": 1.0})
     f1 = net.get_node("n1").get_app(ProactiveForwarder)
     f2 = net.get_node("n2").get_app(ProactiveForwarder)
     f3 = net.get_node("n3").get_app(ProactiveForwarder)
@@ -238,7 +346,7 @@ def test_5_sequential(swap: list[int], etg_ms: tuple[int, int, int, int]):
 )
 def test_rect_multipath(has_etg: tuple[int, int, int, int], n_swapped: tuple[int, int], n_consumed: int):
     """Test swapping in rectangular topology with a multi-path request."""
-    net, simulator = build_rect_network(ps=1.0)
+    net, simulator = build_rect_network(fw={"p_swap": 1.0})
     f1 = net.get_node("n1").get_app(ProactiveForwarder)
     f2 = net.get_node("n2").get_app(ProactiveForwarder)
     f3 = net.get_node("n3").get_app(ProactiveForwarder)
@@ -297,7 +405,7 @@ def test_tree2_dynepr(t_edge_etg: float, selected_path: tuple[int, int], n_consu
             chosen = (rp0.path_id, rp1.path_id)[selected_path[1]]
         return chosen
 
-    net, simulator = build_tree_network(ps=1.0, mux=MuxSchemeDynamicEpr(select_path=select_path))
+    net, simulator = build_tree_network(fw={"p_swap": 1.0, "mux": MuxSchemeDynamicEpr(select_path=select_path)})
     f1, f2, f3, f4, f5, f6, f7 = (node.get_app(ProactiveForwarder) for node in net.nodes)
 
     # n4-n2-n1-n3-n6
@@ -394,7 +502,7 @@ def test_tree2_statistical(
         return chosen
 
     net, simulator = build_tree_network(
-        ps=1.0, mux=MuxSchemeStatistical(select_swap_qubit=select_qubit, select_path=select_path)
+        fw={"p_swap": 1.0, "mux": MuxSchemeStatistical(select_swap_qubit=select_qubit, select_path=select_path)}
     )
     f1, f2, f3, f4, f5, f6, f7 = (node.get_app(ProactiveForwarder) for node in net.nodes)
 
@@ -437,7 +545,7 @@ def test_tree2_statistical(
 )
 def test_3_waittime(etg_sec: tuple[float, float], n_cutoff: tuple[int, int]):
     """Test CutoffSchemeWaitTime in 3-node topology."""
-    net, simulator = build_linear_network(3, ps=1.0, end_time=1.010)
+    net, simulator = build_linear_network(3, fw={"p_swap": 1.0}, end_time=1.010)
     f1 = net.get_node("n1").get_app(ProactiveForwarder)
     f2 = net.get_node("n2").get_app(ProactiveForwarder)
     f3 = net.get_node("n3").get_app(ProactiveForwarder)

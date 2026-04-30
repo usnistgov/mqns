@@ -72,10 +72,9 @@ class LinkArchDimBk(LinkArchBase):
         # so that both EPRs are subject to transfer errors.
         e0.apply_error(transfer_half)
         e1.apply_error(transfer_half)
-        e2 = Entanglement.swap(e0, e1, now=tc)
+        e2, local_success = Entanglement.swap(e0, e1, now=tc, error=bsa)
+        assert local_success is True
         del e0, e1
-        assert e2 is not None
-        e2.apply_error(bsa)
 
         # In round-2, physically each of A and B generates a memory-photo EPR that collects noise
         # and then swaps with e2, but this is equivalent to applying noise onto e2 directly.
@@ -182,9 +181,8 @@ class LinkArchDimDual(LinkArchBase):
         tc += tau_0 + tau_l2
         e0.apply_error(transfer_half)
         e1.apply_error(transfer_half)
-        e2 = Entanglement.swap(e0, e1, now=tc)
+        e2, local_success = Entanglement.swap(e0, e1, now=tc, error=bsa)
+        assert local_success is True
         del e0, e1
-        assert e2 is not None
-        e2.apply_error(bsa)
 
         return e2

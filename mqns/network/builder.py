@@ -18,7 +18,7 @@ from mqns.models.epr import Entanglement, MixedStateEntanglement, WernerStateEnt
 from mqns.models.error import TimeDecayInput
 from mqns.models.error.input import ErrorModelInputBasic, ErrorModelInputLength, ErrorModelInputTime
 from mqns.network.fw import (
-    MuxScheme,
+    ForwarderInitKwargs,
     MuxSchemeBufferSpace,
     QubitAllocationType,
     RoutingPath,
@@ -136,8 +136,6 @@ class TopoCommonArgs(TypedDict, total=False):
     """Source efficiency, defaults to ``0.95``."""
     frequency: float
     """Entanglement source frequency, defaults to ``1_000_000``."""
-    p_swap: float
-    """Probability of successful entanglement swapping in forwarder, defaults to ``0.5``."""
 
 
 class AppsCommonArgs(TypedDict, total=False):
@@ -145,6 +143,15 @@ class AppsCommonArgs(TypedDict, total=False):
     """
     Network timing mode, defaults to ASYNC.
     If specified as three floats, construct ``TimingModeSync`` with these durations.
+    """
+
+
+class AppsForwarderArgs(AppsCommonArgs, ForwarderInitKwargs):
+    """
+    Combination of AppsCommonArgs and ForwarderInitKwargs.
+
+    Args:
+        p_swap: Probability of successful entanglement swapping in forwarder, defaults to ``0.5``.
     """
 
 
@@ -219,7 +226,6 @@ class NetworkBuilder:
         self.eta_d = d.get("eta_d", 0.95)
         self.eta_s = d.get("eta_s", 0.95)
         self.frequency = d.get("frequency", 1e6)
-        self.p_swap = d.get("p_swap", 0.5)
 
     def _add_qnode(self, name: str, mem_cap: int) -> TopoQNode:
         node: TopoQNode = {
@@ -238,6 +244,7 @@ class NetworkBuilder:
         length: float,
         fiber_alpha: float,
         fiber_error: ErrorModelInputLength,
+        bsa_error: ErrorModelInputBasic,
         la: LinkArchDef,
     ):
         self.qchannels.append(
@@ -248,9 +255,10 @@ class NetworkBuilder:
                 "capacity2": cap2,
                 "parameters": {
                     "length": length,
+                    "link_arch": _convert_link_arch(la),
                     "alpha": fiber_alpha,
                     "transfer_error": fiber_error,
-                    "link_arch": _convert_link_arch(la),
+                    "bsa_error": bsa_error,
                 },
             }
         )
@@ -263,6 +271,7 @@ class NetworkBuilder:
         channel_capacity: int = 1,
         fiber_alpha: float = 0.2,
         fiber_error: ErrorModelInputLength = "DEPOLAR:0.01",
+        bsa_error: ErrorModelInputBasic = "PERFECT",
         link_arch: LinkArchDef | Sequence[LinkArchDef] = LinkArchDimBkSeq,
         **kwargs: Unpack[TopoCommonArgs],
     ) -> Self:
@@ -281,7 +290,9 @@ class NetworkBuilder:
                 for each qchannel, an integer applies to both sides, a tuple applies to (left,right) sides.
             channel_capacity: Qubit allocation per qchannel, if not specified in ``channels``.
             fiber_alpha: Fiber loss in dB/km, determines success probability.
-            fiber_rate: Fiber decoherence rate in km^{-1}, determines qualify of entangled state.
+            fiber_error: Fiber error model, determines qualify of entangled state.
+            bsa_error: Photonic Bell-state analyzer or absorptive memory capture error model,
+                       determines qualify of entangled state.
             link_arch: Link architecture per qchannel.
                 If specified as list, it must have same length as ``channel_length``.
                 If specified as instance/type/string, it is broadcast to all qchannels.
@@ -321,7 +332,7 @@ class NetworkBuilder:
             cap1, cap2 = _split_channel_capacity(opt_cap[0] if len(opt_cap) > 0 else channel_capacity)
             ensure_node(node1, cap1)
             ensure_node(node2, cap2)
-            self._add_qchannel(node1, node2, cap1, cap2, length, fiber_alpha, fiber_error, la)
+            self._add_qchannel(node1, node2, cap1, cap2, length, fiber_alpha, fiber_error, bsa_error, la)
 
         return self
 
@@ -334,6 +345,7 @@ class NetworkBuilder:
         channel_capacity: int | Sequence[int | tuple[int, int]] = 1,
         fiber_alpha: float = 0.2,
         fiber_error: ErrorModelInputLength = "DEPOLAR:0.01",
+        bsa_error: ErrorModelInputBasic = "PERFECT",
         link_arch: LinkArchDef | Sequence[LinkArchDef] = LinkArchDimBkSeq,
         **kwargs: Unpack[TopoCommonArgs],
     ) -> Self:
@@ -356,7 +368,9 @@ class NetworkBuilder:
                 If specified as number, it is broadcast to all qchannels.
                 For each qchannel, an integer applies to both sides, a tuple applies to (left,right) sides.
             fiber_alpha: Fiber loss in dB/km, determines success probability.
-            fiber_rate: Fiber decoherence rate in km^{-1}, determines qualify of entangled state.
+            fiber_error: Fiber error model, determines qualify of entangled state.
+            bsa_error: Photonic Bell-state analyzer or absorptive memory capture error model,
+                       determines qualify of entangled state.
             link_arch: Link architecture per qchannel.
                 If specified as list, it must have same length as ``channel_length``.
                 If specified as instance/type/string, it is broadcast to all qchannels.
@@ -394,7 +408,7 @@ class NetworkBuilder:
         for i, (length, caps, la) in enumerate(zip(channel_length, channel_capacity, link_arch, strict=True)):
             node1, node2 = nodes[i], nodes[i + 1]
             cap1, cap2 = _split_channel_capacity(caps)
-            self._add_qchannel(node1, node2, cap1, cap2, length, fiber_alpha, fiber_error, la)
+            self._add_qchannel(node1, node2, cap1, cap2, length, fiber_alpha, fiber_error, bsa_error, la)
 
         return self
 
@@ -404,8 +418,8 @@ class NetworkBuilder:
         if len(self.qnode_apps) + len(self.controller_apps) > 0:
             raise TypeError("applications already installed")
 
-    def _parse_apps_args(self, d: AppsCommonArgs) -> None:
-        timing = d.get("timing")
+    def _extract_apps_common_args(self, d: AppsCommonArgs) -> None:
+        timing = d.pop("timing", None)
         if isinstance(timing, TimingMode):
             self.timing = timing
         elif timing is None:
@@ -428,9 +442,7 @@ class NetworkBuilder:
 
     def proactive_centralized(
         self,
-        *,
-        mux: MuxScheme | None = None,
-        **kwargs: Unpack[AppsCommonArgs],
+        **kwargs: Unpack[AppsForwarderArgs],
     ) -> Self:
         """
         Choose proactive forwarding with centralized control.
@@ -439,8 +451,10 @@ class NetworkBuilder:
             mux: Multiplexing scheme, default is buffer-space.
         """
         self._assert_can_add_apps()
-        self._parse_apps_args(kwargs)
+        self._extract_apps_common_args(kwargs)
+        kwargs.setdefault("p_swap", 0.5)
 
+        mux = kwargs.get("mux")
         if mux is None or isinstance(mux, MuxSchemeBufferSpace):
             self.qubit_allocation = QubitAllocationType.FOLLOW_QCHANNEL
         elif isinstance(self.route, YenRouteAlgorithm):
@@ -448,10 +462,7 @@ class NetworkBuilder:
 
         self._add_link_layer()
         self.qnode_apps.append(
-            ProactiveForwarder(
-                ps=self.p_swap,
-                mux=mux,
-            )
+            ProactiveForwarder(**kwargs),
         )
         self.controller_apps.append(
             ProactiveRoutingController(),
@@ -465,9 +476,8 @@ class NetworkBuilder:
     def reactive_centralized(
         self,
         *,
-        mux: MuxScheme | None = None,
         swap: SwapPolicy = "asap",
-        **kwargs: Unpack[AppsCommonArgs],
+        **kwargs: Unpack[AppsForwarderArgs],
     ) -> Self:
         """
         Choose reactive forwarding with centralized control.
@@ -479,14 +489,12 @@ class NetworkBuilder:
         ``.request()`` method only accepts src-dst nodes, but does not support ``RoutingPath``.
         """
         self._assert_can_add_apps()
-        self._parse_apps_args(kwargs)
+        self._extract_apps_common_args(kwargs)
+        kwargs.setdefault("p_swap", 0.5)
 
         self._add_link_layer()
         self.qnode_apps.append(
-            ReactiveForwarder(
-                ps=self.p_swap,
-                mux=mux,
-            ),
+            ReactiveForwarder(**kwargs),
         )
         self.controller_apps.append(
             ReactiveRoutingController(swap=swap),

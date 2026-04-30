@@ -15,7 +15,7 @@ from tap import Tap
 
 from mqns.entity.base_channel import default_light_speed
 from mqns.models.error import TimeDecayInput
-from mqns.models.error.input import ErrorModelInputLength
+from mqns.models.error.input import ErrorModelInputBasic, ErrorModelInputLength
 from mqns.network.builder import CTRL_DELAY, EprTypeLiteral, LinkArchLiteral, NetworkBuilder, tap_configure
 from mqns.network.fw import CutoffSchemeWaitTime
 from mqns.network.proactive import ProactiveForwarder
@@ -39,6 +39,9 @@ class Args(Tap):
     link_arch: LinkArchLiteral  # link architecture
     link_arch_sim: bool = False  # determine fidelity with LinkArch mini simulation
     fiber_error: ErrorModelInputLength = "DEPOLAR:0.01"  # fiber error model with decoherence rate
+    bsa_error: ErrorModelInputBasic = "PERFECT"  # photonic Bell-state analyzer or absorptive memory capture error model
+    swap_delay: float = 0.0  # forwarder Bell-state analyzer delay
+    swap_error: ErrorModelInputBasic = "PERFECT"  # forwarder Bell-state analyzer error model
     csv: str = ""  # save stats as CSV file
     json: str = ""  # save stats and details as JSON file
     plt: str = ""  # save plot as image file
@@ -66,10 +69,14 @@ def run_simulation(seed: int, args: Args, t_cohere: float, t_wait: float):
             memory_decay=args.memory_decay,
             channel_length=args.L,
             fiber_error=args.fiber_error,
+            bsa_error=args.bsa_error,
             link_arch=args.link_arch,
             init_fidelity=None if args.link_arch_sim else 0.99,
         )
-        .proactive_centralized()
+        .proactive_centralized(
+            swap_delay=args.swap_delay,
+            swap_error=args.swap_error,
+        )
         .request(
             "S-D",
             swap=[1, 0, 1],

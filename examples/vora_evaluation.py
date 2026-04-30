@@ -51,7 +51,7 @@ import pandas as pd
 from tap import Tap
 
 from mqns.network.builder import CTRL_DELAY, NetworkBuilder
-from mqns.network.fw import SwapPolicy, SwapSequenceInput
+from mqns.network.fw import SwapPolicy, SwapSequence, SwapSequenceInput
 from mqns.network.network import QuantumNetwork
 from mqns.network.proactive import ProactiveForwarder, compute_vora_swap_sequence
 from mqns.network.protocol.link_layer import LinkLayerCounters
@@ -169,7 +169,7 @@ def vora_train_row(p: ParameterSet, num_routers: int, dist_prop: str) -> str:
     return f"python linear_attempts.py --runs {p.n_runs} --L {L} --M 1 --csv $OUTDIR/{filename}"
 
 
-def vora_regen_row(p: ParameterSet, num_routers: int, dist_prop: str, indir: str) -> list[int]:
+def vora_regen_row(p: ParameterSet, num_routers: int, dist_prop: str, indir: str) -> SwapSequence:
     """
     Regenerate vora swapping order from the output of linear_attempts.py.
     """

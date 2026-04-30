@@ -6,8 +6,7 @@ from typing import NotRequired, Protocol, TypedDict, Unpack, override
 from mqns.entity.node import QNode
 from mqns.models.delay import DelayModel
 from mqns.models.epr import Entanglement, EntanglementInitKwargs, MixedStateEntanglement, WernerStateEntanglement
-from mqns.models.error import DepolarErrorModel, ErrorModel, TimeDecayFunc, time_decay_nop
-from mqns.models.error.input import ErrorModelInputBasic, parse_error
+from mqns.models.error import ErrorModel, TimeDecayFunc, time_decay_nop
 from mqns.simulator import Time
 
 type MakeEprFunc = Callable[[EntanglementInitKwargs], Entanglement]
@@ -32,6 +31,11 @@ class ChannelParameters(Protocol):
 
     If the LinkArch subclass needs to apply transfer error at a different length,
     it will clone the instance and adjust the length while preserving the decoherence rate.
+    """
+    bsa_error: ErrorModel
+    """
+    Bell-state analyzer or absorptive memory capture error model.
+    This is only used if ``init_fidelity`` is omitted or negative.
     """
 
 
@@ -70,11 +74,6 @@ class LinkArchParameters(TypedDict):
 
     Current limitation: if a qchannel is activated in two paths with opposite directions,
     and the two memories have different error models, the calculations would be incorrect.
-    """
-    bsa_error: NotRequired[ErrorModelInputBasic]
-    """
-    Bell-state analyzer or absorptive memory capture error model, defaults to perfect.
-    This is only used if ``init_fidelity`` is omitted.
     """
 
 
@@ -219,7 +218,7 @@ class LinkArchBase(ABC, LinkArch):
             store_dst=se1,
             transfer_full=ch.transfer_error,
             transfer_half=copy.deepcopy(ch.transfer_error).set(length=ch.length / 2),
-            bsa=parse_error(d.get("bsa_error"), DepolarErrorModel, -1),
+            bsa=ch.bsa_error,
         )
         assert type(epr) is epr_type
 

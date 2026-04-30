@@ -32,9 +32,9 @@ def test_swap_success(monkeypatch: pytest.MonkeyPatch):
     e2 = WernerStateEntanglement(fidelity=0.8, fidelity_time=now, decohere_time=micros(4000))
 
     monkeypatch.setattr(rng, "random", lambda: 0.1)
-    ne = Entanglement.swap(e1, e2, now=now)
+    ne, local_success = Entanglement.swap(e1, e2, now=now)
 
-    assert ne is not None
+    assert local_success is True
     assert ne.fidelity < min(e1.fidelity, e2.fidelity)  # swapping reduces fidelity
     assert ne.fidelity_time == now
     assert ne.decohere_time == micros(3000)
@@ -54,7 +54,7 @@ def test_swap_fidelity():
     )
 
     ne1t = micros(2500)
-    ne1 = Entanglement.swap(e1, e2, now=ne1t)
+    ne1, _ = Entanglement.swap(e1, e2, now=ne1t)
     assert e1.w == pytest.approx(0.983711102, abs=1e-6)
     assert e2.w == pytest.approx(0.985680493, abs=1e-6)
     assert ne1 is not None
@@ -62,7 +62,7 @@ def test_swap_fidelity():
     assert ne1.fidelity == pytest.approx(0.977218633, abs=1e-6)
 
     ne2t = micros(3500)
-    ne2 = Entanglement.swap(ne1, e3, now=ne2t)
+    ne2, _ = Entanglement.swap(ne1, e3, now=ne2t)
     assert ne1.w == pytest.approx(0.967687533, abs=1e-6)
     assert e3.w == pytest.approx(0.985680493, abs=1e-6)
     assert ne2 is not None
@@ -77,21 +77,21 @@ def test_swap_failure(monkeypatch: pytest.MonkeyPatch):
     e2 = WernerStateEntanglement(fidelity=0.8, fidelity_time=now, decohere_time=decohere)
 
     monkeypatch.setattr(rng, "random", lambda: 0.99)
-    ne = Entanglement.swap(e1, e2, now=now, ps=0.5)
-
-    assert ne is None
-    assert e1.is_decohered
-    assert e2.is_decohered
+    ne, local_success = Entanglement.swap(e1, e2, now=now, ps=0.5)
+    assert local_success is False
+    assert ne.is_decohered
 
 
-def test_swap_decohered_inputs():
+def test_swap_decohered_inputs(monkeypatch: pytest.MonkeyPatch):
     now = micros(0)
     decohere = now + 1.0
     e1 = WernerStateEntanglement(fidelity=0.9, fidelity_time=now, decohere_time=decohere)
     e2 = WernerStateEntanglement(fidelity=0.8, fidelity_time=now, decohere_time=decohere)
     e1.is_decohered = True
 
-    assert Entanglement.swap(e1, e2, now=now) is None
+    ne, local_success = Entanglement.swap(e1, e2, now=now)
+    assert local_success is True
+    assert ne.is_decohered
 
 
 def test_purify_success(monkeypatch: pytest.MonkeyPatch):
