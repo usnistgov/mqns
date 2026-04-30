@@ -17,7 +17,7 @@
 
 import uuid
 from collections import deque
-from collections.abc import Sequence
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Literal, TypedDict, cast, override
 
@@ -54,7 +54,7 @@ class ReservationRequest:
 @json_encodable
 class LinkLayerCounters:
     @staticmethod
-    def aggregate(nodes: Sequence[QNode]) -> "LinkLayerCounters":
+    def aggregate(nodes: Iterable[QNode]) -> "LinkLayerCounters":
         """
         Aggregate ``LinkLayerCounters`` from a network.
 
