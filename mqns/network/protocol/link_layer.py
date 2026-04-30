@@ -15,7 +15,6 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import uuid
 from collections import deque
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -34,6 +33,11 @@ from mqns.network.protocol.event import (
     QubitReleasedEvent,
 )
 from mqns.utils import json_encodable, log, rng
+
+_AUTOID = 0
+"""
+Automatically assigned ``ReservationRequest.key`` numeric portion.
+"""
 
 
 class ReserveMsg(TypedDict):
@@ -316,9 +320,11 @@ class LinkLayer(Application[QNode]):
               Key format: ``<node1>_<node2>_[<path_id>]_<local_qubit_addr>``
             - The reservation is communicated via a classical message using the ``RESERVE_QUBIT`` command.
         """
-
-        key = uuid.uuid4().hex
+        global _AUTOID
+        key = f"llk_{_AUTOID:028x}"
+        _AUTOID += 1
         assert key not in self.pending_init_reservation
+
         qubit.state, qubit.active = QubitState.ACTIVE, key
         self.pending_init_reservation[key] = (qchannel, next_hop, qubit)
         log.debug(f"{self.node}: start reservation key={key} dst={next_hop} addr={qubit.addr} path={qubit.path_id}")

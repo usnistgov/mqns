@@ -15,7 +15,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from collections import defaultdict
+from collections import defaultdict, deque
 from itertools import pairwise
 from typing import cast, override
 
@@ -71,7 +71,7 @@ class ReactiveRoutingController(ClassicCommandDispatcherMixin, RoutingController
         self.add_handler(self.handle_classic_command, RecvClassicPacket)
         self.add_handler(self.handle_sync_phase, TimingPhaseEvent)
 
-        self._tls = defaultdict[tuple[str, str], set[str]](set)
+        self._tls = defaultdict[tuple[str, str], deque[str]](deque)
         """
         Topology link state.
 
@@ -110,7 +110,7 @@ class ReactiveRoutingController(ClassicCommandDispatcherMixin, RoutingController
         for entry in msg["ls"]:
             n0, n1 = entry["node"], entry["neighbor"]
             if n0 < n1:
-                self._tls[(n0, n1)].add(entry["qubit"])
+                self._tls[(n0, n1)].append(entry["qubit"])
 
         return True
 
@@ -149,7 +149,7 @@ class ReactiveRoutingController(ClassicCommandDispatcherMixin, RoutingController
         Attempt to match a computed route with available entanglements.
         The entanglements are removed from ``self._tls`` only if every link along the path has an entanglement.
         """
-        link_etgs: list[set[str]] = []
+        link_etgs: list[deque[str]] = []
 
         for n0, n1 in pairwise(route):
             etgs = self._tls.get((n0, n1) if n0 < n1 else (n1, n0))
@@ -157,4 +157,4 @@ class ReactiveRoutingController(ClassicCommandDispatcherMixin, RoutingController
                 return None
             link_etgs.append(etgs)
 
-        return [etgs.pop() for etgs in link_etgs]
+        return [etgs.popleft() for etgs in link_etgs]
