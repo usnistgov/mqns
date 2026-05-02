@@ -3,9 +3,9 @@ Simulate 3-node linear topology and report end-to-end throughput.
 
 This script sets up and executes simulations using:
 
-* A generated topology based with varying qubit coherence time,
-* A quantum network with Dijkstra-based routing algorithm, and asynchronous timing mode,
-* A seeded random number generator.
+* a generated topology based with varying qubit coherence time
+* a quantum network with Dijkstra-based routing algorithm
+* a seeded random number generator
 
 After simulation, it reports the number of successful entanglement generations per second.
 The statistics can be saved and plotted.
@@ -35,20 +35,48 @@ class Args(Tap):
     workers: int = 1  # number of workers for parallel execution
     runs: int = 100  # number of trials per parameter set
     sim_duration: float = 3  # simulation duration in seconds
-    mode: Literal["PCA", "RCS"] = "PCA"
+    mode: Literal["PCA", "PCS", "RCS"] = "PCA"
     sync_timing: list[float]
     L: tuple[float, float] = (32, 18)  # qchannel lengths (km)
-    t_cohere: list[float] = [0.002, 0.005, 0.01, 0.015, 0.02, 0.025, 0.05, 0.1]  # memory coherence time (s)
-    qchannel_capacity: int = 1  # qchannel capacity
+    M: list[int] = [1]
+    t_cohere: list[float] = [0.002, 0.005, 0.01, 0.015, 0.02, 0.025, 0.05, 0.1]  # memory coherence times (sec)
     epr_type: EprTypeLiteral  # network-wide EPR type
     link_arch: LinkArchLiteral  # link architecture
     json: str = ""  # save results as JSON file
-    csv: str = ""  # save results as CSV file
+    csv: str = ""  # save summary as CSV file
     plt: str = ""  # save plot as image file
 
     @override
     def configure(self) -> None:
         tap_configure(self)
+
+        self.add_argument("--L", metavar=("L_SR", "L_RD"))
+        self.add_argument("--M", help="(int | 4*int, default: 1) number of qubits per channel per direction")
+
+    @override
+    def process_args(self) -> None:
+        if len(self.M) not in (1, 4):
+            raise ValueError("--M must have either 1 or 4 elements")
+        if min(self.M) < 1:
+            raise ValueError("--M must be positive")
+
+    def qchannel_capacity(self) -> int | list[tuple[int, int]]:
+        """
+        Derive ``NetworkBuilder.topo_linear(channel_capacity=)`` from ``--M``.
+
+        If ``--M`` has one integer, it is used as channel capacity on both S-R and R-D.
+
+        If ``--M`` has four integers, they are used as:
+
+        1. number of qubits on S assigned to S-R channel
+        2. number of qubits on R assigned to S-R channel
+        3. number of qubits on R assigned to R-D channel
+        4. number of qubits on D assigned to R-D channel
+        """
+        if len(self.M) == 1:
+            return self.M[0]
+        mSr, mRl, mRr, mDl = self.M
+        return [(mSr, mRl), (mRr, mDl)]
 
 
 SEED_BASE = 100
@@ -69,16 +97,18 @@ def run_simulation(seed: int, args: Args, t_cohere: float) -> Stats:
         nodes=("S", "R", "D"),
         t_cohere=t_cohere,
         channel_length=args.L,
-        channel_capacity=args.qchannel_capacity,
+        channel_capacity=args.qchannel_capacity(),
         link_arch=args.link_arch,
     )
 
+    total_duration = args.sim_duration
     match args.mode:
         case "PCA":
-            total_duration = args.sim_duration + CTRL_DELAY
+            total_duration += CTRL_DELAY
             b.proactive_centralized()
+        case "PCS":
+            b.proactive_centralized(timing=args.sync_timing)
         case "RCS":
-            total_duration = args.sim_duration
             b.reactive_centralized(timing=args.sync_timing)
 
     b.request("S-D")
@@ -93,7 +123,7 @@ def run_simulation(seed: int, args: Args, t_cohere: float) -> Stats:
     stats = Stats(
         t_cohere=t_cohere,
         throughput_eps=fw_s_cnt.n_consumed / args.sim_duration,
-        mean_fidelity=float(fw_s_cnt.consumed_avg_fidelity),
+        mean_fidelity=fw_s_cnt.consumed_avg_fidelity,
         expired_ratio=ll_cnt.decoh_ratio,
         expired_per_e2e=ll_cnt.n_decoh / fw_s_cnt.n_consumed if fw_s_cnt.n_consumed > 0 else 0,
     )

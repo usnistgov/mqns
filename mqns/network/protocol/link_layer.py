@@ -15,9 +15,8 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import uuid
 from collections import deque
-from collections.abc import Sequence
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Literal, TypedDict, cast, override
 
@@ -34,6 +33,11 @@ from mqns.network.protocol.event import (
     QubitReleasedEvent,
 )
 from mqns.utils import json_encodable, log, rng
+
+_AUTOID = 0
+"""
+Automatically assigned ``ReservationRequest.key`` numeric portion.
+"""
 
 
 class ReserveMsg(TypedDict):
@@ -54,7 +58,7 @@ class ReservationRequest:
 @json_encodable
 class LinkLayerCounters:
     @staticmethod
-    def aggregate(nodes: Sequence[QNode]) -> "LinkLayerCounters":
+    def aggregate(nodes: Iterable[QNode]) -> "LinkLayerCounters":
         """
         Aggregate ``LinkLayerCounters`` from a network.
 
@@ -184,16 +188,24 @@ class LinkLayer(Application[QNode]):
 
         1. Run all active channels from reservation step.
 
+        Upon exiting EXTERNAL phase:
+
+        1. Clear incomplete reservations.
+        2. Clear unsatisfied reservation requests.
+
         Upon exiting INTERNAL phase:
 
         1. Clear existing memory qubits.
         """
         match event.action:
-            case TimingPhase.INTERNAL, False:
-                self.memory.clear()
             case TimingPhase.EXTERNAL, True:
                 for (qchannel, path_id), (neighbor, _) in self.active_channels.items():
                     self.run_active_channel(qchannel, path_id, neighbor)
+            case TimingPhase.EXTERNAL, False:
+                self.pending_init_reservation.clear()
+                self.fifo_reservation_req.clear()
+            case TimingPhase.INTERNAL, False:
+                self.memory.clear()
 
     def RecvClassicPacketHandler(self, event: RecvClassicPacket) -> bool:
         msg = event.packet.get()
@@ -316,9 +328,11 @@ class LinkLayer(Application[QNode]):
               Key format: ``<node1>_<node2>_[<path_id>]_<local_qubit_addr>``
             - The reservation is communicated via a classical message using the ``RESERVE_QUBIT`` command.
         """
-
-        key = uuid.uuid4().hex
+        global _AUTOID
+        key = f"llk_{_AUTOID:028x}"
+        _AUTOID += 1
         assert key not in self.pending_init_reservation
+
         qubit.state, qubit.active = QubitState.ACTIVE, key
         self.pending_init_reservation[key] = (qchannel, next_hop, qubit)
         log.debug(f"{self.node}: start reservation key={key} dst={next_hop} addr={qubit.addr} path={qubit.path_id}")
@@ -334,10 +348,16 @@ class LinkLayer(Application[QNode]):
         2. A ``RESERVE_QUBIT_OK`` response is sent back to confirm the reservation.
         3. If no available qubit is found, the request is enqueued for future retry (FIFO).
         """
+        key = msg["key"]
+
+        if not self.node.timing.is_external():
+            log.debug(f"{self.node}: ignore reservation request key={key} reason=not-external-phase")
+            return
+
         from_node = cchannel.find_peer(self.node)
         assert type(from_node) is QNode
         qchannel = self.node.get_qchannel(from_node)
-        req = ReservationRequest(msg["key"], msg["path_id"], cchannel, from_node, qchannel)
+        req = ReservationRequest(key, msg["path_id"], cchannel, from_node, qchannel)
         if not self.try_accept_reservation(req):
             self.fifo_reservation_req.append(req)
 
@@ -379,6 +399,10 @@ class LinkLayer(Application[QNode]):
         1. Trigger the entanglement generation process using the reserved memory qubit.
         """
         key = msg["key"]
+        if not self.node.timing.is_external():
+            log.debug(f"{self.node}: ignore reservation response key={key} reason=not-external-phase")
+            return
+
         (qchannel, next_hop, qubit) = self.pending_init_reservation.pop(key)
         assert qubit.active == key
         qubit.state = QubitState.RESERVED

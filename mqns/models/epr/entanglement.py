@@ -26,7 +26,6 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import hashlib
-import uuid
 from abc import abstractmethod
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, Self, TypedDict, Unpack, cast
@@ -44,6 +43,12 @@ from mqns.utils import rng
 
 if TYPE_CHECKING:
     from mqns.entity.node import QNode
+
+
+_AUTOID = 0
+"""
+Automatically assigned ``Entanglement.name`` numeric portion.
+"""
 
 
 class EntanglementInitKwargs(TypedDict, total=False):
@@ -99,7 +104,11 @@ class Entanglement(QuantumModel):
             store_decays: Memory time-based decay functions at src and dst.
         """
         name = kwargs.get("name")
-        self.name = uuid.uuid4().hex if name is None else name
+        if name is None:
+            global _AUTOID
+            name = f"etg_{_AUTOID:028x}"
+            _AUTOID += 1
+        self.name = name
         """Descriptive name."""
 
         self.decohere_time = kwargs.get("decohere_time", Time.SENTINEL)
@@ -194,7 +203,7 @@ class Entanglement(QuantumModel):
                 orig_eprs.append(epr)
 
         orig_names = "-".join((e.name for e in orig_eprs))
-        name = hashlib.sha256(orig_names.encode()).hexdigest()[:32]  # same length as `uuid.uuid4().hex`
+        name = hashlib.sha256(orig_names.encode()).hexdigest()[:32]  # same length as default name
         ne = cast(
             E,
             type(epr0)._make_swapped(

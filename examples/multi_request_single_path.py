@@ -151,7 +151,10 @@ def plot(results: dict[str, list[list[PathStats]]], *, save_plt: str):
 
 # Simulation constants
 STRATEGIES: dict[str, MuxScheme] = {
-    "Statistical Mux.": MuxSchemeStatistical(),
+    # XXX https://github.com/usnistgov/mqns/pull/134#issuecomment-4362659122
+    # This is set to coordinated_decisions=True to workaround bugs in ASAP swap.
+    # It should be changed back to coordinated_decisions=False for more realistic solution.
+    "Statistical Mux.": MuxSchemeStatistical(coordinated_decisions=True),
     "Random Alloc.": MuxSchemeDynamicEpr(),
     "Swap-weighted Alloc.": MuxSchemeDynamicEpr(select_path=MuxSchemeDynamicEpr.SelectPath_swap_weighted),
 }
