@@ -1,10 +1,14 @@
 import copy
 import uuid
+from collections import defaultdict
+from collections.abc import Mapping
 from typing import Literal, TypedDict, Unpack, override
 
-from mqns.entity.cchannel import ClassicChannelInitKwargs
+import pytest
+
+from mqns.entity.cchannel import ClassicChannelInitKwargs, ClassicPacket
 from mqns.entity.memory import QubitState
-from mqns.entity.node import Application, Controller, QNode
+from mqns.entity.node import Application, Controller, Node, QNode
 from mqns.entity.qchannel import LinkArchAlways, LinkArchDimBk, QuantumChannelInitKwargs
 from mqns.models.epr import Entanglement, WernerStateEntanglement
 from mqns.network.fw import Forwarder, ForwarderInitKwargs, RoutingController, RoutingPath
@@ -184,6 +188,30 @@ def build_rect_network(
         **_make_topo_args(kwargs, memory_capacity_factor=2),
     )
     return _build_network_finish(topo, kwargs, route=YenRouteAlgorithm(k_paths=2))
+
+
+def collect_cpacket_counts(monkeypatch: pytest.MonkeyPatch, *, inc_controller=False) -> Mapping[str, int]:
+    """
+    Gather classic packet counts between node pairs.
+
+    Returns: Mapping from node name(s) to number of packets, with these entries:
+
+    * "src-dst": Packets sent from src to dst.
+    * "src-*": Packets sent from src to any destination.
+    * "*-dst": Packets sent to dst from any source.
+    """
+    orig_send_cpacket = Node.send_cpacket
+    d = defaultdict[str, int](lambda: 0)
+
+    def send_cpacket(self: Node, next_hop: Node, pkt: ClassicPacket):
+        if self == pkt.src and (inc_controller or Controller not in (type(pkt.src), type(pkt.dest))):
+            d[f"{pkt.src.name}-{pkt.dest.name}"] += 1
+            d[f"{pkt.src.name}-*"] += 1
+            d[f"*-{pkt.dest.name}"] += 1
+        orig_send_cpacket(self, next_hop, pkt)
+
+    monkeypatch.setattr(Node, "send_cpacket", send_cpacket)
+    return d
 
 
 def print_fw_counters(net: QuantumNetwork):

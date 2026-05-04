@@ -29,6 +29,7 @@ from .fw_common import (
     build_linear_network,
     build_rect_network,
     build_tree_network,
+    collect_cpacket_counts,
     install_path,
     print_fw_counters,
     provide_entanglements,
@@ -146,7 +147,7 @@ def test_4_asap(etg_ms: tuple[int, int, int], n_swapped_p: int):
 
 
 @pytest.mark.parametrize(
-    ("ps3", "delay3", "n_swap2", "n_consumed", "t_release"),
+    ("ps3", "delay3", "n_swap2", "n_consumed", "t_release", "n_cpacket"),
     [
         # 1. t=1.0110, n2-n3 arrives, both n2 and n3 start swapping.
         # 2. t=1.0110, n3 completes swapping with success and sends n2-n4 heralding to n2 & n4.
@@ -154,13 +155,14 @@ def test_4_asap(etg_ms: tuple[int, int, int], n_swapped_p: int):
         # 4. t=1.0610, n2 completes swapping with success and sends n1-n4 heralding to n1 & n4.
         # 5. t=1.0615, n1 receives n1-n4 heralding and consumes EPR.
         # 6. t=1.0620, n4 receives n1-n4 heralding and consumes EPR.
-        (1.0, 0.0000, 1, 1, (1.0615, 1.0620)),
+        (1.0, 0.0000, 1, 1, (1.0615, 1.0620), (1, 1, 0, 2)),
         # 1. t=1.0110, n2-n3 arrives, both n2 and n3 start swapping.
-        # 2. t=1.0110, n3 completes swapping with failure and sends failure heralding to n2 & n4.
-        # 3. t=1.0115, n2 & n4 receive failure heralding , both release qubits.
+        # 2. t=1.0110, n3 completes swapping with failure and sends failure heralding to n2 & n4,
+        #              affected qubits are released at n3.
+        # 3. t=1.0115, n2 & n4 receive failure heralding, both release qubits.
         # 4. t=1.0610, n2 aborts swapping and sends failure heralding to n1 only.
         # 5. t=1.0615, n1 receives failure heralding and releases qubit.
-        (0.0, 0.0000, 0, 0, (1.0615, 1.0115)),
+        (0.0, 0.0000, 0, 0, (1.0615, 1.0115), (1, 1, 0, 1)),
         # 1. t=1.0110, n2-n3 arrives, both n2 and n3 start swapping.
         # 2. t=1.0609, n3 completes swapping with success and sends n2-n4 heralding to n2 & n4.
         # 3. t=1.0610, n2 completes swapping with success and sends n1-n3 heralding to n1 & n3.
@@ -169,15 +171,17 @@ def test_4_asap(etg_ms: tuple[int, int, int], n_swapped_p: int):
         # 6. t=1.0619, n1 receives n1-n4 heralding and consumes EPR.
         # 7. t=1.0620, n4 receives n1-n4 heralding and consumes EPR.
         # XXX n_swap2==2 because step4 stitching is currently counted as another swap.
-        (1.0, 0.0499, 2, 1, (1.0619, 1.0620)),
+        (1.0, 0.0499, 2, 1, (1.0619, 1.0620), (2, 1, 1, 2)),
         # 1. t=1.0110, n2-n3 arrives, both n2 and n3 start swapping.
-        # 2. t=1.0609, n3 completes swapping with failure and sends failure heralding to n2 & n4.
+        # 2. t=1.0609, n3 completes swapping with failure and sends failure heralding to n2 & n4,
+        #              affected qubits are released at n3.
         # 3. t=1.0610, n2 completes swapping with success and sends n1-n3 heralding to n1 & n3.
         # 4. t=1.0614, n4 receives failure heralding and releases qubit.
         # 5. t=1.0614, n2 receives failure heralding and sends failure heralding to n1 only.
-        # 6. t=1.0615, n3 receives n1-n3 heralding, but could not stitch because n3-n4 is released.
+        # 6. t=1.0615, n3 receives n1-n3 heralding, but could not recognize the EPR name
+        #              because qubits were released in step2.
         # 7. t=1.0619, n1 receives failure heralding and releases qubit.
-        (0.0, 0.0499, 1, 0, (1.0619, 1.0614)),
+        (0.0, 0.0499, 1, 0, (1.0619, 1.0614), (2, 1, 1, 1)),
         # 1. t=1.0110, n2-n3 arrives, both n2 and n3 start swapping.
         # 2. t=1.0610, n2 completes swapping with success and sends n1-n3 heralding to n1 & n3.
         # 3. t=1.0611, n3 completes swapping with success and sends n2-n4 heralding to n2 & n4.
@@ -186,19 +190,29 @@ def test_4_asap(etg_ms: tuple[int, int, int], n_swapped_p: int):
         # 6. t=1.0620, n4 receives n1-n4 heralding and consumes EPR.
         # 7. t=1.0621, n1 receives n1-n4 heralding and consumes EPR.
         # XXX n_swap2==2 because step5 stitching is currently counted as another swap.
-        (1.0, 0.0501, 2, 1, (1.0621, 1.0620)),
+        (1.0, 0.0501, 2, 1, (1.0621, 1.0620), (2, 1, 1, 2)),
         # 1. t=1.0110, n2-n3 arrives, both n2 and n3 start swapping.
         # 2. t=1.0610, n2 completes swapping with success and sends n1-n3 heralding to n1 & n3.
-        # 3. t=1.0611, n3 completes swapping with failure and sends failure heralding to n2 & n4.
-        # 4. t=1.0615, n3 receives n1-n3 heralding and sends n1-n4 heralding to n4 only.
+        # 3. t=1.0611, n3 completes swapping with failure and sends failure heralding to n2 & n4,
+        #              affected qubits are released at n3.
+        # 4. t=1.0615, n3 receives n1-n3 heralding, but could not recognize the EPR name
+        #              because qubits were released in step3.
         # 5. t=1.0616, n4 receives failure heralding and releases qubit.
         # 6. t=1.0616, n2 receives failure heralding and sends failure heralding to n1 only.
         # 7. t=1.0620, n4 receives n1-n4 heralding but finds the qubit already released in step5.
         # 8. t=1.0621, n1 receives failure heralding and releases qubit.
-        (0.0, 0.0501, 1, 0, (1.0621, 1.0616)),
+        (0.0, 0.0501, 1, 0, (1.0621, 1.0616), (2, 1, 1, 1)),
     ],
 )
-def test_4_delayed(ps3: float, delay3: float, n_swap2: int, n_consumed: int, t_release: tuple[float, float]):
+def test_4_delayed(
+    monkeypatch: pytest.MonkeyPatch,
+    ps3: float,
+    delay3: float,
+    n_swap2: int,
+    n_consumed: int,
+    t_release: tuple[float, float],
+    n_cpacket: tuple[int, int, int, int],
+):
     """Test swap delay model and error model in 4-node topology."""
     net, simulator = build_linear_network(
         4,
@@ -233,8 +247,10 @@ def test_4_delayed(ps3: float, delay3: float, n_swap2: int, n_consumed: int, t_r
         (1.010, f2, f3),
         fidelity=1,
     )
+    cpacket_cnt = collect_cpacket_counts(monkeypatch)
     simulator.run()
     print_fw_counters(net)
+    print("cpacket_cnt", cpacket_cnt)
 
     assert f2_n_swapped_values == [0, 0, 0, 0, 0, n_swap2, n_swap2, n_swap2]
     assert f1.cnt.n_consumed == n_consumed
@@ -247,6 +263,8 @@ def test_4_delayed(ps3: float, delay3: float, n_swap2: int, n_consumed: int, t_r
     t_release1, t_release4 = t_release
     assert f1.node.get_app(QubitReleaseLoggerApp).history == [(0, simulator.time(sec=t_release1))]
     assert f4.node.get_app(QubitReleaseLoggerApp).history == [(0, simulator.time(sec=t_release4))]
+
+    assert (cpacket_cnt["*-n1"], cpacket_cnt["*-n2"], cpacket_cnt["*-n3"], cpacket_cnt["*-n4"]) == n_cpacket
 
 
 @pytest.mark.parametrize(
