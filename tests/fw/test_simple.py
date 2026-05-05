@@ -5,6 +5,7 @@ Test suite for simple data structure objects in forwarding.
 import pytest
 
 from mqns.network.fw import parse_swap_sequence
+from mqns.network.fw.fib import FibEntry, FibSwapGroup
 from mqns.network.fw.message import validate_path_instructions
 
 
@@ -83,3 +84,50 @@ def test_path_validation():
         validate_path_instructions(
             {"req_id": 0, "route": route3, "swap": swap3, "swap_cutoff": scut3, "m_v": mv3, "purif": {"n3-n1": 1}}
         )
+
+
+@pytest.mark.parametrize(
+    ("own", "expected"),
+    [
+        ("A", None),
+        ("B", ("A-", "BC", "D-")),
+        ("C", ("A-", "BC", "D+")),
+        ("D", ("A-", "DF", "G-")),
+        ("E", ("D+", "E", "F+")),
+        ("F", ("A-", "DF", "G+")),
+        ("G", ("A+", "G", "J+")),
+        ("H", ("G+", "HI", "J-")),
+        ("I", ("G-", "HI", "J-")),
+        ("J", None),
+    ],
+)
+def test_fib_swap_group(own: str, expected: tuple[str, str, str] | None):
+    nodes = "ABCDEFGHIJ"
+    ranks = "3001012003"
+    entry = FibEntry(
+        path_id=0,
+        req_id=0,
+        route=list(nodes),
+        own_idx=nodes.index(own),
+        swap=[int(v) for v in ranks],
+        swap_cutoff=[None] * 9,
+        purif={},
+    )
+
+    if expected is None:
+        with pytest.raises(ValueError, match="undefined for end nodes"):
+            FibSwapGroup.compute(entry)
+        return
+
+    sg = FibSwapGroup.compute(entry)
+    assert sg.nodes == list(expected[1])
+    assert sg.own_idx == sg.nodes.index(own)
+    assert sg.l_neigh == expected[0][0]
+    assert sg.l_most == (sg.own_idx == 0)
+    assert sg.l_herald == (expected[0][-1] == "+")
+    assert sg.r_neigh == expected[2][0]
+    assert sg.r_most == (sg.own_idx == len(sg.nodes) - 1)
+    assert sg.r_herald == (expected[2][-1] == "+")
+
+    _, rank = entry.find_index_and_swap_rank(sg.nodes[0])
+    assert sg.rank == rank

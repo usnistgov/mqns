@@ -15,7 +15,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from collections.abc import Callable, Iterator, Set
+from collections.abc import Callable, Iterable, Iterator, Set
 from dataclasses import dataclass
 from typing import final
 
@@ -73,6 +73,83 @@ class FibEntry:
         """
         idx = self.route.index(node_name)
         return idx, self.swap[idx]
+
+
+class FibSwapGroup:
+    """
+    FibSwapGroup provides topological information to determine the heralding directions within
+    a FIB route that may contain parallel swapping instructions.
+
+    Each node within a FIB route, excluding the first and last end nodes, belongs to a swap group.
+    The swap group of node *N* is identified with these steps:
+
+    1. From ``entry.route``, discard nodes with a lower rank than node *N*.
+    2. Find the longest continuous segment of nodes that contains *N*, where every node has the same rank as *N*.
+
+    The left/right neighbor of a swap group is a node that has a higher rank and not part of the swap group.
+    The leftmost/rightmost node of the swap group is responsible for heralding the left/right neighbor,
+    if that neighbor would not be heralded by the opposite neighbor.
+    """
+
+    rank: int
+    """Rank of all nodes in this swap group."""
+
+    nodes: list[str]
+    """Nodes in this swap group."""
+
+    own_idx: int
+    """Index of own node within ``nodes``."""
+
+    l_most: bool
+    """Is own node the leftmost node in the group?"""
+
+    l_neigh: str
+    """Left neighbor name."""
+
+    l_herald: bool
+    """Is own node responsible for heralding the left neighbor?"""
+
+    r_most: bool
+    """Is own node the rightmost node in the group?"""
+
+    r_neigh: str
+    """Right neighbor name."""
+
+    r_herald: bool
+    """Is own node responsible for heralding the left neighbor?"""
+
+    @staticmethod
+    def compute(entry: FibEntry) -> "FibSwapGroup":
+        # TODO implement caching
+
+        route_len = len(entry.route)
+        if entry.own_idx in (0, route_len - 1):
+            raise ValueError("FibSwapGroup is undefined for end nodes")
+
+        sg = FibSwapGroup()
+        sg.rank = entry.own_swap_rank
+        sg.nodes = [entry.route[entry.own_idx]]
+
+        sg.l_neigh, l_rank, sg.l_most = sg._extend_1d(entry, range(entry.own_idx - 1, -1, -1))
+        sg.own_idx = len(sg.nodes) - 1
+        sg.nodes.reverse()
+        sg.r_neigh, r_rank, sg.r_most = sg._extend_1d(entry, range(entry.own_idx + 1, route_len))
+
+        sg.l_herald = sg.l_most and (l_rank <= r_rank)
+        sg.r_herald = sg.r_most and (r_rank <= l_rank)
+
+        return sg
+
+    def _extend_1d(self, entry: FibEntry, index_range: Iterable[int]) -> tuple[str, int, bool]:
+        own_is_boundary = True
+        for i in index_range:
+            node_rank = entry.swap[i]
+            if node_rank > self.rank:
+                return entry.route[i], entry.swap[i], own_is_boundary
+            if node_rank == self.rank:
+                own_is_boundary = False
+                self.nodes.append(entry.route[i])
+        raise ValueError(f"FibSwapGroup cannot find boundary in {entry.swap} from node index {entry.own_idx}")
 
 
 class FibRequestGroup:
