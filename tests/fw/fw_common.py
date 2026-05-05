@@ -12,6 +12,7 @@ from mqns.entity.node import Application, Controller, Node, QNode
 from mqns.entity.qchannel import LinkArchAlways, LinkArchDimBk, QuantumChannelInitKwargs
 from mqns.models.epr import Entanglement, WernerStateEntanglement
 from mqns.network.fw import Forwarder, ForwarderInitKwargs, RoutingController, RoutingPath
+from mqns.network.fw.fw_swap import ForwarderSwapProc
 from mqns.network.network import QuantumNetwork, TimingMode, TimingModeAsync
 from mqns.network.proactive import ProactiveForwarder, ProactiveRoutingController
 from mqns.network.protocol.event import QubitEntangledEvent, QubitReleasedEvent
@@ -54,6 +55,7 @@ class BuildNetworkArgs(TypedDict, total=False):
     cchannel_args: ClassicChannelInitKwargs
     ctrl: RoutingController  # replacing controller application
     fw: ForwarderInitKwargs  # forwarder parameters (`p_swap` defaults to 0.5)
+    swap_table_leak_tol: int  # ForwarderSwapProc memory leak tolerance
     end_time: float  # simulation end time, defaults to 10.0 seconds
     timing: TimingMode  # network timing mode, defaults to ASYNC
     epr_type: type[Entanglement]  # entanglement type, defaults to werner state
@@ -95,6 +97,8 @@ def _build_network_finish(
     *,
     route: RouteAlgorithm | None = None,
 ):
+    ForwarderSwapProc.table_leak_tol = d.get("swap_table_leak_tol", 0)
+
     qchannel_capacity = d.get("qchannel_capacity", 1)
 
     if (ctrl := d.get("ctrl")) is None:
