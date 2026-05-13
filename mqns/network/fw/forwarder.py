@@ -75,12 +75,16 @@ class ForwarderCounters:
         """How many entanglements completed i-th purif round (zero-based index)."""
         self.n_eligible = 0
         """How many entanglements completed all purif rounds and became eligible."""
-        self.n_swapped_s = 0
-        """How many swaps succeeded sequentially."""
-        self.n_swapped_p = 0
-        """How many swaps succeeded with parallel merging."""
+        self.n_swapped = 0
+        """How many physical swaps succeeded."""
+        self.n_swap_fail = 0
+        """How many physical swaps failed."""
         self.n_swap_conflict = 0
         """How many swaps were skipped due to conflictual decisions."""
+        self.n_su_lower = 0
+        """How many SWAP_UPDATE messages from lower-ranked node were processed."""
+        self.n_su_same = 0
+        """How many SWAP_UPDATE messages from same-ranked node were processed."""
         self.n_consumed = 0
         """How many entanglements were consumed (either end-to-end or in swap-disabled mode)."""
         self.consumed_sum_fidelity = 0.0
@@ -120,11 +124,6 @@ class ForwarderCounters:
         self.n_cutoff[2 * round + (0 if local else 1)] += 1
 
     @property
-    def n_swapped(self) -> int:
-        """How many swaps succeeded."""
-        return self.n_swapped_s + self.n_swapped_p
-
-    @property
     def consumed_avg_fidelity(self) -> float:
         """Average fidelity of consumed entanglements."""
         if self.n_consumed == 0:
@@ -136,8 +135,8 @@ class ForwarderCounters:
     def __repr__(self) -> str:
         return (
             f"entg={self.n_entg} purif={self.n_purif} eligible={self.n_eligible} "
-            f"swapped={self.n_swapped_s}+{self.n_swapped_p} "
-            f"swap-conflict={self.n_swap_conflict} cutoff-discard={self.n_cutoff} "
+            f"swapped={self.n_swapped} swap-fail={self.n_swap_fail} swap-conflict={self.n_swap_conflict} "
+            f"su-lower={self.n_su_lower} su-same={self.n_su_same} cutoff-discard={self.n_cutoff} "
             f"consumed={self.n_consumed} (F={self.consumed_avg_fidelity})"
         )
 

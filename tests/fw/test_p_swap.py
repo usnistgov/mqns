@@ -3,6 +3,7 @@ Test suite for ProactiveForwarder focused on swapping.
 """
 
 import itertools
+from collections.abc import Sequence
 
 import pytest
 
@@ -29,6 +30,7 @@ from .fw_common import (
     build_linear_network,
     build_rect_network,
     build_tree_network,
+    check_fw_counters,
     collect_cpacket_counts,
     install_path,
     print_fw_counters,
@@ -57,11 +59,11 @@ def test_3_disabled():
     )
     simulator.run()
     print_fw_counters(net)
-
-    assert f1.cnt.n_consumed == 1
-    assert f2.cnt.n_consumed == 2
-    assert f3.cnt.n_consumed == 1
-    assert f2.cnt.n_swapped == 0
+    check_fw_counters(
+        net,
+        n_consumed=(1, 2, 1),
+        n_swapped=(0, 0, 0),
+    )
 
 
 @pytest.mark.parametrize(
@@ -111,20 +113,19 @@ def test_4_sync(t_ext: float, expected: tuple[int, int, int, int]):
     )
     simulator.run()
     print_fw_counters(net)
-
     assert (f1.cnt.n_consumed, f2.cnt.n_swapped, f3.cnt.n_swapped, f4.cnt.n_consumed) == expected
 
 
 @pytest.mark.parametrize(
-    ("etg_ms", "n_swapped_p"),
+    "etg_ms",
     [
-        ((1, 2, 1), 1),
-        ((2, 1, 2), 1),
-        ((1, 2, 3), 0),
-        ((3, 2, 1), 0),
+        (1, 2, 1),
+        (2, 1, 2),
+        (1, 2, 3),
+        (3, 2, 1),
     ],
 )
-def test_4_asap(etg_ms: tuple[int, int, int], n_swapped_p: int):
+def test_4_asap(etg_ms: tuple[int, int, int]):
     """Test SWAP-ASAP in 4-node topology with various entanglement arrival orders."""
     net, simulator = build_linear_network(4, fw={"p_swap": 1.0})
     f1 = net.get_node("n1").get_app(ProactiveForwarder)
@@ -140,10 +141,13 @@ def test_4_asap(etg_ms: tuple[int, int, int], n_swapped_p: int):
     )
     simulator.run()
     print_fw_counters(net)
-
-    assert f1.cnt.n_consumed == 1 == f4.cnt.n_consumed
-    assert f2.cnt.n_swapped_s == 1 == f3.cnt.n_swapped_s
-    assert f2.cnt.n_swapped_p == n_swapped_p == f3.cnt.n_swapped_p
+    check_fw_counters(
+        net,
+        n_consumed=(1, 0, 0, 1),
+        n_swapped=(0, 1, 1, 0),
+        n_su_same=(0, 1, 1, 0),
+        n_su_lower=(1, 0, 0, 1),
+    )
 
 
 @pytest.mark.parametrize(
@@ -267,33 +271,14 @@ def test_4_delayed(
     assert (cpacket_cnt["*-n1"], cpacket_cnt["*-n2"], cpacket_cnt["*-n3"], cpacket_cnt["*-n4"]) == n_cpacket
 
 
-@pytest.mark.parametrize(
-    ("ps3", "etg_ms", "n_swapped_s", "n_swapped_p", "n_consumed"),
-    [
-        # 1. n2-n3-n4 swap succeeds.
-        # 2. n2 and n4 are informed.
-        # 3. n1-n2-n4 and n2-n4-n5 swaps succeed sequentially.
-        # 4. n1-n2-n4 and n2-n4-n5 swaps succeed in parallel.
-        (1.0, (2, 1, 1, 2), (1, 1, 1), (1, 0, 1), 1),
-        # 1. n2-n3-n4 swap fails.
-        # 2. n2 and n4 are informed.
-        # 3. There's nothing to swap with n1-n2 and n4-n5.
-        (0.0, (2, 1, 1, 2), (0, 0, 0), (0, 0, 0), 0),
-        # 1. n1-n2-n3 and n2-n3-n4 and n3-n4-n5 swaps succeed in parallel.
-        (1.0, (1, 2, 2, 1), (1, 1, 1), (2, 2, 2), 1),
-        # 1. n1-n2-n3 and n2-n3-n4 and n3-n4-n5 swaps are attempted in parallel.
-        #    n1-n2-n3 and n3-n4-n5 swaps succeed, but n2-n3-n4 swap fails.
-        (0.0, (1, 2, 2, 1), (1, 0, 1), (0, 0, 0), 0),
-    ],
-)
+@pytest.mark.parametrize(("ps3", "etg_ms"), itertools.product((1, 0), ((2, 1, 1, 2), (1, 2, 2, 1))))
 def test_5_asap(
     ps3: float,
     etg_ms: tuple[int, int, int, int],
-    n_swapped_s: tuple[int, int, int],
-    n_swapped_p: tuple[int, int, int],
-    n_consumed: int,
 ):
     """Test SWAP-ASAP in 5-node topology with various entanglement arrival orders."""
+    n_consumed = 1 if ps3 == 1 else 0
+
     net, simulator = build_linear_network(5, fw={"p_swap": 1.0})
     f1 = net.get_node("n1").get_app(ProactiveForwarder)
     f2 = net.get_node("n2").get_app(ProactiveForwarder)
@@ -302,7 +287,7 @@ def test_5_asap(
     f5 = net.get_node("n5").get_app(ProactiveForwarder)
     f3.swap.ps = ps3
 
-    install_path(net, RoutingPathSingle("n1", "n5", swap=[1, 0, 0, 0, 1]))
+    install_path(net, RoutingPathSingle("n1", "n5", swap="asap"))
     provide_entanglements(
         (1 + etg_ms[0] / 1000, f1, f2),
         (1 + etg_ms[1] / 1000, f2, f3),
@@ -311,25 +296,31 @@ def test_5_asap(
     )
     simulator.run()
     print_fw_counters(net)
-
-    assert f1.cnt.n_consumed == n_consumed == f5.cnt.n_consumed
-    assert (f2.cnt.n_swapped_s, f3.cnt.n_swapped_s, f4.cnt.n_swapped_s) == n_swapped_s
-    assert (f2.cnt.n_swapped_p, f3.cnt.n_swapped_p, f4.cnt.n_swapped_p) == n_swapped_p
+    check_fw_counters(
+        net,
+        n_consumed=(n_consumed, 0, 0, 0, n_consumed),
+        n_swapped=(0, 1, n_consumed, 1, 0),
+        n_swap_fail=(0, 0, 1 - n_consumed, 0, 0),
+        n_su_same=(0, 1, 2, 1, 0),
+        n_su_lower=(1, 0, 0, 0, 1),
+    )
 
 
 @pytest.mark.parametrize(
-    ("swap", "etg_ms"),
+    ("swap_sulower", "etg_ms"),
     itertools.product(
-        (
-            [3, 0, 1, 2, 3],  # l2r
-            [3, 2, 1, 0, 3],  # r2l
-            [3, 0, 1, 0, 3],  # baln
-        ),
+        [
+            ((3, 0, 1, 2, 3), (1, 0, 1, 1, 1)),  # l2r
+            ((3, 2, 1, 0, 3), (1, 1, 1, 0, 1)),  # r2l
+            ((3, 0, 1, 0, 3), (1, 0, 2, 0, 1)),  # baln
+        ],
         itertools.permutations(range(4), 4),
     ),
 )
-def test_5_sequential(swap: list[int], etg_ms: tuple[int, int, int, int]):
+def test_5_sequential(swap_sulower: tuple[Sequence[int], Sequence[int]], etg_ms: tuple[int, int, int, int]):
     """Test sequential swap orders with various entanglement arrival orders."""
+    swap, su_lower = swap_sulower
+
     net, simulator = build_linear_network(5, fw={"p_swap": 1.0})
     f1 = net.get_node("n1").get_app(ProactiveForwarder)
     f2 = net.get_node("n2").get_app(ProactiveForwarder)
@@ -346,10 +337,14 @@ def test_5_sequential(swap: list[int], etg_ms: tuple[int, int, int, int]):
     )
     simulator.run()
     print_fw_counters(net)
-
-    assert f1.cnt.n_consumed == 1 == f5.cnt.n_consumed
-    assert (f2.cnt.n_swapped_s, f3.cnt.n_swapped_s, f4.cnt.n_swapped_s) == (1, 1, 1)
-    assert (f2.cnt.n_swapped_p, f3.cnt.n_swapped_p, f4.cnt.n_swapped_p) == (0, 0, 0)
+    check_fw_counters(
+        net,
+        n_consumed=(1, 0, 0, 0, 1),
+        n_swapped=(0, 1, 1, 1, 0),
+        n_swap_fail=(0, 0, 0, 0, 0),
+        n_su_same=(0, 0, 0, 0, 0),
+        n_su_lower=su_lower,
+    )
 
 
 @pytest.mark.parametrize(

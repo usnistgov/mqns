@@ -388,12 +388,15 @@ class ForwarderSwapProc:
         self.fw.release_qubit(prev.qubit)
         self.fw.release_qubit(next.qubit)
 
-        if local_success:  # swapping succeeded
-            self.fw.cnt.n_swapped_s += 1
+        # Update physical swap counters.
+        if local_success:
+            self.fw.cnt.n_swapped += 1
 
             # Inform multiplexing scheme.
             # TODO audit whether MuxScheme would access unheralded information
             self.mux.swapping_succeeded(prev.phy_epr, next.phy_epr, new_epr)
+        else:
+            self.fw.cnt.n_swap_fail += 1
 
         # Retrieve SwapTask and record local swap outcome.
         task, task_from = self._s_get_task(fib_entry, prev, next)
@@ -531,6 +534,7 @@ class ForwarderSwapProc:
         swapper_rank: int,
     ) -> None:
         """Process SWAP_UPDATE sent from a lower-ranked node."""
+        self.fw.cnt.n_su_lower += 1
 
         # Retrieve qubit and new physical EPR.
         assert qubit_pair, f"qubit not found for {old_epr_name}"
@@ -580,6 +584,7 @@ class ForwarderSwapProc:
         old_epr_name: str,
     ) -> None:
         """Process SWAP_UPDATE sent from a same-ranked node."""
+        self.fw.cnt.n_su_same += 1
 
         # Retrieve SwapTask and record heralded swap outcome.
         task, task_from = self._u_get_task(fib_entry, old_epr_name)

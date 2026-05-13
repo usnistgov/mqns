@@ -1,7 +1,7 @@
 import copy
 import uuid
 from collections import defaultdict
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from typing import Literal, TypedDict, Unpack, override
 
 import pytest
@@ -222,6 +222,13 @@ def print_fw_counters(net: QuantumNetwork):
     for node in net.nodes:
         fw = node.get_app(Forwarder)
         print(node.name, fw.cnt)
+
+
+def check_fw_counters(net: QuantumNetwork, **kwargs: Iterable[int]) -> None:
+    cnts = [node.get_app(Forwarder).cnt for node in net.nodes]
+    for key, expected in kwargs.items():
+        actual = [getattr(cnt, key) for cnt in cnts]
+        assert tuple(actual) == tuple(expected)
 
 
 def install_path(
