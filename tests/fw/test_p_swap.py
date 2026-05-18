@@ -31,6 +31,7 @@ from .fw_common import (
     build_rect_network,
     build_tree_network,
     check_fw_counters,
+    check_memory_released,
     collect_cpacket_counts,
     install_path,
     print_fw_counters,
@@ -117,22 +118,26 @@ def test_4_sync(t_ext: float, expected: tuple[int, int, int, int]):
 
 
 @pytest.mark.parametrize(
-    "etg_ms",
-    [
-        (1, 2, 1),
-        (2, 1, 2),
-        (1, 2, 3),
-        (3, 2, 1),
-    ],
+    ("etg_ms", "ps3"),
+    itertools.product(
+        [
+            (1, 2, 1),
+            (2, 1, 2),
+            (1, 2, 3),
+            (3, 2, 1),
+        ],
+        (1, 0),
+    ),
 )
-def test_4_asap(etg_ms: tuple[int, int, int]):
+def test_4_asap(etg_ms: tuple[int, int, int], ps3: int):
     """Test SWAP-ASAP in 4-node topology with various entanglement arrival orders."""
-    net, simulator = build_linear_network(4, fw={"p_swap": 1.0})
+    net, simulator = build_linear_network(4, fw={"p_swap": 1.0}, end_time=2)
     f1 = net.get_node("n1").get_app(ProactiveForwarder)
     f2 = net.get_node("n2").get_app(ProactiveForwarder)
     f3 = net.get_node("n3").get_app(ProactiveForwarder)
     f4 = net.get_node("n4").get_app(ProactiveForwarder)
 
+    f3.swap.ps = ps3
     install_path(net, RoutingPathSingle("n1", "n4", swap=[1, 0, 0, 1]))
     provide_entanglements(
         (1 + etg_ms[0] / 1000, f1, f2),
@@ -141,71 +146,60 @@ def test_4_asap(etg_ms: tuple[int, int, int]):
     )
     simulator.run()
     print_fw_counters(net)
-    check_fw_counters(
-        net,
-        n_consumed=(1, 0, 0, 1),
-        n_swapped=(0, 1, 1, 0),
-        n_su_same=(0, 1, 1, 0),
-        n_su_lower=(1, 0, 0, 1),
-    )
+    if ps3 == 1:
+        check_fw_counters(
+            net,
+            n_consumed=(1, 0, 0, 1),
+            n_swapped=(0, 1, 1, 0),
+            n_swap_fail=(0, 0, 0, 0),
+            n_su_same=(0, 1, 1, 0),
+            n_su_lower=(1, 0, 0, 1),
+        )
+    else:
+        check_fw_counters(
+            net,
+            n_consumed=(0, 0, 0, 0),
+            n_swapped=(0, 1, 0, 0),
+            n_swap_fail=(0, 0, 1, 0),
+            n_su_same=(0, 1, 1, 0),
+            n_su_lower=(1, 0, 0, 1),
+        )
+    check_memory_released(net)
 
 
 @pytest.mark.parametrize(
     ("ps3", "delay3", "n_swap2", "n_consumed", "t_release", "n_cpacket"),
     [
         # 1. t=1.0110, n2-n3 arrives, both n2 and n3 start swapping.
-        # 2. t=1.0110, n3 completes swapping with success and sends n2-n4 heralding to n2 & n4.
-        # 3. t=1.0115, n2 & n4 receive n2-n4 heralding.
-        # 4. t=1.0610, n2 completes swapping with success and sends n1-n4 heralding to n1 & n4.
+        # 2. t=1.0110, n3 completes swapping with success, heralds n2 for n2-n4.
+        # 3. t=1.0115, n2 receives n2-n4 heralding.
+        # 4. t=1.0610, n2 completes swapping with success, heralds n1 for n1-n4, heralds n3 for n1-n3.
         # 5. t=1.0615, n1 receives n1-n4 heralding and consumes EPR.
-        # 6. t=1.0620, n4 receives n1-n4 heralding and consumes EPR.
-        (1.0, 0.0000, 1, 1, (1.0615, 1.0620), (1, 1, 0, 2)),
+        # 6. t=1.0615, n3 receives n1-n3 heralding, heralds n4 for n1-n4.
+        # 7. t=1.0620, n4 receives n1-n4 heralding and consumes EPR.
+        (1.0, 0.0000, 1, 1, (1.0615, 1.0620), (1, 1, 1, 1)),
+        # XXX currently, swap failure is processed same as swap success, except that the final EPR cannot be consumed.
+        (0.0, 0.0000, 1, 0, (1.0615, 1.0620), (1, 1, 1, 1)),
         # 1. t=1.0110, n2-n3 arrives, both n2 and n3 start swapping.
-        # 2. t=1.0110, n3 completes swapping with failure and sends failure heralding to n2 & n4,
-        #              affected qubits are released at n3.
-        # 3. t=1.0115, n2 & n4 receive failure heralding, both release qubits.
-        # 4. t=1.0610, n2 aborts swapping and sends failure heralding to n1 only.
-        # 5. t=1.0615, n1 receives failure heralding and releases qubit.
-        (0.0, 0.0000, 0, 0, (1.0615, 1.0115), (1, 1, 0, 1)),
-        # 1. t=1.0110, n2-n3 arrives, both n2 and n3 start swapping.
-        # 2. t=1.0609, n3 completes swapping with success and sends n2-n4 heralding to n2 & n4.
-        # 3. t=1.0610, n2 completes swapping with success and sends n1-n3 heralding to n1 & n3.
-        # 4. t=1.0614, n2 receives n2-n4 heralding and sends n1-n4 heralding to n1 only.
-        # 5. t=1.0615, n3 receives n1-n3 heralding and sends n1-n4 heralding to n4 only.
+        # 2. t=1.0609, n3 completes swapping with success, heralds n2 for n2-n4.
+        # 3. t=1.0610, n2 completes swapping with success, heralds n3 for n1-n3.
+        # 4. t=1.0614, n2 receives n2-n4 heralding, heralds n1 for n1-n4.
+        # 5. t=1.0615, n3 receives n1-n3 heralding, heralds n4 for n1-n4.
         # 6. t=1.0619, n1 receives n1-n4 heralding and consumes EPR.
         # 7. t=1.0620, n4 receives n1-n4 heralding and consumes EPR.
-        # XXX n_swap2==2 because step4 stitching is currently counted as another swap.
-        (1.0, 0.0499, 2, 1, (1.0619, 1.0620), (2, 1, 1, 2)),
+        (1.0, 0.0499, 1, 1, (1.0619, 1.0620), (1, 1, 1, 1)),
+        # XXX currently, swap failure is processed same as swap success, except that the final EPR cannot be consumed.
+        (0.0, 0.0499, 1, 0, (1.0619, 1.0620), (1, 1, 1, 1)),
         # 1. t=1.0110, n2-n3 arrives, both n2 and n3 start swapping.
-        # 2. t=1.0609, n3 completes swapping with failure and sends failure heralding to n2 & n4,
-        #              affected qubits are released at n3.
-        # 3. t=1.0610, n2 completes swapping with success and sends n1-n3 heralding to n1 & n3.
-        # 4. t=1.0614, n4 receives failure heralding and releases qubit.
-        # 5. t=1.0614, n2 receives failure heralding and sends failure heralding to n1 only.
-        # 6. t=1.0615, n3 receives n1-n3 heralding, but could not recognize the EPR name
-        #              because qubits were released in step2.
-        # 7. t=1.0619, n1 receives failure heralding and releases qubit.
-        (0.0, 0.0499, 1, 0, (1.0619, 1.0614), (2, 1, 1, 1)),
-        # 1. t=1.0110, n2-n3 arrives, both n2 and n3 start swapping.
-        # 2. t=1.0610, n2 completes swapping with success and sends n1-n3 heralding to n1 & n3.
-        # 3. t=1.0611, n3 completes swapping with success and sends n2-n4 heralding to n2 & n4.
-        # 4. t=1.0615, n3 receives n1-n3 heralding and sends n1-n4 heralding to n4 only.
-        # 5. t=1.0616, n2 receives n2-n4 heralding and sends n1-n4 heralding to n1 only.
+        # 2. t=1.0610, n2 completes swapping with success, heralds n3 for n1-n3.
+        # 3. t=1.0611, n3 completes swapping with success, heralds n2 for n2-n4.
+        # 4. t=1.0615, n3 receives n1-n3 heralding, heralds n4 for n1-n4.
+        # 5. t=1.0616, n2 receives n2-n4 heralding, heralds n1 for n1-n4.
         # 6. t=1.0620, n4 receives n1-n4 heralding and consumes EPR.
         # 7. t=1.0621, n1 receives n1-n4 heralding and consumes EPR.
-        # XXX n_swap2==2 because step5 stitching is currently counted as another swap.
-        (1.0, 0.0501, 2, 1, (1.0621, 1.0620), (2, 1, 1, 2)),
-        # 1. t=1.0110, n2-n3 arrives, both n2 and n3 start swapping.
-        # 2. t=1.0610, n2 completes swapping with success and sends n1-n3 heralding to n1 & n3.
-        # 3. t=1.0611, n3 completes swapping with failure and sends failure heralding to n2 & n4,
-        #              affected qubits are released at n3.
-        # 4. t=1.0615, n3 receives n1-n3 heralding, but could not recognize the EPR name
-        #              because qubits were released in step3.
-        # 5. t=1.0616, n4 receives failure heralding and releases qubit.
-        # 6. t=1.0616, n2 receives failure heralding and sends failure heralding to n1 only.
-        # 7. t=1.0620, n4 receives n1-n4 heralding but finds the qubit already released in step5.
-        # 8. t=1.0621, n1 receives failure heralding and releases qubit.
-        (0.0, 0.0501, 1, 0, (1.0621, 1.0616), (2, 1, 1, 1)),
+        (1.0, 0.0501, 1, 1, (1.0621, 1.0620), (1, 1, 1, 1)),
+        # XXX currently, swap failure is processed same as swap success, except that the final EPR cannot be consumed.
+        (0.0, 0.0501, 1, 0, (1.0621, 1.0620), (1, 1, 1, 1)),
     ],
 )
 def test_4_delayed(
@@ -226,6 +220,7 @@ def test_4_delayed(
             "swap_delay": 0.050,
             "swap_error": "DEPOLAR:0.3",
         },
+        end_time=2,
     )
     f1 = net.get_node("n1").get_app(ProactiveForwarder)
     f2 = net.get_node("n2").get_app(ProactiveForwarder)
@@ -254,15 +249,14 @@ def test_4_delayed(
     cpacket_cnt = collect_cpacket_counts(monkeypatch)
     simulator.run()
     print_fw_counters(net)
+    check_memory_released(net)
     print("cpacket_cnt", cpacket_cnt)
 
     assert f2_n_swapped_values == [0, 0, 0, 0, 0, n_swap2, n_swap2, n_swap2]
     assert f1.cnt.n_consumed == n_consumed
     if n_consumed > 0:
-        # XXX https://github.com/usnistgov/mqns/issues/92#issuecomment-4056069219
-        # Currently, two ends are receiving distinct EPR objects.
-        # Until this is fixed, verify that BSA error model is applied to at least one of them.
-        assert 0.5 < min(f1.cnt.consumed_avg_fidelity, f4.cnt.consumed_avg_fidelity) <= 0.75
+        assert 0.5 < f1.cnt.consumed_avg_fidelity <= 0.75
+        assert f1.cnt.consumed_avg_fidelity == pytest.approx(f4.cnt.consumed_avg_fidelity)
 
     t_release1, t_release4 = t_release
     assert f1.node.get_app(QubitReleaseLoggerApp).history == [(0, simulator.time(sec=t_release1))]
@@ -418,7 +412,11 @@ def test_tree2_dynepr(t_edge_etg: float, selected_path: tuple[int, int], n_consu
             chosen = (rp0.path_id, rp1.path_id)[selected_path[1]]
         return chosen
 
-    net, simulator = build_tree_network(fw={"p_swap": 1.0, "mux": MuxSchemeDynamicEpr(select_path=select_path)})
+    net, simulator = build_tree_network(
+        fw={"p_swap": 1.0, "mux": MuxSchemeDynamicEpr(select_path=select_path)},
+        # If there is a conflict in path selection, there will be two leftover EPRs.
+        swap_table_leak_tol=2 if selected_path[0] != selected_path[1] else 0,
+    )
     f1, f2, f3, f4, f5, f6, f7 = (node.get_app(ProactiveForwarder) for node in net.nodes)
 
     # n4-n2-n1-n3-n6

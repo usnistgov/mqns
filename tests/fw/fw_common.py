@@ -33,7 +33,7 @@ class QubitReleaseLoggerApp(Application):
     def handle(self, event: Event) -> bool | None:
         if type(event) is QubitReleasedEvent:
             self.history.append((event.qubit.addr, event.t))
-            log.debug(f"{self.node}: RELEASE {event.qubit}")
+            log.debug(f"{self}: RELEASE {event.qubit}")
         return False
 
 
@@ -299,3 +299,16 @@ def provide_entanglements(
             q.active = key
             q._state = QubitState.ENTANGLED0
             simulator.add_event(QubitEntangledEvent(node.node, neighbor.node, q, t=t_creation + d_notify))
+
+
+def check_memory_released(net: QuantumNetwork) -> None:
+    """
+    Verify that all MemoryQubits on every node are in RAW or RELEASED state.
+    """
+    errors: list[str] = []
+    for node in net.nodes:
+        for qubit, data in node.memory.find(lambda *_: True):
+            if qubit.state not in (QubitState.RAW, QubitState.RELEASE):
+                errors.append(f"{node.name}:{qubit.addr} unexpected state {qubit.state}: {data}")
+    if len(errors) > 0:
+        raise AssertionError(errors)
