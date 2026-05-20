@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 
 from mqns.entity.memory import MemoryQubit, QuantumMemory, QubitState
-from mqns.entity.node import QNode
+from mqns.entity.node import Application, QNode
 from mqns.models.epr import Entanglement
 from mqns.network.fw.fib import FibEntry
 from mqns.network.fw.message import PurifResponseMsg, PurifSolicitMsg
@@ -48,7 +48,7 @@ class ForwarderPurifProc:
         _, epr1 = self.memory.read(mq1.addr, has=self.epr_type, set_fidelity=True, remove=True)
 
         log.debug(
-            f"{self.node}: request purif qubit {mq0.addr} (F={epr0.fidelity}) and "
+            f"{self}: request purif qubit {mq0.addr} (F={epr0.fidelity}) and "
             + f"{mq1.addr} (F={epr1.fidelity}) with partner {partner.name}"
         )
 
@@ -98,14 +98,14 @@ class ForwarderPurifProc:
         assert msg["partner"] == self.node.name
         primary = self.network.get_node(msg["purif_node"])
         log.debug(
-            f"{self.node}: perform purif qubit {mq0.addr} (F={epr0.fidelity}) and "
+            f"{self}: perform purif qubit {mq0.addr} (F={epr0.fidelity}) and "
             + f"{mq1.addr} (F={epr1.fidelity}) for round {1 + mq0.purif_rounds} with primary {primary.name}"
         )
 
         # perform purification between EPRs
         result = epr0.purify(epr1, now=self.simulator.tc)
         log.debug(
-            f"{self.node}: purif {'succeeded' if result else 'failed'} on qubit {mq0.addr} (F={epr0.fidelity}) "
+            f"{self}: purif {'succeeded' if result else 'failed'} on qubit {mq0.addr} (F={epr0.fidelity}) "
             + f"for round {1 + mq0.purif_rounds} with primary {primary.name}"
         )
 
@@ -154,7 +154,7 @@ class ForwarderPurifProc:
 
         result = msg["result"]
         log.debug(
-            f"{self.node}: purif {'succeeded' if result else 'failed'} on qubit {qubit.addr} (F={epr.fidelity}) "
+            f"{self}: purif {'succeeded' if result else 'failed'} on qubit {qubit.addr} (F={epr.fidelity}) "
             + f"for round {1 + qubit.purif_rounds} with partner {msg['partner']}"
         )
 
@@ -168,3 +168,6 @@ class ForwarderPurifProc:
         qubit.purif_rounds += 1
         qubit.state = QubitState.PURIF
         self.fw.qubit_is_purif(qubit, fib_entry, self.network.get_node(msg["partner"]))
+
+    def __repr__(self) -> str:
+        return Application.__repr__(self)

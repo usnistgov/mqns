@@ -218,7 +218,7 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
         """
         match event.action:
             case TimingPhase.INTERNAL, True:
-                log.debug(f"{self.node}: there are {len(self.waiting_etg)} etg qubits to process")
+                log.debug(f"{self}: there are {len(self.waiting_etg)} etg qubits to process")
                 for etg_event in self.waiting_etg:
                     self.qubit_is_entangled(etg_event)
                 self.waiting_etg.clear()
@@ -370,7 +370,7 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
         qubit = event.qubit
         assert qubit.state is QubitState.ENTANGLED1, f"unexpected state {qubit.state}"
         _, epr = self.memory.read(qubit.addr, has=self.epr_type)
-        log.debug(f"{self.node}: ENTANGLED {qubit} | {epr}")
+        log.debug(f"{self}: ENTANGLED {qubit} | {epr}")
         self.mux.qubit_is_entangled(qubit, epr, event.neighbor)
 
         self.swap.pop_waiting_su(qubit)
@@ -402,7 +402,7 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
         segment_name = f"{self.node.name}-{partner.name}" if own_idx < partner_idx else f"{partner.name}-{self.node.name}"
         want_rounds = fib_entry.purif.get(segment_name, 0)
         log.debug(
-            f"{self.node}: segment {segment_name} (qubit {qubit.addr}) has "
+            f"{self}: segment {segment_name} (qubit {qubit.addr}) has "
             + f"{qubit.purif_rounds} and needs {want_rounds} purif rounds"
         )
 
@@ -416,7 +416,7 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
 
         is_primary = (own_rank, own_idx) < (partner_rank, partner_idx)
         if not is_primary:
-            log.debug(f"{self.node}: is not primary node for segment {segment_name} purif")
+            log.debug(f"{self}: is not primary node for segment {segment_name} purif")
             return
 
         candidates = self.memory.find(
@@ -431,7 +431,7 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
         )
         found = call_select_purif_qubit(self._select_purif_qubit, qubit, fib_entry, partner, candidates)
         if not found:
-            log.debug(f"{self.node}: no candidate EPR for segment {segment_name} purif round {1 + qubit.purif_rounds}")
+            log.debug(f"{self}: no candidate EPR for segment {segment_name} purif round {1 + qubit.purif_rounds}")
             return
 
         self.purif.start(qubit, found[0], fib_entry, partner)
@@ -454,7 +454,7 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
         """
         assert qubit.state is QubitState.ELIGIBLE, f"unexpected state {qubit.state}"
         if not self.node.timing.is_internal():
-            log.debug(f"{self.node}: INT phase is over -> stop swaps")
+            log.debug(f"{self}: INT phase is over -> stop swaps")
             return
 
         _, epr = self.memory.read(qubit.addr, has=self.epr_type)
@@ -493,7 +493,7 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
         Consume an entangled qubit.
         """
         _, qm = self.memory.read(qubit.addr, has=self.epr_type, set_fidelity=True, remove=True)
-        log.debug(f"{self.node}: consume EPR: {qm}")
+        log.debug(f"{self}: consume EPR: {qm}")
         self.cnt.increment_n_consumed(qm.fidelity)
 
         self.release_qubit(qubit)

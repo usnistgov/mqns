@@ -81,11 +81,11 @@ class MuxSchemeDynamicBase(MuxScheme):
 
     def _qubit_is_entangled_0(self, qubit: MemoryQubit) -> list[int]:
         assert qubit.path_id is None
-        assert qubit.qchannel is not None, f"{self.node}: No qubit-qchannel assignment. Not supported."
+        assert qubit.qchannel is not None, f"{self.fw}: No qubit-qchannel assignment. Not supported."
 
         possible_path_ids = self.qchannel_paths_map.get(qubit.qchannel.name, [])
         if not possible_path_ids:
-            log.debug(f"{self.node}: release entangled qubit {qubit.addr} due to uninstalled path")
+            log.debug(f"{self.fw}: release entangled qubit {qubit.addr} due to uninstalled path")
             self.fw.release_qubit(qubit, need_remove=True)
 
         return possible_path_ids
@@ -146,7 +146,7 @@ class MuxSchemeStatistical(MuxSchemeDynamicBase):
         if not possible_path_ids:  # all paths on the channel have been uninstalled
             return
 
-        log.debug(f"{self.node}: qubit {qubit} has tmp_path_ids {possible_path_ids}")
+        log.debug(f"{self.fw}: qubit {qubit} has tmp_path_ids {possible_path_ids}")
         if epr.tmp_path_ids is None:
             epr.tmp_path_ids = possible_path_ids
         elif self.coordinated_decisions:
@@ -160,7 +160,7 @@ class MuxSchemeStatistical(MuxSchemeDynamicBase):
             qubit.state = QubitState.PURIF
 
             # purif scheme is empty, as checked in validate_path_instructions
-            log.debug(f"{self.node}: no FIB associated to qubit -> set eligible")
+            log.debug(f"{self.fw}: no FIB associated to qubit -> set eligible")
             qubit.state = QubitState.ELIGIBLE
             self.fw.qubit_is_eligible(qubit, None)
 
@@ -227,7 +227,7 @@ class MuxSchemeStatistical(MuxSchemeDynamicBase):
         assert my_new_epr.tmp_path_ids is not None
         if su_path_id not in my_new_epr.tmp_path_ids:
             assert not self.coordinated_decisions
-            log.debug(f"{self.node}: Conflictual parallel swapping in statistical mux -> silently ignore")
+            log.debug(f"{self.fw}: Conflictual parallel swapping in statistical mux -> silently ignore")
             return True
         return False
 

@@ -271,7 +271,7 @@ class ClassicBridge(Application[Node]):
         try:
             self.conn.queue.put_nowait(cbp)
         except queue.Full:
-            log.error(f"{self.node}: ClassicBridge drops packet from {cbp.src} | {pkt.msg}")
+            log.error(f"{self}: drop packet from {cbp.src} | {pkt.msg}")
 
         return True
 
@@ -279,5 +279,5 @@ class ClassicBridge(Application[Node]):
         dst = self.node.network.get_node(cbp.dst)
         pkt = ClassicPacket(cbp.payload, src=self.node, dest=dst)
         pkt.is_json = cbp.is_json
-        log.debug(f"{self.node}: ClassicBridge injects packet to {cbp.dst} | {pkt.msg}")
+        log.debug(f"{self}: inject packet to {cbp.dst} | {pkt.msg}")
         self.node.send_cpacket(dst, pkt)

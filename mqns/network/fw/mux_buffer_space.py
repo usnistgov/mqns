@@ -102,7 +102,7 @@ class MuxSchemeBufferSpace(MuxSchemeFibBase):
                 direction,
                 n="all" if n_qubits == 0 else n_qubits,
             )
-        log.debug(f"{self.node}: allocated {direction} qubits: {addrs}")
+        log.debug(f"{self.fw}: allocated {direction} qubits: {addrs}")
 
     @override
     def uninstall_path_neighbor(
@@ -112,7 +112,7 @@ class MuxSchemeBufferSpace(MuxSchemeFibBase):
         qubits = self.memory.find(lambda q, _: q.path_id == fib_entry.path_id, qchannel=qchannel)
         addrs = [q[0].addr for q in qubits]
         self.memory.deallocate(*addrs)
-        log.debug(f"{self.node}: deallocated {direction} qubits: {addrs}")
+        log.debug(f"{self.fw}: deallocated {direction} qubits: {addrs}")
         pass
 
     @override
@@ -123,7 +123,7 @@ class MuxSchemeBufferSpace(MuxSchemeFibBase):
     def qubit_is_entangled(self, qubit: MemoryQubit, epr: Entanglement, neighbor: QNode) -> None:
         _ = epr
         if qubit.path_id is None:
-            log.debug(f"{self.node}: release entangled qubit {qubit.addr} due to uninstalled path")
+            log.debug(f"{self.fw}: release entangled qubit {qubit.addr} due to uninstalled path")
             self.fw.release_qubit(qubit, need_remove=True)
             return
 

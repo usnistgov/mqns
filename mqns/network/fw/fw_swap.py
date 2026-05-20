@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, cast
 
 from mqns.entity.memory import MemoryQubit, QuantumMemory, QubitState
-from mqns.entity.node import QNode
+from mqns.entity.node import Application, QNode
 from mqns.models.delay import DelayModel
 from mqns.models.epr import Entanglement
 from mqns.models.error import ErrorModel
@@ -142,7 +142,7 @@ class ForwarderSwapProc:
         elif epr.src is self.node:
             partner = epr.dst
         else:
-            raise RuntimeError(f"{self.node}: not in {epr} stored at {mq}")
+            raise RuntimeError(f"{self}: not in {epr} stored at {mq}")
         assert partner is not None
         index, rank = fib_entry.find_index_and_swap_rank(partner.name)
 
@@ -157,7 +157,7 @@ class ForwarderSwapProc:
         arm0 = self._retrieve_arm(mq0, fib_entry)
         arm1 = self._retrieve_arm(mq1, fib_entry)
         if arm0 is None or arm1 is None:
-            log.debug(f"{self.node}: SWAP ABORT | {mq0} x {mq1}")
+            log.debug(f"{self}: SWAP ABORT | {mq0} x {mq1}")
             for target in arm0, arm1:
                 if target:
                     self.fw.release_qubit(target.qubit)
@@ -180,7 +180,7 @@ class ForwarderSwapProc:
 
         # Attempt the swap.
         new_epr, local_success = Entanglement.swap(prev.epr, next.epr, now=swap_start, ps=self.ps, error=self.error)
-        log.debug(f"{self.node}: SWAP {'SUCC' if local_success else 'FAILED'} | {prev.qubit} x {next.qubit} = {new_epr}")
+        log.debug(f"{self}: SWAP {'SUCC' if local_success else 'FAILED'} | {prev.qubit} x {next.qubit} = {new_epr}")
 
         # Release consumed qubits.
         self.fw.release_qubit(prev.qubit)
@@ -234,7 +234,7 @@ class ForwarderSwapProc:
 
         """
         if not self.node.timing.is_internal():
-            log.debug(f"{self.node}: INT phase is over -> stop swaps")
+            log.debug(f"{self}: INT phase is over -> stop swaps")
             return
 
         _, sender_rank = fib_entry.find_index_and_swap_rank(msg["swapping_node"])
@@ -282,7 +282,7 @@ class ForwarderSwapProc:
             or new_epr.decohere_time <= self.simulator.tc  # oldest pair decohered
         ):
             if new_epr:
-                log.debug(f"{self.node}: NEW EPR {new_epr} decohered during SU transmissions")
+                log.debug(f"{self}: NEW EPR {new_epr} decohered during SU transmissions")
             # Inform LinkLayer that the memory qubit has been released.
             self.fw.release_qubit(qubit, need_remove=True)
             return
@@ -380,3 +380,6 @@ class ForwarderSwapProc:
         _, p_rank = fib_entry.find_index_and_swap_rank(partner.name)
         if fib_entry.own_swap_rank == p_rank and merged_epr is not None:
             self.parallel_swappings[new_epr.name] = (new_epr, other_epr, merged_epr)
+
+    def __repr__(self) -> str:
+        return Application.__repr__(self)
