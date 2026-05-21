@@ -17,7 +17,7 @@
 
 from collections.abc import Callable, Iterable, Iterator, Set
 from dataclasses import dataclass
-from typing import final
+from typing import Literal, final
 
 from mqns.network.fw.message import SwapSequence
 from mqns.simulator import Time
@@ -97,26 +97,37 @@ class FibSwapGroup:
     nodes: list[str]
     """Nodes in this swap group."""
 
+    l_neigh: str
+    """Left neighbor, not part of this swap group."""
+
+    r_neigh: str
+    """Right neighbor, not part of this swap group."""
+
+    dir: Literal["l", "b", "r"]
+    """
+    Heralding direction when there is no swap failure.
+
+    * b: Bidirectional -- Both neighbors have the same rank, or the segment requires purification.
+    * l: Leftward -- Left neighbor has lower rank than right neighbor.
+    * r: Rightward -- Right neighbor has lower rank than left neighbor.
+    """
+
     own_idx: int
     """Index of own node within ``nodes``."""
 
-    l_most: bool
-    """Is own node the leftmost node in the group?"""
+    l_adj: str
+    """
+    Left adjacent node, either same-ranked peer or higher-ranked neighbor.
 
-    l_neigh: str
-    """Left neighbor name."""
+    Own node should herald this node if allowed by ``dir`` or when there is a failure.
+    """
 
-    l_herald: bool
-    """Is own node responsible for heralding the left neighbor?"""
+    r_adj: str
+    """
+    Right adjacent node, either same-ranked peer or higher-ranked neighbor.
 
-    r_most: bool
-    """Is own node the rightmost node in the group?"""
-
-    r_neigh: str
-    """Right neighbor name."""
-
-    r_herald: bool
-    """Is own node responsible for heralding the left neighbor?"""
+    Own node should herald this node if allowed by ``dir`` or when there is a failure.
+    """
 
     @staticmethod
     def compute(entry: FibEntry) -> "FibSwapGroup":
@@ -130,13 +141,20 @@ class FibSwapGroup:
         sg.rank = entry.own_swap_rank
         sg.nodes = [entry.route[entry.own_idx]]
 
-        sg.l_neigh, l_rank, sg.l_most = sg._extend_1d(entry, range(entry.own_idx - 1, -1, -1))
+        sg.l_neigh, l_rank, l_most = sg._extend_1d(entry, range(entry.own_idx - 1, -1, -1))
         sg.own_idx = len(sg.nodes) - 1
         sg.nodes.reverse()
-        sg.r_neigh, r_rank, sg.r_most = sg._extend_1d(entry, range(entry.own_idx + 1, route_len))
+        sg.r_neigh, r_rank, r_most = sg._extend_1d(entry, range(entry.own_idx + 1, route_len))
 
-        sg.l_herald = sg.l_most and (l_rank <= r_rank)
-        sg.r_herald = sg.r_most and (r_rank <= l_rank)
+        sg.l_adj = sg.l_neigh if l_most else sg.nodes[sg.own_idx - 1]
+        sg.r_adj = sg.r_neigh if r_most else sg.nodes[sg.own_idx + 1]
+
+        if l_rank == r_rank or entry.purif.get(f"{sg.l_neigh}-{sg.r_neigh}", 0) > 0:
+            sg.dir = "b"
+        elif l_rank < r_rank:
+            sg.dir = "l"
+        else:
+            sg.dir = "r"
 
         return sg
 
@@ -150,6 +168,28 @@ class FibSwapGroup:
                 own_is_boundary = False
                 self.nodes.append(entry.route[i])
         raise ValueError(f"FibSwapGroup cannot find boundary in {entry.swap} from node index {entry.own_idx}")
+
+    @property
+    def l_most(self) -> bool:
+        """Determine if own node is the leftmost node in the group."""
+        return self.own_idx == 0
+
+    @property
+    def r_most(self) -> bool:
+        """Determine if own node is the rightmost node in the group."""
+        return self.own_idx == len(self.nodes) - 1
+
+    def __repr__(self) -> str:
+        tokens = [
+            "FibSwapGroup(",
+            self.l_neigh,
+            "<" if self.dir in ("l", "b") else "~",
+            "-".join(f"[{n}]" if i == self.own_idx else n for (i, n) in enumerate(self.nodes)),
+            ">" if self.dir in ("b", "r") else "~",
+            self.r_neigh,
+            f", rank={self.rank})",
+        ]
+        return "".join(tokens)
 
 
 class FibRequestGroup:

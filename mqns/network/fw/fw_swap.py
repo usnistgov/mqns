@@ -20,13 +20,8 @@ if TYPE_CHECKING:
 
 @dataclass
 class SwapArm:
-    partner: QNode
-    """Partner node."""
-    index: int
-    """Partner node index within FIB entry."""
-    rank: int
-    """Partner node swap rank within FIB entry."""
-
+    dir: Literal["l", "r"]
+    """Partner is on left or right side."""
     qubit: MemoryQubit
     """Local qubit entangled with partner."""
     epr_name: str
@@ -41,7 +36,7 @@ class SwapArm:
             lepr = f"logical-epr={self.epr_name}, physical-"
 
         return (
-            f"SwapArm({self.partner.name}@{self.index}, qubit={self.qubit.addr}, "
+            f"SwapArm({self.dir}, qubit={self.qubit.addr}, "
             f"{lepr}epr={self.phy_epr.name}@{cast(QNode, self.phy_epr.src).name}-{cast(QNode, self.phy_epr.dst).name})"
         )
 
@@ -56,34 +51,38 @@ class SwapTask:
     within the swap group.
     """
 
+    o_complete = False
+    """Is my own local swap completed?"""
+    l_complete: bool
+    """Is the chain to my left completed?"""
+    r_complete: bool
+    """Is the chain to my right completed?"""
+
+    expiry: int | None = None
+    """Time slot for group-wise EPR expiration, zero on swap failure anywhere."""
+
+    l_sent = False
+    """Is the left same-rank peer or higher-rank neighbor heralded?"""
+    r_sent = False
+    """Is the right same-rank peer or higher-rank neighbor heralded?"""
+
+    # Default values in lp_epr,rp_epr,lb_epr,rb_epr are only used when heralding failure to the opposite direction.
+
+    lp_epr = "SwapTask.lp_epr=UNKNOWN"
+    """Old EPR name between own node and ``sg.l_adj``."""
+    rp_epr = "SwapTask.rp_epr=UNKNOWN"
+    """Old EPR name between own node and ``sg.r_adj``."""
+
+    lb_epr = "SwapTask.lb_epr=UNKNOWN"
+    """Old EPR name between ``sg.nodes[0]`` and ``sg.l_neigh``."""
+    rb_epr = "SwapTask.rb_epr=UNKNOWN"
+    """Old EPR name between ``sg.nodes[-1]`` and ``sg.l_neigh``."""
+
     def __init__(self, fib_entry: FibEntry):
         self.path_id = fib_entry.path_id
         self.sg = FibSwapGroup.compute(fib_entry)
-
-        self.o_complete = False
-        """Is my own local swap completed?"""
         self.l_complete = self.sg.l_most
-        """Is the chain to my left completed?"""
         self.r_complete = self.sg.r_most
-        """Is the chain to my right completed?"""
-
-        self.expiry: int | None = None
-        """Time slot for group-wise EPR expiration, zero on swap failure anywhere."""
-
-        self.l_sent = self.sg.l_most and not self.sg.l_herald
-        """Is the left same-rank peer or higher-rank neighbor heralded?"""
-        self.r_sent = self.sg.r_most and not self.sg.r_herald
-        """Is the right same-rank peer or higher-rank neighbor heralded?"""
-
-        self.lp_epr: str | None = None
-        """Old EPR name toward left adjacent node."""
-        self.rp_epr: str | None = None
-        """Old EPR name toward right adjacent node."""
-
-        self.lb_epr: str | None = None
-        """Old EPR name known by leftmost node."""
-        self.rb_epr: str | None = None
-        """Old EPR name known by rightmost node."""
 
     def notify_local_swap(self, expiry: int, l_epr_name: str, r_epr_name: str):
         """
@@ -112,6 +111,11 @@ class SwapTask:
         if self.sg.r_most:
             self.rb_epr = r_epr_name
 
+        # If local swap failed, there's no need to wait for heralding.
+        if expiry == 0:
+            self.l_complete = True
+            self.r_complete = True
+
         return self._check_triggers()
 
     def notify_remote_swap(self, su: SwapUpdateMsg):
@@ -125,18 +129,27 @@ class SwapTask:
             [0]: Instruction to herald left node, if allowed.
             [1]: Instruction to herald right node, if allowed.
         """
-        self._update_expiry(su["expiry"])
+        expiry = su["expiry"]
+        self._update_expiry(expiry)
 
         sg = self.sg
         swapper = su["o_node"]
-        if not sg.l_most and swapper == sg.nodes[sg.own_idx - 1]:
+        if swapper == sg.l_adj:
+            # Message came from left peer.
             assert su["l_node"] == sg.l_neigh
             self.l_complete = True
             self.lb_epr = su["l_epr"]
-        elif not sg.r_most and swapper == sg.nodes[sg.own_idx + 1]:
+            if expiry == 0:
+                # Left peer does not need to hear about the failure they just told us.
+                self.l_sent = True
+        elif swapper == sg.r_adj:
+            # Message came from right peer.
             assert su["r_node"] == sg.r_neigh
             self.r_complete = True
             self.rb_epr = su["r_epr"]
+            if expiry == 0:
+                # Right peer does not need to hear about the failure they just told us.
+                self.r_sent = True
         else:
             raise RuntimeError(f"SwapGroup({sg.nodes},{sg.own_idx}) received swap outcome from unexpected node {swapper}")
 
@@ -152,29 +165,29 @@ class SwapTask:
         sg = self.sg
 
         l_su = None
-        if not self.l_sent and self.o_complete and self.r_complete:
+        if not self.l_sent and self.o_complete and self.r_complete and (self.expiry == 0 or sg.dir in ("l", "b")):
             l_su = SwapUpdateMsg(
                 cmd="SWAP_UPDATE",
                 path_id=self.path_id,
                 o_node=sg.nodes[sg.own_idx],
-                l_node=sg.l_neigh if sg.l_most else sg.nodes[sg.own_idx - 1],
+                l_node=sg.l_adj,
                 r_node=sg.r_neigh,
-                l_epr=cast(str, self.lb_epr if sg.l_most else self.lp_epr),
-                r_epr=cast(str, self.rb_epr),
+                l_epr=self.lb_epr if sg.l_most else self.lp_epr,
+                r_epr=self.rb_epr,
                 expiry=cast(int, self.expiry),
             )
             self.l_sent = True
 
         r_su = None
-        if not self.r_sent and self.o_complete and self.l_complete:
+        if not self.r_sent and self.o_complete and self.l_complete and (self.expiry == 0 or sg.dir in ("r", "b")):
             r_su = SwapUpdateMsg(
                 cmd="SWAP_UPDATE",
                 path_id=self.path_id,
                 o_node=sg.nodes[sg.own_idx],
                 l_node=sg.l_neigh,
-                r_node=sg.r_neigh if sg.r_most else sg.nodes[sg.own_idx + 1],
-                l_epr=cast(str, self.lb_epr),
-                r_epr=cast(str, self.rb_epr if sg.r_most else self.rp_epr),
+                r_node=sg.r_adj,
+                l_epr=self.lb_epr,
+                r_epr=self.rb_epr if sg.r_most else self.rp_epr,
                 expiry=cast(int, self.expiry),
             )
             self.r_sent = True
@@ -351,8 +364,8 @@ class ForwarderSwapProc:
         # If either qubit is no longer in SWAPPING state, it implies that a SWAP_UPDATE message arrived that informs
         # a failure for a parallel swap at a remote node, which caused the qubit to be released.
         # In this case, the local swapping is treated as aborted, and the other involved qubit is released.
-        arm0 = self._s_get_arm(mq0, fib_entry)
-        arm1 = self._s_get_arm(mq1, fib_entry)
+        arm0 = self._s_get_arm(mq0)
+        arm1 = self._s_get_arm(mq1)
         if arm0 is None or arm1 is None:
             log.debug(f"{self}: SWAP ABORT | {mq0} x {mq1}")
             for target in arm0, arm1:
@@ -361,14 +374,8 @@ class ForwarderSwapProc:
                     # TODO construct HeraldInformation and send SWAP_UPDATE
                     # self._send_su(fib_entry, target, "", target.epr.name, None)
             return
-
-        # One of these qubits must be entangled with a partner node to the left of the current node.
-        # This is determined by epr.dst==self.node condition, because LinkLayer establishes elementary
-        # entanglements from left to right, and swapping maintains this condition.
-        # This qubit and related objects are assigned to `prev`.
-        #
-        # Likewise, the other qubit entangled with a partner node to the right is assigned to `next`.
-        prev, next = (arm0, arm1) if arm0.index < arm1.index else (arm1, arm0)
+        assert arm0.dir != arm1.dir
+        prev, next = (arm0, arm1) if arm0.dir == "l" else (arm1, arm0)
 
         # Save ch_index metadata field onto elementary EPR.
         if not prev.phy_epr.orig_eprs:
@@ -426,7 +433,7 @@ class ForwarderSwapProc:
             task_saved.append(f"task_by_epr[next.epr_name:={next.epr_name}]")
         log.debug(f"{self}: {task} retrieved-from={task_from} saved-at={task_saved}")
 
-    def _s_get_arm(self, mq: MemoryQubit, fib_entry: FibEntry) -> SwapArm | None:
+    def _s_get_arm(self, mq: MemoryQubit) -> SwapArm | None:
         """Retrieve information related to a memory qubit during swapping."""
 
         if mq.state is not QubitState.SWAPPING:
@@ -435,23 +442,15 @@ class ForwarderSwapProc:
         qubit, epr = self.memory.read(mq.addr, has=self.epr_type, remove=True)
 
         if epr.dst is self.node:
-            partner = epr.src
+            dir = "l"
         elif epr.src is self.node:
-            partner = epr.dst
+            dir = "r"
         else:
             raise RuntimeError(f"{self}: node not in {epr} stored at {mq}")
-        assert partner is not None
 
         epr_name = self.alias_by_qubit.pop(qubit.addr, epr.name)
-
-        while True:
-            phy = self.remote_swapped.pop(epr.name, None)
-            if phy:
-                epr = phy
-            else:
-                break
-
-        return SwapArm(partner, *fib_entry.find_index_and_swap_rank(partner.name), qubit, epr_name, epr)
+        epr = self.remote_swapped.pop(epr.name, epr)
+        return SwapArm(dir, qubit, epr_name, epr)
 
     def _s_get_task(self, fib_entry: FibEntry, prev: SwapArm, next: SwapArm) -> tuple[SwapTask, str]:
         if t := self.task_by_epr.pop(prev.epr_name, None):
@@ -465,6 +464,10 @@ class ForwarderSwapProc:
         return SwapTask(fib_entry), "constructor"
 
     def _s_physical_deposit(self, new_epr: Entanglement) -> None:
+        if new_epr.is_decohered:
+            log.debug(f"{self}: physical deposit skipped reason=DECOHERED")
+            return
+
         deposit_at: list[str] = []
         assert new_epr.orig_eprs
         for pos, attr in (0, "src"), (-1, "dst"):
@@ -472,7 +475,7 @@ class ForwarderSwapProc:
             old_epr = new_epr.orig_eprs[pos]
             target.get_app(type(self.fw)).swap.remote_swapped[old_epr.name] = new_epr
             deposit_at.append(f"{target.name}.remote_swapped[{old_epr.name}]")
-        log.debug(f"{self}: physical deposit at {deposit_at}")
+        log.debug(f"{self}: physical deposit at {', '.join(deposit_at)}")
 
     def pop_waiting_su(self, qubit: MemoryQubit):
         """
@@ -539,35 +542,44 @@ class ForwarderSwapProc:
         # Retrieve qubit and new physical EPR.
         assert qubit_pair, f"qubit not found for {old_epr_name}"
         qubit, _ = qubit_pair
-        new_epr = self.remote_swapped.pop(old_epr_name)
+        new_phy = self.remote_swapped.pop(old_epr_name, None)
+
+        # If the lower-ranked swap failed or the new EPR has decohered, release the qubit.
+        # We can only make this determination based on heralded expiration time.
+        if (expiry := msg["expiry"]) <= self.simulator.tc.time_slot:
+            if expiry == 0:
+                log.debug(
+                    f"{self}: releasing qubit {qubit.addr} reason=lower-swap-failure old_epr_name={old_epr_name} | {new_phy}"
+                )
+            else:
+                log.debug(
+                    f"{self}: releasing qubit {qubit.addr} reason=lower-expiry expiry={self.simulator.time(time_slot=expiry)} "
+                    f"old_epr_name={old_epr_name} | {new_phy}"
+                )
+            self.fw.release_qubit(qubit, need_remove=True)
+            return
+        assert new_phy is not None
 
         # Verify that the new physical EPR matches the heralded EPR segment.
         # This logic only supports ASAP parallel swap at the lowest rank.
         # Having parallel swap at any higher rank would break the assertion, because the physical EPR
         # may have been swapped by a peer when own node processes SWAP_UPDATE.
         if swapper_idx < fib_entry.own_idx:
-            assert cast(QNode, new_epr.src).name == (partner := msg["l_node"])
-            assert new_epr.dst is self.node
+            assert cast(QNode, new_phy.src).name == (partner := msg["l_node"])
+            assert new_phy.dst is self.node
             alias = msg["l_epr"]
         else:
-            assert cast(QNode, new_epr.dst).name == (partner := msg["r_node"])
-            assert new_epr.src is self.node
+            assert cast(QNode, new_phy.dst).name == (partner := msg["r_node"])
+            assert new_phy.src is self.node
             alias = msg["r_epr"]
 
-        # If the lower-ranked swap failed or the new EPR has decohered, release the qubit.
-        # We can only make this determination based on heralded expiration time.
-        if msg["expiry"] <= self.simulator.tc.time_slot:
-            log.debug(f"{self}: NEW EPR {new_epr} decohered during SU transmissions")
-            self.fw.release_qubit(qubit, need_remove=True)
-            return
-
         # Store new EPR.
-        self.memory.write(qubit.addr, new_epr, replace=True)
+        self.memory.write(qubit.addr, new_phy, replace=True)
         if fib_entry.own_idx not in (0, len(fib_entry.route) - 1):
             self.alias_by_qubit[qubit.addr] = alias
 
         log.debug(
-            f"{self}: segment {cast(QNode, new_epr.src).name}-{cast(QNode, new_epr.dst).name} "
+            f"{self}: segment {cast(QNode, new_phy.src).name}-{cast(QNode, new_phy.dst).name} "
             f"swap completed for rank {swapper_rank}"
         )
 
@@ -586,8 +598,17 @@ class ForwarderSwapProc:
         """Process SWAP_UPDATE sent from a same-ranked node."""
         self.fw.cnt.n_su_same += 1
 
-        # Retrieve SwapTask and record heralded swap outcome.
+        # Retrieve SwapTask.
         task, task_from = self._u_get_task(fib_entry, old_epr_name)
+
+        # If qubit does not exist, it means own node had swap failure previously and already notified both sides,
+        # but the remote swap occurred while the outgoing SWAP_UPDATE is still in flight.
+        if not task.o_complete and qubit_pair is None:
+            log.debug(f"{self}: {task} retrieved-from={task_from} dropped reason=previous-swap-failure")
+            assert task_from == "constructor"
+            return
+
+        # Record heralded swap outcome.
         l_su, r_su = task.notify_remote_swap(msg)
 
         # Sending heralding if allowed.

@@ -86,12 +86,13 @@ class ForwarderClassicMixin(ClassicCommandDispatcherMixin):
         Send/forward a signaling message along the path specified in FIB entry.
         """
         dest_idx = fib_entry.route.index(dest.name)
-        nh = fib_entry.route[fib_entry.own_idx + 1] if dest_idx > fib_entry.own_idx else fib_entry.route[fib_entry.own_idx - 1]
-        next_hop = self.network.get_node(nh)
+        nh_idx = fib_entry.own_idx + 1 if dest_idx > fib_entry.own_idx else fib_entry.own_idx - 1
+        next_hop = self.network.get_node(fib_entry.route[nh_idx])
 
         pkt = ClassicPacket(msg, src=forward_from or self.node, dest=dest)
+        via_msg = "" if nh_idx == dest_idx else f" via {next_hop.name}"
         log.debug(
             f"{self}: {'forwarding' if forward_from else 'sending'} signaling message "
-            f"from {pkt.src.name} to {pkt.dest.name} via {next_hop.name} | {msg}"
+            f"from {pkt.src.name} to {pkt.dest.name}{via_msg} | {msg}"
         )
         self.node.send_cpacket(next_hop, pkt)

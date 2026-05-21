@@ -161,7 +161,7 @@ def test_4_asap(etg_ms: tuple[int, int, int], ps3: int):
             n_consumed=(0, 0, 0, 0),
             n_swapped=(0, 1, 0, 0),
             n_swap_fail=(0, 0, 1, 0),
-            n_su_same=(0, 1, 1, 0),
+            n_su_same=(0, 1, (0, 1), 0),  # if n2 hears n3's failure before its own swap, it does not herald n3
             n_su_lower=(1, 0, 0, 1),
         )
     check_memory_released(net)
@@ -178,8 +178,13 @@ def test_4_asap(etg_ms: tuple[int, int, int], ps3: int):
         # 6. t=1.0615, n3 receives n1-n3 heralding, heralds n4 for n1-n4.
         # 7. t=1.0620, n4 receives n1-n4 heralding and consumes EPR.
         (1.0, 0.0000, 1, 1, (1.0615, 1.0620), (1, 1, 1, 1)),
-        # XXX currently, swap failure is processed same as swap success, except that the final EPR cannot be consumed.
-        (0.0, 0.0000, 1, 0, (1.0615, 1.0620), (1, 1, 1, 1)),
+        # 1. t=1.0110, n2-n3 arrives, both n2 and n3 start swapping.
+        # 2. t=1.0110, n3 completes swapping with failure, heralds n2+n4 for failure.
+        # 3. t=1.0115, n4 receives failure heralding and releases qubit.
+        # 4. t=1.0115, n2 receives failure heralding and records locally.
+        # 4. t=1.0610, n2 completes swapping with success, combines with n3 failure, heralds n1 for failure.
+        # 5. t=1.0615, n1 receives failure heralding and consumes EPR.
+        (0.0, 0.0000, 1, 0, (1.0615, 1.0115), (1, 1, 0, 1)),
         # 1. t=1.0110, n2-n3 arrives, both n2 and n3 start swapping.
         # 2. t=1.0609, n3 completes swapping with success, heralds n2 for n2-n4.
         # 3. t=1.0610, n2 completes swapping with success, heralds n3 for n1-n3.
@@ -188,8 +193,14 @@ def test_4_asap(etg_ms: tuple[int, int, int], ps3: int):
         # 6. t=1.0619, n1 receives n1-n4 heralding and consumes EPR.
         # 7. t=1.0620, n4 receives n1-n4 heralding and consumes EPR.
         (1.0, 0.0499, 1, 1, (1.0619, 1.0620), (1, 1, 1, 1)),
-        # XXX currently, swap failure is processed same as swap success, except that the final EPR cannot be consumed.
-        (0.0, 0.0499, 1, 0, (1.0619, 1.0620), (1, 1, 1, 1)),
+        # 1. t=1.0110, n2-n3 arrives, both n2 and n3 start swapping.
+        # 2. t=1.0609, n3 completes swapping with failure, heralds n2+n4 for failure.
+        # 3. t=1.0610, n2 completes swapping with success, heralds n3 for n1-n3.
+        # 4. t=1.0614, n4 receives failure heralding and releases qubit.
+        # 5. t=1.0614, n2 receives failure heralding, heralds n1 for failure.
+        # 6. t=1.0615, n3 receives n1-n3 heralding, ignores due to earlier failure.
+        # 6. t=1.0619, n1 receives failure heralding and releases EPR.
+        (0.0, 0.0499, 1, 0, (1.0619, 1.0614), (1, 1, 1, 1)),
         # 1. t=1.0110, n2-n3 arrives, both n2 and n3 start swapping.
         # 2. t=1.0610, n2 completes swapping with success, heralds n3 for n1-n3.
         # 3. t=1.0611, n3 completes swapping with success, heralds n2 for n2-n4.
@@ -198,8 +209,14 @@ def test_4_asap(etg_ms: tuple[int, int, int], ps3: int):
         # 6. t=1.0620, n4 receives n1-n4 heralding and consumes EPR.
         # 7. t=1.0621, n1 receives n1-n4 heralding and consumes EPR.
         (1.0, 0.0501, 1, 1, (1.0621, 1.0620), (1, 1, 1, 1)),
-        # XXX currently, swap failure is processed same as swap success, except that the final EPR cannot be consumed.
-        (0.0, 0.0501, 1, 0, (1.0621, 1.0620), (1, 1, 1, 1)),
+        # 1. t=1.0110, n2-n3 arrives, both n2 and n3 start swapping.
+        # 2. t=1.0610, n2 completes swapping with success, heralds n3 for n1-n3.
+        # 3. t=1.0611, n3 completes swapping with failure, heralds n2+n4 for failure.
+        # 4. t=1.0615, n3 receives n1-n3 heralding, ignores due to earlier failure.
+        # 5. t=1.0616, n4 receives failure heralding and releases qubit.
+        # 6. t=1.0616, n2 receives failure heralding, heralds n1 for failure.
+        # 7. t=1.0621, n1 receives failure heralding and consumes EPR.
+        (0.0, 0.0501, 1, 0, (1.0621, 1.0616), (1, 1, 1, 1)),
     ],
 )
 def test_4_delayed(
@@ -295,7 +312,7 @@ def test_5_asap(
         n_consumed=(n_consumed, 0, 0, 0, n_consumed),
         n_swapped=(0, 1, n_consumed, 1, 0),
         n_swap_fail=(0, 0, 1 - n_consumed, 0, 0),
-        n_su_same=(0, 1, 2, 1, 0),
+        n_su_same=(0, 1, (0, 1, 2), 1, 0),
         n_su_lower=(1, 0, 0, 0, 1),
     )
 

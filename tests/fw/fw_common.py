@@ -224,11 +224,16 @@ def print_fw_counters(net: QuantumNetwork):
         print(node.name, fw.cnt)
 
 
-def check_fw_counters(net: QuantumNetwork, **kwargs: Iterable[int]) -> None:
-    cnts = [node.get_app(Forwarder).cnt for node in net.nodes]
-    for key, expected in kwargs.items():
-        actual = [getattr(cnt, key) for cnt in cnts]
-        assert tuple(actual) == tuple(expected)
+def check_fw_counters(net: QuantumNetwork, **kwargs: Iterable[int | Iterable[int]]) -> None:
+    __tracebackhide__ = True
+    errors: list[str] = []
+    cnts = [(node.name, node.get_app(Forwarder).cnt) for node in net.nodes]
+    for key, expected_vec in kwargs.items():
+        for expected, (node, cnt) in zip(expected_vec, cnts):
+            actual = getattr(cnt, key)
+            if actual != expected and (not isinstance(expected, Iterable) or actual not in expected):
+                errors.append(f"{node}.{key} = {actual} != {expected}")
+    assert not errors, "\n".join(errors)
 
 
 def install_path(

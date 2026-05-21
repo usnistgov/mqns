@@ -221,7 +221,9 @@ class Entanglement(QuantumModel):
 
         local_failure = ps < 1.0 and rng.random() >= ps
         ne.is_decohered = epr0.is_decohered or epr1.is_decohered or local_failure
-        if not ne.is_decohered:
+        if ne.is_decohered:
+            epr0.is_decohered = epr1.is_decohered = True
+        else:
             ne.apply_error(error)
         return ne, not local_failure
 

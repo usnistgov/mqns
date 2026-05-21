@@ -87,21 +87,27 @@ def test_path_validation():
 
 
 @pytest.mark.parametrize(
-    ("own", "expected"),
+    ("purif", "own", "expected"),
     [
-        ("A", None),
-        ("B", ("A-", "BC", "D-")),
-        ("C", ("A-", "BC", "D+")),
-        ("D", ("A-", "DF", "G-")),
-        ("E", ("D+", "E", "F+")),
-        ("F", ("A-", "DF", "G+")),
-        ("G", ("A+", "G", "J+")),
-        ("H", ("G+", "HI", "J-")),
-        ("I", ("G-", "HI", "J-")),
-        ("J", None),
+        # without purification
+        (None, "A", None),
+        (None, "B", ("A", "BC", "D", "r")),
+        (None, "C", ("A", "BC", "D", "r")),
+        (None, "D", ("A", "DF", "G", "r")),
+        (None, "E", ("D", "E", "F", "b")),
+        (None, "F", ("A", "DF", "G", "r")),
+        (None, "G", ("A", "G", "J", "b")),
+        (None, "H", ("G", "HI", "J", "l")),
+        (None, "I", ("G", "HI", "J", "l")),
+        (None, "J", None),
+        # with valid purification
+        ("A-G", "B", ("A", "BC", "D", "r")),
+        ("A-G", "D", ("A", "DF", "G", "b")),
+        ("A-G", "F", ("A", "DF", "G", "b")),
+        ("A-G", "H", ("G", "HI", "J", "l")),
     ],
 )
-def test_fib_swap_group(own: str, expected: tuple[str, str, str] | None):
+def test_fib_swap_group(purif: str | None, own: str, expected: tuple[str, str, str, str] | None):
     nodes = "ABCDEFGHIJ"
     ranks = "3001012003"
     entry = FibEntry(
@@ -111,7 +117,7 @@ def test_fib_swap_group(own: str, expected: tuple[str, str, str] | None):
         own_idx=nodes.index(own),
         swap=[int(v) for v in ranks],
         swap_cutoff=[None] * 9,
-        purif={},
+        purif={purif: 1} if purif else {},
     )
 
     if expected is None:
@@ -122,12 +128,7 @@ def test_fib_swap_group(own: str, expected: tuple[str, str, str] | None):
     sg = FibSwapGroup.compute(entry)
     assert sg.nodes == list(expected[1])
     assert sg.own_idx == sg.nodes.index(own)
-    assert sg.l_neigh == expected[0][0]
-    assert sg.l_most == (sg.own_idx == 0)
-    assert sg.l_herald == (expected[0][-1] == "+")
-    assert sg.r_neigh == expected[2][0]
-    assert sg.r_most == (sg.own_idx == len(sg.nodes) - 1)
-    assert sg.r_herald == (expected[2][-1] == "+")
+    assert (sg.l_neigh, "".join(sg.nodes), sg.r_neigh, sg.dir) == expected
 
     _, rank = entry.find_index_and_swap_rank(sg.nodes[0])
     assert sg.rank == rank
