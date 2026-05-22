@@ -9,6 +9,13 @@ import pytest
 from mqns.simulator import Event, Simulator, Time
 
 
+@pytest.fixture(autouse=True)
+def _():
+    Simulator._run_tracebackhide = False
+    yield
+    Simulator._run_tracebackhide = True
+
+
 class SimpleEvent(Event):
     seq = 0
     invokes = defaultdict[str, list[int]](lambda: [])

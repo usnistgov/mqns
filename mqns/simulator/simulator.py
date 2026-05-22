@@ -28,6 +28,11 @@ class Simulator:
     Discrete-event driven simulator core.
     """
 
+    _run_tracebackhide = True
+    """
+    If True, the ``.run()`` method from pytest traceback.
+    """
+
     watchers: dict[type[Event], list["Monitor"]] | None = None
 
     def __init__(
@@ -123,6 +128,8 @@ class Simulator:
         If ``MQNS_PROFILING=1`` environment variable is set, the simulation runs under cProfile profiling,
         and a profiling report is printed at the end of simulation.
         """
+        __tracebackhide__ = self._run_tracebackhide
+
         is_continuous = self.te is None
         profile = Profile() if os.getenv("MQNS_PROFILING", "0") == "1" else None
         log.info(
@@ -138,7 +145,7 @@ class Simulator:
                 profile.runcall(self._run)
             else:
                 self._run()
-        except BaseException as e:
+        except Exception as e:
             log.error(f"Simulator exception {type(e)} occurred: {e}")
             raise RuntimeError(f"simulation aborted at [{self.tc}] by exception: {e}") from e
         finally:
@@ -157,6 +164,8 @@ class Simulator:
             profile.print_stats(SortKey.TIME)
 
     def _run(self) -> None:
+        __tracebackhide__ = self._run_tracebackhide
+
         while self._pool.running:
             event = self._pool.pop()
 
