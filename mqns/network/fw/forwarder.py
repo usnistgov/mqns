@@ -368,11 +368,14 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
 
         qubit = event.qubit
         assert qubit.state is QubitState.ENTANGLED1, f"unexpected state {qubit.state}"
+        assert qubit.key
+        qubit.partner = event.neighbor, qubit.key
         _, epr = self.memory.read(qubit.addr, has=self.epr_type)
         log.debug(f"{self}: ENTANGLED {qubit} | {epr}")
         self.mux.qubit_is_entangled(qubit, epr, event.neighbor)
 
-        self.swap.pop_waiting_su(qubit)
+        if qubit.state is not QubitState.RELEASE:
+            self.swap.pop_waiting_su(qubit)
 
     def qubit_is_purif(self, qubit: MemoryQubit, fib_entry: FibEntry, partner: QNode):
         """

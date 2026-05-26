@@ -15,12 +15,14 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from mqns.utils.autoid import AutoIncrementIdentifier
 from mqns.utils.json import json_default, json_encodable
 from mqns.utils.logger import log
 from mqns.utils.random import rng
 from mqns.utils.timeout import WallClockTimeout
 
 __all__ = [
+    "AutoIncrementIdentifier",
     "json_default",
     "json_encodable",
     "log",

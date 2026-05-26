@@ -130,7 +130,9 @@ class QuantumMemory(Entity):
             t = self.simulator.tc + self.delay.calculate()
             self.simulator.add_event(MemoryReadResponseEvent(self.node, result, request=event, t=t))
         elif isinstance(event, MemoryWriteRequestEvent):
-            result = self.write(None, event.qubit)
+            qubit = next(self.find(lambda _, v: v is None), None)
+            assert qubit is not None, "memory is full"
+            result = self.write(qubit[0].addr, event.qubit)
             t = self.simulator.tc + self.delay.calculate()
             self.simulator.add_event(MemoryWriteResponseEvent(self.node, result, request=event, t=t))
 
@@ -272,7 +274,7 @@ class QuantumMemory(Entity):
         Retrieve a qubit and associated data.
 
         Args:
-            key: Qubit address or EPR name.
+            key: Qubit address or reservation key.
             remove: Whether to remove the data.
                     If specified as QuantumModel, remove only if stored data is the same object.
 
@@ -291,7 +293,7 @@ class QuantumMemory(Entity):
         Retrieve a qubit and associated data.
 
         Args:
-            key: Qubit address or EPR name.
+            key: Qubit address or reservation key.
             must: True.
             remove: Whether to remove the data.
                     If specified as QuantumModel, remove only if stored data is the same object.
@@ -318,7 +320,7 @@ class QuantumMemory(Entity):
         Retrieve a qubit and associated data.
 
         Args:
-            key: Qubit address or EPR name.
+            key: Qubit address or reservation key.
             must: True (implied).
             has: Expected type of stored data.
             set_fidelity: Whether to update fidelity, XXX current formula is inaccurate for EPRs.
@@ -345,7 +347,8 @@ class QuantumMemory(Entity):
         if type(key) is int:
             qubit, data = self._storage[key]
         else:
-            qubit, data = next(self.find(lambda _, v: getattr(v, "name", None) == key), (None, None))
+            # qubit, data = next(self.find(lambda _, v: getattr(v, "name", None) == key), (None, None))
+            qubit, data = next(self.find(lambda q, _: q.key == key), (None, None))
 
         if qubit is None:
             if must or has:
@@ -365,15 +368,16 @@ class QuantumMemory(Entity):
 
         return qubit, data
 
-    def write(self, key: int | str | None, data: QuantumModel, *, replace=False) -> MemoryQubit:
+    def write(self, key: int | str, data: QuantumModel, *, replace=False, auto_key=True) -> MemoryQubit:
         """
         Store data in memory.
 
         Args:
-            key: Qubit address, ``qubit.active`` identifier, or ``None`` for any unused qubit.
+            key: Qubit address or reservation key.
             data: Data to be stored.
                   If this is an EPR, a decoherence event is scheduled automatically.
             replace: True allows replacing existing data; False requires qubit to be empty.
+            auto_key: If set True and ``qubit.key`` is empty, set ``qubit.key`` to ``data.name``.
 
         Returns:
             Qubit where the data is stored.
@@ -384,16 +388,17 @@ class QuantumMemory(Entity):
         """
         if type(key) is int:
             qubit, old = self._storage[key]
-        elif type(key) is str:
-            qubit, old = next(self.find(lambda q, _: q.active == key), (None, None))
         else:
-            qubit, old = next(self.find(lambda _, v: v is None), (None, None))
+            qubit, old = next(self.find(lambda q, _: q.key == key), (None, None))
 
         if qubit is None:
             raise IndexError("qubit not found")
 
         if not replace and old is not None:
             raise ValueError(f"qubit contains existing data: {old}")
+
+        if auto_key and qubit.key is None:
+            qubit.key = getattr(data, "name", None)
 
         self._storage[qubit.addr] = (qubit, data)
         if old is None:
@@ -409,7 +414,7 @@ class QuantumMemory(Entity):
     def clear(self) -> None:
         """Clear all qubits in the memory."""
         for qubit, _ in self._storage:
-            qubit.reset_state()
+            qubit.reset_state(QubitState.RAW)
             self._storage[qubit.addr] = (qubit, None)
         self._usage = 0
 

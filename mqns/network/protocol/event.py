@@ -62,6 +62,7 @@ class LinkArchSuccessEvent(Event):
     def __init__(
         self,
         node: QNode,
+        key: str,
         epr: Entanglement,
         *,
         t: Time,
@@ -70,6 +71,7 @@ class LinkArchSuccessEvent(Event):
     ):
         super().__init__(t, name)
         self.node = node
+        self.key = key
         self.epr = epr
         self.attempts = attempts
 

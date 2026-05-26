@@ -55,11 +55,10 @@ class CutoffScheme(ABC):
         fw = self.fw
 
         # find EPR partner
-        _, epr = fw.memory.read(qubit.addr, has=self.fw.epr_type, set_fidelity=True, remove=True)
-        partner = epr.dst if epr.src == self.node else epr.src
-        assert partner is not None
+        assert qubit.partner
+        partner, p_key = qubit.partner
 
-        log.debug(f"{self.fw}: local cutoff discard epr={epr.name} addr={qubit.addr} round={round} partner={partner.name}")
+        log.debug(f"{self.fw}: local cutoff discard addr={qubit.addr} round={round} partner={partner.name}:{p_key}")
 
         # discard primary qubit
         fw.cnt.increment_n_cutoff(round, True)
@@ -69,7 +68,7 @@ class CutoffScheme(ABC):
         msg: CutoffDiscardMsg = {
             "cmd": "CUTOFF_DISCARD",
             "path_id": fib_entry.path_id,
-            "epr": epr.name,
+            "key": p_key,
             "round": round,
         }
         fw.send_msg(partner, msg, fib_entry)
@@ -81,16 +80,16 @@ class CutoffScheme(ABC):
         This is called by ProactiveForwarder upon receiving a CUTOFF_DISCARD message.
         """
         fw = self.fw
-        epr_name = msg["epr"]
+        o_key = msg["key"]
         round = msg["round"]
 
         # find qubit
-        qm_tuple = fw.memory.read(epr_name, remove=True)
+        qm_tuple = fw.memory.read(o_key, remove=True)
         if qm_tuple is None:
-            log.debug(f"{self.fw}: remote cutoff discard epr={epr_name} not exist")
+            log.debug(f"{self.fw}: remote cutoff discard key={o_key} not exist")
             return
         qubit, _ = qm_tuple
-        log.debug(f"{self.fw}: remote cutoff discard epr={epr_name} addr={qubit.addr} round={round}")
+        log.debug(f"{self.fw}: remote cutoff discard key={o_key} addr={qubit.addr} round={round}")
 
         # discard secondary qubit
         fw.cnt.increment_n_cutoff(round, False)

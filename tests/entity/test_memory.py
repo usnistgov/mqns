@@ -51,7 +51,7 @@ def test_write_and_read_with_path_and_key():
     addrs = mem.allocate(scenario.qc, 0, PathDirection.L)
     assert len(addrs) == 1
     addr = addrs[0]
-    mem._storage[addr][0].active = key
+    mem._storage[addr][0].key = key
 
     # Now write with path_id and key
     qubit = mem.write(key, epr1)
@@ -64,7 +64,7 @@ def test_write_and_read_with_path_and_key():
         mem.write(key, epr2)
 
     # Should be able to read it
-    qubit, data = mem.read("epr1", has=WernerStateEntanglement, remove=True)
+    qubit, data = mem.read(key, has=WernerStateEntanglement, remove=True)
     assert data.name == "epr1"
     assert mem._usage == 0
 
@@ -100,7 +100,7 @@ def test_decoherence_event_removes_qubit():
     mem = scenario.m1
 
     epr = scenario.make_epr("epr3")
-    qubit = mem.write(None, epr)
+    qubit = mem.write(0, epr)
 
     qubit.state = QubitState.ACTIVE
     qubit.state = QubitState.RESERVED
@@ -121,7 +121,7 @@ def test_memory_clear_and_deallocate():
 
     for i in range(2):
         epr = scenario.make_epr(f"epr{i}")
-        mem.write(None, epr)
+        mem.write(i, epr)
 
     assert mem.count == 2
     mem.clear()
@@ -145,11 +145,11 @@ def test_qubit_reservation_behavior():
     assert len(addrs) == 1
     addr1 = addrs[0]
     q1 = mem._storage[addr1][0]
-    q1.active = "n5_n6_42_" + str(addr1)
+    q1.key = "n5_n6_42_" + str(addr1)
 
     epr = scenario.make_epr("epr1")
 
-    qubit = mem.write(q1.active, epr)
+    qubit = mem.write(q1.key, epr)
     assert qubit.addr == addr1
 
 
@@ -159,7 +159,7 @@ def test_memory_sync_qubit():
 
     q1 = Qubit(name="test_qubit")
 
-    mem.write(None, q1)
+    mem.write(0, q1)
     assert mem.read("test_qubit") is not None
 
     assert mem.read("nonexistent") is None
@@ -171,20 +171,20 @@ def test_memory_sync_qubit_limited():
     mem = scenario.m1
 
     for i in range(5):
-        q = Qubit(name="q" + str(i + 1))
-        mem.write(None, q)
+        q = Qubit(name=f"q{i}")
+        mem.write(i, q)
         assert mem.count == i + 1
 
     q = Qubit(name="q5")
     with pytest.raises(IndexError, match="qubit not found"):
-        mem.write(None, q)
+        mem.write("q5", q)
     assert mem.count == 5
 
-    q = mem.read("q4", remove=True)
-    assert q is not None
+    mq, _ = mem.read("q3", has=Qubit, remove=True)
     assert mem.count == 4
     q = Qubit(name="q6")
-    mem.write(None, q)
+    mem.write(mq.addr, q)
+    mq.key = q.name
     assert mem.count == 5
     assert mem.read("q6", must=True)[0].addr == 3
 

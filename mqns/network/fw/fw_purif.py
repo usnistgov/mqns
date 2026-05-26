@@ -13,6 +13,11 @@ if TYPE_CHECKING:
     from mqns.network.fw.forwarder import Forwarder
 
 
+def _qubit_p_key(mq: MemoryQubit) -> str:
+    assert mq.partner
+    return mq.partner[1]
+
+
 class ForwarderPurifProc:
     """
     Part of ``Forwarder`` logic related to purification procedure.
@@ -52,20 +57,20 @@ class ForwarderPurifProc:
             + f"{mq1.addr} (F={epr1.fidelity}) with partner {partner.name}"
         )
 
-        mq0.state = QubitState.PENDING
-        self.fw.release_qubit(mq1)
-
         # send purif_solicit to partner
         msg: PurifSolicitMsg = {
             "cmd": "PURIF_SOLICIT",
             "path_id": fib_entry.path_id,
             "purif_node": self.node.name,
             "partner": partner.name,
-            "epr": epr0.name,
-            "measure_epr": epr1.name,
+            "key0": _qubit_p_key(mq0),
+            "key1": _qubit_p_key(mq1),
             "round": mq0.purif_rounds,
         }
         self.fw.send_msg(partner, msg, fib_entry)
+
+        mq0.state = QubitState.PENDING
+        self.fw.release_qubit(mq1)
 
     def handle_solicit(self, msg: PurifSolicitMsg, fib_entry: FibEntry):
         """
@@ -87,9 +92,11 @@ class ForwarderPurifProc:
         """
         # mq0 is the "kept" memory whose fidelity would be increased if purification succeeds
         # mq1 is the "measured" memory that is consumed during purification
-        mq0, epr0 = self.memory.read(msg["epr"], has=self.epr_type, set_fidelity=True)
-        mq1, epr1 = self.memory.read(msg["measure_epr"], has=self.epr_type, set_fidelity=True, remove=True)
+        mq0, epr0 = self.memory.read(msg["key0"], has=self.epr_type, set_fidelity=True)
+        mq1, epr1 = self.memory.read(msg["key1"], has=self.epr_type, set_fidelity=True, remove=True)
         # TODO: handle the exception case when an EPR is decohered and not found in memory
+        p_key0 = _qubit_p_key(mq0)
+        p_key1 = _qubit_p_key(mq1)
 
         for mq in (mq0, mq1):
             assert mq.state is QubitState.PURIF, f"unexpected state {mq.state}"
@@ -126,6 +133,8 @@ class ForwarderPurifProc:
         resp: PurifResponseMsg = {
             **msg,
             "cmd": "PURIF_RESPONSE",
+            "key0": p_key0,
+            "key1": p_key1,
             "result": result,
         }
         self.fw.send_msg(primary, resp, fib_entry)
@@ -149,7 +158,7 @@ class ForwarderPurifProc:
             fib_entry: FIB entry associated with path_id in the message.
 
         """
-        qubit, epr = self.memory.read(msg["epr"], has=self.epr_type)
+        qubit, epr = self.memory.read(msg["key0"], has=self.epr_type)
         # TODO: handle the exception case when an EPR is decohered and not found in memory
 
         result = msg["result"]

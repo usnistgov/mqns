@@ -1,5 +1,4 @@
 import copy
-import uuid
 from collections import defaultdict
 from collections.abc import Iterable, Mapping
 from typing import Literal, TypedDict, Unpack, override
@@ -21,7 +20,7 @@ from mqns.network.reactive import ReactiveForwarder, ReactiveRoutingController
 from mqns.network.route import RouteAlgorithm, YenRouteAlgorithm
 from mqns.network.topology import ClassicTopology, GridTopology, LinearTopology, Topology, TopologyInitKwargs, TreeTopology
 from mqns.simulator import Event, Simulator, Time, func_to_event
-from mqns.utils import log
+from mqns.utils import AutoIncrementIdentifier, log
 
 
 class QubitReleaseLoggerApp(Application):
@@ -258,6 +257,9 @@ def install_path(
     return rp
 
 
+_provide_entanglements_autoid = AutoIncrementIdentifier("Tpe_")
+
+
 def provide_entanglements(
     *etgs: tuple[float, Forwarder, Forwarder],
     fidelity=0.99,
@@ -286,23 +288,24 @@ def provide_entanglements(
         )
         _, d_notify_a, d_notify_b = ch.link_arch.delays(1)
 
+        ll_key = _provide_entanglements_autoid()
         t_creation = simulator.time(sec=t)
         epr = src.network.epr_type(
             decohere_time=t_creation + min(src.memory.t_decohere, dst.memory.t_decohere),
             fidelity_time=t_creation,
             src=src.node,
             dst=dst.node,
+            mem_keys=(ll_key, ll_key),
             store_decays=(src.memory.time_decay, dst.memory.time_decay),
         )
         epr.fidelity = fidelity
 
-        key = f"provide_entanglements.key:{uuid.uuid4().hex}"
         for node, neighbor, d_notify in (src, dst, d_notify_a), (dst, src, d_notify_b):
             q, _ = next(node.memory.find(lambda _, v: v is None, qchannel=ch), (None, None))
             assert q is not None, f"insufficient qubits assigned to {ch}"
-            node.memory.write(q.addr, epr)
-            q.active = key
             q._state = QubitState.ENTANGLED0
+            q.key = ll_key
+            node.memory.write(q.addr, epr)
             simulator.add_event(QubitEntangledEvent(node.node, neighbor.node, q, t=t_creation + d_notify))
 
 

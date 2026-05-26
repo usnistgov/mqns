@@ -39,15 +39,15 @@ from mqns.models.error import ErrorModel, PerfectErrorModel, TimeDecayFunc, time
 from mqns.models.qubit import QState, Qubit
 from mqns.models.qubit.gate import CNOT, H, U, X, Y, Z
 from mqns.simulator import Time
-from mqns.utils import rng
+from mqns.utils import AutoIncrementIdentifier, rng
 
 if TYPE_CHECKING:
     from mqns.entity.node import QNode
 
 
-_AUTOID = 0
+_AUTOID = AutoIncrementIdentifier("etg_")
 """
-Automatically assigned ``Entanglement.name`` numeric portion.
+Automatically assigned ``Entanglement.name`` generator.
 """
 
 
@@ -57,6 +57,7 @@ class EntanglementInitKwargs(TypedDict, total=False):
     fidelity_time: Time
     src: "QNode|None"
     dst: "QNode|None"
+    mem_keys: tuple[str | None, str | None]
     store_decays: tuple[TimeDecayFunc | None, TimeDecayFunc | None]
 
 
@@ -78,9 +79,6 @@ class Entanglement(QuantumModel):
     Note: This is a legacy attribute, planned for removal.
     """
 
-    key: str | None = None
-    """Reservation key used by LinkLayer."""
-
     ch_index: int = -1
     """
     Index of elementary entanglement in a path, smaller indices are on the left side.
@@ -101,14 +99,11 @@ class Entanglement(QuantumModel):
             fidelity_time: EPR creation or fidelity update time point, defaults to ``Time.SENTINEL``.
             src: Left node that holds one of the entangled qubits.
             dst: Right node that holds one of the entangled qubits.
+            mem_keys: MemoryQubit reservation keys at src and dst.
             store_decays: Memory time-based decay functions at src and dst.
         """
         name = kwargs.get("name")
-        if name is None:
-            global _AUTOID
-            name = f"etg_{_AUTOID:028x}"
-            _AUTOID += 1
-        self.name = name
+        self.name = _AUTOID() if name is None else name
         """Descriptive name."""
 
         self.decohere_time = kwargs.get("decohere_time", Time.SENTINEL)
@@ -134,8 +129,11 @@ class Entanglement(QuantumModel):
         """Left node that holds one of the entangled qubits."""
         self.dst = kwargs.get("dst")
         """Right node that holds one of the entangled qubits."""
+        key0, key1 = kwargs.get("mem_keys", (None, None))
+        self.mem_keys = key0 or "", key1 or ""
+        """MemoryQubit reservation keys at src and dst."""
         decay0, decay1 = kwargs.get("store_decays", (None, None))
-        self.store_decays = (decay0 or time_decay_nop, decay1 or time_decay_nop)
+        self.store_decays = decay0 or time_decay_nop, decay1 or time_decay_nop
         """Memory time-based decay functions at src and dst."""
 
     @property
@@ -214,6 +212,7 @@ class Entanglement(QuantumModel):
                 fidelity_time=now,
                 src=epr0.src,
                 dst=epr1.dst,
+                mem_keys=(epr0.mem_keys[0], epr1.mem_keys[1]),
                 store_decays=(epr0.store_decays[0], epr1.store_decays[1]),
             ),
         )

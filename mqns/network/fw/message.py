@@ -123,7 +123,7 @@ class UninstallPathMsg(TypedDict):
 class CutoffDiscardMsg(TypedDict):
     cmd: Literal["CUTOFF_DISCARD"]
     path_id: int
-    epr: str
+    key: str
     round: int
 
 
@@ -131,8 +131,8 @@ class PurifMsgBase(TypedDict):
     path_id: int
     purif_node: str
     partner: str
-    epr: str
-    measure_epr: str
+    key0: str
+    key1: str
     round: int
 
 
@@ -168,13 +168,13 @@ class SwapUpdateMsg(TypedDict):
     This would be either the recipient of this message or its opposite partner.
     """
 
-    l_epr: str
+    l_key: str
     """
-    Elementary EPR name known by ``l_node``.
+    Qubit reservation key at ``l_node``.
     """
-    r_epr: str
+    r_key: str
     """
-    Elementary EPR name known by ``r_node``.
+    Qubit reservation key at ``r_node``.
     """
 
     expiry: int

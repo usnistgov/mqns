@@ -88,7 +88,7 @@ class MuxSchemeBufferSpace(MuxSchemeFibBase):
 
         if isinstance(mv_element, str):
             # allocate a specific memory qubit identified with reservation key (only used in reactive forwarding)
-            qubit, _ = next(self.memory.find(lambda q, _: q.active == mv_element), (None, None))
+            qubit, _ = next(self.memory.find(lambda q, _: q.key == mv_element), (None, None))
             if qubit is None:
                 raise ValueError(f"m_v[{mv_index}] refers to non-existent qubit {mv_element}")
             qubit.path_id, qubit.path_direction = fib_entry.path_id, direction
