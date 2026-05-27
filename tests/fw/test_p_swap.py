@@ -174,49 +174,49 @@ def test_4_asap(etg_ms: tuple[int, int, int], ps3: int):
         # 2. t=1.0110, n3 completes swapping with success, heralds n2 for n2-n4.
         # 3. t=1.0115, n2 receives n2-n4 heralding.
         # 4. t=1.0610, n2 completes swapping with success, heralds n1 for n1-n4, heralds n3 for n1-n3.
-        # 5. t=1.0615, n1 receives n1-n4 heralding and consumes EPR.
+        # 5. t=1.0615, n1 receives n1-n4 heralding, consumes EPR.
         # 6. t=1.0615, n3 receives n1-n3 heralding, heralds n4 for n1-n4.
-        # 7. t=1.0620, n4 receives n1-n4 heralding and consumes EPR.
-        (1.0, 0.0000, 1, 1, (1.0615, 1.0620), (1, 1, 1, 1)),
+        # 7. t=1.0620, n4 receives n1-n4 heralding, consumes EPR.
+        (1.0, 0.0000, 1, 1, (1.0615, 1.0610, 1.0110, 1.0620), (1, 1, 1, 1)),
         # 1. t=1.0110, n2-n3 arrives, both n2 and n3 start swapping.
         # 2. t=1.0110, n3 completes swapping with failure, heralds n2+n4 for failure.
-        # 3. t=1.0115, n4 receives failure heralding and releases qubit.
-        # 4. t=1.0115, n2 receives failure heralding and records locally.
-        # 4. t=1.0610, n2 completes swapping with success, combines with n3 failure, heralds n1 for failure.
-        # 5. t=1.0615, n1 receives failure heralding and consumes EPR.
-        (0.0, 0.0000, 1, 0, (1.0615, 1.0115), (1, 1, 0, 1)),
+        # 3. t=1.0115, n4 receives failure heralding, releases qubit.
+        # 4. t=1.0115, n2 receives failure heralding, heralds n1 for failure.
+        # 5. t=1.0120, n1 receives failure heralding, releases qubit.
+        # 4. t=1.0610, n2 completes swapping with success, ignores due to earlier failure.
+        (0.0, 0.0000, 1, 0, (1.0120, 1.0610, 1.0110, 1.0115), (1, 1, 0, 1)),
         # 1. t=1.0110, n2-n3 arrives, both n2 and n3 start swapping.
         # 2. t=1.0609, n3 completes swapping with success, heralds n2 for n2-n4.
         # 3. t=1.0610, n2 completes swapping with success, heralds n3 for n1-n3.
         # 4. t=1.0614, n2 receives n2-n4 heralding, heralds n1 for n1-n4.
         # 5. t=1.0615, n3 receives n1-n3 heralding, heralds n4 for n1-n4.
-        # 6. t=1.0619, n1 receives n1-n4 heralding and consumes EPR.
-        # 7. t=1.0620, n4 receives n1-n4 heralding and consumes EPR.
-        (1.0, 0.0499, 1, 1, (1.0619, 1.0620), (1, 1, 1, 1)),
+        # 6. t=1.0619, n1 receives n1-n4 heralding, consumes EPR.
+        # 7. t=1.0620, n4 receives n1-n4 heralding, consumes EPR.
+        (1.0, 0.0499, 1, 1, (1.0619, 1.0610, 1.0609, 1.0620), (1, 1, 1, 1)),
         # 1. t=1.0110, n2-n3 arrives, both n2 and n3 start swapping.
         # 2. t=1.0609, n3 completes swapping with failure, heralds n2+n4 for failure.
         # 3. t=1.0610, n2 completes swapping with success, heralds n3 for n1-n3.
-        # 4. t=1.0614, n4 receives failure heralding and releases qubit.
+        # 4. t=1.0614, n4 receives failure heralding, releases qubit.
         # 5. t=1.0614, n2 receives failure heralding, heralds n1 for failure.
         # 6. t=1.0615, n3 receives n1-n3 heralding, ignores due to earlier failure.
-        # 6. t=1.0619, n1 receives failure heralding and releases EPR.
-        (0.0, 0.0499, 1, 0, (1.0619, 1.0614), (1, 1, 1, 1)),
+        # 6. t=1.0619, n1 receives failure heralding, releases EPR.
+        (0.0, 0.0499, 1, 0, (1.0619, 1.0610, 1.0609, 1.0614), (1, 1, 1, 1)),
         # 1. t=1.0110, n2-n3 arrives, both n2 and n3 start swapping.
         # 2. t=1.0610, n2 completes swapping with success, heralds n3 for n1-n3.
         # 3. t=1.0611, n3 completes swapping with success, heralds n2 for n2-n4.
         # 4. t=1.0615, n3 receives n1-n3 heralding, heralds n4 for n1-n4.
         # 5. t=1.0616, n2 receives n2-n4 heralding, heralds n1 for n1-n4.
-        # 6. t=1.0620, n4 receives n1-n4 heralding and consumes EPR.
-        # 7. t=1.0621, n1 receives n1-n4 heralding and consumes EPR.
-        (1.0, 0.0501, 1, 1, (1.0621, 1.0620), (1, 1, 1, 1)),
+        # 6. t=1.0620, n4 receives n1-n4 heralding, consumes EPR.
+        # 7. t=1.0621, n1 receives n1-n4 heralding, consumes EPR.
+        (1.0, 0.0501, 1, 1, (1.0621, 1.0610, 1.0611, 1.0620), (1, 1, 1, 1)),
         # 1. t=1.0110, n2-n3 arrives, both n2 and n3 start swapping.
         # 2. t=1.0610, n2 completes swapping with success, heralds n3 for n1-n3.
         # 3. t=1.0611, n3 completes swapping with failure, heralds n2+n4 for failure.
         # 4. t=1.0615, n3 receives n1-n3 heralding, ignores due to earlier failure.
-        # 5. t=1.0616, n4 receives failure heralding and releases qubit.
+        # 5. t=1.0616, n4 receives failure heralding, releases qubit.
         # 6. t=1.0616, n2 receives failure heralding, heralds n1 for failure.
-        # 7. t=1.0621, n1 receives failure heralding and consumes EPR.
-        (0.0, 0.0501, 1, 0, (1.0621, 1.0616), (1, 1, 1, 1)),
+        # 7. t=1.0621, n1 receives failure heralding, releases qubit.
+        (0.0, 0.0501, 1, 0, (1.0621, 1.0610, 1.0611, 1.0616), (1, 1, 1, 1)),
     ],
 )
 def test_4_delayed(
@@ -275,10 +275,9 @@ def test_4_delayed(
         assert 0.5 < f1.cnt.consumed_avg_fidelity <= 0.75
         assert f1.cnt.consumed_avg_fidelity == pytest.approx(f4.cnt.consumed_avg_fidelity)
 
-    t_release1, t_release4 = t_release
-    assert f1.node.get_app(QubitReleaseLoggerApp).history == [(0, simulator.time(sec=t_release1))]
-    assert f4.node.get_app(QubitReleaseLoggerApp).history == [(0, simulator.time(sec=t_release4))]
-
+    assert list(fw.node.get_app(QubitReleaseLoggerApp).last_time for fw in (f1, f2, f3, f4)) == [
+        simulator.time(sec=t) for t in t_release
+    ]
     assert (cpacket_cnt["*-n1"], cpacket_cnt["*-n2"], cpacket_cnt["*-n3"], cpacket_cnt["*-n4"]) == n_cpacket
 
 

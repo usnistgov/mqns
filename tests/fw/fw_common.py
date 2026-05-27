@@ -24,9 +24,12 @@ from mqns.utils import AutoIncrementIdentifier, log
 
 
 class QubitReleaseLoggerApp(Application):
+    """Record when qubits are released."""
+
     def __init__(self):
         super().__init__()
         self.history: list[tuple[int, Time]] = []
+        """Qubit address and release time."""
 
     @override
     def handle(self, event: Event) -> bool | None:
@@ -34,6 +37,13 @@ class QubitReleaseLoggerApp(Application):
             self.history.append((event.qubit.addr, event.t))
             log.debug(f"{self}: RELEASE {event.qubit}")
         return False
+
+    @property
+    def last_time(self) -> Time:
+        """Retrieve the timestamp of last release event."""
+        if not self.history:
+            return Time.SENTINEL
+        return self.history[-1][1]
 
 
 dflt_qchannel_args = QuantumChannelInitKwargs(
