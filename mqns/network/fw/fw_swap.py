@@ -429,10 +429,14 @@ class ForwarderSwapProc:
 
         # Retrieve physical EPRs.
         # Save ch_index metadata field onto elementary EPR.
-        local_expiry: MutableSequence[int] = []
-        phy_eprs: MutableSequence[Entanglement] = []
+        local_expiry: list[int] = []
+        alive_arms: list[SwapArm] = []
+        phy_eprs: list[Entanglement] = []
         for i, arm in enumerate(arms):
-            assert arm.mq.state is QubitState.SWAPPING, f"unexpected state {arm.mq.state}"
+            if arm.mq.state is not QubitState.SWAPPING or arm.mq.key != arm.o_key:
+                # Elementary EPR decohered and potentially replaced.
+                continue
+            alive_arms.append(arm)
             _, epr = self.memory.read(arm.mq.addr, has=self.epr_type, remove=True)
             local_expiry.append(epr.decohere_time.time_slot)
             phy = self.remote_swapped.pop(arm.o_key, epr)
@@ -440,16 +444,35 @@ class ForwarderSwapProc:
                 phy.ch_index = fib_entry.own_idx - 1 + i
             phy_eprs.append(phy)
 
-        # Attempt the swap.
-        # Memory error model is applied as of the swap start time.
-        new_epr, local_success = Entanglement.swap(*phy_eprs, now=swap_start, ps=self.ps, error=self.error)
-        log.debug(
-            f"{self}: SWAP_{'SUCC' if local_success else 'FAIL'} rank={fib_entry.own_swap_rank} | {prev} x {next} = {new_epr}"
-        )
+        # Attempt physical swap.
+        new_epr, outcome_str, local_success = self._s_physical_swap(swap_start, phy_eprs)
+        log.debug(f"{self}: {outcome_str} rank={fib_entry.own_swap_rank} | {prev} x {next} = {new_epr}")
 
         # Release consumed qubits.
-        for arm in arms:
+        for arm in alive_arms:
             self.fw.release_qubit(arm.mq)
+
+        # Record local swap outcome in SwapTask.
+        task, task_from = self._s_get_task(fib_entry, arms, task_via_event)
+        l_su, r_su = task.end_local_swap(min(local_expiry) if local_success else 0)
+        task_saved = self._s_put_task(task, arms)
+
+        # Sending heralding if allowed.
+        if l_su:
+            self._herald(fib_entry, l_su, "l")
+        if r_su:
+            self._herald(fib_entry, r_su, "r")
+
+        log.debug(f"{self}: SWAP_FINISH {task} retrieved-from={task_from} saved-at={task_saved}")
+
+    def _s_physical_swap(self, swap_start: Time, phy_eprs: Sequence[Entanglement]) -> tuple[Entanglement | None, str, bool]:
+        # If either memory qubit has decohered, abort the swap.
+        if len(phy_eprs) != 2:
+            return None, "SWAP_ABORT", False
+
+        # Attempt the physical swap.
+        # Memory error model is applied as of the swap start time.
+        new_epr, local_success = Entanglement.swap(*phy_eprs, now=swap_start, ps=self.ps, error=self.error)
 
         # Update physical swap counters.
         if local_success:
@@ -461,21 +484,10 @@ class ForwarderSwapProc:
         else:
             self.fw.cnt.n_swap_fail += 1
 
-        # Record local swap outcome in SwapTask.
-        task, task_from = self._s_get_task(fib_entry, arms, task_via_event)
-        l_su, r_su = task.end_local_swap(min(local_expiry) if local_success else 0)
-        task_saved = self._s_put_task(task, arms)
-
         # Deposit physical swap result.
         self._s_physical_deposit(new_epr)
 
-        # Sending heralding if allowed.
-        if l_su:
-            self._herald(fib_entry, l_su, "l")
-        if r_su:
-            self._herald(fib_entry, r_su, "r")
-
-        log.debug(f"{self}: SWAP_FINISH {task} retrieved-from={task_from} saved-at={task_saved}")
+        return new_epr, "SWAP_SUCC" if local_success else "SWAP_FAIL", local_success
 
     def _s_physical_deposit(self, new_epr: Entanglement) -> None:
         if new_epr.is_decohered:
@@ -526,8 +538,8 @@ class ForwarderSwapProc:
         else:
             o_key = msg["l_key"]
 
-        # Defer after QubitEntangledEvent for the qubit is processed.
-        if (qubit_pair := self.memory.read(o_key)) and qubit_pair[0].state is QubitState.ENTANGLED0:
+        # Defer after LinkArchSuccessEvent and QubitEntangledEvent for the qubit are processed.
+        if (qubit_pair := self.memory.read(o_key)) and qubit_pair[0].state in (QubitState.RESERVED, QubitState.ENTANGLED0):
             self.waiting_su[o_key] = (msg, fib_entry)
             return
 
@@ -555,23 +567,27 @@ class ForwarderSwapProc:
         self.fw.cnt.n_su_lower += 1
 
         # Retrieve qubit and new physical EPR.
-        assert qubit_pair, f"qubit not found for {qubit_key}"
-        qubit = qubit_pair[0]
+        qubit = qubit_pair[0] if qubit_pair else None
         new_phy = self.remote_swapped.pop(qubit_key, None)
 
         # If the lower-ranked swap failed or the new EPR has decohered, release the qubit.
         # We can only make this determination based on heralded expiration time.
         if (expiry := msg["expiry"]) <= self.simulator.tc.time_slot:
-            if expiry == 0:
-                log.debug(f"{self}: releasing qubit {qubit.addr} reason=lower-swap-failure key={qubit_key} | {new_phy}")
+            if qubit:
+                if expiry == 0:
+                    log.debug(f"{self}: releasing qubit {qubit.addr} reason=lower-swap-failure key={qubit_key} | {new_phy}")
+                else:
+                    log.debug(
+                        f"{self}: releasing qubit {qubit.addr} reason=lower-expiry "
+                        f"expiry={self.simulator.time(time_slot=expiry)} "
+                        f"key={qubit_key} | {new_phy}"
+                    )
+                self.fw.release_qubit(qubit, need_remove=True)
             else:
-                log.debug(
-                    f"{self}: releasing qubit {qubit.addr} reason=lower-expiry expiry={self.simulator.time(time_slot=expiry)} "
-                    f"key={qubit_key} | {new_phy}"
-                )
-            self.fw.release_qubit(qubit, need_remove=True)
+                log.debug(f"{self}: qubit decohered during SWAP_UPDATE transmission key={qubit_key} | {new_phy}")
             return
-        assert new_phy is not None, f"new_phy not found for {qubit}"
+        assert qubit, f"qubit not found for {qubit_key}"
+        assert new_phy, f"new_phy not found for {qubit_key}"
 
         # Verify that the new physical EPR matches the heralded EPR segment.
         # This logic only supports ASAP parallel swap at the lowest rank.

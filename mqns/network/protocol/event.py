@@ -17,7 +17,7 @@
 
 from typing import final, override
 
-from mqns.entity.memory import MemoryQubit, QuantumMemory, QubitState
+from mqns.entity.memory import MemoryQubit, QubitState
 from mqns.entity.node import QNode
 from mqns.entity.qchannel import QuantumChannel
 from mqns.models.epr import Entanglement
@@ -108,33 +108,6 @@ class QubitEntangledEvent(Event):
 
 
 @final
-class QubitDecoheredEvent(Event):
-    """
-    Event sent by Memory to inform LinkLayer about a decohered qubit.
-    """
-
-    def __init__(
-        self,
-        memory: QuantumMemory,
-        qubit: MemoryQubit,
-        epr: Entanglement,
-        *,
-        t: Time,
-        name: str | None = None,
-    ):
-        super().__init__(t, name)
-        self.memory = memory
-        self.qubit = qubit
-        self.epr = epr
-
-    @override
-    def invoke(self) -> None:
-        if self.memory.handle_decohere_qubit(self.qubit, self.epr):
-            assert self.qubit.state is QubitState.RELEASE, f"unexpected state {self.qubit.state}"
-            self.memory.node.handle(self)
-
-
-@final
 class QubitReleasedEvent(Event):
     """
     Event sent by Forwarder to inform LinkLayer about a released (no longer needed) qubit.
@@ -146,9 +119,9 @@ class QubitReleasedEvent(Event):
         qubit: MemoryQubit,
         *,
         t: Time,
-        name: str | None = None,
+        old_key: str | None = None,
     ):
-        super().__init__(t, name)
+        super().__init__(t, f"addr={qubit.addr} key={old_key}")
         self.node = node
         self.qubit = qubit
         assert self.qubit.state is QubitState.RELEASE, f"unexpected state {self.qubit.state}"

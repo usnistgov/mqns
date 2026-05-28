@@ -21,7 +21,7 @@ from enum import Enum, auto
 
 from mqns.entity.node import QNode
 from mqns.entity.qchannel import QuantumChannel
-from mqns.simulator import Event, Time
+from mqns.simulator import EventHandleSet
 
 
 class QubitState(Enum):
@@ -138,16 +138,12 @@ class MemoryQubit:
     """
     purif_rounds = 0
     """Number of purification rounds completed by the EPR stored on this qubit."""
-    cutoff: tuple[Time, Time] | None = None
-    """Timestamps used by CutoffScheme."""
 
     def __init__(self, addr: int):
-        """
-        Args:
-            addr: address of this qubit in memory
-        """
         self.addr = addr
-        self._events: dict[type, Event] = {}
+        """Qubit address within QuantumMemory."""
+        self.events = EventHandleSet()
+        """Events that are canceled upon reaching RELEASE state."""
 
     @property
     def state(self) -> QubitState:
@@ -166,30 +162,13 @@ class MemoryQubit:
         else:
             self._state = value
 
-    def set_event(self, owner: type, new_event: Event | None) -> None:
-        """
-        Associate an event with the qubit that would be canceled upon entering RELEASE state.
-
-        Args:
-            owner: Owner type, such as ``QuantumMemory``. Existing event of the same owner is canceled.
-            new_event: New event to store, or ``None`` to cancel existing event only.
-        """
-        old_event = self._events.pop(owner, None)
-        if old_event is not None:
-            old_event.cancel()
-        if new_event is not None and not new_event.is_canceled:
-            self._events[owner] = new_event
-
     def reset_state(self, state: QubitState) -> None:
         """Reset state to RELEASE/RAW and clear associated fields."""
         self._state = state
         self.key = None
         self.partner = None
         self.purif_rounds = 0
-
-        for old_event in self._events.values():
-            old_event.cancel()
-        self._events.clear()
+        self.events.clear()
 
     def __repr__(self) -> str:
         return ", ".join(_describe(self)) + ")"

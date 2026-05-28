@@ -1,4 +1,5 @@
 import copy
+import functools
 from collections import defaultdict
 from collections.abc import Iterable, Mapping
 from typing import Literal, TypedDict, Unpack, override
@@ -6,7 +7,7 @@ from typing import Literal, TypedDict, Unpack, override
 import pytest
 
 from mqns.entity.cchannel import ClassicChannelInitKwargs, ClassicPacket
-from mqns.entity.memory import QubitState
+from mqns.entity.memory import MemoryDecohereEvent, QubitState
 from mqns.entity.node import Application, Controller, Node, QNode
 from mqns.entity.qchannel import LinkArchAlways, LinkArchDimBk, QuantumChannelInitKwargs
 from mqns.models.epr import Entanglement, WernerStateEntanglement
@@ -33,10 +34,21 @@ class QubitReleaseLoggerApp(Application):
 
     @override
     def handle(self, event: Event) -> bool | None:
-        if type(event) is QubitReleasedEvent:
-            self.history.append((event.qubit.addr, event.t))
-            log.debug(f"{self}: RELEASE {event.qubit}")
+        self._handle(event)
         return False
+
+    @functools.singledispatchmethod
+    def _handle(self, event: Event):
+        _ = event
+
+    @_handle.register
+    def _(self, event: MemoryDecohereEvent):
+        log.debug(f"{self}: DECOHERE {event.qubit}")
+
+    @_handle.register
+    def _(self, event: QubitReleasedEvent):
+        self.history.append((event.qubit.addr, event.t))
+        log.debug(f"{self}: RELEASE {event.qubit}")
 
     @property
     def last_time(self) -> Time:

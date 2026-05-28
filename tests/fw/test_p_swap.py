@@ -68,6 +68,101 @@ def test_3_disabled():
 
 
 @pytest.mark.parametrize(
+    ("swap_delay", "n_consumed"),
+    [
+        # 1. t=1.0010, elementary EPRs arrive, n2 starts swapping.
+        # 2. t=1.0012, n2 completes swapping, heralds success to n1+n3.
+        # 3. t=1.0017, n1/n3 receives heralding, consumes EPR.
+        # 4. t=1.0020, memory qubits would decohere, but it's already consumed.
+        (0.0002, 1),
+        # 1. t=1.0010, elementary EPRs arrive, n2 starts swapping.
+        # 2. t=1.0017, n2 completes swapping, heralds success to n1+n3.
+        # 3. t=1.0020, memory qubits decohere.
+        # 4. t=1.0016, n1/n3 receives heralding, ignores due to qubit not in memory.
+        (0.0007, 0),
+        # 1. t=1.0010, elementary EPRs arrive, n2 starts swapping.
+        # 2. t=1.0020, memory qubits decohere.
+        # 2. t=1.0022, n2 aborts swapping, heralds failure to n1+n3.
+        # 3. t=1.0027, n1/n3 receives heralding, ignores due to qubit not in memory.
+        (0.0012, 0),
+    ],
+)
+def test_3_decohere(swap_delay: float, n_consumed: int):
+    """Test short decoherence time in 3-node topology."""
+    net, simulator = build_linear_network(3, t_cohere=0.002, fw={"p_swap": 1.0, "swap_delay": swap_delay}, end_time=2)
+    f1 = net.get_node("n1").get_app(ProactiveForwarder)
+    f2 = net.get_node("n2").get_app(ProactiveForwarder)
+    f3 = net.get_node("n3").get_app(ProactiveForwarder)
+
+    install_path(net, RoutingPathSingle("n1", "n3", swap=[1, 0, 1]))
+    provide_entanglements(
+        (1, f1, f2),
+        (1, f2, f3),
+    )
+    simulator.run()
+    print_fw_counters(net)
+    check_fw_counters(
+        net,
+        n_consumed=(n_consumed, 0, n_consumed),
+        n_su_lower=(1, 0, 1),
+    )
+
+
+@pytest.mark.parametrize(
+    ("etg_sec", "swap_delay", "n_consumed", "n_cutoff"),
+    [
+        # 1. t=1.0050, n1-n2 arrives, discard scheduled at 1.007.
+        # 2. t=1.0060, n2-n3 arrives, n1-n2 discard canceled, n2 starts swapping.
+        # 3. t=1.0065, n2 finishes swapping, heralds success to n1+n3.
+        # 4. t=1.0070, n1/n3 consumes EPR.
+        ((1.004, 1.005), 0.0005, 1, (0, 0)),
+        # 1. t=1.0050, n1-n2 arrives, discard scheduled at 1.007.
+        # 2. t=1.0060, n2-n3 arrives, n1-n2 discard canceled, n2 starts swapping.
+        # 3. t=1.0072, n2 finishes swapping, heralds success to n1+n3.
+        # 4. t=1.0077, n1/n3 consumes EPR.
+        ((1.004, 1.005), 0.0012, 1, (0, 0)),
+        # 1. t=1.0050, n1-n2 arrives, discard scheduled at 1.007.
+        # 2. t=1.0060, n2-n3 arrives, n1-n2 discard canceled, n2 starts swapping.
+        # 3. t=1.0080, n1-n2 decoheres.
+        # 3. t=1.0085, n2 aborts swapping, heralds failure to n1+n3.
+        ((1.004, 1.005), 0.0025, 0, (0, 0)),
+        # 1. t=1.0060, n1-n2 arrives, discard scheduled at 1.007.
+        # 2. t=1.0080, n1-n2 is discarded.
+        # 3. t=1.0090, n2-n3 arrives, discard scheduled at 1.011.
+        ((1.005, 1.008), 0.0005, 0, (1, 0)),
+        # 1. t=1.0030, n1-n2 arrives, discard scheduled at 1.007.
+        # 2. t=1.0050, n1-n2 is discarded.
+        # 3. t=1.0060, n2-n3 arrives, discard scheduled at 1.008.
+        # 3. t=1.0080, n2-n3 is discarded.
+        ((1.002, 1.005), 0.0005, 0, (1, 1)),
+    ],
+)
+def test_3_waittime(etg_sec: tuple[float, float], swap_delay: float, n_consumed: int, n_cutoff: tuple[int, int]):
+    """Test CutoffSchemeWaitTime in 3-node topology."""
+    net, simulator = build_linear_network(3, t_cohere=0.004, fw={"p_swap": 1.0, "swap_delay": swap_delay}, end_time=1.010)
+    f1 = net.get_node("n1").get_app(ProactiveForwarder)
+    f2 = net.get_node("n2").get_app(ProactiveForwarder)
+    f3 = net.get_node("n3").get_app(ProactiveForwarder)
+
+    install_path(net, RoutingPathSingle("n1", "n3", swap=[1, 0, 1], swap_cutoff=[0, 0.002, 0]))
+    provide_entanglements(
+        (etg_sec[0], f1, f2),
+        (etg_sec[1], f2, f3),
+    )
+    simulator.run()
+    print_fw_counters(net)
+
+    check_fw_counters(
+        net,
+        n_consumed=(n_consumed, 0, n_consumed),
+        n_swapped=(0, n_consumed, 0),
+    )
+    assert f1.cnt.n_cutoff == [0, n_cutoff[0]]
+    assert f2.cnt.n_cutoff == [sum(n_cutoff), 0]
+    assert f3.cnt.n_cutoff == [0, n_cutoff[1]]
+
+
+@pytest.mark.parametrize(
     ("t_ext", "expected"),
     [
         # 1. Elementary entanglements arrive during EXTERNAL phase.
@@ -279,6 +374,58 @@ def test_4_delayed(
         simulator.time(sec=t) for t in t_release
     ]
     assert (cpacket_cnt["*-n1"], cpacket_cnt["*-n2"], cpacket_cnt["*-n3"], cpacket_cnt["*-n4"]) == n_cpacket
+
+
+@pytest.mark.parametrize(
+    ("swap_delay", "n_consumed"),
+    [
+        # 1. t=1.0010, elementary EPRs arrive, n2 starts swapping.
+        # 2. t=1.0012, n2/n3 completes swapping, heralds success to n3/n2.
+        # 3. t=1.0017, n3/n2 receives heralding, heralds success to n4/n1.
+        # 4. t=1.0022, n4/n1 receives heralding, consumes EPR.
+        # 5. t=1.0030, memory qubits would decohere, but it's already consumed.
+        (0.0002, 1),
+        # 1. t=1.0010, elementary EPRs arrive, n2 starts swapping.
+        # 2. t=1.0022, n2/n3 completes swapping, heralds success to n3/n2.
+        # 3. t=1.0027, n3/n2 receives heralding, heralds success to n4/n1.
+        # 4. t=1.0030, memory qubits decohere.
+        # 5. t=1.0032, n4/n1 receives heralding, ignores due to qubit not in memory.
+        (0.0012, 0),
+        # 1. t=1.0010, elementary EPRs arrive, n2 starts swapping.
+        # 2. t=1.0027, n2/n3 completes swapping, heralds success to n3/n2.
+        # 3. t=1.0030, memory qubits decohere.
+        # 4. t=1.0032, n3/n2 receives heralding, heralds success to n4/n1.
+        # 5. t=1.0037, n4/n1 receives heralding, ignores due to qubit not in memory.
+        (0.0017, 0),
+        # 1. t=1.0010, elementary EPRs arrive, n2 starts swapping.
+        # 2. t=1.0030, memory qubits decohere.
+        # 3. t=1.0032, n2/n3 aborts swapping, heralds failure to n3+n1/n2+n4.
+        # 4. t=1.0037, n3/n2 receives heralding, ignores due to earlier failure.
+        # 5. t=1.0037, n1/n4 receives heralding, ignores due to qubit not in memory.
+        (0.0022, 0),
+    ],
+)
+def test_4_decohere(swap_delay: float, n_consumed: int):
+    """Test short decoherence time in 4-node topology."""
+    net, simulator = build_linear_network(4, t_cohere=0.003, fw={"p_swap": 1.0, "swap_delay": swap_delay}, end_time=2)
+    f1 = net.get_node("n1").get_app(ProactiveForwarder)
+    f2 = net.get_node("n2").get_app(ProactiveForwarder)
+    f3 = net.get_node("n3").get_app(ProactiveForwarder)
+    f4 = net.get_node("n4").get_app(ProactiveForwarder)
+
+    install_path(net, RoutingPathSingle("n1", "n4", swap=[1, 0, 0, 1]))
+    provide_entanglements(
+        (1, f1, f2),
+        (1, f2, f3),
+        (1, f3, f4),
+    )
+    simulator.run()
+    print_fw_counters(net)
+    check_fw_counters(
+        net,
+        n_consumed=(n_consumed, 0, 0, n_consumed),
+        n_su_lower=(1, 0, 0, 1),
+    )
 
 
 @pytest.mark.parametrize(("ps3", "etg_ms"), itertools.product((1, 0), ((2, 1, 1, 2), (1, 2, 2, 1))))
@@ -552,42 +699,3 @@ def test_tree2_statistical(
     assert f4.cnt.n_consumed == n_consumed[0] == f6.cnt.n_consumed
     assert f5.cnt.n_consumed == n_consumed[1] == f7.cnt.n_consumed
     assert f2.cnt.n_swap_conflict + f1.cnt.n_swap_conflict + f3.cnt.n_swap_conflict == (2 if sum(n_consumed) == 0 else 0)
-
-
-@pytest.mark.parametrize(
-    ("etg_sec", "n_cutoff"),
-    [
-        # n1-n2 arrives at t=1.005, n2-n3 arrives at t=1.006, swapped.
-        ((1.004, 1.005), (0, 0)),
-        ((1.005, 1.004), (0, 0)),
-        # n1-n2 arrives at t=1.006 and is discarded at t=1.008.
-        # n2-n3 arrives at t=1.009.
-        ((1.005, 1.008), (1, 0)),
-        ((1.008, 1.005), (0, 1)),
-        # n1-n2 arrives at t=1.003 and is discarded at t=1.005.
-        # n2-n3 arrives at t=1.006 and is discarded at t=1.008.
-        ((1.002, 1.005), (1, 1)),
-        ((1.005, 1.002), (1, 1)),
-    ],
-)
-def test_3_waittime(etg_sec: tuple[float, float], n_cutoff: tuple[int, int]):
-    """Test CutoffSchemeWaitTime in 3-node topology."""
-    net, simulator = build_linear_network(3, fw={"p_swap": 1.0}, end_time=1.010)
-    f1 = net.get_node("n1").get_app(ProactiveForwarder)
-    f2 = net.get_node("n2").get_app(ProactiveForwarder)
-    f3 = net.get_node("n3").get_app(ProactiveForwarder)
-
-    install_path(net, RoutingPathSingle("n1", "n3", swap=[1, 0, 1], swap_cutoff=[0, 0.002, 0]))
-    provide_entanglements(
-        (etg_sec[0], f1, f2),
-        (etg_sec[1], f2, f3),
-    )
-    simulator.run()
-    print_fw_counters(net)
-
-    assert f1.cnt.n_cutoff == [0, n_cutoff[0]]
-    assert f2.cnt.n_cutoff == [sum(n_cutoff), 0]
-    assert f3.cnt.n_cutoff == [0, n_cutoff[1]]
-    n_swapped = 1 - max(n_cutoff)
-    assert f2.cnt.n_swapped == n_swapped
-    assert f1.cnt.n_consumed == n_swapped == f3.cnt.n_consumed

@@ -464,22 +464,19 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
             self.consume_and_release(qubit)
             return
 
-        self.cutoff.qubit_is_eligible(qubit, fib_entry)
-
         swap_candidates = self.memory.find(
             lambda q, _: (
                 q.state is QubitState.ELIGIBLE  # in ELIGIBLE state
                 and q.qchannel != qubit.qchannel  # assigned to a different channel
-                and self.cutoff.filter_swap_candidate(q)
             ),
             has=self.epr_type,
         )
-        swap_candidate_tuple = self.mux.find_swap_candidate(qubit, epr, fib_entry, swap_candidates)
-        mq1: MemoryQubit | None = None
-        if swap_candidate_tuple:
-            mq1, fib_entry = swap_candidate_tuple
+        if swap_candidate := self.mux.find_swap_candidate(qubit, epr, fib_entry, swap_candidates):
+            mq1, fib_entry = swap_candidate
+            self.cutoff.before_swap(qubit, mq1, fib_entry)
             self.swap.start(qubit, mq1, fib_entry)
-        self.cutoff.before_swap(qubit, mq1, fib_entry)
+        else:
+            self.cutoff.before_store_eligible(qubit, fib_entry)
 
     def can_consume(self, fib_entry: FibEntry | None, epr: Entanglement) -> bool:
         if fib_entry is None:
@@ -511,5 +508,6 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
         if need_remove:
             self.memory.read(qubit.addr, remove=True)
 
+        old_key = qubit.key
         qubit.state = QubitState.RELEASE
-        self.simulator.add_event(QubitReleasedEvent(self.node, qubit, t=self.simulator.tc))
+        self.simulator.add_event(QubitReleasedEvent(self.node, qubit, old_key=old_key, t=self.simulator.tc))

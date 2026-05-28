@@ -21,14 +21,13 @@ from dataclasses import dataclass
 from typing import Literal, TypedDict, cast, override
 
 from mqns.entity.cchannel import ClassicChannel, ClassicPacket, RecvClassicPacket
-from mqns.entity.memory import MemoryQubit, QubitState
+from mqns.entity.memory import MemoryDecohereEvent, MemoryQubit, QubitState
 from mqns.entity.node import Application, QNode
 from mqns.entity.qchannel import QuantumChannel
 from mqns.network.network import TimingPhase, TimingPhaseEvent
 from mqns.network.protocol.event import (
     LinkArchSuccessEvent,
     ManageActiveChannels,
-    QubitDecoheredEvent,
     QubitEntangledEvent,
     QubitReleasedEvent,
 )
@@ -172,7 +171,7 @@ class LinkLayer(Application[QNode]):
         self.add_handler(self.RecvClassicPacketHandler, RecvClassicPacket)
         self.add_handler(self.handle_manage_active_channels, ManageActiveChannels)
         self.add_handler(self.handle_success_entangle, LinkArchSuccessEvent)
-        self.add_handler(self.handle_decoh_rel, (QubitDecoheredEvent, QubitReleasedEvent))
+        self.add_handler(self.handle_decoh_rel, (MemoryDecohereEvent, QubitReleasedEvent))
 
     @override
     def install(self, node):
@@ -449,22 +448,25 @@ class LinkLayer(Application[QNode]):
         if is_primary:
             self.cnt.increment_n_etg(event.attempts)
 
-        log.debug(f"{self}: got half-EPR {epr.name} key={event.key} {'dst' if is_primary else 'src'}={neighbor}")
-        assert epr.decohere_time > self.simulator.tc
-
         qubit = self.memory.write(event.key, epr)
         if qubit is None:
             raise Exception(f"{self}: Failed to store EPR at key={event.key}")
 
+        log.debug(
+            f"{self}: got half-EPR {epr.name} key={event.key} {'dst' if is_primary else 'src'}={neighbor} "
+            f"addr={qubit.addr} path={qubit.path_id}"
+        )
+        assert epr.decohere_time > self.simulator.tc
+
         qubit.state = QubitState.ENTANGLED0
         self.simulator.add_event(QubitEntangledEvent(self.node, neighbor, qubit, t=self.simulator.tc))
 
-    def handle_decoh_rel(self, event: QubitDecoheredEvent | QubitReleasedEvent) -> bool:
-        is_decoh = type(event) is QubitDecoheredEvent
+    def handle_decoh_rel(self, event: MemoryDecohereEvent | QubitReleasedEvent) -> bool:
+        is_decoh = type(event) is MemoryDecohereEvent
 
         qubit = event.qubit
-        log.debug(f"{self}: qubit {'decohered' if is_decoh else 'released'} addr={qubit.addr} old-key={qubit.key}")
-        qubit.state, qubit.key = QubitState.RAW, None
+        log.debug(f"{self}: {event}")
+        qubit.state = QubitState.RAW
 
         assert qubit.qchannel is not None
         ac = self.active_channels.get((qubit.qchannel, qubit.path_id))
@@ -488,6 +490,6 @@ class LinkLayer(Application[QNode]):
             self.start_reservation(next_hop, qubit.qchannel, qubit)
         # SYNC timing mode
         elif is_decoh:
-            raise RuntimeError(f"{self}: unexpected QubitDecoheredEvent in SYNC timing mode, (t_ext+t_int) too high")
+            raise RuntimeError(f"{self}: unexpected MemoryDecohereEvent in SYNC timing mode, (t_ext+t_int) too high")
 
         return True

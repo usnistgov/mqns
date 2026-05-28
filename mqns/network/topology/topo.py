@@ -99,7 +99,7 @@ class Topology(ABC):
             nl: a list of quantum nodes.
         """
         for node in nl:
-            node.memory = QuantumMemory(f"{node.name}.memory", **self.memory_args)
+            node.memory = QuantumMemory(node.name, **self.memory_args)
 
     def add_cchannels(
         self,

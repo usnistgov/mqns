@@ -25,6 +25,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import functools
 import heapq
 import itertools
 from collections.abc import Callable, Iterable, Iterator
@@ -32,6 +33,7 @@ from typing import Any, Literal, TypedDict, Unpack, overload, override
 
 from mqns.entity.entity import Entity
 from mqns.entity.memory.event import (
+    MemoryDecohereEvent,
     MemoryReadRequestEvent,
     MemoryReadResponseEvent,
     MemoryWriteRequestEvent,
@@ -117,7 +119,7 @@ class QuantumMemory(Entity):
         """
         Memory decoherence time, often known as T2.
 
-        Stored qubits are deleted upon this timer via ``QubitDecoheredEvent``.
+        Stored qubits are deleted upon this timer via ``MemoryDecohereEvent``.
         """
 
         self.time_decay = parse_time_decay(self._time_decay_input, self.t_decohere)
@@ -125,16 +127,38 @@ class QuantumMemory(Entity):
 
     @override
     def handle(self, event: Event) -> None:
-        if isinstance(event, MemoryReadRequestEvent):
-            result = self.read(event.key)  # will not update fidelity
-            t = self.simulator.tc + self.delay.calculate()
-            self.simulator.add_event(MemoryReadResponseEvent(self.node, result, request=event, t=t))
-        elif isinstance(event, MemoryWriteRequestEvent):
-            qubit = next(self.find(lambda _, v: v is None), None)
-            assert qubit is not None, "memory is full"
-            result = self.write(qubit[0].addr, event.qubit)
-            t = self.simulator.tc + self.delay.calculate()
-            self.simulator.add_event(MemoryWriteResponseEvent(self.node, result, request=event, t=t))
+        self._handle(event)
+
+    @functools.singledispatchmethod
+    def _handle(self, event: Event) -> None:
+        raise RuntimeError(f"unexpected event {event}")
+
+    @_handle.register
+    def _(self, event: MemoryDecohereEvent):
+        if isinstance(event.qm, Entanglement):
+            event.qm.is_decohered = True
+
+        _, new_qm = self.read(event.qubit.addr, must=True, remove=event.qm)
+        if new_qm is not event.qm:
+            # qubit already released via swap/purify or re-entangled
+            return
+
+        event.qubit.state = QubitState.RELEASE
+        self.node.handle(event)
+
+    @_handle.register
+    def _(self, event: MemoryReadRequestEvent):
+        result = self.read(event.key)  # will not update fidelity
+        t = self.simulator.tc + self.delay.calculate()
+        self.simulator.add_event(MemoryReadResponseEvent(self.node, result, request=event, t=t))
+
+    @_handle.register
+    def _(self, event: MemoryWriteRequestEvent):
+        qubit = next(self.find(lambda _, v: v is None), None)
+        assert qubit is not None, "memory is full"
+        result = self.write(qubit[0].addr, event.qubit)
+        t = self.simulator.tc + self.delay.calculate()
+        self.simulator.add_event(MemoryWriteResponseEvent(self.node, result, request=event, t=t))
 
     @property
     def count(self) -> int:
@@ -362,7 +386,7 @@ class QuantumMemory(Entity):
             data.apply_store_decays(self.simulator.tc)
 
         if remove in (True, data):
-            qubit.set_event(QuantumMemory, None)  # cancel scheduled decoherence event
+            qubit.events.discard(MemoryDecohereEvent)
             self._usage -= 1
             self._storage[qubit.addr] = (qubit, None)
 
@@ -395,7 +419,7 @@ class QuantumMemory(Entity):
             raise IndexError("qubit not found")
 
         if not replace and old is not None:
-            raise ValueError(f"qubit contains existing data: {old}")
+            raise ValueError(f"{self}: {qubit} contains existing data: {old}")
 
         if auto_key and qubit.key is None:
             qubit.key = getattr(data, "name", None)
@@ -405,9 +429,11 @@ class QuantumMemory(Entity):
             self._usage += 1
 
         if isinstance(data, Entanglement):
-            self._schedule_decohere(qubit, data)
+            assert data.decohere_time >= self.simulator.tc
+            self.simulator.add_event(event := MemoryDecohereEvent(self, qubit, data, t=data.decohere_time))
+            qubit.events.add(event)
         elif old is not None:
-            qubit.set_event(QuantumMemory, None)  # cancel old decoherence event
+            qubit.events.discard(MemoryDecohereEvent)
 
         return qubit
 
@@ -417,37 +443,6 @@ class QuantumMemory(Entity):
             qubit.reset_state(QubitState.RAW)
             self._storage[qubit.addr] = (qubit, None)
         self._usage = 0
-
-    def _schedule_decohere(self, qubit: MemoryQubit, epr: Entanglement):
-        from mqns.network.protocol.event import QubitDecoheredEvent  # noqa: PLC0415
-
-        assert epr.decohere_time >= self.simulator.tc
-
-        event = QubitDecoheredEvent(self, qubit, epr, t=epr.decohere_time)
-        qubit.set_event(QuantumMemory, event)
-        self.simulator.add_event(event)
-
-    def handle_decohere_qubit(self, qubit: MemoryQubit, epr: Entanglement) -> bool:
-        """
-        Part of ``QubitDecoheredEvent`` logic.
-
-        Args:
-            qubit: The memory qubit that has reached its decoherence time.
-            epr: The associated entanglement.
-
-        Returns:
-            Whether the event should be dispatched to inform LinkLayer.
-        """
-
-        epr.is_decohered = True
-
-        _, new_qm = self.read(qubit.addr, must=True, remove=epr)
-        if new_qm is not epr:
-            # qubit already released via swap/purify or re-entangled
-            return False
-
-        qubit.state = QubitState.RELEASE
-        return True
 
     def __repr__(self) -> str:
         return "<memory " + self.name + ">"

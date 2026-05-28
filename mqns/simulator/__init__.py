@@ -15,12 +15,13 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from mqns.simulator.event import Event, func_to_event
+from mqns.simulator.event import Event, EventHandleSet, func_to_event
 from mqns.simulator.simulator import Simulator
 from mqns.simulator.time import Time
 
 __all__ = [
     "Event",
+    "EventHandleSet",
     "func_to_event",
     "Simulator",
     "Time",
