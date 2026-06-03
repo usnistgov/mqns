@@ -79,22 +79,35 @@ class MuxScheme(ABC):
     @abstractmethod
     def qubit_has_path_id(self) -> bool:
         """
-        Indicate whether each memory qubit shall be assigned to specific path_id.
+        Indicate whether each memory qubit shall be assigned to specific path_id during LinkLayer entanglement.
         """
 
     @abstractmethod
-    def qubit_is_entangled(self, qubit: MemoryQubit, epr: Entanglement, neighbor: QNode) -> None:
+    def list_qubit_epr_path_ids(self, mq: MemoryQubit) -> list[int]:
+        """
+        Compute ``mq.epr_path_ids`` on a qubit entering ENTANGLED1 state.
+        """
+
+    @abstractmethod
+    def qubit_is_entangled(self, mq: MemoryQubit, epr: Entanglement, neighbor: QNode) -> FibEntry | None:
         """
         Handle a qubit entering ENTANGLED state, i.e. having an elementary entanglement.
 
-        This can only be invoked in ASYNC timing mode or INTERNAL phase.
+        Pre-conditions:
+        * The network is in ASYNC timing mode or INTERNAL phase.
+        * ``mq.epr_path_ids`` is populated and non-empty.
+        * ``epr`` is an elementary entanglement.
+
+        Post-condition and return value:
+        * ``mq.state is PURIF``: forwarder starts purification; FIB entry is required.
+        * ``mq.state is ELIGIBLE``: forwarder starts swapping; FIB entry is optional.
         """
 
     @abstractmethod
     def find_swap_candidate(
         self,
-        qubit: MemoryQubit,
-        epr: Entanglement,
+        mq0: MemoryQubit,
+        epr0: Entanglement,
         fib_entry: FibEntry | None,
         input: MemoryEprIterator,
     ) -> tuple[MemoryQubit, FibEntry] | None:
@@ -103,7 +116,7 @@ class MuxScheme(ABC):
 
         Args:
             input: Candidates iterator. They are in ELIGIBLE state and assigned to a different channel.
-            qubit: A qubit in ELIGIBLE state.
+            mq0: A qubit in ELIGIBLE state.
             epr: The EPR associated with this qubit. This is not an end-to-end entanglement.
             fib_entry: FIB entry passed to ``fw.qubit_is_eligible()``.
 
@@ -111,42 +124,4 @@ class MuxScheme(ABC):
             None: No candidate, do not swap.
             [0]: Another qubit in ELIGIBLE state.
             [1]: FIB entry for ``fw.do_swapping()``.
-        """
-
-    @abstractmethod
-    def swapping_succeeded(self, prev_epr: Entanglement, next_epr: Entanglement, new_epr: Entanglement) -> None:
-        """
-        Handle a successful swap at the swapping node.
-
-        Args:
-            prev_epr: An EPR with a partner node to the left.
-            next_epr: An EPR with a partner node to the right
-            new_epr: Locally swapped EPR made from prev_epr+next_epr.
-        """
-
-    @abstractmethod
-    def su_parallel_has_conflict(self, my_new_epr: Entanglement, su_path_id: int) -> bool:
-        """
-        Determine whether a parallel SWAP_UPDATE has a conflict.
-
-        Args:
-            my_new_epr: Locally swapped EPR.
-            su_path_id: The path_id chosen by another node performing paralleel swapping.
-
-        Returns:
-            If True, a conflict is detected and the SWAP_UPDATE is discarded.
-            Otherwise, the SWAP_UPDATE continues processing.
-        """
-
-    @abstractmethod
-    def su_parallel_succeeded(self, merged_epr: Entanglement, new_epr: Entanglement, other_epr: Entanglement) -> None:
-        """
-        Handle a successful parallel swap at the recipient of SWAP_UPDATE message.
-
-        See the diagram in ``Forwarder._su_parallel`` for an explanation of the arguments.
-
-        Args:
-            merged_epr: Locally merged EPR made from other_epr+new_epr.
-            new_epr: Remotely swapped EPR from the sender of SWAP_UPDATE message.
-            other_epr: An EPR between local and the other partner.
         """

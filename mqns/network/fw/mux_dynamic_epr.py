@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from typing import override
+from typing import cast, override
 
 import numpy as np
 
@@ -8,9 +8,9 @@ from mqns.entity.node import QNode
 from mqns.models.epr import Entanglement
 from mqns.network.fw.fib import Fib, FibEntry
 from mqns.network.fw.mux_buffer_space import MuxSchemeFibBase
-from mqns.network.fw.mux_statistical import MuxSchemeDynamicBase, has_intersect_tmp_path_ids
+from mqns.network.fw.mux_statistical import MuxSchemeDynamicBase
 from mqns.network.fw.select import MemoryEprIterator
-from mqns.utils import log, rng
+from mqns.utils import rng
 
 
 def _select_path_random(epr: Entanglement, fib: Fib, path_ids: list[int]) -> int:
@@ -72,58 +72,27 @@ class MuxSchemeDynamicEpr(MuxSchemeFibBase, MuxSchemeDynamicBase):
         self._select_path = select_path
 
     @override
-    def qubit_is_entangled(self, qubit: MemoryQubit, epr: Entanglement, neighbor: QNode) -> None:
-        possible_path_ids = self._qubit_is_entangled_0(qubit)
-        if not possible_path_ids:  # all paths on the channel have been uninstalled
-            return
-
+    def qubit_is_entangled(self, mq: MemoryQubit, epr: Entanglement, neighbor: QNode) -> FibEntry | None:
+        _ = neighbor
         # TODO: if paths have different swap policies
         #       -> consider only paths for which this qubit may be eligible ??
 
-        if epr.tmp_path_ids is None:
+        if epr.affectionated_path_id < 0:
             # In principle, a random path_id is chosen for each elementary EPR during EPR generation.
             # The necessary information could be carried in the reservation message.
             # For ease of implementation, this choice is made at either primary or secondary node,
             # whichever receives the EPR notification earlier.
-            selected_path = self._select_path(epr, self.fib, possible_path_ids)
+            selected_path = self._select_path(epr, self.fib, cast(list[int], mq.epr_path_ids))
             fib_entry = selected_path if type(selected_path) is FibEntry else self.fib.get(selected_path)
-            epr.tmp_path_ids = frozenset([fib_entry.path_id])
+            epr.affectionated_path_id = fib_entry.path_id
         else:
-            (path_id,) = epr.tmp_path_ids
-            fib_entry = self.fib.get(path_id)
+            fib_entry = self.fib.get(epr.affectionated_path_id)
 
-        log.debug(f"{self.fw}: qubit {qubit} has selected path_id {fib_entry.path_id}")
-
-        qubit.state = QubitState.PURIF
-        self.fw.qubit_is_purif(qubit, fib_entry, neighbor)
+        mq.epr_path_ids = [fib_entry.path_id]
+        mq.state = QubitState.PURIF
+        return fib_entry
 
     @override
     def list_swap_candidates(self, mq0: MemoryQubit, fib_entry: FibEntry, input: MemoryEprIterator):
-        assert mq0.path_id is None
-        possible_path_ids = [fib_entry.path_id]
-        return (
-            (q, v)
-            for (q, v) in input
-            if has_intersect_tmp_path_ids(v.tmp_path_ids, possible_path_ids)  # has compatible path_id
-        )
-
-    @override
-    def swapping_succeeded(self, prev_epr: Entanglement, next_epr: Entanglement, new_epr: Entanglement) -> None:
-        assert prev_epr.tmp_path_ids is not None
-        assert next_epr.tmp_path_ids is not None
-        assert prev_epr.tmp_path_ids == next_epr.tmp_path_ids
-        new_epr.tmp_path_ids = prev_epr.tmp_path_ids
-
-    @override
-    def su_parallel_has_conflict(self, my_new_epr: Entanglement, su_path_id: int) -> bool:
-        assert my_new_epr.tmp_path_ids is not None
-        if su_path_id not in my_new_epr.tmp_path_ids:
-            raise Exception(f"{self.fw}: Unexpected conflictual parallel swapping")
-        return False
-
-    @override
-    def su_parallel_succeeded(self, merged_epr: Entanglement, new_epr: Entanglement, other_epr: Entanglement) -> None:
-        assert new_epr.tmp_path_ids is not None
-        assert other_epr.tmp_path_ids is not None
-        assert new_epr.tmp_path_ids == other_epr.tmp_path_ids
-        merged_epr.tmp_path_ids = new_epr.tmp_path_ids
+        _ = mq0
+        return ((q, v) for (q, v) in input if fib_entry.path_id in cast(list[int], q.epr_path_ids))

@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from collections.abc import Callable
-from typing import TYPE_CHECKING, override
+from typing import TYPE_CHECKING, cast, override
 
 from mqns.entity.memory import MemoryQubit, PathDirection, QubitState
 from mqns.entity.node import QNode
@@ -9,17 +9,17 @@ from mqns.models.epr import Entanglement
 from mqns.network.fw.fib import FibEntry
 from mqns.network.fw.message import PathInstructions, validate_path_instructions
 from mqns.network.fw.mux import MuxScheme
-from mqns.network.fw.select import MemoryEprIterator, MemoryEprTuple
-from mqns.utils import log, rng
+from mqns.network.fw.select import MemoryEprIterator, MemoryEprTuple, call_select, select_random
+from mqns.utils import log
 
 if TYPE_CHECKING:
     from mqns.network.fw.forwarder import Forwarder
 
 
 class MuxSchemeFibBase(MuxScheme):
-    type SelectSwapQubit = Callable[["Forwarder", MemoryEprTuple, FibEntry, list[MemoryEprTuple]], MemoryEprTuple]
+    type SelectSwapQubit = Callable[[list[MemoryEprTuple], "Forwarder", MemoryEprTuple, FibEntry], MemoryEprTuple]
 
-    SelectSwapQubit_random: SelectSwapQubit = lambda _fw, _mt, _fe, candidates: candidates[rng.choice(len(candidates))]
+    SelectSwapQubit_random: SelectSwapQubit = select_random
 
     def __init__(self, name: str, select_swap_qubit: SelectSwapQubit | None):
         super().__init__(name)
@@ -27,25 +27,16 @@ class MuxSchemeFibBase(MuxScheme):
 
     @override
     def find_swap_candidate(
-        self, qubit: MemoryQubit, epr: Entanglement, fib_entry: FibEntry | None, input: MemoryEprIterator
+        self, mq0: MemoryQubit, epr0: Entanglement, fib_entry: FibEntry | None, input: MemoryEprIterator
     ) -> tuple[MemoryQubit, FibEntry] | None:
-        _ = epr
-        assert fib_entry is not None
-
-        candidates = self.list_swap_candidates(qubit, fib_entry, input)
-        if self._select_swap_qubit is None:
-            mt1 = next(candidates, None)
-            return None if mt1 is None else (mt1[0], fib_entry)
-
-        candidates = list(candidates)
-        if len(candidates) == 0:
-            return None
-        mt1 = self._select_swap_qubit(self.fw, (qubit, epr), fib_entry, candidates)
-        return mt1[0], fib_entry
+        assert fib_entry
+        mt1 = call_select(
+            self.list_swap_candidates(mq0, fib_entry, input), self._select_swap_qubit, self.fw, (mq0, epr0), fib_entry
+        )
+        return None if mt1 is None else (mt1[0], fib_entry)
 
     @abstractmethod
-    def list_swap_candidates(self, mq0: MemoryQubit, fib_entry: FibEntry, input: MemoryEprIterator) -> MemoryEprIterator:
-        pass
+    def list_swap_candidates(self, mq0: MemoryQubit, fib_entry: FibEntry, input: MemoryEprIterator) -> MemoryEprIterator: ...
 
 
 class MuxSchemeBufferSpace(MuxSchemeFibBase):
@@ -120,44 +111,22 @@ class MuxSchemeBufferSpace(MuxSchemeFibBase):
         return True
 
     @override
-    def qubit_is_entangled(self, qubit: MemoryQubit, epr: Entanglement, neighbor: QNode) -> None:
-        _ = epr
-        if qubit.path_id is None:
-            log.debug(f"{self.fw}: release entangled qubit {qubit.addr} due to uninstalled path")
-            self.fw.release_qubit(qubit, need_remove=True)
-            return
+    def list_qubit_epr_path_ids(self, mq: MemoryQubit) -> list[int]:
+        if mq.path_id is None:
+            return []
+        return [mq.path_id]
 
-        fib_entry = self.fib.get(qubit.path_id)
-        qubit.purif_rounds = 0
-        qubit.state = QubitState.PURIF
-        self.fw.qubit_is_purif(qubit, fib_entry, neighbor)
+    @override
+    def qubit_is_entangled(self, mq: MemoryQubit, epr: Entanglement, neighbor: QNode) -> FibEntry | None:
+        _ = epr, neighbor
+        mq.state = QubitState.PURIF
+        return self.fib.get(cast(int, mq.path_id))
 
     @override
     def list_swap_candidates(self, mq0: MemoryQubit, fib_entry: FibEntry, input: MemoryEprIterator):
-        assert mq0.path_id is not None
-        possible_path_ids = {fib_entry.path_id}
-
         return (
             (q, v)
             for (q, v) in input
-            if q.path_id in possible_path_ids  # allocated to the same path_id or another path_id under the same request_id
-            and q.path_direction != mq0.path_direction  # in the opposite path direction
+            if q.path_id == fib_entry.path_id  # allocated to the same path_id
+            and q.path_direction is not mq0.path_direction  # in the opposite path direction
         )
-
-    @override
-    def swapping_succeeded(self, prev_epr: Entanglement, next_epr: Entanglement, new_epr: Entanglement) -> None:
-        assert prev_epr.tmp_path_ids is None
-        assert next_epr.tmp_path_ids is None
-        _ = new_epr
-
-    @override
-    def su_parallel_has_conflict(self, my_new_epr: Entanglement, su_path_id: int) -> bool:
-        assert my_new_epr.tmp_path_ids is None
-        _ = su_path_id
-        return False
-
-    @override
-    def su_parallel_succeeded(self, merged_epr: Entanglement, new_epr: Entanglement, other_epr: Entanglement) -> None:
-        assert new_epr.tmp_path_ids is None
-        assert other_epr.tmp_path_ids is None
-        _ = merged_epr

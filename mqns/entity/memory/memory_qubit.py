@@ -135,15 +135,22 @@ class MemoryQubit:
 
     This is set by ``Forwarder`` upon entanglement and when completing a swap rank sequentially.
     It is invalid during parallel swap within a rank.
+
+    Note: this is a ``list`` instead of a ``set``, to ensure deterministic simulation.
+    """
+    epr_path_ids: list[int] | None = None
+    """
+    Which paths are compatible with the currently stored entanglement.
     """
     purif_rounds = 0
     """Number of purification rounds completed by the EPR stored on this qubit."""
 
+    events: EventHandleSet
+    """Events that are canceled upon reaching RELEASE state."""
+
     def __init__(self, addr: int):
         self.addr = addr
-        """Qubit address within QuantumMemory."""
         self.events = EventHandleSet()
-        """Events that are canceled upon reaching RELEASE state."""
 
     @property
     def state(self) -> QubitState:
@@ -167,6 +174,7 @@ class MemoryQubit:
         self._state = state
         self.key = None
         self.partner = None
+        self.epr_path_ids = None
         self.purif_rounds = 0
         self.events.clear()
 
@@ -187,6 +195,9 @@ def _describe(mq: MemoryQubit) -> Iterable[str]:
         yield f"key={mq.key}"
     if mq.partner:
         yield f"partner={mq.partner[0].name}:{mq.partner[1]}"
+
+    if mq.epr_path_ids:
+        yield f"epr-path-ids={set(mq.epr_path_ids)}"
 
     if mq._state in (QubitState.PURIF, QubitState.PENDING, QubitState.ELIGIBLE, QubitState.SWAPPING):
         yield f"purif_rounds={mq.purif_rounds}"

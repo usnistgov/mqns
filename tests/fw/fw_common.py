@@ -252,6 +252,8 @@ def check_fw_counters(net: QuantumNetwork, **kwargs: Iterable[int | Iterable[int
     for key, expected_vec in kwargs.items():
         for expected, (node, cnt) in zip(expected_vec, cnts):
             actual = getattr(cnt, key)
+            if isinstance(actual, list):
+                actual = sum(actual)
             if actual != expected and (not isinstance(expected, Iterable) or actual not in expected):
                 errors.append(f"{node}.{key} = {actual} != {expected}")
     assert not errors, "\n".join(errors)

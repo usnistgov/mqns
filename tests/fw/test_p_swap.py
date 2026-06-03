@@ -649,11 +649,10 @@ def test_tree2_statistical(
 ):
     """Test MuxSchemeStatistical in tree (height=2) topology."""
 
-    def select_qubit(fw: Forwarder, mt0: MemoryEprTuple, candidates: list[MemoryEprTuple]) -> MemoryEprTuple:
+    def select_qubit(candidates: list[MemoryEprTuple], fw: Forwarder, mt0: MemoryEprTuple) -> MemoryEprTuple:
         _ = mt0
-        if len(candidates) != 2:
-            chosen = candidates[0]
-        elif fw is f2:  # n2-n1 choosing between n4-n2 and n5-n2
+        assert len(candidates) == 2
+        if fw is f2:  # n2-n1 choosing between n4-n2 and n5-n2
             partner = (f4, f5)[selected_qubit[0]]
             chosen = next((mt1 for mt1 in candidates if mt1[1].src is partner.node), None)
         elif fw is f3:  # n1-n3 choosing between n3-n6 and n3-n7
@@ -664,11 +663,10 @@ def test_tree2_statistical(
         assert chosen is not None
         return chosen
 
-    def select_path(fw: Forwarder, epr0: Entanglement, epr1: Entanglement, path_ids: list[int]) -> int:
+    def select_path(path_ids: list[int], fw: Forwarder, epr0: Entanglement, epr1: Entanglement) -> int:
         _ = epr0, epr1
-        if len(path_ids) != 2:
-            chosen = path_ids[0]
-        elif fw is f1:  # n1 choosing for n2-n1-n3 swap
+        assert len(path_ids) == 2
+        if fw is f1:  # n1 choosing for n2-n1-n3 swap
             chosen = (rp0.path_id, rp1.path_id)[selected_path_1]
         else:
             # In all other nodes, only one FIB entry is matched after choosing qubit.
@@ -698,4 +696,4 @@ def test_tree2_statistical(
 
     assert f4.cnt.n_consumed == n_consumed[0] == f6.cnt.n_consumed
     assert f5.cnt.n_consumed == n_consumed[1] == f7.cnt.n_consumed
-    assert f2.cnt.n_swap_conflict + f1.cnt.n_swap_conflict + f3.cnt.n_swap_conflict == (2 if sum(n_consumed) == 0 else 0)
+    assert sum(fw.cnt.n_su_lower[4] for fw in (f4, f5, f6, f7)) == (2 if sum(n_consumed) == 0 else 0)

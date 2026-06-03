@@ -212,7 +212,7 @@ def run_simulation(seed: int, args: Args, mux: MuxScheme, active_flows: list[Flo
             stats.append((0, 0))
 
     total_decoh = sum((node.get_app(LinkLayer).cnt.n_decoh for node in net.nodes))
-    total_swap_conflict = sum((node.get_app(ProactiveForwarder).cnt.n_swap_conflict for node in net.nodes))
+    total_swap_conflict = sum((node.get_app(ProactiveForwarder).cnt.n_su_lower[4] for node in net.nodes))
 
     return stats, total_decoh, total_swap_conflict
 

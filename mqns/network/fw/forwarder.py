@@ -79,12 +79,23 @@ class ForwarderCounters:
         """How many physical swaps succeeded."""
         self.n_swap_fail = 0
         """How many physical swaps failed."""
-        self.n_swap_conflict = 0
-        """How many swaps were skipped due to conflictual decisions."""
-        self.n_su_lower = 0
-        """How many SWAP_UPDATE messages from lower-ranked node were processed."""
-        self.n_su_same = 0
-        """How many SWAP_UPDATE messages from same-ranked node were processed."""
+        self.n_su_lower = [0, 0, 0, 0, 0]
+        """
+        How many SWAP_UPDATE messages from lower-ranked node were processed.
+
+        * [0]: normal
+        * [1]: qubit decohered
+        * [2]: lower-expiry
+        * [3]: lower-swap-failure
+        * [4]: lower-swap-conflict
+        """
+        self.n_su_same = [0, 0]
+        """
+        How many SWAP_UPDATE messages from same-ranked node were processed.
+
+        * [0]: normal
+        * [1]: previous-swap-failure
+        """
         self.n_consumed = 0
         """How many entanglements were consumed (either end-to-end or in swap-disabled mode)."""
         self.consumed_sum_fidelity = 0.0
@@ -135,7 +146,7 @@ class ForwarderCounters:
     def __repr__(self) -> str:
         return (
             f"entg={self.n_entg} purif={self.n_purif} eligible={self.n_eligible} "
-            f"swapped={self.n_swapped} swap-fail={self.n_swap_fail} swap-conflict={self.n_swap_conflict} "
+            f"swapped={self.n_swapped} swap-fail={self.n_swap_fail} "
             f"su-lower={self.n_su_lower} su-same={self.n_su_same} cutoff-discard={self.n_cutoff} "
             f"consumed={self.n_consumed} (F={self.consumed_avg_fidelity})"
         )
@@ -366,16 +377,31 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
 
         self.cnt.n_entg += 1
 
-        qubit = event.qubit
-        assert qubit.state is QubitState.ENTANGLED1, f"unexpected state {qubit.state}"
-        assert qubit.key
-        qubit.partner = event.neighbor, qubit.key
-        _, epr = self.memory.read(qubit.addr, has=self.epr_type)
-        log.debug(f"{self}: ENTANGLED {qubit} | {epr}")
-        self.mux.qubit_is_entangled(qubit, epr, event.neighbor)
+        mq = event.qubit
+        assert mq.state is QubitState.ENTANGLED1, f"unexpected state {mq.state}"
+        assert mq.key
+        mq.partner = event.neighbor, mq.key
 
-        if qubit.state is not QubitState.RELEASE:
-            self.swap.pop_waiting_su(qubit)
+        mq.epr_path_ids = self.mux.list_qubit_epr_path_ids(mq)
+        if not mq.epr_path_ids:
+            log.debug(f"{self}: ENTANGLED_RELEASING reason=uninstalled-path {mq}")
+            self.release_qubit(mq, need_remove=True)
+            return
+
+        _, epr = self.memory.read(mq.addr, has=self.epr_type)
+        assert not epr.orig_eprs, f"{mq} is not elementary entanglement"
+        fib_entry = self.mux.qubit_is_entangled(mq, epr, event.neighbor)
+        log.debug(f"{self}: ENTANGLED {mq} fib_entry={fib_entry} | {epr}")
+
+        match mq.state:
+            case QubitState.PURIF:
+                assert fib_entry
+                self.qubit_is_purif(mq, fib_entry, event.neighbor)
+            case QubitState.ELIGIBLE:
+                self.qubit_is_eligible(mq, fib_entry)
+
+        if mq.state is not QubitState.RELEASE:
+            self.swap.pop_waiting_su(mq)
 
     def qubit_is_purif(self, qubit: MemoryQubit, fib_entry: FibEntry, partner: QNode):
         """
@@ -467,7 +493,7 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
         swap_candidates = self.memory.find(
             lambda q, _: (
                 q.state is QubitState.ELIGIBLE  # in ELIGIBLE state
-                and q.qchannel != qubit.qchannel  # assigned to a different channel
+                and q.qchannel is not qubit.qchannel  # assigned to a different channel
             ),
             has=self.epr_type,
         )

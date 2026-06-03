@@ -150,7 +150,7 @@ class SwapUpdateMsg(TypedDict):
 
     cmd: Literal["SWAP_UPDATE"]
     path_id: int
-    """FIB entry path_id."""
+    """FIB entry path ID to guide classical forwarding of this message."""
 
     o_node: str
     """
@@ -182,3 +182,5 @@ class SwapUpdateMsg(TypedDict):
     If zero, indicates swapping failure.
     If positive, time slot of qubit decoherence based on heralded knowledge.
     """
+    path_ids: list[int]
+    """Possible path IDs for the entanglement between ``l_node`` and ``r_node``."""

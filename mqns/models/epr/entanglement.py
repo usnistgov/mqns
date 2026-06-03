@@ -86,8 +86,8 @@ class Entanglement(QuantumModel):
     """
     orig_eprs: list[Self] | None = None
     """Elementary entanglements that swapped into this entanglement."""
-    tmp_path_ids: frozenset[int] | None = None
-    """Possible path IDs, used by MuxSchemeStatistical and MuxSchemeDynamicEpr."""
+    affectionated_path_id: int = -1
+    """Path ID chosen by MuxSchemeDynamicEpr or MuxSchemeStatistical(coordinated_decisions=True)."""
 
     def __init__(self, **kwargs: Unpack[EntanglementInitKwargs]):
         """
@@ -343,6 +343,5 @@ def _describe(epr: Entanglement) -> Iterable[str]:
             orig_eprs = ",".join(e.name for e in epr.orig_eprs)
             yield f"orig_eprs=[{orig_eprs}]"
 
-    if epr.tmp_path_ids:
-        tmp_path_ids = ",".join(str(x) for x in epr.tmp_path_ids)
-        yield f"tmp_path_ids=[{tmp_path_ids}]"
+    if epr.affectionated_path_id >= 0:
+        yield f"affectionated_path_id={epr.affectionated_path_id}"
