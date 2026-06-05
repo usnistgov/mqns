@@ -145,12 +145,15 @@ class MuxSchemeStatistical(MuxSchemeDynamicBase):
     ) -> tuple[MemoryQubit, FibEntry] | None:
         mq0_path_ids = set(cast(list[int], mq0.epr_path_ids))
 
-        # find another qubit to swap with
+        # Find another qubit to swap with.
+        # The qubit must have overlapping epr_path_ids so that there would be one or more viable paths.
+        # In coordinated_decision mode, the physical path_id (written by parallel swapping) must also match.
         mt1 = call_select(
             (
                 (q, v)
                 for (q, v) in input
                 if not mq0_path_ids.isdisjoint(cast(list[int], q.epr_path_ids))  # has overlapping epr_path_ids
+                and (not self.coordinated_decisions or v.affectionated_path_id < 0 or v.affectionated_path_id in mq0_path_ids)
             ),
             self._select_swap_qubit,
             self.fw,
@@ -161,7 +164,8 @@ class MuxSchemeStatistical(MuxSchemeDynamicBase):
         mq1, epr1 = mt1
         assert type(epr1) is self.fw.epr_type
 
-        # select a FIB entry to guide swap updates
+        # Select a FIB entry to guide swap updates initially, but the ForwarderSwapProc could pivot as needed.
+        # In coordinated_decision mode, the chosen FIB entry is locked onto EPRs and visible to other nodes.
         selected_path = call_select(
             sorted(mq0_path_ids.intersection(cast(list[int], mq1.epr_path_ids))),
             self._select_path,

@@ -182,5 +182,5 @@ class SwapUpdateMsg(TypedDict):
     If zero, indicates swapping failure.
     If positive, time slot of qubit decoherence based on heralded knowledge.
     """
-    path_ids: list[int]
+    q_paths: list[int]
     """Possible path IDs for the entanglement between ``l_node`` and ``r_node``."""

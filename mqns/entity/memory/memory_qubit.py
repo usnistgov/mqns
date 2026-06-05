@@ -197,7 +197,7 @@ def _describe(mq: MemoryQubit) -> Iterable[str]:
         yield f"partner={mq.partner[0].name}:{mq.partner[1]}"
 
     if mq.epr_path_ids:
-        yield f"epr-path-ids={set(mq.epr_path_ids)}"
+        yield f"epr-path-ids={mq.epr_path_ids}"
 
     if mq._state in (QubitState.PURIF, QubitState.PENDING, QubitState.ELIGIBLE, QubitState.SWAPPING):
         yield f"purif_rounds={mq.purif_rounds}"

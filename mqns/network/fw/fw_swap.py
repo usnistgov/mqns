@@ -19,8 +19,7 @@ if TYPE_CHECKING:
     from mqns.network.fw.forwarder import Forwarder
 
 
-def _intersect_path_ids(a: Iterable[int] | None, b: Iterable[int] | None) -> list[int]:
-    assert b is not None
+def _intersect_path_ids(a: Iterable[int] | None, b: Iterable[int]) -> list[int]:
     if a is None:
         return sorted(b)
     return sorted(i for i in a if i in b)
@@ -44,6 +43,22 @@ class SwapArm:
         return f"SwapArm(qubit={self.mq.addr}, o-key={self.o_key}, p-key={self.p_key})"
 
 
+@dataclass
+class SwapHerald:
+    """Herelading instruction."""
+
+    su: SwapUpdateMsg
+    """
+    Signaling message.
+    The ``.path_id`` field has a dummy value and must be replaced.
+    Modifying this message directly without copying is permissible.
+    """
+    dest: str
+    """Destination node name."""
+    paths: list[int]
+    """Possible path IDs for classical signaling, must be non-empty."""
+
+
 class SwapTask:
     """
     Track the logical progress of a swap process within a swap group.
@@ -54,8 +69,9 @@ class SwapTask:
     within the swap group.
     """
 
-    path_id: int
-    """Primary FIB entry path ID."""
+    UNKNOWN: ClassVar = "#UNK"
+    """Indicate an unknown value, only used in failure heralding."""
+
     sg: FibSwapGroup
     """Swap group from primary FIB entry."""
 
@@ -70,30 +86,30 @@ class SwapTask:
 
     expiry: int | None = None
     """Time slot for group-wise EPR expiration, zero on swap failure anywhere."""
-    l_path_ids: list[int] | None = None
-    """Possible path IDs on left side."""
-    r_path_ids: list[int] | None = None
-    """Possible path IDs on right side."""
+    lc_paths: list[int] | None = None
+    """Possible path IDs for leftward classical signaling."""
+    rc_paths: list[int] | None = None
+    """Possible path IDs for rightward classical signaling."""
+    q_paths: list[int] | None = None
+    """Possible path IDs for the entanglement."""
 
     l_sent = False
     """Is the left same-rank peer or higher-rank neighbor heralded?"""
     r_sent = False
     """Is the right same-rank peer or higher-rank neighbor heralded?"""
 
-    # Default values in la_key,ra_key,lb_key,rb_key are only used when heralding failure to the opposite direction.
-
-    la_key = "SwapTask.la_key=UNKNOWN"
+    la_key = UNKNOWN
     """Qubit reservation key between own node and ``sg.l_adj``."""
-    ra_key = "SwapTask.ra_key=UNKNOWN"
+    ra_key = UNKNOWN
     """Qubit reservation key between own node and ``sg.r_adj``."""
 
-    lb_key = "SwapTask.lb_key=UNKNOWN"
+    lb_key = UNKNOWN
     """Qubit reservation key between ``sg.nodes[0]`` and ``sg.l_neigh``."""
-    rb_key = "SwapTask.rb_key=UNKNOWN"
+    rb_key = UNKNOWN
     """Qubit reservation key between ``sg.nodes[-1]`` and ``sg.l_neigh``."""
 
-    def __init__(self, fib_entry: FibEntry):
-        self.path_id = fib_entry.path_id
+    def __init__(self, proc: "ForwarderSwapProc", fib_entry: FibEntry):
+        self._fib = proc.fw.fib
         self.sg = FibSwapGroup.compute(fib_entry)
         self.l_complete = self.sg.l_most
         self.r_complete = self.sg.r_most
@@ -108,8 +124,11 @@ class SwapTask:
         """
 
         self.o_started = True
-        self.l_path_ids = _intersect_path_ids(self.l_path_ids, la.mq.epr_path_ids)
-        self.r_path_ids = _intersect_path_ids(self.r_path_ids, ra.mq.epr_path_ids)
+        self.lc_paths = cast(list[int], la.mq.epr_path_ids)
+        self.rc_paths = cast(list[int], ra.mq.epr_path_ids)
+        self.q_paths = _intersect_path_ids(self.q_paths, self.lc_paths)
+        self.q_paths = _intersect_path_ids(self.q_paths, self.rc_paths)
+        self._pivot_sg()
 
         # These EPRs are known by both own node and the adjacent nodes.
         self.la_key = la.p_key
@@ -121,7 +140,7 @@ class SwapTask:
         if self.sg.r_most:
             self.rb_key = self.ra_key
 
-    def end_local_swap(self, expiry: int):
+    def end_local_swap(self, expiry: int) -> list[SwapHerald]:
         """
         Save local swap outcome.
 
@@ -145,7 +164,7 @@ class SwapTask:
 
         return self._check_triggers()
 
-    def notify_remote_swap(self, su: SwapUpdateMsg):
+    def notify_remote_swap(self, su: SwapUpdateMsg) -> list[SwapHerald]:
         """
         Save heralded swap outcome.
 
@@ -164,20 +183,21 @@ class SwapTask:
         if swapper == sg.l_adj:  # Message came from left peer.
             self.l_complete = True
             self.lb_key = su["l_key"]
-            self.l_path_ids = _intersect_path_ids(self.l_path_ids, su["path_ids"])
+            self.q_paths = _intersect_path_ids(self.q_paths, su["q_paths"])
             if expiry == 0:
                 # Left peer does not need to hear about the failure they just told us.
                 self.l_sent = True
         elif swapper == sg.r_adj:  # Message came from right peer.
             self.r_complete = True
             self.rb_key = su["r_key"]
-            self.r_path_ids = _intersect_path_ids(self.r_path_ids, su["path_ids"])
+            self.q_paths = _intersect_path_ids(self.q_paths, su["q_paths"])
             if expiry == 0:
                 # Right peer does not need to hear about the failure they just told us.
                 self.r_sent = True
         else:
             raise RuntimeError(f"SwapGroup({sg.nodes},{sg.own_idx}) received swap outcome from unexpected node {swapper}")
 
+        self._pivot_sg()
         return self._check_triggers()
 
     def _update_expiry(self, expiry: int) -> None:
@@ -186,10 +206,22 @@ class SwapTask:
         else:
             self.expiry = min(self.expiry, expiry)
 
-    def _check_triggers(self) -> tuple[SwapUpdateMsg | None, SwapUpdateMsg | None]:
-        sg = self.sg
+    def _pivot_sg(self) -> None:
+        """
+        If current SwapGroup is no longer a viable path but there are other viable paths,
+        pivot SwapGroup to another viable path.
+        """
+        if not self.q_paths or self.sg.path_id in self.q_paths:
+            return
 
-        l_su = None
+        sg = FibSwapGroup.compute(self._fib.get(self.q_paths[0]))
+        assert sg.nodes == self.sg.nodes
+        self.sg = sg
+
+    def _check_triggers(self) -> list[SwapHerald]:
+        sg = self.sg
+        heralds: list[SwapHerald] = []
+
         if (
             not self.l_sent  # leftward herald is allowed at most once
             and (
@@ -203,45 +235,47 @@ class SwapTask:
                 )
             )
         ):
-            l_su = self._make_base_su(self.l_path_ids)
-            l_su.update(
+            su = self._make_base_su()
+            su.update(
                 l_node=sg.l_adj,
                 l_key=self.lb_key if sg.l_most else self.la_key,
             )
+            heralds.append(SwapHerald(su, sg.l_adj, cast(list[int], self.lc_paths)))
             self.l_sent = True
 
-        r_su = None
         if not self.r_sent and (
             self.o_started if self.expiry == 0 else (self.l_complete and self.o_complete and sg.dir in ("r", "b"))
         ):
-            r_su = self._make_base_su(self.r_path_ids)
-            r_su.update(
+            su = self._make_base_su()
+            su.update(
                 r_node=sg.r_adj,
                 r_key=self.rb_key if sg.r_most else self.ra_key,
             )
+            heralds.append(SwapHerald(su, sg.r_adj, cast(list[int], self.rc_paths)))
             self.r_sent = True
 
-        return l_su, r_su
+        return heralds
 
-    def _make_base_su(self, dst_path_ids: list[int] | None) -> SwapUpdateMsg:
+    def _make_base_su(self) -> SwapUpdateMsg:
         sg = self.sg
-        assert dst_path_ids
+        spoiled = self.expiry == 0 or not self.q_paths
         return SwapUpdateMsg(
             cmd="SWAP_UPDATE",
-            path_id=self.path_id if self.path_id in dst_path_ids else dst_path_ids[0],
-            o_node=sg.nodes[sg.own_idx],
-            l_node=sg.l_neigh,
-            r_node=sg.r_neigh,
-            l_key=self.lb_key,
-            r_key=self.rb_key,
+            path_id=-1,
+            o_node=sg.own_node,
+            l_node=self.UNKNOWN if spoiled else sg.l_neigh,
+            r_node=self.UNKNOWN if spoiled else sg.r_neigh,
+            l_key=self.UNKNOWN if spoiled else self.lb_key,
+            r_key=self.UNKNOWN if spoiled else self.rb_key,
             expiry=cast(int, self.expiry),
-            path_ids=_intersect_path_ids(self.l_path_ids, self.r_path_ids),
+            # .q_paths is set in .begin_local_swap(), which is a prerequisite of .o_started and .o_complete
+            q_paths=cast(list[int], self.q_paths),
         )
 
     def __repr__(self) -> str:
         return (
-            f"SwapTask(path_id={self.path_id}, group={self.sg.nodes}, "
-            f"path_ids={self.l_path_ids}&{self.r_path_ids}, "
+            f"SwapTask(path_id={self.sg.path_id}, group={self.sg.nodes}, "
+            f"c-paths={self.lc_paths}:{self.rc_paths}, q-paths={self.q_paths}, "
             f"complete={self.l_complete and 'l' or '_'}"
             f"{self.o_complete and 'o' or (self.o_started and 'O' or '_')}"
             f"{self.r_complete and 'r' or '_'}, "
@@ -346,18 +380,23 @@ class ForwarderSwapProc:
         self.remote_swapped.clear()
         self.task_by_qubit.clear()
 
-    def _heralds(self, l_su: SwapUpdateMsg | None, r_su: SwapUpdateMsg | None) -> None:
+    def _heralds(self, heralds: list[SwapHerald]) -> None:
         """
-        Send heralding message.
+        Send heralding messages.
+        """
+        for h in heralds:
+            fib_entry = None
+            for p in h.paths:
+                fe = self.fw.fib.get(p)
+                if h.dest in fe.route:
+                    fib_entry = fe
+                    break
 
-        Args:
-            l_su: Leftward SWAP_UPDATE message.
-            r_su: Rightward SWAP_UPDATE message.
-        """
-        if l_su:
-            self.fw.send_msg(self.network.get_node(l_su["l_node"]), l_su, self.fw.fib.get(l_su["path_id"]))
-        if r_su:
-            self.fw.send_msg(self.network.get_node(r_su["r_node"]), r_su, self.fw.fib.get(r_su["path_id"]))
+            if not fib_entry:
+                raise RuntimeError(f"{self}: cannot herald {h.dest} among paths {h.paths} | {h.su}")
+
+            h.su["path_id"] = fib_entry.path_id
+            self.fw.send_msg(self.network.get_node(h.dest), h.su, fib_entry)
 
     def start(self, mq0: MemoryQubit, mq1: MemoryQubit, fib_entry: FibEntry):
         """
@@ -428,7 +467,7 @@ class ForwarderSwapProc:
 
         if task_via_event:
             return task_via_event, "event"
-        return SwapTask(fib_entry), "constructor"
+        return SwapTask(self, fib_entry), "constructor"
 
     def _s_put_task(self, task: SwapTask, arms: Sequence[SwapArm]) -> list[str]:
         task_saved: list[str] = []
@@ -440,7 +479,7 @@ class ForwarderSwapProc:
             task_saved.append(f"task_by_qubit[{arm.o_key}]")
         return task_saved
 
-    def _s_finish(self, arms: list[SwapArm], fib_entry: FibEntry, swap_start: Time, task_via_event: SwapTask):
+    def _s_finish(self, arms: Sequence[SwapArm], fib_entry: FibEntry, swap_start: Time, task_via_event: SwapTask):
         """
         Complete swapping between two memory qubits.
 
@@ -474,11 +513,11 @@ class ForwarderSwapProc:
 
         # Record local swap outcome in SwapTask, and then send heralding if allowed.
         task, task_from = self._s_get_task(fib_entry, arms, task_via_event)
-        l_su, r_su = task.end_local_swap(min(local_expiry) if local_success else 0)
-        self._heralds(l_su, r_su)
+        heralds = task.end_local_swap(min(local_expiry) if local_success else 0)
         task_saved = self._s_put_task(task, arms)
 
         log.debug(f"{self}: SWAP_FINISH {task} retrieved-from={task_from} saved-at={task_saved}")
+        self._heralds(heralds)
 
     def _s_physical_swap(self, swap_start: Time, phy_eprs: Sequence[Entanglement]) -> tuple[Entanglement | None, str, bool]:
         # If either memory qubit has decohered, abort the swap.
@@ -580,16 +619,15 @@ class ForwarderSwapProc:
         qubit = qubit_pair[0] if qubit_pair else None
         new_phy = self.remote_swapped.pop(qubit_key, None)
 
-        # If the lower-ranked swap failed or the new EPR has decohered, release the qubit.
-        # We can only make this determination based on heralded expiration time.
-        path_ids = msg["path_ids"]
+        # If the lower-ranked swap failed, had conflict path, or the new EPR has decohered, release the qubit.
+        q_paths = msg["q_paths"]
         expiry = msg["expiry"]
-        if not path_ids or expiry <= self.simulator.tc.time_slot:
+        if not q_paths or expiry <= self.simulator.tc.time_slot:
             if qubit:
                 if expiry == 0:
                     self.fw.cnt.n_su_lower[3] += 1
                     log.debug(f"{self}: releasing qubit {qubit.addr} reason=lower-swap-failure key={qubit_key} | {new_phy}")
-                elif not path_ids:
+                elif not q_paths:
                     self.fw.cnt.n_su_lower[4] += 1
                     log.debug(f"{self}: releasing qubit {qubit.addr} reason=lower-swap-conflict key={qubit_key} | {new_phy}")
                 else:
@@ -643,6 +681,7 @@ class ForwarderSwapProc:
         qubit_key: str,
     ) -> None:
         """Process SWAP_UPDATE sent from a same-ranked node."""
+
         # Retrieve SwapTask.
         task, task_from = self._u_get_task(fib_entry, qubit_key)
 
@@ -655,20 +694,24 @@ class ForwarderSwapProc:
             return
 
         # Record heralded swap outcome in SwapTask, and then send heralding if allowed.
-        l_su, r_su = task.notify_remote_swap(msg)
-        self._heralds(l_su, r_su)
+        heralds = task.notify_remote_swap(msg)
         task_saved = None
         if not task.o_complete:
             self.task_by_qubit[qubit_key] = task
             task_saved = f"task_by_qubit[{qubit_key}]"
 
+            # Expose the narrowed q_paths to qubit selection algorithm.
+            mq, _ = self.memory.read(qubit_key, must=True)
+            mq.epr_path_ids = task.q_paths
+
         self.fw.cnt.n_su_same[0] += 1
         log.debug(f"{self}: SWAP_UPDATE_SAME {task} retrieved-from={task_from} saved-at={task_saved}")
+        self._heralds(heralds)
 
     def _u_get_task(self, fib_entry: FibEntry, qubit_key: str) -> tuple[SwapTask, str]:
         if t := self.task_by_qubit.pop(qubit_key, None):
             return t, f"task_by_qubit[qubit_key:={qubit_key}]"
-        return SwapTask(fib_entry), "constructor"
+        return SwapTask(self, fib_entry), "constructor"
 
     def __repr__(self) -> str:
         return Application.__repr__(self)

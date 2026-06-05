@@ -91,6 +91,9 @@ class FibSwapGroup:
     if that neighbor would not be heralded by the opposite neighbor.
     """
 
+    path_id: int
+    """FIB entry path ID."""
+
     rank: int
     """Rank of all nodes in this swap group."""
 
@@ -115,20 +118,6 @@ class FibSwapGroup:
     own_idx: int
     """Index of own node within ``nodes``."""
 
-    l_adj: str
-    """
-    Left adjacent node, either same-ranked peer or higher-ranked neighbor.
-
-    Own node should herald this node if allowed by ``dir`` or when there is a failure.
-    """
-
-    r_adj: str
-    """
-    Right adjacent node, either same-ranked peer or higher-ranked neighbor.
-
-    Own node should herald this node if allowed by ``dir`` or when there is a failure.
-    """
-
     @staticmethod
     def compute(entry: FibEntry) -> "FibSwapGroup":
         # TODO implement caching
@@ -138,16 +127,14 @@ class FibSwapGroup:
             raise ValueError("FibSwapGroup is undefined for end nodes")
 
         sg = FibSwapGroup()
+        sg.path_id = entry.path_id
         sg.rank = entry.own_swap_rank
         sg.nodes = [entry.route[entry.own_idx]]
 
-        sg.l_neigh, l_rank, l_most = sg._extend_1d(entry, range(entry.own_idx - 1, -1, -1))
+        sg.l_neigh, l_rank = sg._extend_1d(entry, range(entry.own_idx - 1, -1, -1))
         sg.own_idx = len(sg.nodes) - 1
         sg.nodes.reverse()
-        sg.r_neigh, r_rank, r_most = sg._extend_1d(entry, range(entry.own_idx + 1, route_len))
-
-        sg.l_adj = sg.l_neigh if l_most else sg.nodes[sg.own_idx - 1]
-        sg.r_adj = sg.r_neigh if r_most else sg.nodes[sg.own_idx + 1]
+        sg.r_neigh, r_rank = sg._extend_1d(entry, range(entry.own_idx + 1, route_len))
 
         if l_rank == r_rank or entry.purif.get(f"{sg.l_neigh}-{sg.r_neigh}", 0) > 0:
             sg.dir = "b"
@@ -158,14 +145,12 @@ class FibSwapGroup:
 
         return sg
 
-    def _extend_1d(self, entry: FibEntry, index_range: Iterable[int]) -> tuple[str, int, bool]:
-        own_is_boundary = True
+    def _extend_1d(self, entry: FibEntry, index_range: Iterable[int]) -> tuple[str, int]:
         for i in index_range:
             node_rank = entry.swap[i]
             if node_rank > self.rank:
-                return entry.route[i], entry.swap[i], own_is_boundary
+                return entry.route[i], entry.swap[i]
             if node_rank == self.rank:
-                own_is_boundary = False
                 self.nodes.append(entry.route[i])
         raise ValueError(f"FibSwapGroup cannot find boundary in {entry.swap} from node index {entry.own_idx}")
 
@@ -178,6 +163,29 @@ class FibSwapGroup:
     def r_most(self) -> bool:
         """Determine if own node is the rightmost node in the group."""
         return self.own_idx == len(self.nodes) - 1
+
+    @property
+    def own_node(self) -> str:
+        """Own node name."""
+        return self.nodes[self.own_idx]
+
+    @property
+    def l_adj(self) -> str:
+        """
+        Left adjacent node, either same-ranked peer or higher-ranked neighbor.
+
+        Own node should herald this node if allowed by ``dir`` or when there is a failure.
+        """
+        return self.l_neigh if self.l_most else self.nodes[self.own_idx - 1]
+
+    @property
+    def r_adj(self) -> str:
+        """
+        Right adjacent node, either same-ranked peer or higher-ranked neighbor.
+
+        Own node should herald this node if allowed by ``dir`` or when there is a failure.
+        """
+        return self.r_neigh if self.r_most else self.nodes[self.own_idx + 1]
 
     def __repr__(self) -> str:
         tokens = [

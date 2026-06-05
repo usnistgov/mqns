@@ -436,7 +436,7 @@ def test_5_asap(
     """Test SWAP-ASAP in 5-node topology with various entanglement arrival orders."""
     n_consumed = 1 if ps3 == 1 else 0
 
-    net, simulator = build_linear_network(5, fw={"p_swap": 1.0})
+    net, simulator = build_linear_network(5, fw={"p_swap": 1.0}, end_time=2)
     f1 = net.get_node("n1").get_app(ProactiveForwarder)
     f2 = net.get_node("n2").get_app(ProactiveForwarder)
     f3 = net.get_node("n3").get_app(ProactiveForwarder)
@@ -461,6 +461,7 @@ def test_5_asap(
         n_su_same=(0, 1, (0, 1, 2), 1, 0),
         n_su_lower=(1, 0, 0, 0, 1),
     )
+    check_memory_released(net)
 
 
 @pytest.mark.parametrize(
@@ -603,49 +604,32 @@ def test_tree2_dynepr(t_edge_etg: float, selected_path: tuple[int, int], n_consu
 
 
 @pytest.mark.parametrize(
-    ("t_edge_etg", "selected_qubit", "selected_path_1", "n_consumed"),
+    ("etgs", "selected_qubit", "selected_path", "n_consumed"),
     [
-        # 1. Edge entanglements arrive first.
-        # 2. Center entanglements arrive next:
-        #    n2 chooses n4-n2 on path 0 to swap with n2-n1.
-        #    n3 chooses n3-n6 on path 0 to swap with n1-n3.
-        #    n1 can choose either FIB entry without affecting outcome.
-        # 3. Path 0 should get end-to-end entanglement.
-        ((1.001, 1.001, 1.001, 1.001), (0, 0), 0, (1, 0)),
-        ((1.001, 1.001, 1.001, 1.001), (0, 0), 1, (1, 0)),
-        # 1. Edge entanglements arrive first.
-        # 2. Center entanglements arrive next:
-        #    n2 chooses n4-n2 on path 0 to swap with n2-n1.
-        #    n3 chooses n3-n6 on path 1 to swap with n1-n3.
-        #    n1 can choose either FIB entry without affecting outcome.
-        # 3. Neither path could get end-to-end entanglement.
-        ((1.001, 1.001, 1.001, 1.001), (0, 1), 0, (0, 0)),
-        ((1.001, 1.001, 1.001, 1.001), (0, 1), 1, (0, 0)),
-        # 1. Center entanglements arrive first.
-        # 2. Path 1 edge entanglements arrive next:
-        #    n2 and n3 each has only one matching center entanglement to swap with edge entanglement;
-        #    each has only one matching FIB entry.
-        #    n1 can choose either FIB entry without affecting outcome.
-        # 3. Path 0 edge entanglements arrive last, but neither n2 nor n3 can swap them.
-        # 4. Path 1 should get end-to-end entanglement.
-        ((1.009, 1.007, 1.009, 1.007), (9, 9), 0, (0, 1)),
-        ((1.009, 1.007, 1.009, 1.007), (9, 9), 1, (0, 1)),
-        # 1. Center entanglements arrive first.
-        # 2. n4-n2 on path 0 and n3-n7 on path 1 edge entanglements arrive next:
-        #    n2 and n3 each has only one matching center entanglement to swap with edge entanglement.
-        #    n1 can choose either FIB entry without affecting outcome.
-        # 3. n5-n2 on path 1 and n3-n6 on path 0 edge entanglements arrive last, but neither n2 nor n3 can swap them.
-        # 4. Neither path could get end-to-end entanglement.
-        ((1.009, 1.007, 1.007, 1.009), (9, 9), 0, (0, 0)),
-        ((1.009, 1.007, 1.007, 1.009), (9, 9), 1, (0, 0)),
-        # `9` means the selection callback shouldn't have been invoked with two candidates.
+        # EPRs arrive in left-to-right order: n4-n2 & n5-n2, n2-n1, n1-n3, n3-n6 & n3-n7.
+        # n3, n1, n2 perform their swaps sequentially.
+        ((1, 1, 2, 3, 4, 5), (0, 9), -1, (1, 0)),
+        ((1, 1, 2, 3, 5, 4), (0, 9), -1, (1, 0)),
+        ((1, 1, 2, 3, 4, 5), (1, 9), -1, (0, 1)),
+        ((1, 1, 2, 3, 5, 4), (1, 9), -1, (0, 1)),
+        # EPRs arrive in outer-to-inner order: n4-n2 / n5-n2, n3-n6 / n3-n7, n2-n1 & n1-n3.
+        # n2 and n3 swap first in parallel (without choice), and n1 swaps last.
+        ((1, -1, 2, 2, 1, -1), (9, 9), -1, (1, 0)),
+        ((-1, 1, 2, 2, -1, 1), (9, 9), -1, (0, 1)),
+        ((1, -1, 2, 2, -1, 1), (9, 9), -1, (0, 0)),
+        # EPRs arrive in inner-to-outer order: n2-n1 & n1-n3, n4-n2 / n5-n2, n3-n6 / n3-n7.
+        # n1 swaps first, n2 and n3 swap last in parallel.
+        ((2, -1, 1, 1, 2, -1), (9, 9), -1, (1, 0)),
+        ((-1, 2, 1, 1, -1, 2), (9, 9), -1, (0, 1)),
+        ((2, -1, 1, 1, -1, 2), (9, 9), -1, (0, 0)),
+        # EPRs arrive in inner-to-outer order: n2-n1 & n1-n3, n4-n2 & n5-n2, n3-n6 & n3-n7.
+        # n1 swaps first, n2 and n3 swap last in parallel but with physically unrealistic coordinated decisions.
+        ((2, 3, 1, 1, 3, 2), (9, 9), 0, (1, 0)),
+        ((2, 3, 1, 1, 3, 2), (9, 9), 1, (0, 1)),
     ],
 )
 def test_tree2_statistical(
-    t_edge_etg: tuple[float, float, float, float],
-    selected_qubit: tuple[int, int],
-    selected_path_1: int,
-    n_consumed: tuple[int, int],
+    etgs: tuple[int, int, int, int, int, int], selected_qubit: tuple[int, int], selected_path: int, n_consumed: tuple[int, int]
 ):
     """Test MuxSchemeStatistical in tree (height=2) topology."""
 
@@ -663,36 +647,34 @@ def test_tree2_statistical(
         assert chosen is not None
         return chosen
 
-    def select_path(path_ids: list[int], fw: Forwarder, epr0: Entanglement, epr1: Entanglement) -> int:
-        _ = epr0, epr1
-        assert len(path_ids) == 2
-        if fw is f1:  # n1 choosing for n2-n1-n3 swap
-            chosen = (rp0.path_id, rp1.path_id)[selected_path_1]
-        else:
-            # In all other nodes, only one FIB entry is matched after choosing qubit.
-            raise RuntimeError()
-        return chosen
+    def select_path(candidates: list[int], fw: Forwarder, epr0: Entanglement, epr1: Entanglement) -> int:
+        _ = fw, epr0, epr1
+        assert len(candidates) == 2
+        return selected_path
+
+    if selected_path < 0:
+        mux = MuxSchemeStatistical(select_swap_qubit=select_qubit)
+    else:
+        mux = MuxSchemeStatistical(select_swap_qubit=select_qubit, coordinated_decisions=True, select_path=select_path)
 
     net, simulator = build_tree_network(
-        fw={"p_swap": 1.0, "mux": MuxSchemeStatistical(select_swap_qubit=select_qubit, select_path=select_path)}
+        fw={"p_swap": 1.0, "mux": mux},
+        end_time=2,
     )
     f1, f2, f3, f4, f5, f6, f7 = (node.get_app(ProactiveForwarder) for node in net.nodes)
 
     # n4-n2-n1-n3-n6
-    rp0 = install_path(net, RoutingPathSingle("n4", "n6", qubit_allocation=QubitAllocationType.DISABLED, swap="asap"))
+    install_path(net, RoutingPathSingle("n4", "n6", qubit_allocation=QubitAllocationType.DISABLED, swap="asap"))
     # n5-n2-n1-n3-n7
-    rp1 = install_path(net, RoutingPathSingle("n5", "n7", qubit_allocation=QubitAllocationType.DISABLED, swap="asap"))
+    install_path(net, RoutingPathSingle("n5", "n7", qubit_allocation=QubitAllocationType.DISABLED, swap="asap"))
 
-    provide_entanglements(
-        (t_edge_etg[0], f4, f2),
-        (t_edge_etg[1], f5, f2),
-        (t_edge_etg[2], f3, f6),
-        (t_edge_etg[3], f3, f7),
-        (1.003, f2, f1),
-        (1.005, f1, f3),
-    )
+    edges = ((f4, f2), (f5, f2), (f2, f1), (f1, f3), (f3, f6), (f3, f7))
+    provide_entanglements(*(((1 + 0.001 * t) if t >= 0 else -1, *edge) for (t, edge) in zip(etgs, edges)))
     simulator.run()
     print_fw_counters(net)
+    if -1 in etgs:
+        # For test cases without unused EPRs, swap conflict should release memory quickly.
+        check_memory_released(net)
 
     assert f4.cnt.n_consumed == n_consumed[0] == f6.cnt.n_consumed
     assert f5.cnt.n_consumed == n_consumed[1] == f7.cnt.n_consumed
