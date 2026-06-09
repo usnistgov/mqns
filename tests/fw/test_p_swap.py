@@ -26,7 +26,7 @@ from mqns.network.proactive import ProactiveForwarder
 from mqns.simulator import func_to_event
 
 from .fw_common import (
-    QubitReleaseLoggerApp,
+    QubitReleaseReset,
     build_linear_network,
     build_rect_network,
     build_tree_network,
@@ -166,36 +166,36 @@ def test_3_waittime(etg_sec: tuple[float, float], swap_delay: float, n_consumed:
     ("t_ext", "expected"),
     [
         # 1. Elementary entanglements arrive during EXTERNAL phase.
-        # 2. n1-n2-n3 is swapped at t=1.008400s when INTERNAL phase begins.
-        # 3. n1 and n3 are informed at t=1.008900s.
-        # 4. n1-n3-n4 is swapped at t=1.008900s.
-        # 5. n4 is informed at t=1.009400s and consumes the end-to-end entanglement.
-        # 6. n1 is informed at t=1.009900s and consumes the end-to-end entanglement.
+        # 2. n1-n2-n3 is swapped at t=0.008400s when INTERNAL phase begins.
+        # 3. n1 and n3 are informed at t=0.008900s.
+        # 4. n1-n3-n4 is swapped at t=0.008900s.
+        # 5. n4 is informed at t=0.009400s and consumes the end-to-end entanglement.
+        # 6. n1 is informed at t=0.009900s and consumes the end-to-end entanglement.
         (0.008400, (1, 1, 1, 1)),
         # 1. Elementary entanglements arrive during EXTERNAL phase.
-        # 2. n1-n2-n3 is swapped at t=1.008900s when INTERNAL phase begins.
-        # 3. n1 and n3 are informed at t=1.009400s.
-        # 4. n1-n3-n4 is swapped at t=1.009400s.
-        # 5. n4 is informed at t=1.009900s and consumes the end-to-end entanglement.
-        # 6. n1 is informed at t=1.010400s but INTERNAL phase has ended.
+        # 2. n1-n2-n3 is swapped at t=0.008900s when INTERNAL phase begins.
+        # 3. n1 and n3 are informed at 0=1.009400s.
+        # 4. n1-n3-n4 is swapped at t=0.009400s.
+        # 5. n4 is informed at t=0.009900s and consumes the end-to-end entanglement.
+        # 6. n1 is informed at t=0.010400s but INTERNAL phase has ended.
         (0.008900, (0, 1, 1, 1)),
         # 1. Elementary entanglements arrive during EXTERNAL phase.
-        # 2. n1-n2-n3 is swapped at t=1.009400s when INTERNAL phase begins.
-        # 3. n1 and n3 are informed at t=1.009900s.
-        # 4. n1-n3-n4 is swapped at t=1.009900s.
-        # 5. n4 is informed at t=1.010400s but INTERNAL phase has ended.
-        # 6. n1 is informed at t=1.010900s but INTERNAL phase has ended.
+        # 2. n1-n2-n3 is swapped at t=0.009400s when INTERNAL phase begins.
+        # 3. n1 and n3 are informed at t=0.009900s.
+        # 4. n1-n3-n4 is swapped at t=0.009900s.
+        # 5. n4 is informed at t=0.010400s but INTERNAL phase has ended.
+        # 6. n1 is informed at t=0.010900s but INTERNAL phase has ended.
         (0.009400, (0, 1, 1, 0)),
         # 1. Elementary entanglements arrive during EXTERNAL phase.
-        # 2. n1-n2-n3 is swapped at t=1.009900s when INTERNAL phase begins.
-        # 3. n1 and n3 are informed at t=1.010400s but INTERNAL phase has ended.
+        # 2. n1-n2-n3 is swapped at t=0.009900s when INTERNAL phase begins.
+        # 3. n1 and n3 are informed at t=0.010400s but INTERNAL phase has ended.
         (0.009900, (0, 1, 0, 0)),
     ],
 )
 def test_4_sync(t_ext: float, expected: tuple[int, int, int, int]):
     """Test TimingModeSync in 4-node topology."""
     timing = TimingModeSync(t_ext=t_ext, t_int=0.010000 - t_ext)
-    net, simulator = build_linear_network(4, fw={"p_swap": 1.0}, timing=timing)
+    net, simulator = build_linear_network(4, t_cohere=0.015000, fw={"p_swap": 1.0}, timing=timing, end_time=0.029999)
     f1 = net.get_node("n1").get_app(ProactiveForwarder)
     f2 = net.get_node("n2").get_app(ProactiveForwarder)
     f3 = net.get_node("n3").get_app(ProactiveForwarder)
@@ -203,13 +203,15 @@ def test_4_sync(t_ext: float, expected: tuple[int, int, int, int]):
 
     install_path(net, RoutingPathSingle("n1", "n4", swap=[2, 0, 1, 2]))
     provide_entanglements(
-        (1.001, f1, f2),
-        (1.001, f2, f3),
-        (1.001, f3, f4),
+        ([0.001000] * 3, (f1, f2, f3, f4)),
     )
     simulator.run()
     print_fw_counters(net)
-    assert (f1.cnt.n_consumed, f2.cnt.n_swapped, f3.cnt.n_swapped, f4.cnt.n_consumed) == expected
+    check_fw_counters(
+        net,
+        n_consumed=(expected[0], 0, 0, expected[3]),
+        n_swapped=(0, expected[1], expected[2], 0),
+    )
 
 
 @pytest.mark.parametrize(
@@ -235,9 +237,8 @@ def test_4_asap(etg_ms: tuple[int, int, int], ps3: int):
     f3.swap.ps = ps3
     install_path(net, RoutingPathSingle("n1", "n4", swap=[1, 0, 0, 1]))
     provide_entanglements(
-        (1 + etg_ms[0] / 1000, f1, f2),
-        (1 + etg_ms[1] / 1000, f2, f3),
-        (1 + etg_ms[2] / 1000, f3, f4),
+        (etg_ms, (f1, f2, f3, f4)),
+        transform_t=lambda ms: 1 + ms / 1000,
     )
     simulator.run()
     print_fw_counters(net)
@@ -370,7 +371,7 @@ def test_4_delayed(
         assert 0.5 < f1.cnt.consumed_avg_fidelity <= 0.75
         assert f1.cnt.consumed_avg_fidelity == pytest.approx(f4.cnt.consumed_avg_fidelity)
 
-    assert list(fw.node.get_app(QubitReleaseLoggerApp).last_time for fw in (f1, f2, f3, f4)) == [
+    assert list(fw.node.get_app(QubitReleaseReset).last_t for fw in (f1, f2, f3, f4)) == [
         simulator.time(sec=t) for t in t_release
     ]
     assert (cpacket_cnt["*-n1"], cpacket_cnt["*-n2"], cpacket_cnt["*-n3"], cpacket_cnt["*-n4"]) == n_cpacket
@@ -415,9 +416,7 @@ def test_4_decohere(swap_delay: float, n_consumed: int):
 
     install_path(net, RoutingPathSingle("n1", "n4", swap=[1, 0, 0, 1]))
     provide_entanglements(
-        (1, f1, f2),
-        (1, f2, f3),
-        (1, f3, f4),
+        ([1.000] * 3, (f1, f2, f3, f4)),
     )
     simulator.run()
     print_fw_counters(net)
@@ -426,6 +425,7 @@ def test_4_decohere(swap_delay: float, n_consumed: int):
         n_consumed=(n_consumed, 0, 0, n_consumed),
         n_su_lower=(1, 0, 0, 1),
     )
+    check_memory_released(net)
 
 
 @pytest.mark.parametrize(("ps3", "etg_ms"), itertools.product((1, 0), ((2, 1, 1, 2), (1, 2, 2, 1))))
@@ -446,10 +446,8 @@ def test_5_asap(
 
     install_path(net, RoutingPathSingle("n1", "n5", swap="asap"))
     provide_entanglements(
-        (1 + etg_ms[0] / 1000, f1, f2),
-        (1 + etg_ms[1] / 1000, f2, f3),
-        (1 + etg_ms[2] / 1000, f3, f4),
-        (1 + etg_ms[3] / 1000, f4, f5),
+        (etg_ms, (f1, f2, f3, f4, f5)),
+        transform_t=lambda ms: 1 + ms / 1000,
     )
     simulator.run()
     print_fw_counters(net)
@@ -488,10 +486,8 @@ def test_5_sequential(swap_sulower: tuple[Sequence[int], Sequence[int]], etg_ms:
 
     install_path(net, RoutingPathSingle("n1", "n5", swap=swap))
     provide_entanglements(
-        (1 + etg_ms[0] / 1000, f1, f2),
-        (1 + etg_ms[1] / 1000, f2, f3),
-        (1 + etg_ms[2] / 1000, f3, f4),
-        (1 + etg_ms[3] / 1000, f4, f5),
+        (etg_ms, (f1, f2, f3, f4, f5)),
+        transform_t=lambda ms: 1 + ms / 1000,
     )
     simulator.run()
     print_fw_counters(net)
@@ -503,6 +499,71 @@ def test_5_sequential(swap_sulower: tuple[Sequence[int], Sequence[int]], etg_ms:
         n_su_same=(0, 0, 0, 0, 0),
         n_su_lower=su_lower,
     )
+
+
+@pytest.mark.parametrize(
+    ("etg_ms", "swap_delay", "cutoff4", "t_release", "n_consumed"),
+    [
+        # 1. t=1.0010, n1-n2 and n2-n3 EPRs arrive, n2 starts swapping.
+        # 2. t=1.0015, n2 completes swapping, heralds success to n3.
+        #              n2 saves SwapTask awaiting heralding from n3.
+        # 3. t=1.0020, n3 receives heralding, cannot swap due to lack of n3-n4 EPR.
+        # 4. t=1.0100, memory qubits decohere at n1 and n3.
+        # 5. t=1.0200, n2 deletes SwapTask.
+        ((0, 0, -1, -1), 0.0005, None, (1.0100, 1.0015, 1.0100), 0),
+        # 1. t=1.0010, n1-n2 and n2-n3 EPRs arrive, n2 starts swapping.
+        # 2. t=1.0097, n2 completes swapping, heralds success to n3.
+        #              n2 saves SwapTask awaiting heralding from n3.
+        # 3. t=1.0100, memory qubits decohere at n1 and n3.
+        # 4. t=1.0102, n3 receives heralding, ignores due to qubit not in memory.
+        # 5. t=1.0200, n2 deletes SwapTask.
+        ((0, 0, -1, -1), 0.0087, None, (1.0100, 1.0097, 1.0100), 0),
+        # 1. t=1.0010, n1-n2 and n2-n3 and n3-n4 EPRs arrive, n2 and n3 start swapping.
+        # 2. t=1.0012, n3 completes swapping, cannot herald either side.
+        #              n3 saves SwapTask awaiting heralding from n2 and n4.
+        # 3. t=1.0012, n2 completes swapping, heralds success to n3.
+        #              n2 saves SwapTask awaiting heralding from n3.
+        # 4. t=1.0017, n3 receives n2 heralding, heralds success to n4.
+        # 5. t=1.0022, n4 receives n3 heralding, cannot swap due to lack of n4-n5 EPR.
+        # 6. t=1.0100, memory qubits decohere at n1 and n4.
+        ((0, 0, 0, -1), 0.0002, None, (1.0100, 1.0012, 1.0012, 1.0100), 0),
+        # 1. t=1.0010, n1-n2 and n2-n3 and n3-n4 EPRs arrive, n2 and n3 start swapping.
+        # 2. t=1.0012, n3 completes swapping, cannot herald either side.
+        #              n3 saves SwapTask awaiting heralding from n2 and n4.
+        # 3. t=1.0012, n2 completes swapping, heralds success to n3.
+        #              n2 saves SwapTask awaiting heralding from n3.
+        # 4. t=1.0017, n3 receives n2 heralding, heralds success to n4.
+        # 5. t=1.0020, n4 discards qubit due to exceeding wait-time cut-off.
+        # 6. t=1.0022, n4 receives n3 heralding, cannot swap due to lack of n4-n5 EPR.
+        # 7. t=1.0100, memory qubit decoheres at n1.
+        #              XXX Ideally, n1 should be informed so that it can release its qubit earlier.
+        ((0, 0, 0, -1), 0.0002, 0.0010, (1.0100, 1.0012, 1.0012, 1.0020), 0),
+    ],
+)
+def test_5_decohere(
+    etg_ms: tuple[int, int, int], swap_delay: float, cutoff4: float | None, t_release: tuple[float, ...], n_consumed: int
+):
+    """Test short decoherence time in 5-node topology."""
+    net, simulator = build_linear_network(5, t_cohere=0.010, fw={"p_swap": 1.0, "swap_delay": swap_delay}, end_time=2)
+    f1, f2, f3, f4, f5 = (node.get_app(ProactiveForwarder) for node in net.nodes)
+
+    swap_cutoff = None if cutoff4 is None else [-1, -1, -1, cutoff4, -1]
+    install_path(net, RoutingPathSingle("n1", "n5", swap=[1, 0, 0, 0, 1], swap_cutoff=swap_cutoff))
+    provide_entanglements(
+        (etg_ms, (f1, f2, f3, f4, f5)),
+        transform_t=lambda ms: 1 + ms / 1000,
+    )
+    simulator.run()
+    print_fw_counters(net)
+    check_fw_counters(
+        net,
+        n_consumed=(n_consumed, 0, 0, 0, n_consumed),
+        # n_su_lower=(1, 0, 0, 0, 1),
+    )
+    check_memory_released(net)
+    assert list(node.get_app(QubitReleaseReset).last_t for node in net.nodes[: len(t_release)]) == [
+        simulator.time(sec=t) for t in t_release
+    ]
 
 
 @pytest.mark.parametrize(
@@ -604,7 +665,7 @@ def test_tree2_dynepr(t_edge_etg: float, selected_path: tuple[int, int], n_consu
 
 
 @pytest.mark.parametrize(
-    ("etgs", "selected_qubit", "selected_path", "n_consumed"),
+    ("etg_ms", "selected_qubit", "selected_path", "n_consumed"),
     [
         # EPRs arrive in left-to-right order: n4-n2 & n5-n2, n2-n1, n1-n3, n3-n6 & n3-n7.
         # n3, n1, n2 perform their swaps sequentially.
@@ -629,7 +690,10 @@ def test_tree2_dynepr(t_edge_etg: float, selected_path: tuple[int, int], n_consu
     ],
 )
 def test_tree2_statistical(
-    etgs: tuple[int, int, int, int, int, int], selected_qubit: tuple[int, int], selected_path: int, n_consumed: tuple[int, int]
+    etg_ms: tuple[int, int, int, int, int, int],
+    selected_qubit: tuple[int, int],
+    selected_path: int,
+    n_consumed: tuple[int, int],
 ):
     """Test MuxSchemeStatistical in tree (height=2) topology."""
 
@@ -669,10 +733,13 @@ def test_tree2_statistical(
     install_path(net, RoutingPathSingle("n5", "n7", qubit_allocation=QubitAllocationType.DISABLED, swap="asap"))
 
     edges = ((f4, f2), (f5, f2), (f2, f1), (f1, f3), (f3, f6), (f3, f7))
-    provide_entanglements(*(((1 + 0.001 * t) if t >= 0 else -1, *edge) for (t, edge) in zip(etgs, edges)))
+    provide_entanglements(
+        *((t, *edge) for (t, edge) in zip(etg_ms, edges)),
+        transform_t=lambda ms: 1 + ms / 1000,
+    )
     simulator.run()
     print_fw_counters(net)
-    if -1 in etgs:
+    if -1 in etg_ms:
         # For test cases without unused EPRs, swap conflict should release memory quickly.
         check_memory_released(net)
 

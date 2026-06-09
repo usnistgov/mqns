@@ -119,7 +119,7 @@ class QuantumMemory(Entity):
         """
         Memory decoherence time, often known as T2.
 
-        Stored qubits are deleted upon this timer via ``MemoryDecohereEvent``.
+        Stored qubits trigger ``MemoryDecohereEvent`` at this timer.
         """
 
         self.time_decay = parse_time_decay(self._time_decay_input, self.t_decohere)
@@ -371,7 +371,6 @@ class QuantumMemory(Entity):
         if type(key) is int:
             qubit, data = self._storage[key]
         else:
-            # qubit, data = next(self.find(lambda _, v: getattr(v, "name", None) == key), (None, None))
             qubit, data = next(self.find(lambda q, _: q.key == key), (None, None))
 
         if qubit is None:

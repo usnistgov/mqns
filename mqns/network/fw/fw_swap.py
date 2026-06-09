@@ -1,6 +1,6 @@
 from collections.abc import Iterable, MutableSequence, Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, ClassVar, cast
+from typing import TYPE_CHECKING, ClassVar, cast, override
 
 from mqns.entity.memory import MemoryQubit, QuantumMemory, QubitState
 from mqns.entity.node import Application, QNode
@@ -12,7 +12,7 @@ from mqns.network.fw.fib import FibEntry, FibSwapGroup
 from mqns.network.fw.message import SwapUpdateMsg
 from mqns.network.fw.mux import MuxScheme
 from mqns.network.network import QuantumNetwork
-from mqns.simulator import Simulator, Time, func_to_event
+from mqns.simulator import Event, Simulator, Time, func_to_event
 from mqns.utils import log
 
 if TYPE_CHECKING:
@@ -72,6 +72,8 @@ class SwapTask:
     UNKNOWN: ClassVar = "#UNK"
     """Indicate an unknown value, only used in failure heralding."""
 
+    proc: "ForwarderSwapProc"
+    """``ForwarderSwapProc`` reference."""
     sg: FibSwapGroup
     """Swap group from primary FIB entry."""
 
@@ -108,8 +110,11 @@ class SwapTask:
     rb_key = UNKNOWN
     """Qubit reservation key between ``sg.nodes[-1]`` and ``sg.l_neigh``."""
 
+    has_expire_event = False
+    """Whether ``ForwarderSwapProc._u_expire_task`` is scheduled."""
+
     def __init__(self, proc: "ForwarderSwapProc", fib_entry: FibEntry):
-        self._fib = proc.fw.fib
+        self.proc = proc
         self.sg = FibSwapGroup.compute(fib_entry)
         self.l_complete = self.sg.l_most
         self.r_complete = self.sg.r_most
@@ -183,6 +188,7 @@ class SwapTask:
         if swapper == sg.l_adj:  # Message came from left peer.
             self.l_complete = True
             self.lb_key = su["l_key"]
+            self.la_key = su["r_key"]
             self.q_paths = _intersect_path_ids(self.q_paths, su["q_paths"])
             if expiry == 0:
                 # Left peer does not need to hear about the failure they just told us.
@@ -190,6 +196,7 @@ class SwapTask:
         elif swapper == sg.r_adj:  # Message came from right peer.
             self.r_complete = True
             self.rb_key = su["r_key"]
+            self.ra_key = su["l_key"]
             self.q_paths = _intersect_path_ids(self.q_paths, su["q_paths"])
             if expiry == 0:
                 # Right peer does not need to hear about the failure they just told us.
@@ -214,7 +221,7 @@ class SwapTask:
         if not self.q_paths or self.sg.path_id in self.q_paths:
             return
 
-        sg = FibSwapGroup.compute(self._fib.get(self.q_paths[0]))
+        sg = FibSwapGroup.compute(self.proc.fw.fib.get(self.q_paths[0]))
         assert sg.nodes == self.sg.nodes
         self.sg = sg
 
@@ -282,6 +289,19 @@ class SwapTask:
             f"sent={self.l_sent and 'l' or '_'}{self.r_sent and 'r' or '_'}, "
             f"qubit-key={self.lb_key},{self.la_key},{self.ra_key},{self.rb_key}, expiry={self.expiry})"
         )
+
+
+class SwapTaskExpireEvent(Event):
+    def __init__(self, task: SwapTask, *, t: Time):
+        super().__init__(t)
+        self.task = task
+
+    @override
+    def invoke(self):
+        self.task.proc._expire_task(self)
+
+    def __repr__(self) -> str:
+        return f"SwapTaskExpireEvent({self.task})"
 
 
 class ForwarderSwapProc:
@@ -366,7 +386,7 @@ class ForwarderSwapProc:
         for attr in ("waiting_su", "remote_swapped", "task_by_qubit"):
             table = getattr(self, attr)
             if n := len(table):
-                log.warning(f"{self}: {attr} is not empty: {table}")
+                log.warning(f"{self}: {attr} is not empty (len={n}): {table}")
                 max_table_size = max(max_table_size, n)
 
         if self.table_leak_tol >= 0 and max_table_size > self.table_leak_tol:
@@ -379,6 +399,19 @@ class ForwarderSwapProc:
         assert not self.waiting_su, f"waiting_su is not empty {self.waiting_su}"
         self.remote_swapped.clear()
         self.task_by_qubit.clear()
+
+    def handle_decohere(self, mq: MemoryQubit) -> None:
+        """
+        Called by forwarder before releasing a qubit due to decoherence or CutOffScheme.
+        """
+        key = cast(str, mq.key)
+        deleted_from: list[str] = []
+        if epr := self.remote_swapped.pop(key, None):
+            epr.is_decohered = True
+            deleted_from.append(f"remote_swapped[{key}]")
+        if self.task_by_qubit.pop(key, None):
+            deleted_from.append(f"task_by_qubit[{key}]")
+        log.debug(f"{self}: DECOHERE key={mq.key} deleted-from={deleted_from}")
 
     def _heralds(self, heralds: list[SwapHerald]) -> None:
         """
@@ -515,6 +548,8 @@ class ForwarderSwapProc:
         task, task_from = self._s_get_task(fib_entry, arms, task_via_event)
         heralds = task.end_local_swap(min(local_expiry) if local_success else 0)
         task_saved = self._s_put_task(task, arms)
+        if task_saved:
+            self.sched_expire_task(task)
 
         log.debug(f"{self}: SWAP_FINISH {task} retrieved-from={task_from} saved-at={task_saved}")
         self._heralds(heralds)
@@ -689,7 +724,13 @@ class ForwarderSwapProc:
         # but the remote swap occurred while the outgoing SWAP_UPDATE is still in flight.
         if not task.o_complete and qubit_pair is None:
             self.fw.cnt.n_su_same[1] += 1
-            log.debug(f"{self}: SWAP_UPDATE_SAME {task} retrieved-from={task_from} dropped reason=previous-swap-failure")
+            deleted_from = None
+            if self.remote_swapped.pop(qubit_key, None):
+                deleted_from = f"remote_swapped[{qubit_key}]"
+            log.debug(
+                f"{self}: SWAP_UPDATE_SAME {task} retrieved-from={task_from} "
+                f"DROPPED reason=previous-swap-failure deleted-from={deleted_from}"
+            )
             assert task_from == "constructor"
             return
 
@@ -699,6 +740,7 @@ class ForwarderSwapProc:
         if not task.o_complete:
             self.task_by_qubit[qubit_key] = task
             task_saved = f"task_by_qubit[{qubit_key}]"
+            self.sched_expire_task(task)
 
             # Expose the narrowed q_paths to qubit selection algorithm.
             mq, _ = self.memory.read(qubit_key, must=True)
@@ -712,6 +754,23 @@ class ForwarderSwapProc:
         if t := self.task_by_qubit.pop(qubit_key, None):
             return t, f"task_by_qubit[qubit_key:={qubit_key}]"
         return SwapTask(self, fib_entry), "constructor"
+
+    def sched_expire_task(self, task: SwapTask) -> None:
+        if task.has_expire_event:
+            return
+        task.has_expire_event = True
+        t = self.simulator.tc if not task.expiry else self.simulator.time(time_slot=task.expiry)
+        t += self.memory.t_decohere  # delay deletion so that incoming messages can be replied to
+        self.simulator.add_event(SwapTaskExpireEvent(task, t=t))
+
+    def _expire_task(self, event: SwapTaskExpireEvent):
+        task = event.task
+        deleted_from: list[str] = []
+        for key in task.la_key, task.ra_key:
+            if key != SwapTask.UNKNOWN and self.task_by_qubit.pop(key, None):
+                deleted_from.append(key)
+        if deleted_from:
+            log.debug(f"{self}: TASK_EXPIRE {task} deleted-from={deleted_from}")
 
     def __repr__(self) -> str:
         return Application.__repr__(self)

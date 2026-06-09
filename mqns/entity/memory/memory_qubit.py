@@ -172,11 +172,12 @@ class MemoryQubit:
     def reset_state(self, state: QubitState) -> None:
         """Reset state to RELEASE/RAW and clear associated fields."""
         self._state = state
-        self.key = None
-        self.partner = None
-        self.epr_path_ids = None
-        self.purif_rounds = 0
         self.events.clear()
+        if state is QubitState.RAW:
+            self.key = None
+            self.partner = None
+            self.epr_path_ids = None
+            self.purif_rounds = 0
 
     def __repr__(self) -> str:
         return ", ".join(_describe(self)) + ")"

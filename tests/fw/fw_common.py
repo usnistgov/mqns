@@ -1,19 +1,20 @@
 import copy
 import functools
 from collections import defaultdict
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
+from itertools import pairwise
 from typing import Literal, TypedDict, Unpack, override
 
 import pytest
 
 from mqns.entity.cchannel import ClassicChannelInitKwargs, ClassicPacket
-from mqns.entity.memory import MemoryDecohereEvent, QubitState
+from mqns.entity.memory import QubitState
 from mqns.entity.node import Application, Controller, Node, QNode
 from mqns.entity.qchannel import LinkArchAlways, LinkArchDimBk, QuantumChannelInitKwargs
 from mqns.models.epr import Entanglement, WernerStateEntanglement
 from mqns.network.fw import Forwarder, ForwarderInitKwargs, RoutingController, RoutingPath
 from mqns.network.fw.fw_swap import ForwarderSwapProc
-from mqns.network.network import QuantumNetwork, TimingMode, TimingModeAsync
+from mqns.network.network import QuantumNetwork, TimingMode, TimingModeAsync, TimingPhase, TimingPhaseEvent
 from mqns.network.proactive import ProactiveForwarder, ProactiveRoutingController
 from mqns.network.protocol.event import QubitEntangledEvent, QubitReleasedEvent
 from mqns.network.protocol.link_layer import LinkLayer
@@ -24,8 +25,10 @@ from mqns.simulator import Event, Simulator, Time, func_to_event
 from mqns.utils import AutoIncrementIdentifier, log
 
 
-class QubitReleaseLoggerApp(Application):
-    """Record when qubits are released."""
+class QubitReleaseReset(Application[QNode]):
+    """
+    Reset released qubits to RAW state.
+    """
 
     def __init__(self):
         super().__init__()
@@ -42,16 +45,19 @@ class QubitReleaseLoggerApp(Application):
         _ = event
 
     @_handle.register
-    def _(self, event: MemoryDecohereEvent):
-        log.debug(f"{self}: DECOHERE {event.qubit}")
+    def _(self, event: TimingPhaseEvent):
+        match event.action:
+            case TimingPhase.INTERNAL, False:
+                self.node.memory.clear()
 
     @_handle.register
     def _(self, event: QubitReleasedEvent):
         self.history.append((event.qubit.addr, event.t))
         log.debug(f"{self}: RELEASE {event.qubit}")
+        event.qubit.state = QubitState.RAW
 
     @property
-    def last_time(self) -> Time:
+    def last_t(self) -> Time:
         """Retrieve the timestamp of last release event."""
         if not self.history:
             return Time.SENTINEL
@@ -91,7 +97,7 @@ def _make_topo_args(d: BuildNetworkArgs, *, memory_capacity_factor: int) -> Topo
     if d.get("has_link_layer", False):
         nodes_apps.append(LinkLayer(init_fidelity=d.get("init_fidelity", 0.99)))
     else:
-        nodes_apps.append(QubitReleaseLoggerApp())
+        nodes_apps.append(QubitReleaseReset())
 
     fw_args = copy.copy(d.get("fw")) or {}
     fw_args.setdefault("p_swap", 0.6)
@@ -250,7 +256,7 @@ def check_fw_counters(net: QuantumNetwork, **kwargs: Iterable[int | Iterable[int
     errors: list[str] = []
     cnts = [(node.name, node.get_app(Forwarder).cnt) for node in net.nodes]
     for key, expected_vec in kwargs.items():
-        for expected, (node, cnt) in zip(expected_vec, cnts):
+        for expected, (node, cnt) in zip(expected_vec, cnts, strict=True):
             actual = getattr(cnt, key)
             if isinstance(actual, list):
                 actual = sum(actual)
@@ -285,20 +291,23 @@ _provide_entanglements_autoid = AutoIncrementIdentifier("Tpe_")
 
 
 def provide_entanglements(
-    *etgs: tuple[float, Forwarder, Forwarder],
+    *etgs: tuple[float, Forwarder, Forwarder] | tuple[Iterable[float], Iterable[Forwarder]],
+    transform_t: Callable[[float], float] = lambda t: t,
     fidelity=0.99,
 ):
     """
     Provide elementary entanglement(s) to the forwarders.
 
     Args:
-        etgs: entanglement creation time, forwarder on left side, forwarder on right side.
-        fidelity: initial fidelity.
+        etgs: Entanglement creation time, forwarder on left side, forwarder on right side;
+              or, list of times, linear chain of forwarders.
+        transform_t: Transform timestamp from input unit to seconds; default is identity function i.e. input unit is seconds.
+        fidelity: Initial fidelity.
     """
-    for t, src, dst in etgs:
-        if t < 0:
-            continue
+
+    def make_entangle(src: Forwarder, dst: Forwarder):
         simulator = src.simulator
+        t_creation = simulator.tc
         ch = src.node.get_qchannel(dst.node)
 
         ch.link_arch.set(
@@ -313,7 +322,6 @@ def provide_entanglements(
         _, d_notify_a, d_notify_b = ch.link_arch.delays(1)
 
         ll_key = _provide_entanglements_autoid()
-        t_creation = simulator.time(sec=t)
         epr = src.network.epr_type(
             decohere_time=t_creation + min(src.memory.t_decohere, dst.memory.t_decohere),
             fidelity_time=t_creation,
@@ -330,7 +338,22 @@ def provide_entanglements(
             q._state = QubitState.ENTANGLED0
             q.key = ll_key
             node.memory.write(q.addr, epr)
+            print(f"pe {src} {dst} {q.addr}")
             simulator.add_event(QubitEntangledEvent(node.node, neighbor.node, q, t=t_creation + d_notify))
+
+    def sched_entangle(t: float, src: Forwarder, dst: Forwarder):
+        if t < 0:
+            return
+        simulator = src.simulator
+        simulator.add_event(func_to_event(simulator.time(sec=transform_t(t)), make_entangle, src, dst))
+
+    for etg in etgs:
+        if len(etg) == 3:
+            sched_entangle(*etg)
+        else:
+            times, fws = etg
+            for t, (src, dst) in zip(times, pairwise(fws), strict=True):
+                sched_entangle(t, src, dst)
 
 
 def check_memory_released(net: QuantumNetwork) -> None:

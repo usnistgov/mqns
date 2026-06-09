@@ -21,7 +21,7 @@ from typing import TypedDict, Unpack, override
 
 import numpy as np
 
-from mqns.entity.memory import MemoryQubit, PathDirection, QubitState
+from mqns.entity.memory import MemoryDecohereEvent, MemoryQubit, PathDirection, QubitState
 from mqns.entity.node import Application, QNode
 from mqns.entity.qchannel import QuantumChannel
 from mqns.models.delay import DelayInput, parse_delay
@@ -186,6 +186,7 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
 
         self.add_handler(self.handle_sync_phase, TimingPhaseEvent)
         self.add_handler(self.qubit_is_entangled, QubitEntangledEvent)
+        self.add_handler(self.qubit_is_decohered, MemoryDecohereEvent)
 
         self.waiting_etg: list[QubitEntangledEvent] = []
         """
@@ -523,17 +524,28 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
 
         self.release_qubit(qubit)
 
-    def release_qubit(self, qubit: MemoryQubit, *, need_remove=False):
+    def qubit_is_decohered(self, event: MemoryDecohereEvent):
+        assert self.node.timing.is_async(), f"unexpected {event} in SYNC timing mode, (t_ext+t_int) too high"
+        self.release_qubit(event.qubit, is_decoh=True)
+
+    def release_qubit(self, qubit: MemoryQubit, *, need_remove=False, is_decoh=False, is_cutoff=False):
         """
         Release a qubit.
 
         Args:
-            need_remove: whether to remove the data associated with the qubit.
+            need_remove: Whether to remove the data associated with the qubit.
                          This should be set to True unless .read(remove=True) is already performed.
+            is_decoh: Whether the release was caused by MemoryDecohereEvent.
+            is_cutoff: Whether the release was caused by CutoffScheme.
         """
         if need_remove:
             self.memory.read(qubit.addr, remove=True)
 
-        old_key = qubit.key
+        if is_decoh or is_cutoff:
+            self.swap.handle_decohere(qubit)
+
         qubit.state = QubitState.RELEASE
-        self.simulator.add_event(QubitReleasedEvent(self.node, qubit, old_key=old_key, t=self.simulator.tc))
+        event = QubitReleasedEvent(self.node, qubit, is_decoh=is_decoh, t=self.simulator.tc)
+        # Set higher priority to prevent duplicate releases from decohere/cut-off and swap failure.
+        event.priority = -1000
+        self.simulator.add_event(event)

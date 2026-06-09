@@ -95,7 +95,7 @@ def test_channel_qubit_assignment_and_search():
         assert data is None
 
 
-def test_decoherence_event_removes_qubit():
+def test_decoherence_event():
     scenario = TwoNodes()
     mem = scenario.m1
 
@@ -109,8 +109,8 @@ def test_decoherence_event_removes_qubit():
     # Expect it to decohere at t=1.0
     scenario.s.run()
 
-    res = mem.read("epr3")
-    assert res is None
+    res, _ = mem.read("epr3", must=True)
+    assert res is qubit
     assert qubit.state is QubitState.RELEASE, f"unexpected state {qubit.state}"
 
 

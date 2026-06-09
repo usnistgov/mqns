@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from typing import Literal, TypedDict, cast, override
 
 from mqns.entity.cchannel import ClassicChannel, ClassicPacket, RecvClassicPacket
-from mqns.entity.memory import MemoryDecohereEvent, MemoryQubit, QubitState
+from mqns.entity.memory import MemoryQubit, QubitState
 from mqns.entity.node import Application, QNode
 from mqns.entity.qchannel import QuantumChannel
 from mqns.network.network import TimingPhase, TimingPhaseEvent
@@ -171,7 +171,7 @@ class LinkLayer(Application[QNode]):
         self.add_handler(self.RecvClassicPacketHandler, RecvClassicPacket)
         self.add_handler(self.handle_manage_active_channels, ManageActiveChannels)
         self.add_handler(self.handle_success_entangle, LinkArchSuccessEvent)
-        self.add_handler(self.handle_decoh_rel, (MemoryDecohereEvent, QubitReleasedEvent))
+        self.add_handler(self.handle_release, QubitReleasedEvent)
 
     @override
     def install(self, node):
@@ -461,9 +461,7 @@ class LinkLayer(Application[QNode]):
         qubit.state = QubitState.ENTANGLED0
         self.simulator.add_event(QubitEntangledEvent(self.node, neighbor, qubit, t=self.simulator.tc))
 
-    def handle_decoh_rel(self, event: MemoryDecohereEvent | QubitReleasedEvent) -> bool:
-        is_decoh = type(event) is MemoryDecohereEvent
-
+    def handle_release(self, event: QubitReleasedEvent) -> bool:
         qubit = event.qubit
         log.debug(f"{self}: {event}")
         qubit.state = QubitState.RAW
@@ -482,14 +480,11 @@ class LinkLayer(Application[QNode]):
             return True
 
         # primary node
-        if is_decoh:
+        if event.is_decoh:
             self.cnt.n_decoh += 1
 
         next_hop, _ = ac
         if self.node.timing.is_async():
             self.start_reservation(next_hop, qubit.qchannel, qubit)
-        # SYNC timing mode
-        elif is_decoh:
-            raise RuntimeError(f"{self}: unexpected MemoryDecohereEvent in SYNC timing mode, (t_ext+t_int) too high")
 
         return True

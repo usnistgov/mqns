@@ -119,11 +119,12 @@ class QubitReleasedEvent(Event):
         qubit: MemoryQubit,
         *,
         t: Time,
-        old_key: str | None = None,
+        is_decoh=False,
     ):
-        super().__init__(t, f"addr={qubit.addr} key={old_key}")
+        super().__init__(t, f"addr={qubit.addr} key={qubit.key}")
         self.node = node
         self.qubit = qubit
+        self.is_decoh = is_decoh
         assert self.qubit.state is QubitState.RELEASE, f"unexpected state {self.qubit.state}"
 
     @override
