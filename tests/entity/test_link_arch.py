@@ -79,8 +79,9 @@ def make_epr(link_arch: LinkArch, t_cohere: Time):
 
     _ = Simulator(accuracy=ACCURACY, install_to=(src, dst))
 
-    epr, d_notify_a, d_notify_b = link_arch.make_epr(1, EPR_TIME, key="K", src=src, dst=dst)
-    assert (epr.key, epr.src, epr.dst) == ("K", src, dst)
+    epr, d_notify_a, d_notify_b = link_arch.make_epr(1, EPR_TIME, src=src, dst=dst, key=None)
+    assert epr.src is src
+    assert epr.dst is dst
     return epr, d_notify_a, d_notify_b
 
 

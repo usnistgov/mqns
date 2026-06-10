@@ -160,10 +160,7 @@ class Scenario:
 
 def _mux_statistical() -> MuxScheme:
     # select_swap_qubit: Function to select a qubit to swap with, default is first.
-    # select_path: Function to select a FIB entry for signaling after swap, default is random.
-    return MuxSchemeStatistical(
-        select_swap_qubit=MuxSchemeStatistical.SelectSwapQubit_random, select_path=MuxSchemeStatistical.SelectPath_random
-    )
+    return MuxSchemeStatistical(select_swap_qubit=MuxSchemeStatistical.SelectSwapQubit_random)
 
 
 def _mux_buffer_space() -> MuxScheme:

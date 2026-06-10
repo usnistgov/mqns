@@ -47,7 +47,7 @@ class ReactiveForwarder(Forwarder):
         """
         for ch in self.node.qchannels:
             if self.node == ch.node_list[0]:  # self is the EPR initiator node for this channel
-                log.debug(f"{self.node}: activate qchannel {ch.name}")
+                log.debug(f"{self}: activate qchannel {ch.name}")
                 self.simulator.add_event(
                     ManageActiveChannels(
                         self.node,
@@ -78,7 +78,7 @@ class ReactiveForwarder(Forwarder):
 
         match event.action:
             case TimingPhase.ROUTING, True:
-                log.debug(f"{self.node}: send link_state for {len(self.waiting_etg)} etg qubits")
+                log.debug(f"{self}: send link_state for {len(self.waiting_etg)} etg qubits")
                 self.send_link_state()
             case TimingPhase.INTERNAL, False:
                 self.memory.deallocate(*(qubit.addr for qubit, _ in self.memory.find(lambda q, _: q.path_id is not None)))
@@ -94,7 +94,7 @@ class ReactiveForwarder(Forwarder):
             raise ValueError("ReactiveForwarder should not receive UNINSTALL_PATH command")
         if not self.node.timing.is_routing():
             log.warning(
-                f"{self.node}: received INSTALL_PATH message for path {path_id} outside of ROUTING phase; t_rtg is too short?"
+                f"{self}: received INSTALL_PATH message for path {path_id} outside of ROUTING phase; t_rtg is too short?"
             )
 
     def send_link_state(self):
@@ -103,11 +103,11 @@ class ReactiveForwarder(Forwarder):
         """
         link_states: list[LinkStateEntry] = []
         for event in self.waiting_etg:
-            assert event.qubit.active is not None
-            link_states.append({"node": event.node.name, "neighbor": event.neighbor.name, "qubit": event.qubit.active})
+            assert event.qubit.key is not None
+            link_states.append({"node": event.node.name, "neighbor": event.neighbor.name, "qubit": event.qubit.key})
 
         if len(link_states) == 0:
-            log.debug(f"{self.node}: no link_state to send")
+            log.debug(f"{self}: no link_state to send")
             return
 
         msg: LinkStateMsg = {

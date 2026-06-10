@@ -1,6 +1,6 @@
 from collections import defaultdict
-from collections.abc import Callable, Iterable, Set
-from typing import TYPE_CHECKING, override
+from collections.abc import Callable
+from typing import TYPE_CHECKING, cast, override
 
 from mqns.entity.memory import MemoryQubit, PathDirection, QubitState
 from mqns.entity.node import QNode
@@ -9,30 +9,10 @@ from mqns.models.epr import Entanglement
 from mqns.network.fw.fib import FibEntry
 from mqns.network.fw.message import PathInstructions, validate_path_instructions
 from mqns.network.fw.mux import MuxScheme
-from mqns.network.fw.select import MemoryEprIterator, MemoryEprTuple
-from mqns.utils import log, rng
+from mqns.network.fw.select import MemoryEprIterator, MemoryEprTuple, call_select, select_random
 
 if TYPE_CHECKING:
     from mqns.network.fw.forwarder import Forwarder
-
-
-def has_intersect_tmp_path_ids(epr0: Set[int] | None, epr1: Iterable[int] | None) -> bool:
-    """
-    Determine whether at least one path_id overlaps between tmp_path_ids sets in two EPRs.
-    """
-    return epr0 is not None and epr1 is not None and not epr0.isdisjoint(epr1)
-
-
-def intersect_tmp_path_ids(epr0: Entanglement, epr1: Entanglement) -> frozenset[int]:
-    """
-    Find overlapping path_ids between tmp_path_ids sets in two EPRs.
-    """
-    assert epr0.tmp_path_ids is not None
-    assert epr1.tmp_path_ids is not None
-    path_ids = epr0.tmp_path_ids.intersection(epr1.tmp_path_ids)
-    if not path_ids:
-        raise Exception(f"Cannot select path ID from {epr0.tmp_path_ids} and {epr1.tmp_path_ids}")
-    return path_ids
 
 
 class MuxSchemeDynamicBase(MuxScheme):
@@ -79,16 +59,11 @@ class MuxSchemeDynamicBase(MuxScheme):
     def qubit_has_path_id(self) -> bool:
         return False
 
-    def _qubit_is_entangled_0(self, qubit: MemoryQubit) -> list[int]:
-        assert qubit.path_id is None
-        assert qubit.qchannel is not None, f"{self.node}: No qubit-qchannel assignment. Not supported."
-
-        possible_path_ids = self.qchannel_paths_map.get(qubit.qchannel.name, [])
-        if not possible_path_ids:
-            log.debug(f"{self.node}: release entangled qubit {qubit.addr} due to uninstalled path")
-            self.fw.release_qubit(qubit, need_remove=True)
-
-        return possible_path_ids
+    @override
+    def list_qubit_epr_path_ids(self, mq: MemoryQubit) -> list[int]:
+        assert mq.path_id is None
+        assert mq.qchannel, f"{self.fw}: No qubit-qchannel assignment. Not supported."
+        return self.qchannel_paths_map.get(mq.qchannel.name, [])
 
 
 class MuxSchemeStatistical(MuxSchemeDynamicBase):
@@ -96,37 +71,38 @@ class MuxSchemeStatistical(MuxSchemeDynamicBase):
     Statistical multiplexing scheme.
     """
 
-    type SelectSwapQubit = Callable[["Forwarder", MemoryEprTuple, list[MemoryEprTuple]], MemoryEprTuple]
+    type SelectSwapQubit = Callable[[list[MemoryEprTuple], "Forwarder", MemoryEprTuple], MemoryEprTuple]
 
-    SelectSwapQubit_random: SelectSwapQubit = lambda _fw, _mt, candidates: candidates[rng.choice(len(candidates))]
+    SelectSwapQubit_random: SelectSwapQubit = select_random
 
-    type SelectPath = Callable[["Forwarder", Entanglement, Entanglement, list[int]], int | FibEntry]
+    type SelectPath = Callable[[list[int], "Forwarder", Entanglement, Entanglement], int | FibEntry]
 
-    SelectPath_random: SelectPath = lambda _fw, _e0, _e1, candidates: candidates[rng.choice(len(candidates))]
+    SelectPath_random: SelectPath = select_random
 
     def __init__(
         self,
         name="statistical multiplexing",
         *,
         select_swap_qubit: SelectSwapQubit | None = None,
-        select_path: SelectPath = SelectPath_random,
         coordinated_decisions=False,
+        select_path: SelectPath | None = None,
     ):
         """
         Args:
             select_swap_qubit: Function to select a qubit to swap with, default is first.
-            select_path: Function to select a FIB entry for signaling after swap, default is random.
             coordinated_decisions:
                 If True, during a parallel swap, the path_id chosen at one node for selecting swap candidates
                 is instantly visible at other nodes. This behavior is physically unrealistic. It is implemented
                 for comparison purpose.
                 If False (default), during a parallel swap, each node selects swap candidates independently,
                 and then discards unusable entanglements due to conflictual swap decisions.
+            select_path: Function to select a path (FIB entry) to swap into, default is first.
+                This has no effect unless coordinated_decisions is True.
         """
         super().__init__(name)
         self._select_swap_qubit = select_swap_qubit
-        self._select_path = select_path
         self.coordinated_decisions = coordinated_decisions
+        self._select_path = select_path
 
     @override
     def validate_path_instructions(self, instructions: PathInstructions):
@@ -141,96 +117,64 @@ class MuxSchemeStatistical(MuxSchemeDynamicBase):
         assert all((r == 0 for r in instructions["purif"].values()))
 
     @override
-    def qubit_is_entangled(self, qubit: MemoryQubit, epr: Entanglement, neighbor: QNode) -> None:
-        possible_path_ids = frozenset(self._qubit_is_entangled_0(qubit))
-        if not possible_path_ids:  # all paths on the channel have been uninstalled
-            return
+    def qubit_is_entangled(self, mq: MemoryQubit, epr: Entanglement, neighbor: QNode) -> FibEntry | None:
+        if self.coordinated_decisions and epr.affectionated_path_id >= 0:
+            assert epr.affectionated_path_id in cast(list[int], mq.epr_path_ids)
+            mq.epr_path_ids = [epr.affectionated_path_id]
 
-        log.debug(f"{self.node}: qubit {qubit} has tmp_path_ids {possible_path_ids}")
-        if epr.tmp_path_ids is None:
-            epr.tmp_path_ids = possible_path_ids
-        elif self.coordinated_decisions:
-            assert epr.tmp_path_ids.issubset(possible_path_ids)
-        else:
-            # Assuming both primary and secondary nodes in an elementary EPR have the same path instructions,
-            # both nodes should have the same qchannel_paths_map and thus derive the same tmp_path_ids.
-            assert epr.tmp_path_ids == possible_path_ids
-
-        if self._can_enter_purif(epr, neighbor):
-            qubit.state = QubitState.PURIF
-
-            # purif scheme is empty, as checked in validate_path_instructions
-            log.debug(f"{self.node}: no FIB associated to qubit -> set eligible")
-            qubit.state = QubitState.ELIGIBLE
-            self.fw.qubit_is_eligible(qubit, None)
-
-    def _can_enter_purif(self, epr: Entanglement, neighbor: QNode) -> bool:
         def calc_rank_diff(path_id: int):
             fib_entry = self.fib.get(path_id)
             _, p_rank = fib_entry.find_index_and_swap_rank(neighbor.name)
             return fib_entry.own_swap_rank - p_rank
 
-        assert epr.tmp_path_ids is not None
-        rank_diff = [calc_rank_diff(path_id) for path_id in epr.tmp_path_ids]
+        rank_diff = [calc_rank_diff(path_id) for path_id in cast(list[int], mq.epr_path_ids)]
         assert min(rank_diff) == max(rank_diff)  # failure means one route is a substring of another route, unsupported
-        return rank_diff[0] <= 0
+        if rank_diff[0] > 0:
+            # Own node has higher rank and cannot initiate swap; qubit stays in ENTANGLED1 state.
+            return None
+
+        # Own node has lower/equal rank and can initiate swap.
+        mq.state = QubitState.PURIF
+        # Without FIB entry, purification scheme cannot be specified, set ELIGIBLE for swapping right away.
+        mq.state = QubitState.ELIGIBLE
+        return None
 
     @override
     def find_swap_candidate(
-        self, qubit: MemoryQubit, epr: Entanglement, fib_entry: FibEntry | None, input: MemoryEprIterator
+        self, mq0: MemoryQubit, epr0: Entanglement, fib_entry: FibEntry | None, input: MemoryEprIterator
     ) -> tuple[MemoryQubit, FibEntry] | None:
-        assert qubit.qchannel is not None
+        mq0_path_ids = set(cast(list[int], mq0.epr_path_ids))
 
-        # find qchannels whose qubits may be used with this qubit
-        # use path_ids to look for acceptable qchannels for swapping, excluding the qubit's qchannel
-        matched_channels = {
-            channel
-            for channel, path_ids in self.qchannel_paths_map.items()
-            if channel != qubit.qchannel.name and has_intersect_tmp_path_ids(epr.tmp_path_ids, path_ids)
-        }
-
-        # find another qubit to swap with
-        candidates = (
-            (q, v)
-            for (q, v) in input
-            if (q.qchannel is not None and q.qchannel.name in matched_channels)  # assigned to a matched channel
-            and has_intersect_tmp_path_ids(epr.tmp_path_ids, v.tmp_path_ids)  # has overlapping tmp_path_ids
+        # Find another qubit to swap with.
+        # The qubit must have overlapping epr_path_ids so that there would be one or more viable paths.
+        # In coordinated_decision mode, the physical path_id (written by parallel swapping) must also match.
+        mt1 = call_select(
+            (
+                (q, v)
+                for (q, v) in input
+                if not mq0_path_ids.isdisjoint(cast(list[int], q.epr_path_ids))  # has overlapping epr_path_ids
+                and (not self.coordinated_decisions or v.affectionated_path_id < 0 or v.affectionated_path_id in mq0_path_ids)
+            ),
+            self._select_swap_qubit,
+            self.fw,
+            (mq0, epr0),
         )
-        mt1 = self._select_swap_candidate((qubit, epr), candidates)
         if mt1 is None:
             return None
         mq1, epr1 = mt1
         assert type(epr1) is self.fw.epr_type
 
-        # select a FIB entry to guide swap updates
-        selected_path = self._select_path(self.fw, epr, epr1, list(intersect_tmp_path_ids(epr, epr1)))
+        # Select a FIB entry to guide swap updates initially, but the ForwarderSwapProc could pivot as needed.
+        # In coordinated_decision mode, the chosen FIB entry is locked onto EPRs and visible to other nodes.
+        selected_path = call_select(
+            sorted(mq0_path_ids.intersection(cast(list[int], mq1.epr_path_ids))),
+            self._select_path,
+            self.fw,
+            epr0,
+            epr1,
+        )
+        assert selected_path is not None
         fib_entry = selected_path if type(selected_path) is FibEntry else self.fib.get(selected_path)
         if self.coordinated_decisions:
-            epr.tmp_path_ids = epr1.tmp_path_ids = frozenset([fib_entry.path_id])
+            epr0.affectionated_path_id = epr1.affectionated_path_id = fib_entry.path_id
         return mq1, fib_entry
-
-    def _select_swap_candidate(self, mt0: MemoryEprTuple, candidates: MemoryEprIterator) -> MemoryEprTuple | None:
-        if self._select_swap_qubit is None:
-            return next(candidates, None)
-
-        l = list(candidates)
-        if len(l) == 0:
-            return None
-        return self._select_swap_qubit(self.fw, mt0, l)
-
-    @override
-    def swapping_succeeded(self, prev_epr: Entanglement, next_epr: Entanglement, new_epr: Entanglement) -> None:
-        new_epr.tmp_path_ids = intersect_tmp_path_ids(prev_epr, next_epr)
-
-    @override
-    def su_parallel_has_conflict(self, my_new_epr: Entanglement, su_path_id: int) -> bool:
-        assert my_new_epr.tmp_path_ids is not None
-        if su_path_id not in my_new_epr.tmp_path_ids:
-            assert not self.coordinated_decisions
-            log.debug(f"{self.node}: Conflictual parallel swapping in statistical mux -> silently ignore")
-            return True
-        return False
-
-    @override
-    def su_parallel_succeeded(self, merged_epr: Entanglement, new_epr: Entanglement, other_epr: Entanglement) -> None:
-        merged_epr.tmp_path_ids = intersect_tmp_path_ids(new_epr, other_epr)

@@ -28,15 +28,14 @@ from mqns.network.network import TimingPhase, TimingPhaseEvent
 from mqns.network.protocol.event import (
     LinkArchSuccessEvent,
     ManageActiveChannels,
-    QubitDecoheredEvent,
     QubitEntangledEvent,
     QubitReleasedEvent,
 )
-from mqns.utils import json_encodable, log, rng
+from mqns.utils import AutoIncrementIdentifier, json_encodable, log, rng
 
-_AUTOID = 0
+_AUTOID = AutoIncrementIdentifier("llk_")
 """
-Automatically assigned ``ReservationRequest.key`` numeric portion.
+Automatically assigned ``ReservationRequest.key`` name.
 """
 
 
@@ -172,7 +171,7 @@ class LinkLayer(Application[QNode]):
         self.add_handler(self.RecvClassicPacketHandler, RecvClassicPacket)
         self.add_handler(self.handle_manage_active_channels, ManageActiveChannels)
         self.add_handler(self.handle_success_entangle, LinkArchSuccessEvent)
-        self.add_handler(self.handle_decoh_rel, (QubitDecoheredEvent, QubitReleasedEvent))
+        self.add_handler(self.handle_release, QubitReleasedEvent)
 
     @override
     def install(self, node):
@@ -258,10 +257,10 @@ class LinkLayer(Application[QNode]):
         )
 
         epr_tpl, t_notify_a, t_notify_b = qchannel.link_arch.make_epr(
-            1, self.simulator.ts, key=None, src=self.node, dst=neighbor
+            1, self.simulator.ts, src=self.node, dst=neighbor, key=None
         )
         log.debug(
-            f"{self.node}: add qchannel {qchannel} with {neighbor} on path {path_id}, "
+            f"{self}: add qchannel {qchannel} with {neighbor} on path {path_id}, "
             f"link arch {qchannel.link_arch.name}, "
             f"EPR template {epr_tpl} t_notify_a={t_notify_a} t_notify_b={t_notify_b}"
         )
@@ -276,7 +275,7 @@ class LinkLayer(Application[QNode]):
 
         if n == 0:
             del self.active_channels[key]
-            log.debug(f"{self.node}: remove qchannel {qchannel} with {neighbor} on path {path_id}")
+            log.debug(f"{self}: remove qchannel {qchannel} with {neighbor} on path {path_id}")
         else:
             self.active_channels[key] = (neighbor, n)
 
@@ -296,12 +295,12 @@ class LinkLayer(Application[QNode]):
 
         """
         qubits = list(self.memory.find(lambda *_: True, qchannel=qchannel))
-        log.debug(f"{self.node}: {qchannel.name} has assigned qubits: {qubits}")
+        log.debug(f"{self}: {qchannel.name} has assigned qubits: {qubits}")
         for qb, data in qubits:
             if qb.path_id != path_id or qb.state is not QubitState.RAW:
                 continue
-            assert qb.active is None
-            assert data is None, f"{self.node}: qubit {qb} has data {data}"
+            assert qb.key is None
+            assert data is None, f"{self}: qubit {qb} has data {data}"
             self.start_reservation(next_hop, qchannel, qb)
 
     def start_reservation(self, next_hop: QNode, qchannel: QuantumChannel, qubit: MemoryQubit):
@@ -328,14 +327,11 @@ class LinkLayer(Application[QNode]):
               Key format: ``<node1>_<node2>_[<path_id>]_<local_qubit_addr>``
             - The reservation is communicated via a classical message using the ``RESERVE_QUBIT`` command.
         """
-        global _AUTOID
-        key = f"llk_{_AUTOID:028x}"
-        _AUTOID += 1
-        assert key not in self.pending_init_reservation
+        key = _AUTOID()
 
-        qubit.state, qubit.active = QubitState.ACTIVE, key
+        qubit.state, qubit.key = QubitState.ACTIVE, key
         self.pending_init_reservation[key] = (qchannel, next_hop, qubit)
-        log.debug(f"{self.node}: start reservation key={key} dst={next_hop} addr={qubit.addr} path={qubit.path_id}")
+        log.debug(f"{self}: start reservation key={key} dst={next_hop} addr={qubit.addr} path={qubit.path_id}")
 
         msg: ReserveMsg = {"cmd": "RESERVE_QUBIT", "path_id": qubit.path_id, "key": key}
         self.node.send_cpacket(next_hop, ClassicPacket(msg, src=self.node, dest=next_hop))
@@ -351,7 +347,7 @@ class LinkLayer(Application[QNode]):
         key = msg["key"]
 
         if not self.node.timing.is_external():
-            log.debug(f"{self.node}: ignore reservation request key={key} reason=not-external-phase")
+            log.debug(f"{self}: ignore reservation request key={key} reason=not-external-phase")
             return
 
         from_node = cchannel.find_peer(self.node)
@@ -373,9 +369,8 @@ class LinkLayer(Application[QNode]):
         """
         qubit, _ = next(
             self.memory.find(
-                lambda q, v: (
-                    v is None  # currently unoccupied
-                    and not q.active  # not part of an active reservation
+                lambda q, _: (
+                    q.state is QubitState.RAW  # currently unoccupied and not part of an active reservation
                     and q.path_id == req.path_id  # allocated to the path_id, if MuxScheme uses path_id
                 ),
                 qchannel=req.qchannel,  # assigned to the quantum channel
@@ -385,9 +380,10 @@ class LinkLayer(Application[QNode]):
         if qubit is None:
             return False
 
-        log.debug(f"{self.node}: accept reservation key={req.key} src={req.from_node} addr={qubit.addr} path={qubit.path_id}")
+        log.debug(f"{self}: accept reservation key={req.key} src={req.from_node} addr={qubit.addr} path={qubit.path_id}")
         qubit.state = QubitState.ACTIVE  # cannot go directly from RAW to RESERVED
-        qubit.state, qubit.active = QubitState.RESERVED, req.key
+        qubit.state = QubitState.RESERVED
+        qubit.key = req.key
         msg: ReserveMsg = {"cmd": "RESERVE_QUBIT_OK", "path_id": req.path_id, "key": req.key}
         req.cchannel.send(ClassicPacket(msg, src=self.node, dest=req.from_node), next_hop=req.from_node)
         return True
@@ -400,11 +396,11 @@ class LinkLayer(Application[QNode]):
         """
         key = msg["key"]
         if not self.node.timing.is_external():
-            log.debug(f"{self.node}: ignore reservation response key={key} reason=not-external-phase")
+            log.debug(f"{self}: ignore reservation response key={key} reason=not-external-phase")
             return
 
         (qchannel, next_hop, qubit) = self.pending_init_reservation.pop(key)
-        assert qubit.active == key
+        assert qubit.key == key
         qubit.state = QubitState.RESERVED
         self.generate_entanglement(qchannel, next_hop, qubit)
 
@@ -417,33 +413,31 @@ class LinkLayer(Application[QNode]):
             next_hop: The neighboring node with which the entanglement is attempted.
             qubit: The memory qubit used for this attempt.
         """
+        key = qubit.key
+        assert key
+
         # Calculate which attempt would succeed.
         k = rng.geometric(qchannel.link_arch.success_prob)
 
         # Calculate when would the k-th attempt (1-based) succeed.
         # TODO space out EPRs on a qchannel by attempt_interval or qchannel.bandwidth
-        epr, t_notify_a, t_notify_b = qchannel.link_arch.make_epr(
-            k, self.simulator.tc, key=qubit.active, src=self.node, dst=next_hop
-        )
+        epr, t_notify_a, t_notify_b = qchannel.link_arch.make_epr(k, self.simulator.tc, src=self.node, dst=next_hop, key=key)
 
         # If the network uses SYNC timing mode but the successful attempt would exceed the current EXTERNAL phase,
         # the EPR would not arrive in time, and therefore is not scheduled.
         if not self.node.timing.is_external(max(t_notify_a, t_notify_b)):
             log.debug(
-                f"{self.node}: skip prepare EPR {epr.name} key={epr.key} dst={epr.dst} attempts={k} "
+                f"{self}: skip prepare EPR {epr.name} key={key} dst={epr.dst} attempts={k} "
                 f"notify-times={t_notify_a},{t_notify_b} reason=beyond-external-phase"
             )
             return
 
         # If the network uses ASYNC timing mode or the successful attempt can complete within the current EXTERNAL phase,
         # schedule the EPR arrival on both nodes via LinkArchSuccessEvents.
-        log.debug(
-            f"{self.node}: prepare EPR {epr.name} key={epr.key} dst={epr.dst} attempts={k} "
-            f"notify-times={t_notify_a},{t_notify_b}"
-        )
+        log.debug(f"{self}: prepare EPR {epr.name} key={key} dst={epr.dst} attempts={k} notify-times={t_notify_a},{t_notify_b}")
 
-        self.simulator.add_event(LinkArchSuccessEvent(self.node, epr, t=t_notify_a, attempts=k))
-        self.simulator.add_event(LinkArchSuccessEvent(next_hop, epr, t=t_notify_b, attempts=k))
+        self.simulator.add_event(LinkArchSuccessEvent(self.node, key, epr, t=t_notify_a, attempts=k))
+        self.simulator.add_event(LinkArchSuccessEvent(next_hop, key, epr, t=t_notify_b, attempts=k))
 
     def handle_success_entangle(self, event: LinkArchSuccessEvent):
         assert self.node.timing.is_external()
@@ -454,22 +448,23 @@ class LinkLayer(Application[QNode]):
         if is_primary:
             self.cnt.increment_n_etg(event.attempts)
 
-        log.debug(f"{self.node}: got half-EPR {epr.name} key={epr.key} {'dst' if is_primary else 'src'}={neighbor}")
-        assert epr.decohere_time > self.simulator.tc
-
-        qubit = self.memory.write(epr.key, epr)
+        qubit = self.memory.write(event.key, epr)
         if qubit is None:
-            raise Exception(f"{self.node}: Failed to store EPR {epr.name}")
+            raise Exception(f"{self}: Failed to store EPR at key={event.key}")
+
+        log.debug(
+            f"{self}: got half-EPR {epr.name} key={event.key} {'dst' if is_primary else 'src'}={neighbor} "
+            f"addr={qubit.addr} path={qubit.path_id}"
+        )
+        assert epr.decohere_time > self.simulator.tc
 
         qubit.state = QubitState.ENTANGLED0
         self.simulator.add_event(QubitEntangledEvent(self.node, neighbor, qubit, t=self.simulator.tc))
 
-    def handle_decoh_rel(self, event: QubitDecoheredEvent | QubitReleasedEvent) -> bool:
-        is_decoh = type(event) is QubitDecoheredEvent
-
+    def handle_release(self, event: QubitReleasedEvent) -> bool:
         qubit = event.qubit
-        log.debug(f"{self.node}: qubit {'decohered' if is_decoh else 'released'} addr={qubit.addr} old-key={qubit.active}")
-        qubit.state, qubit.active = QubitState.RAW, None
+        log.debug(f"{self}: {event}")
+        qubit.state = QubitState.RAW
 
         assert qubit.qchannel is not None
         ac = self.active_channels.get((qubit.qchannel, qubit.path_id))
@@ -485,14 +480,11 @@ class LinkLayer(Application[QNode]):
             return True
 
         # primary node
-        if is_decoh:
+        if event.is_decoh:
             self.cnt.n_decoh += 1
 
         next_hop, _ = ac
         if self.node.timing.is_async():
             self.start_reservation(next_hop, qubit.qchannel, qubit)
-        # SYNC timing mode
-        elif is_decoh:
-            raise RuntimeError(f"{self.node}: unexpected QubitDecoheredEvent in SYNC timing mode, (t_ext+t_int) too high")
 
         return True

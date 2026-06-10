@@ -1,11 +1,11 @@
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, override
+from typing import TYPE_CHECKING, final, override
 
 from mqns.entity.memory import MemoryQubit
 from mqns.entity.node import QNode
 from mqns.network.fw.fib import FibEntry
 from mqns.network.fw.message import CutoffDiscardMsg
-from mqns.simulator import Simulator, func_to_event
+from mqns.simulator import Event, Simulator, Time
 from mqns.utils import log
 
 if TYPE_CHECKING:
@@ -54,22 +54,22 @@ class CutoffScheme(ABC):
         """
         fw = self.fw
 
-        # find EPR partner
-        _, epr = fw.memory.read(qubit.addr, has=self.fw.epr_type, set_fidelity=True, remove=True)
-        partner = epr.dst if epr.src == self.node else epr.src
-        assert partner is not None
+        # Find EPR partner.
+        assert qubit.partner
+        partner, p_key = qubit.partner
+        log.debug(
+            f"{self.fw}: local cutoff discard key={qubit.key} addr={qubit.addr} round={round} partner={partner.name}:{p_key}"
+        )
 
-        log.debug(f"{self.node}: local cutoff discard epr={epr.name} addr={qubit.addr} round={round} partner={partner.name}")
-
-        # discard primary qubit
+        # Discard primary qubit.
         fw.cnt.increment_n_cutoff(round, True)
-        fw.release_qubit(qubit)
+        fw.release_qubit(qubit, need_remove=True)
 
-        # ask partner to discard secondary qubit
+        # Ask partner to discard secondary qubit.
         msg: CutoffDiscardMsg = {
             "cmd": "CUTOFF_DISCARD",
             "path_id": fib_entry.path_id,
-            "epr": epr.name,
+            "key": p_key,
             "round": round,
         }
         fw.send_msg(partner, msg, fib_entry)
@@ -81,44 +81,60 @@ class CutoffScheme(ABC):
         This is called by ProactiveForwarder upon receiving a CUTOFF_DISCARD message.
         """
         fw = self.fw
-        epr_name = msg["epr"]
+        o_key = msg["key"]
         round = msg["round"]
 
-        # find qubit
-        qm_tuple = fw.memory.read(epr_name, remove=True)
+        # Find qubit.
+        qm_tuple = fw.memory.read(o_key, remove=True)
         if qm_tuple is None:
-            log.debug(f"{self.node}: remote cutoff discard epr={epr_name} not exist")
+            log.debug(f"{self.fw}: remote cutoff discard key={o_key} not exist")
             return
         qubit, _ = qm_tuple
-        log.debug(f"{self.node}: remote cutoff discard epr={epr_name} addr={qubit.addr} round={round}")
+        log.debug(f"{self.fw}: remote cutoff discard key={o_key} addr={qubit.addr} round={round}")
 
-        # discard secondary qubit
+        # Discard secondary qubit.
         fw.cnt.increment_n_cutoff(round, False)
         fw.release_qubit(qubit)
 
     @abstractmethod
-    def qubit_is_eligible(self, qubit: MemoryQubit, fib_entry: FibEntry | None) -> None:
+    def before_store_eligible(self, mq: MemoryQubit, fib_entry: FibEntry | None) -> None:
         """
-        Handle a qubit that has become ELIGIBLE for swapping.
-        The qubit would not be consumed.
-        """
-
-    @abstractmethod
-    def filter_swap_candidate(self, qubit: MemoryQubit) -> bool:
-        """
-        Determine whether a qubit can be used as swap candidate.
+        Handle an ELIGIBLE qubit stored for future swapping.
         """
 
     @abstractmethod
-    def before_swap(self, mq0: MemoryQubit, mq1: MemoryQubit | None, fib_entry: FibEntry | None) -> None:
+    def before_swap(self, mq0: MemoryQubit, mq1: MemoryQubit, fib_entry: FibEntry | None) -> None:
         """
-        Handle a pair of qubits before swapping, or one qubits stored for future swapping.
-        This should be invoked in the same time_slot as qubit_is_eligible.
+        Handle a pair of ELIGIBLE qubits before swapping.
 
         Args:
-            mq0: Newly eligible qubit.
-            mq1: If None, mq0 is stored; otherwise, mq0-mq1 will swap.
+            mq0: Newly arrived qubit.
+            mq1: Existing qubit chosen from memory.
         """
+
+
+@final
+class CutoffDiscardEvent(Event):
+    def __init__(
+        self,
+        cutoff: CutoffScheme,
+        qubit: MemoryQubit,
+        fib_entry: FibEntry,
+        *,
+        t: Time,
+        round: int,
+        eligible_t: Time,
+    ):
+        super().__init__(t, f"addr={qubit.addr} key={qubit.key}")
+        self.cutoff = cutoff
+        self.qubit = qubit
+        self.fib_entry = fib_entry
+        self.round = round
+        self.eligible_t = eligible_t
+
+    @override
+    def invoke(self) -> None:
+        self.cutoff.initiate_discard(self.qubit, self.fib_entry, round=self.round)
 
 
 class CutoffSchemeWaitTimeCounters:
@@ -139,8 +155,9 @@ class CutoffSchemeWaitTime(CutoffScheme):
     The controller provides these wait-time budgets in ``PathInstructions.swap_cutoff`` field.
 
     Each node individually tracks how long an EPR has been waiting in memory until it can be swapped.
-    If an EPR has waited for more than the budget at this node, it cannot be used in a swap and should
+    If an EPR has waited for more than the budget at this node, it cannot be used in a swap and would
     be released to make room for a new EPR.
+    Note that ``swap_delay`` does not count against the wait budget.
     """
 
     def __init__(self, name="wait-time"):
@@ -149,42 +166,20 @@ class CutoffSchemeWaitTime(CutoffScheme):
         self.cnt = CutoffSchemeWaitTimeCounters()
 
     @override
-    def qubit_is_eligible(self, qubit: MemoryQubit, fib_entry: FibEntry | None) -> None:
-        qubit.cutoff = None
-
-        if fib_entry is None:
-            return
-        wait_budget = fib_entry.swap_cutoff[fib_entry.own_idx]
-        if wait_budget is None:
+    def before_store_eligible(self, mq: MemoryQubit, fib_entry: FibEntry | None) -> None:
+        if not fib_entry or (wait_budget := fib_entry.swap_cutoff[fib_entry.own_idx]) is None:
             return
 
         now = self.simulator.tc
         deadline = now + wait_budget
-        qubit.cutoff = (now, deadline)
+        self.simulator.add_event(event := CutoffDiscardEvent(self, mq, fib_entry, round=-1, eligible_t=now, t=deadline))
+        mq.events.add(event)
 
     @override
-    def filter_swap_candidate(self, qubit: MemoryQubit) -> bool:
-        return qubit.cutoff is None or qubit.cutoff[1] >= self.simulator.tc
+    def before_swap(self, mq0: MemoryQubit, mq1: MemoryQubit, fib_entry: FibEntry | None) -> None:
+        _ = fib_entry
+        assert mq0.events.get(CutoffDiscardEvent) is None
 
-    @override
-    def before_swap(self, mq0: MemoryQubit, mq1: MemoryQubit | None, fib_entry: FibEntry | None) -> None:
-        if mq0.cutoff is None:
-            return
-        assert fib_entry is not None
-
-        now, deadline = mq0.cutoff
-        if mq1 is None:
-            discard_event = func_to_event(deadline, self.initiate_discard, mq0, fib_entry)
-            mq0.set_event(CutoffSchemeWaitTime, discard_event)
-            self.simulator.add_event(discard_event)
-            return
-
-        if mq1.cutoff is None:
-            return
-
-        if self.cnt.wait_values is not None:
-            t0, _ = mq1.cutoff
-            self.cnt.wait_values.append((now - t0).time_slot)
-
-        mq1.set_event(CutoffSchemeWaitTime, None)
-        mq1.cutoff = None
+        event = mq1.events.discard(CutoffDiscardEvent)
+        if event and self.cnt.wait_values is not None:
+            self.cnt.wait_values.append((self.simulator.tc - event.eligible_t).time_slot)

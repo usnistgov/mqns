@@ -93,3 +93,14 @@ class Application[N: "Node"](ABC):
         for et in cast(Iterable[type[E]], ets):
             assert getattr(et, "__final__", False) is True, f"event type {et} must be marked @final"
             self._dispatch_table[et].append(eh)
+
+    def __repr__(self: Any) -> str:
+        """
+        Represent self as "<Type node-name>".
+
+        This may be reused on any type that has an optional ``.node`` member.
+        """
+        try:
+            return f"<{type(self).__name__} {self.node.name}>"
+        except AttributeError:  # self.node does not exist before .install()
+            return object.__repr__(self)

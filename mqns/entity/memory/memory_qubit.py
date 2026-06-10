@@ -19,8 +19,9 @@
 from collections.abc import Iterable
 from enum import Enum, auto
 
+from mqns.entity.node import QNode
 from mqns.entity.qchannel import QuantumChannel
-from mqns.simulator import Event, Time
+from mqns.simulator import EventHandleSet
 
 
 class QubitState(Enum):
@@ -109,71 +110,74 @@ class PathDirection(Enum):
 class MemoryQubit:
     """An addressable qubit in memory, with a lifecycle."""
 
+    addr: int
+    """Address index in QuantumMemory."""
+
+    qchannel: QuantumChannel | None = None
+    """QuantumChannel to which qubit is assigned to."""
+    path_id: int | None = None
+    """Optional path ID to which qubit is allocated."""
+    path_direction: PathDirection | None = None
+    """Optional end of the path to which the allocated qubit points to (weak solution to avoid loops)."""
+
+    _state = QubitState.RAW
+
+    key: str | None = None
+    """
+    Qubit reservation key, used during entanglement.
+
+    This is set by ``LinkLayer`` and remains unchanged until the qubit is released.
+    It is a consistent identifier for a qubit that contains a particular qstate and its swapped/purified forms.
+    """
+    partner: tuple[QNode, str] | None = None
+    """
+    Partner node and partner qubit reservation key, if the qubit contains an entanglement.
+
+    This is set by ``Forwarder`` upon entanglement and when completing a swap rank sequentially.
+    It is invalid during parallel swap within a rank.
+
+    Note: this is a ``list`` instead of a ``set``, to ensure deterministic simulation.
+    """
+    epr_path_ids: list[int] | None = None
+    """
+    Which paths are compatible with the currently stored entanglement.
+    """
+    purif_rounds = 0
+    """Number of purification rounds completed by the EPR stored on this qubit."""
+
+    events: EventHandleSet
+    """Events that are canceled upon reaching RELEASE state."""
+
     def __init__(self, addr: int):
-        """
-        Args:
-            addr: address of this qubit in memory
-        """
         self.addr = addr
-        """Address index in QuantumMemory."""
-
-        self.qchannel: QuantumChannel | None = None
-        """qchannel to which qubit is assigned to (currently only at topology creation time)"""
-        self.path_id: int | None = None
-        """Optional path ID to which qubit is allocated"""
-        self.path_direction: PathDirection | None = None
-        """Optional end of the path to which the allocated qubit points to (weak solution to avoid loops)"""
-
-        self._state = QubitState.RAW
-        """state of the qubit according to the FSM"""
-        self.active: str | None = None
-        """Reservation key if qubit is reserved for entanglement, None otherwise"""
-        self.purif_rounds = 0
-        """Number of purification rounds currently completed by the EPR stored on this qubit"""
-        self.cutoff: tuple[Time, Time] | None = None
-        """Timestamps used by CutoffScheme"""
-
-        self._events: dict[type, Event] = {}
+        self.events = EventHandleSet()
 
     @property
     def state(self) -> QubitState:
+        """State of the qubit according to the FSM."""
         return self._state
 
     @state.setter
     def state(self, value: QubitState) -> None:
-        if value == self._state:
+        if value is self._state:
             return
         if value not in ALLOWED_STATE_TRANSITIONS[self._state]:
             raise ValueError(f"MemoryQubit: unexpected state transition from <{self._state}> to <{value}>; {self}")
-        self._state = value
-        if value is QubitState.RELEASE:
-            self._clear_events()
 
-    def reset_state(self) -> None:
-        """Reset state to RAW and clear associated fields."""
-        self._state = QubitState.RAW
-        self.active = None
-        self.purif_rounds = 0
-        self._clear_events()
+        if value in (QubitState.RAW, QubitState.RELEASE):
+            self.reset_state(value)
+        else:
+            self._state = value
 
-    def set_event(self, owner: type, new_event: Event | None) -> None:
-        """
-        Associate an event with the qubit that would be canceled upon entering RELEASE state.
-
-        Args:
-            owner: Owner type, such as ``QuantumMemory``. Existing event of the same owner is canceled.
-            new_event: New event to store, or ``None`` to cancel existing event only.
-        """
-        old_event = self._events.pop(owner, None)
-        if old_event is not None:
-            old_event.cancel()
-        if new_event is not None and not new_event.is_canceled:
-            self._events[owner] = new_event
-
-    def _clear_events(self):
-        for old_event in self._events.values():
-            old_event.cancel()
-        self._events.clear()
+    def reset_state(self, state: QubitState) -> None:
+        """Reset state to RELEASE/RAW and clear associated fields."""
+        self._state = state
+        self.events.clear()
+        if state is QubitState.RAW:
+            self.key = None
+            self.partner = None
+            self.epr_path_ids = None
+            self.purif_rounds = 0
 
     def __repr__(self) -> str:
         return ", ".join(_describe(self)) + ")"
@@ -188,8 +192,13 @@ def _describe(mq: MemoryQubit) -> Iterable[str]:
         if mq.path_direction:
             yield f"path={mq.path_id}-{mq.path_direction.name}"
 
-    match mq._state:
-        case QubitState.ACTIVE | QubitState.RESERVED:
-            yield f"active={mq.active}"
-        case QubitState.PURIF | QubitState.PENDING | QubitState.ELIGIBLE | QubitState.SWAPPING:
-            yield f"purif_rounds={mq.purif_rounds}"
+    if mq.key:
+        yield f"key={mq.key}"
+    if mq.partner:
+        yield f"partner={mq.partner[0].name}:{mq.partner[1]}"
+
+    if mq.epr_path_ids:
+        yield f"epr-path-ids={mq.epr_path_ids}"
+
+    if mq._state in (QubitState.PURIF, QubitState.PENDING, QubitState.ELIGIBLE, QubitState.SWAPPING):
+        yield f"purif_rounds={mq.purif_rounds}"

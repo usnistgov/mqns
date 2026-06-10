@@ -28,6 +28,28 @@ if TYPE_CHECKING:
 
 
 @final
+class MemoryDecohereEvent(Event):
+    """Event sent by QuantumMemory to inform LinkLayer about a decohered qubit."""
+
+    def __init__(
+        self,
+        memory: "QuantumMemory",
+        qubit: MemoryQubit,
+        qm: QuantumModel,
+        *,
+        t: Time,
+    ):
+        super().__init__(t, f"addr={qubit.addr} key={qubit.key}")
+        self.memory = memory
+        self.qubit = qubit
+        self.qm = qm
+
+    @override
+    def invoke(self) -> None:
+        self.memory.handle(self)
+
+
+@final
 class MemoryReadRequestEvent(Event):
     """``MemoryReadRequestEvent`` is the event that request a memory read"""
 

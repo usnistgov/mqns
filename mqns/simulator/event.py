@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from typing import Any, override
+from typing import Any, cast, override
 
 from mqns.simulator.time import Time
 
@@ -44,7 +44,7 @@ class Event(ABC):
         return self.priority < other.priority
 
     def __repr__(self) -> str:
-        return f"Event({self.name or ''})"
+        return f"{type(self).__name__}({self.name or ''})"
 
 
 class WrapperEvent(Event):
@@ -71,3 +71,33 @@ def func_to_event(t: Time, fn: Callable, *args, **kwargs):
         **kwargs: the function's keyword parameters.
     """
     return WrapperEvent(t, fn, args, kwargs)
+
+
+class EventHandleSet:
+    """Type distinguished set of event handles with automatic cancellation."""
+
+    def __init__(self):
+        self._events: dict[type, Event] = {}
+
+    def get[T: Event](self, typ: type[T]) -> T | None:
+        """Retrieve event handle by type."""
+        return cast(T, self._events.get(typ))
+
+    def add(self, evt: Event) -> None:
+        """Insert event handle, cancel old event with same type."""
+        typ = type(evt)
+        self.discard(typ)
+        self._events[typ] = evt
+
+    def discard[T: Event](self, typ: type[T]) -> T | None:
+        """Cancel event of specified type if it exists."""
+        if (evt := self._events.pop(typ, None)) and not evt.is_canceled:
+            evt.cancel()
+            return cast(T, evt)
+        return None
+
+    def clear(self) -> None:
+        """Cancel all events."""
+        for evt in self._events.values():
+            evt.cancel()
+        self._events.clear()

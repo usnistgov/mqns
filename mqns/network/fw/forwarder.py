@@ -21,7 +21,7 @@ from typing import TypedDict, Unpack, override
 
 import numpy as np
 
-from mqns.entity.memory import MemoryQubit, PathDirection, QubitState
+from mqns.entity.memory import MemoryDecohereEvent, MemoryQubit, PathDirection, QubitState
 from mqns.entity.node import Application, QNode
 from mqns.entity.qchannel import QuantumChannel
 from mqns.models.delay import DelayInput, parse_delay
@@ -75,12 +75,27 @@ class ForwarderCounters:
         """How many entanglements completed i-th purif round (zero-based index)."""
         self.n_eligible = 0
         """How many entanglements completed all purif rounds and became eligible."""
-        self.n_swapped_s = 0
-        """How many swaps succeeded sequentially."""
-        self.n_swapped_p = 0
-        """How many swaps succeeded with parallel merging."""
-        self.n_swap_conflict = 0
-        """How many swaps were skipped due to conflictual decisions."""
+        self.n_swapped = 0
+        """How many physical swaps succeeded."""
+        self.n_swap_fail = 0
+        """How many physical swaps failed."""
+        self.n_su_lower = [0, 0, 0, 0, 0]
+        """
+        How many SWAP_UPDATE messages from lower-ranked node were processed.
+
+        * [0]: normal
+        * [1]: qubit decohered
+        * [2]: lower-expiry
+        * [3]: lower-swap-failure
+        * [4]: lower-swap-conflict
+        """
+        self.n_su_same = [0, 0]
+        """
+        How many SWAP_UPDATE messages from same-ranked node were processed.
+
+        * [0]: normal
+        * [1]: previous-swap-failure
+        """
         self.n_consumed = 0
         """How many entanglements were consumed (either end-to-end or in swap-disabled mode)."""
         self.consumed_sum_fidelity = 0.0
@@ -120,11 +135,6 @@ class ForwarderCounters:
         self.n_cutoff[2 * round + (0 if local else 1)] += 1
 
     @property
-    def n_swapped(self) -> int:
-        """How many swaps succeeded."""
-        return self.n_swapped_s + self.n_swapped_p
-
-    @property
     def consumed_avg_fidelity(self) -> float:
         """Average fidelity of consumed entanglements."""
         if self.n_consumed == 0:
@@ -136,8 +146,8 @@ class ForwarderCounters:
     def __repr__(self) -> str:
         return (
             f"entg={self.n_entg} purif={self.n_purif} eligible={self.n_eligible} "
-            f"swapped={self.n_swapped_s}+{self.n_swapped_p} "
-            f"swap-conflict={self.n_swap_conflict} cutoff-discard={self.n_cutoff} "
+            f"swapped={self.n_swapped} swap-fail={self.n_swap_fail} "
+            f"su-lower={self.n_su_lower} su-same={self.n_su_same} cutoff-discard={self.n_cutoff} "
             f"consumed={self.n_consumed} (F={self.consumed_avg_fidelity})"
         )
 
@@ -176,6 +186,7 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
 
         self.add_handler(self.handle_sync_phase, TimingPhaseEvent)
         self.add_handler(self.qubit_is_entangled, QubitEntangledEvent)
+        self.add_handler(self.qubit_is_decohered, MemoryDecohereEvent)
 
         self.waiting_etg: list[QubitEntangledEvent] = []
         """
@@ -213,17 +224,17 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
 
         Upon exiting INTERNAL phase:
 
-        1. Clear ``self.swap.remote_swapped``.
+        1. Clear state in the swap module.
            All memory qubits are being discarded by LinkLayer, so that these have become useless.
         """
         match event.action:
             case TimingPhase.INTERNAL, True:
-                log.debug(f"{self.node}: there are {len(self.waiting_etg)} etg qubits to process")
+                log.debug(f"{self}: there are {len(self.waiting_etg)} etg qubits to process")
                 for etg_event in self.waiting_etg:
                     self.qubit_is_entangled(etg_event)
                 self.waiting_etg.clear()
             case TimingPhase.INTERNAL, False:
-                self.swap.remote_swapped.clear()
+                self.swap.exit_internal_phase()
 
     @fw_control_cmd_handler("INSTALL_PATH")
     def handle_install_path(self, msg: InstallPathMsg):
@@ -367,13 +378,31 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
 
         self.cnt.n_entg += 1
 
-        qubit = event.qubit
-        assert qubit.state is QubitState.ENTANGLED1, f"unexpected state {qubit.state}"
-        _, epr = self.memory.read(qubit.addr, has=self.epr_type)
-        log.debug(f"{self.node}: ENTANGLED {qubit} | {epr}")
-        self.mux.qubit_is_entangled(qubit, epr, event.neighbor)
+        mq = event.qubit
+        assert mq.state is QubitState.ENTANGLED1, f"unexpected state {mq.state}"
+        assert mq.key
+        mq.partner = event.neighbor, mq.key
 
-        self.swap.pop_waiting_su(qubit)
+        mq.epr_path_ids = self.mux.list_qubit_epr_path_ids(mq)
+        if not mq.epr_path_ids:
+            log.debug(f"{self}: ENTANGLED_RELEASING reason=uninstalled-path {mq}")
+            self.release_qubit(mq, need_remove=True)
+            return
+
+        _, epr = self.memory.read(mq.addr, has=self.epr_type)
+        assert not epr.orig_eprs, f"{mq} is not elementary entanglement"
+        fib_entry = self.mux.qubit_is_entangled(mq, epr, event.neighbor)
+        log.debug(f"{self}: ENTANGLED {mq} fib_entry={fib_entry} | {epr}")
+
+        match mq.state:
+            case QubitState.PURIF:
+                assert fib_entry
+                self.qubit_is_purif(mq, fib_entry, event.neighbor)
+            case QubitState.ELIGIBLE:
+                self.qubit_is_eligible(mq, fib_entry)
+
+        if mq.state is not QubitState.RELEASE:
+            self.swap.pop_waiting_su(mq)
 
     def qubit_is_purif(self, qubit: MemoryQubit, fib_entry: FibEntry, partner: QNode):
         """
@@ -402,7 +431,7 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
         segment_name = f"{self.node.name}-{partner.name}" if own_idx < partner_idx else f"{partner.name}-{self.node.name}"
         want_rounds = fib_entry.purif.get(segment_name, 0)
         log.debug(
-            f"{self.node}: segment {segment_name} (qubit {qubit.addr}) has "
+            f"{self}: segment {segment_name} (qubit {qubit.addr}) has "
             + f"{qubit.purif_rounds} and needs {want_rounds} purif rounds"
         )
 
@@ -416,7 +445,7 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
 
         is_primary = (own_rank, own_idx) < (partner_rank, partner_idx)
         if not is_primary:
-            log.debug(f"{self.node}: is not primary node for segment {segment_name} purif")
+            log.debug(f"{self}: is not primary node for segment {segment_name} purif")
             return
 
         candidates = self.memory.find(
@@ -431,7 +460,7 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
         )
         found = call_select_purif_qubit(self._select_purif_qubit, qubit, fib_entry, partner, candidates)
         if not found:
-            log.debug(f"{self.node}: no candidate EPR for segment {segment_name} purif round {1 + qubit.purif_rounds}")
+            log.debug(f"{self}: no candidate EPR for segment {segment_name} purif round {1 + qubit.purif_rounds}")
             return
 
         self.purif.start(qubit, found[0], fib_entry, partner)
@@ -454,7 +483,7 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
         """
         assert qubit.state is QubitState.ELIGIBLE, f"unexpected state {qubit.state}"
         if not self.node.timing.is_internal():
-            log.debug(f"{self.node}: INT phase is over -> stop swaps")
+            log.debug(f"{self}: INT phase is over -> stop swaps")
             return
 
         _, epr = self.memory.read(qubit.addr, has=self.epr_type)
@@ -462,22 +491,19 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
             self.consume_and_release(qubit)
             return
 
-        self.cutoff.qubit_is_eligible(qubit, fib_entry)
-
         swap_candidates = self.memory.find(
             lambda q, _: (
                 q.state is QubitState.ELIGIBLE  # in ELIGIBLE state
-                and q.qchannel != qubit.qchannel  # assigned to a different channel
-                and self.cutoff.filter_swap_candidate(q)
+                and q.qchannel is not qubit.qchannel  # assigned to a different channel
             ),
             has=self.epr_type,
         )
-        swap_candidate_tuple = self.mux.find_swap_candidate(qubit, epr, fib_entry, swap_candidates)
-        mq1: MemoryQubit | None = None
-        if swap_candidate_tuple:
-            mq1, fib_entry = swap_candidate_tuple
+        if swap_candidate := self.mux.find_swap_candidate(qubit, epr, fib_entry, swap_candidates):
+            mq1, fib_entry = swap_candidate
+            self.cutoff.before_swap(qubit, mq1, fib_entry)
             self.swap.start(qubit, mq1, fib_entry)
-        self.cutoff.before_swap(qubit, mq1, fib_entry)
+        else:
+            self.cutoff.before_store_eligible(qubit, fib_entry)
 
     def can_consume(self, fib_entry: FibEntry | None, epr: Entanglement) -> bool:
         if fib_entry is None:
@@ -493,21 +519,33 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
         Consume an entangled qubit.
         """
         _, qm = self.memory.read(qubit.addr, has=self.epr_type, set_fidelity=True, remove=True)
-        log.debug(f"{self.node}: consume EPR: {qm}")
+        log.debug(f"{self}: consume EPR: {qm}")
         self.cnt.increment_n_consumed(qm.fidelity)
 
         self.release_qubit(qubit)
 
-    def release_qubit(self, qubit: MemoryQubit, *, need_remove=False):
+    def qubit_is_decohered(self, event: MemoryDecohereEvent):
+        assert self.node.timing.is_async(), f"unexpected {event} in SYNC timing mode, (t_ext+t_int) too high"
+        self.release_qubit(event.qubit, is_decoh=True)
+
+    def release_qubit(self, qubit: MemoryQubit, *, need_remove=False, is_decoh=False, is_cutoff=False):
         """
         Release a qubit.
 
         Args:
-            need_remove: whether to remove the data associated with the qubit.
+            need_remove: Whether to remove the data associated with the qubit.
                          This should be set to True unless .read(remove=True) is already performed.
+            is_decoh: Whether the release was caused by MemoryDecohereEvent.
+            is_cutoff: Whether the release was caused by CutoffScheme.
         """
         if need_remove:
             self.memory.read(qubit.addr, remove=True)
 
+        if is_decoh or is_cutoff:
+            self.swap.handle_decohere(qubit)
+
         qubit.state = QubitState.RELEASE
-        self.simulator.add_event(QubitReleasedEvent(self.node, qubit, t=self.simulator.tc))
+        event = QubitReleasedEvent(self.node, qubit, is_decoh=is_decoh, t=self.simulator.tc)
+        # Set higher priority to prevent duplicate releases from decohere/cut-off and swap failure.
+        event.priority = -1000
+        self.simulator.add_event(event)

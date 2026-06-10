@@ -101,7 +101,7 @@ class ReactiveRoutingController(ClassicCommandDispatcherMixin, RoutingController
         """
 
         if not self.node.timing.is_routing():  # should be in SYNC timing mode ROUTING phase
-            log.warning(f"{self.node}: received LS message from {pkt.src} outside of ROUTING phase | {msg}")
+            log.warning(f"{self}: received LS message from {pkt.src} outside of ROUTING phase | {msg}")
             return True
 
         log.debug(f"{self.node.name}: received LS message from {pkt.src} | {msg}")

@@ -27,6 +27,7 @@
 
 
 from mqns.entity.memory.event import (
+    MemoryDecohereEvent,
     MemoryReadRequestEvent,
     MemoryReadResponseEvent,
     MemoryWriteRequestEvent,
@@ -36,6 +37,7 @@ from mqns.entity.memory.memory import QuantumMemory, QuantumMemoryInitKwargs
 from mqns.entity.memory.memory_qubit import MemoryQubit, PathDirection, QubitState
 
 __all__ = [
+    "MemoryDecohereEvent",
     "MemoryQubit",
     "MemoryReadRequestEvent",
     "MemoryReadResponseEvent",

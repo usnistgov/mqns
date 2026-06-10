@@ -117,7 +117,7 @@ class LinkArch(Protocol):
         """
         ...
 
-    def make_epr(self, k: int, now: Time, *, key: str | None, src: QNode, dst: QNode) -> tuple[Entanglement, Time, Time]:
+    def make_epr(self, k: int, now: Time, *, src: QNode, dst: QNode, key: str | None) -> tuple[Entanglement, Time, Time]:
         """
         Create an elementary entanglement for k-th attempt.
         This is available after ``set()``.
@@ -125,9 +125,9 @@ class LinkArch(Protocol):
         Args:
             k: number of attempts, minimum is 1.
             now: current time point, which is when RESERVE_QUBIT_OK arrives at primary node.
-            key: LinkLayer reservation key.
             src: primary node.
             dst: secondary node.
+            key: memory qubit reservation key.
 
         Returns:
             Each value is a duration in seconds.
@@ -281,7 +281,7 @@ class LinkArchBase(ABC, LinkArch):
         """
 
     @override
-    def make_epr(self, k: int, now: Time, *, key: str | None, src: QNode, dst: QNode) -> tuple[Entanglement, Time, Time]:
+    def make_epr(self, k: int, now: Time, *, src: QNode, dst: QNode, key: str | None) -> tuple[Entanglement, Time, Time]:
         d_epr_creation, d_notify_a, d_notify_b = self.delays(k)
         t_epr_creation = now + d_epr_creation
         t_notify_a = now + (d_epr_creation + d_notify_a)
@@ -294,10 +294,10 @@ class LinkArchBase(ABC, LinkArch):
                 fidelity_time=t_epr_creation,
                 src=src,
                 dst=dst,
+                mem_keys=(key, key),
                 store_decays=(mem_a.time_decay, mem_b.time_decay),
             )
         )
-        epr.key = key
 
         return epr, t_notify_a, t_notify_b
 

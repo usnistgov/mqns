@@ -1,14 +1,20 @@
 import copy
-import uuid
+import functools
+from collections import defaultdict
+from collections.abc import Callable, Iterable, Mapping
+from itertools import pairwise
 from typing import Literal, TypedDict, Unpack, override
 
-from mqns.entity.cchannel import ClassicChannelInitKwargs
+import pytest
+
+from mqns.entity.cchannel import ClassicChannelInitKwargs, ClassicPacket
 from mqns.entity.memory import QubitState
-from mqns.entity.node import Application, Controller, QNode
+from mqns.entity.node import Application, Controller, Node, QNode
 from mqns.entity.qchannel import LinkArchAlways, LinkArchDimBk, QuantumChannelInitKwargs
 from mqns.models.epr import Entanglement, WernerStateEntanglement
 from mqns.network.fw import Forwarder, ForwarderInitKwargs, RoutingController, RoutingPath
-from mqns.network.network import QuantumNetwork, TimingMode, TimingModeAsync
+from mqns.network.fw.fw_swap import ForwarderSwapProc
+from mqns.network.network import QuantumNetwork, TimingMode, TimingModeAsync, TimingPhase, TimingPhaseEvent
 from mqns.network.proactive import ProactiveForwarder, ProactiveRoutingController
 from mqns.network.protocol.event import QubitEntangledEvent, QubitReleasedEvent
 from mqns.network.protocol.link_layer import LinkLayer
@@ -16,20 +22,46 @@ from mqns.network.reactive import ReactiveForwarder, ReactiveRoutingController
 from mqns.network.route import RouteAlgorithm, YenRouteAlgorithm
 from mqns.network.topology import ClassicTopology, GridTopology, LinearTopology, Topology, TopologyInitKwargs, TreeTopology
 from mqns.simulator import Event, Simulator, Time, func_to_event
-from mqns.utils import log
+from mqns.utils import AutoIncrementIdentifier, log
 
 
-class QubitReleaseLoggerApp(Application):
+class QubitReleaseReset(Application[QNode]):
+    """
+    Reset released qubits to RAW state.
+    """
+
     def __init__(self):
         super().__init__()
         self.history: list[tuple[int, Time]] = []
+        """Qubit address and release time."""
 
     @override
     def handle(self, event: Event) -> bool | None:
-        if type(event) is QubitReleasedEvent:
-            self.history.append((event.qubit.addr, event.t))
-            log.debug(f"{self.node}: RELEASE {event.qubit}")
+        self._handle(event)
         return False
+
+    @functools.singledispatchmethod
+    def _handle(self, event: Event):
+        _ = event
+
+    @_handle.register
+    def _(self, event: TimingPhaseEvent):
+        match event.action:
+            case TimingPhase.INTERNAL, False:
+                self.node.memory.clear()
+
+    @_handle.register
+    def _(self, event: QubitReleasedEvent):
+        self.history.append((event.qubit.addr, event.t))
+        log.debug(f"{self}: RELEASE {event.qubit}")
+        event.qubit.state = QubitState.RAW
+
+    @property
+    def last_t(self) -> Time:
+        """Retrieve the timestamp of last release event."""
+        if not self.history:
+            return Time.SENTINEL
+        return self.history[-1][1]
 
 
 dflt_qchannel_args = QuantumChannelInitKwargs(
@@ -50,6 +82,7 @@ class BuildNetworkArgs(TypedDict, total=False):
     cchannel_args: ClassicChannelInitKwargs
     ctrl: RoutingController  # replacing controller application
     fw: ForwarderInitKwargs  # forwarder parameters (`p_swap` defaults to 0.5)
+    swap_table_leak_tol: int  # ForwarderSwapProc memory leak tolerance
     end_time: float  # simulation end time, defaults to 10.0 seconds
     timing: TimingMode  # network timing mode, defaults to ASYNC
     epr_type: type[Entanglement]  # entanglement type, defaults to werner state
@@ -64,7 +97,7 @@ def _make_topo_args(d: BuildNetworkArgs, *, memory_capacity_factor: int) -> Topo
     if d.get("has_link_layer", False):
         nodes_apps.append(LinkLayer(init_fidelity=d.get("init_fidelity", 0.99)))
     else:
-        nodes_apps.append(QubitReleaseLoggerApp())
+        nodes_apps.append(QubitReleaseReset())
 
     fw_args = copy.copy(d.get("fw")) or {}
     fw_args.setdefault("p_swap", 0.6)
@@ -91,6 +124,8 @@ def _build_network_finish(
     *,
     route: RouteAlgorithm | None = None,
 ):
+    ForwarderSwapProc.table_leak_tol = d.get("swap_table_leak_tol", 0)
+
     qchannel_capacity = d.get("qchannel_capacity", 1)
 
     if (ctrl := d.get("ctrl")) is None:
@@ -186,10 +221,48 @@ def build_rect_network(
     return _build_network_finish(topo, kwargs, route=YenRouteAlgorithm(k_paths=2))
 
 
+def collect_cpacket_counts(monkeypatch: pytest.MonkeyPatch, *, inc_controller=False) -> Mapping[str, int]:
+    """
+    Gather classic packet counts between node pairs.
+
+    Returns: Mapping from node name(s) to number of packets, with these entries:
+
+    * "src-dst": Packets sent from src to dst.
+    * "src-*": Packets sent from src to any destination.
+    * "*-dst": Packets sent to dst from any source.
+    """
+    orig_send_cpacket = Node.send_cpacket
+    d = defaultdict[str, int](lambda: 0)
+
+    def send_cpacket(self: Node, next_hop: Node, pkt: ClassicPacket):
+        if self == pkt.src and (inc_controller or Controller not in (type(pkt.src), type(pkt.dest))):
+            d[f"{pkt.src.name}-{pkt.dest.name}"] += 1
+            d[f"{pkt.src.name}-*"] += 1
+            d[f"*-{pkt.dest.name}"] += 1
+        orig_send_cpacket(self, next_hop, pkt)
+
+    monkeypatch.setattr(Node, "send_cpacket", send_cpacket)
+    return d
+
+
 def print_fw_counters(net: QuantumNetwork):
     for node in net.nodes:
         fw = node.get_app(Forwarder)
         print(node.name, fw.cnt)
+
+
+def check_fw_counters(net: QuantumNetwork, **kwargs: Iterable[int | Iterable[int]]) -> None:
+    __tracebackhide__ = True
+    errors: list[str] = []
+    cnts = [(node.name, node.get_app(Forwarder).cnt) for node in net.nodes]
+    for key, expected_vec in kwargs.items():
+        for expected, (node, cnt) in zip(expected_vec, cnts, strict=True):
+            actual = getattr(cnt, key)
+            if isinstance(actual, list):
+                actual = sum(actual)
+            if actual != expected and (not isinstance(expected, Iterable) or actual not in expected):
+                errors.append(f"{node}.{key} = {actual} != {expected}")
+    assert not errors, "\n".join(errors)
 
 
 def install_path(
@@ -214,21 +287,27 @@ def install_path(
     return rp
 
 
+_provide_entanglements_autoid = AutoIncrementIdentifier("Tpe_")
+
+
 def provide_entanglements(
-    *etgs: tuple[float, Forwarder, Forwarder],
+    *etgs: tuple[float, Forwarder, Forwarder] | tuple[Iterable[float], Iterable[Forwarder]],
+    transform_t: Callable[[float], float] = lambda t: t,
     fidelity=0.99,
 ):
     """
     Provide elementary entanglement(s) to the forwarders.
 
     Args:
-        etgs: entanglement creation time, forwarder on left side, forwarder on right side.
-        fidelity: initial fidelity.
+        etgs: Entanglement creation time, forwarder on left side, forwarder on right side;
+              or, list of times, linear chain of forwarders.
+        transform_t: Transform timestamp from input unit to seconds; default is identity function i.e. input unit is seconds.
+        fidelity: Initial fidelity.
     """
-    for t, src, dst in etgs:
-        if t < 0:
-            continue
+
+    def make_entangle(src: Forwarder, dst: Forwarder):
         simulator = src.simulator
+        t_creation = simulator.tc
         ch = src.node.get_qchannel(dst.node)
 
         ch.link_arch.set(
@@ -242,21 +321,49 @@ def provide_entanglements(
         )
         _, d_notify_a, d_notify_b = ch.link_arch.delays(1)
 
-        t_creation = simulator.time(sec=t)
+        ll_key = _provide_entanglements_autoid()
         epr = src.network.epr_type(
             decohere_time=t_creation + min(src.memory.t_decohere, dst.memory.t_decohere),
             fidelity_time=t_creation,
             src=src.node,
             dst=dst.node,
+            mem_keys=(ll_key, ll_key),
             store_decays=(src.memory.time_decay, dst.memory.time_decay),
         )
         epr.fidelity = fidelity
 
-        key = f"provide_entanglements.key:{uuid.uuid4().hex}"
         for node, neighbor, d_notify in (src, dst, d_notify_a), (dst, src, d_notify_b):
             q, _ = next(node.memory.find(lambda _, v: v is None, qchannel=ch), (None, None))
             assert q is not None, f"insufficient qubits assigned to {ch}"
-            node.memory.write(q.addr, epr)
-            q.active = key
             q._state = QubitState.ENTANGLED0
+            q.key = ll_key
+            node.memory.write(q.addr, epr)
+            print(f"pe {src} {dst} {q.addr}")
             simulator.add_event(QubitEntangledEvent(node.node, neighbor.node, q, t=t_creation + d_notify))
+
+    def sched_entangle(t: float, src: Forwarder, dst: Forwarder):
+        if t < 0:
+            return
+        simulator = src.simulator
+        simulator.add_event(func_to_event(simulator.time(sec=transform_t(t)), make_entangle, src, dst))
+
+    for etg in etgs:
+        if len(etg) == 3:
+            sched_entangle(*etg)
+        else:
+            times, fws = etg
+            for t, (src, dst) in zip(times, pairwise(fws), strict=True):
+                sched_entangle(t, src, dst)
+
+
+def check_memory_released(net: QuantumNetwork) -> None:
+    """
+    Verify that all MemoryQubits on every node are in RAW or RELEASED state.
+    """
+    errors: list[str] = []
+    for node in net.nodes:
+        for qubit, data in node.memory.find(lambda *_: True):
+            if qubit.state not in (QubitState.RAW, QubitState.RELEASE):
+                errors.append(f"{node.name}:{qubit.addr} unexpected state {qubit.state}: {data}")
+    if len(errors) > 0:
+        raise AssertionError(errors)

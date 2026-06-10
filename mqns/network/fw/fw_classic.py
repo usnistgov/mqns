@@ -19,7 +19,7 @@ def fw_control_cmd_handler(cmd: str):
     def decorator(f: Callable[[Any, Any], Any]):
         @functools.wraps(f)
         def wrapper(self: "ForwarderClassicMixin", pkt: ClassicPacket, msg: dict):
-            log.debug(f"{self.node}: received control message from {pkt.src} | {msg}")
+            log.debug(f"{self}: received control message from {pkt.src} | {msg}")
             f(self, msg)
             return True
 
@@ -42,14 +42,14 @@ def fw_signaling_cmd_handler(cmd: str):
             try:
                 fib_entry = self.fib.get(path_id)
             except IndexError:
-                log.debug(f"{self.node}: dropping signaling message from {pkt.src}, reason=no-fib-entry | {msg}")
+                log.debug(f"{self}: dropping signaling message from {pkt.src.name}, reason=no-fib-entry | {msg}")
                 return True
 
             if pkt.dest != self.node:
-                self.send_msg(pkt.dest, msg, fib_entry, forward=True)
+                self.send_msg(pkt.dest, msg, fib_entry, forward_from=pkt.src)
                 return True
 
-            log.debug(f"{self.node}: received signaling message from {pkt.src} | {msg}")
+            log.debug(f"{self}: received signaling message from {pkt.src.name} | {msg}")
             f(self, msg, fib_entry)
             return True
 
@@ -78,19 +78,21 @@ class ForwarderClassicMixin(ClassicCommandDispatcherMixin):
 
     def send_ctrl(self, msg: Mapping):
         ctrl = self.network.get_controller()
-        log.debug(f"{self.node}: sending control message to controller | {msg}")
+        log.debug(f"{self}: sending control message to controller | {msg}")
         self.node.send_cpacket(ctrl, ClassicPacket(msg, src=self.node, dest=ctrl))
 
-    def send_msg(self, dest: Node, msg: Mapping, fib_entry: FibEntry, *, forward=False):
+    def send_msg(self, dest: Node, msg: Mapping, fib_entry: FibEntry, *, forward_from: Node | None = None):
         """
         Send/forward a signaling message along the path specified in FIB entry.
         """
         dest_idx = fib_entry.route.index(dest.name)
-        nh = fib_entry.route[fib_entry.own_idx + 1] if dest_idx > fib_entry.own_idx else fib_entry.route[fib_entry.own_idx - 1]
-        next_hop = self.network.get_node(nh)
+        nh_idx = fib_entry.own_idx + 1 if dest_idx > fib_entry.own_idx else fib_entry.own_idx - 1
+        next_hop = self.network.get_node(fib_entry.route[nh_idx])
 
+        pkt = ClassicPacket(msg, src=forward_from or self.node, dest=dest)
+        via_msg = "" if nh_idx == dest_idx else f" via {next_hop.name}"
         log.debug(
-            f"{self.node}: {'forwarding' if forward else 'sending'} signaling message to {dest.name} via {next_hop.name}"
-            f" | {msg}"
+            f"{self}: {'forwarding' if forward_from else 'sending'} signaling message "
+            f"from {pkt.src.name} to {pkt.dest.name}{via_msg} | {msg}"
         )
-        self.node.send_cpacket(next_hop, ClassicPacket(msg, src=self.node, dest=dest))
+        self.node.send_cpacket(next_hop, pkt)

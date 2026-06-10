@@ -15,9 +15,9 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from collections.abc import Callable, Iterator, Set
+from collections.abc import Callable, Iterable, Iterator, Set
 from dataclasses import dataclass
-from typing import final
+from typing import Literal, final
 
 from mqns.network.fw.message import SwapSequence
 from mqns.simulator import Time
@@ -73,6 +73,131 @@ class FibEntry:
         """
         idx = self.route.index(node_name)
         return idx, self.swap[idx]
+
+
+class FibSwapGroup:
+    """
+    FibSwapGroup provides topological information to determine the heralding directions within
+    a FIB route that may contain parallel swapping instructions.
+
+    Each node within a FIB route, excluding the first and last end nodes, belongs to a swap group.
+    The swap group of node *N* is identified with these steps:
+
+    1. From ``entry.route``, discard nodes with a lower rank than node *N*.
+    2. Find the longest continuous segment of nodes that contains *N*, where every node has the same rank as *N*.
+
+    The left/right neighbor of a swap group is a node that has a higher rank and not part of the swap group.
+    The leftmost/rightmost node of the swap group is responsible for heralding the left/right neighbor,
+    if that neighbor would not be heralded by the opposite neighbor.
+    """
+
+    path_id: int
+    """FIB entry path ID."""
+
+    rank: int
+    """Rank of all nodes in this swap group."""
+
+    nodes: list[str]
+    """Nodes in this swap group."""
+
+    l_neigh: str
+    """Left neighbor, not part of this swap group."""
+
+    r_neigh: str
+    """Right neighbor, not part of this swap group."""
+
+    dir: Literal["l", "b", "r"]
+    """
+    Heralding direction when there is no swap failure.
+
+    * b: Bidirectional -- Both neighbors have the same rank, or the segment requires purification.
+    * l: Leftward -- Left neighbor has lower rank than right neighbor.
+    * r: Rightward -- Right neighbor has lower rank than left neighbor.
+    """
+
+    own_idx: int
+    """Index of own node within ``nodes``."""
+
+    @staticmethod
+    def compute(entry: FibEntry) -> "FibSwapGroup":
+        # TODO implement caching
+
+        route_len = len(entry.route)
+        if entry.own_idx in (0, route_len - 1):
+            raise ValueError("FibSwapGroup is undefined for end nodes")
+
+        sg = FibSwapGroup()
+        sg.path_id = entry.path_id
+        sg.rank = entry.own_swap_rank
+        sg.nodes = [entry.route[entry.own_idx]]
+
+        sg.l_neigh, l_rank = sg._extend_1d(entry, range(entry.own_idx - 1, -1, -1))
+        sg.own_idx = len(sg.nodes) - 1
+        sg.nodes.reverse()
+        sg.r_neigh, r_rank = sg._extend_1d(entry, range(entry.own_idx + 1, route_len))
+
+        if l_rank == r_rank or entry.purif.get(f"{sg.l_neigh}-{sg.r_neigh}", 0) > 0:
+            sg.dir = "b"
+        elif l_rank < r_rank:
+            sg.dir = "l"
+        else:
+            sg.dir = "r"
+
+        return sg
+
+    def _extend_1d(self, entry: FibEntry, index_range: Iterable[int]) -> tuple[str, int]:
+        for i in index_range:
+            node_rank = entry.swap[i]
+            if node_rank > self.rank:
+                return entry.route[i], entry.swap[i]
+            if node_rank == self.rank:
+                self.nodes.append(entry.route[i])
+        raise ValueError(f"FibSwapGroup cannot find boundary in {entry.swap} from node index {entry.own_idx}")
+
+    @property
+    def l_most(self) -> bool:
+        """Determine if own node is the leftmost node in the group."""
+        return self.own_idx == 0
+
+    @property
+    def r_most(self) -> bool:
+        """Determine if own node is the rightmost node in the group."""
+        return self.own_idx == len(self.nodes) - 1
+
+    @property
+    def own_node(self) -> str:
+        """Own node name."""
+        return self.nodes[self.own_idx]
+
+    @property
+    def l_adj(self) -> str:
+        """
+        Left adjacent node, either same-ranked peer or higher-ranked neighbor.
+
+        Own node should herald this node if allowed by ``dir`` or when there is a failure.
+        """
+        return self.l_neigh if self.l_most else self.nodes[self.own_idx - 1]
+
+    @property
+    def r_adj(self) -> str:
+        """
+        Right adjacent node, either same-ranked peer or higher-ranked neighbor.
+
+        Own node should herald this node if allowed by ``dir`` or when there is a failure.
+        """
+        return self.r_neigh if self.r_most else self.nodes[self.own_idx + 1]
+
+    def __repr__(self) -> str:
+        tokens = [
+            "FibSwapGroup(",
+            self.l_neigh,
+            "<" if self.dir in ("l", "b") else "~",
+            "-".join(f"[{n}]" if i == self.own_idx else n for (i, n) in enumerate(self.nodes)),
+            ">" if self.dir in ("b", "r") else "~",
+            self.r_neigh,
+            f", rank={self.rank})",
+        ]
+        return "".join(tokens)
 
 
 class FibRequestGroup:

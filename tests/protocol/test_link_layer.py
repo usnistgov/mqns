@@ -2,7 +2,7 @@ from typing import override
 
 import pytest
 
-from mqns.entity.memory import QubitState
+from mqns.entity.memory import MemoryDecohereEvent, QubitState
 from mqns.entity.node import Application, QNode
 from mqns.entity.qchannel import LinkArchAlways, LinkArchDimBk
 from mqns.models.epr import (
@@ -11,12 +11,7 @@ from mqns.models.epr import (
     WernerStateEntanglement,
 )
 from mqns.network.network import QuantumNetwork, TimingModeSync
-from mqns.network.protocol.event import (
-    ManageActiveChannels,
-    QubitDecoheredEvent,
-    QubitEntangledEvent,
-    QubitReleasedEvent,
-)
+from mqns.network.protocol.event import ManageActiveChannels, QubitEntangledEvent, QubitReleasedEvent
 from mqns.network.protocol.link_layer import LinkLayer, LinkLayerCounters
 from mqns.network.topology import ClassicTopology, CustomTopology, LinearTopology
 from mqns.simulator import Simulator
@@ -34,7 +29,7 @@ class NetworkLayer(Application[QNode]):
         """Decoherence events, each entry is event time."""
 
         self.add_handler(self.handle_entangle, QubitEntangledEvent)
-        self.add_handler(self.handle_decohere, QubitDecoheredEvent)
+        self.add_handler(self.handle_decohere, MemoryDecohereEvent)
 
     @override
     def install(self, node):
@@ -55,8 +50,10 @@ class NetworkLayer(Application[QNode]):
         self.simulator.add_event(QubitReleasedEvent(self.node, event.qubit, t=event.t + self.release_after))
         self.release_after = None
 
-    def handle_decohere(self, event: QubitDecoheredEvent):
+    def handle_decohere(self, event: MemoryDecohereEvent):
         self.decohere.append(event.t.sec)
+        event.qubit.state = QubitState.RELEASE
+        self.simulator.add_event(QubitReleasedEvent(self.node, event.qubit, is_decoh=True, t=event.t))
 
 
 def manage_active_channel(simulator: Simulator, t: float, src: NetworkLayer, dst: NetworkLayer, *, stop=False):

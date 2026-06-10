@@ -123,7 +123,7 @@ class UninstallPathMsg(TypedDict):
 class CutoffDiscardMsg(TypedDict):
     cmd: Literal["CUTOFF_DISCARD"]
     path_id: int
-    epr: str
+    key: str
     round: int
 
 
@@ -131,8 +131,8 @@ class PurifMsgBase(TypedDict):
     path_id: int
     purif_node: str
     partner: str
-    epr: str
-    measure_epr: str
+    key0: str
+    key1: str
     round: int
 
 
@@ -146,9 +146,41 @@ class PurifResponseMsg(PurifMsgBase):
 
 
 class SwapUpdateMsg(TypedDict):
+    """Heralding message after swapping."""
+
     cmd: Literal["SWAP_UPDATE"]
     path_id: int
-    swapping_node: str
-    partner: str
-    epr: str
-    new_epr: str | None  # None means swapping failed
+    """FIB entry path ID to guide classical forwarding of this message."""
+
+    o_node: str
+    """
+    Node that performed the swap.
+    This would be the sender of this message.
+    """
+    l_node: str
+    """
+    Leftmost node of the swapped EPR.
+    This would be either the recipient of this message or its opposite partner.
+    """
+    r_node: str
+    """
+    Rightmost node of the swapped EPR.
+    This would be either the recipient of this message or its opposite partner.
+    """
+
+    l_key: str
+    """
+    Qubit reservation key at ``l_node``.
+    """
+    r_key: str
+    """
+    Qubit reservation key at ``r_node``.
+    """
+
+    expiry: int
+    """
+    If zero, indicates swapping failure.
+    If positive, time slot of qubit decoherence based on heralded knowledge.
+    """
+    q_paths: list[int]
+    """Possible path IDs for the entanglement between ``l_node`` and ``r_node``."""

@@ -5,6 +5,7 @@ Test suite for simple data structure objects in forwarding.
 import pytest
 
 from mqns.network.fw import parse_swap_sequence
+from mqns.network.fw.fib import FibEntry, FibSwapGroup
 from mqns.network.fw.message import validate_path_instructions
 
 
@@ -83,3 +84,51 @@ def test_path_validation():
         validate_path_instructions(
             {"req_id": 0, "route": route3, "swap": swap3, "swap_cutoff": scut3, "m_v": mv3, "purif": {"n3-n1": 1}}
         )
+
+
+@pytest.mark.parametrize(
+    ("purif", "own", "expected"),
+    [
+        # without purification
+        (None, "A", None),
+        (None, "B", ("A", "BC", "D", "r")),
+        (None, "C", ("A", "BC", "D", "r")),
+        (None, "D", ("A", "DF", "G", "r")),
+        (None, "E", ("D", "E", "F", "b")),
+        (None, "F", ("A", "DF", "G", "r")),
+        (None, "G", ("A", "G", "J", "b")),
+        (None, "H", ("G", "HI", "J", "l")),
+        (None, "I", ("G", "HI", "J", "l")),
+        (None, "J", None),
+        # with valid purification
+        ("A-G", "B", ("A", "BC", "D", "r")),
+        ("A-G", "D", ("A", "DF", "G", "b")),
+        ("A-G", "F", ("A", "DF", "G", "b")),
+        ("A-G", "H", ("G", "HI", "J", "l")),
+    ],
+)
+def test_fib_swap_group(purif: str | None, own: str, expected: tuple[str, str, str, str] | None):
+    nodes = "ABCDEFGHIJ"
+    ranks = "3001012003"
+    entry = FibEntry(
+        path_id=0,
+        req_id=0,
+        route=list(nodes),
+        own_idx=nodes.index(own),
+        swap=[int(v) for v in ranks],
+        swap_cutoff=[None] * 9,
+        purif={purif: 1} if purif else {},
+    )
+
+    if expected is None:
+        with pytest.raises(ValueError, match="undefined for end nodes"):
+            FibSwapGroup.compute(entry)
+        return
+
+    sg = FibSwapGroup.compute(entry)
+    assert sg.nodes == list(expected[1])
+    assert sg.own_idx == sg.nodes.index(own)
+    assert (sg.l_neigh, "".join(sg.nodes), sg.r_neigh, sg.dir) == expected
+
+    _, rank = entry.find_index_and_swap_rank(sg.nodes[0])
+    assert sg.rank == rank
