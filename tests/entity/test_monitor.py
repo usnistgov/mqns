@@ -5,7 +5,7 @@ from mqns.entity.monitor import Monitor
 from mqns.entity.node import Application, QNode
 from mqns.entity.qchannel import QuantumChannel, RecvQubitPacket
 from mqns.models.qubit import Qubit
-from mqns.simulator import Simulator, func_to_event
+from mqns.simulator import Simulator, event_handler, func_to_event
 
 
 class SendApp(Application[QNode]):
@@ -32,8 +32,8 @@ class RecvApp(Application[QNode]):
     def __init__(self):
         super().__init__()
         self.count = 0
-        self.add_handler(self.RecvQubitHandler, RecvQubitPacket)
 
+    @event_handler
     def RecvQubitHandler(self, _: RecvQubitPacket) -> bool | None:
         self.count += 1
 

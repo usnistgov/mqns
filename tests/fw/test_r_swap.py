@@ -6,7 +6,7 @@ from collections import defaultdict
 
 import pytest
 
-from mqns.entity.cchannel import ClassicCommandDispatcherMixin, ClassicPacket, RecvClassicPacket, classic_cmd_handler
+from mqns.entity.cchannel import ClassicCommandDispatcherMixin, ClassicPacket, classic_cmd_handler
 from mqns.network.fw import RoutingController, RoutingPathStatic
 from mqns.network.network import TimingModeSync
 from mqns.network.reactive import ReactiveForwarder, ReactiveRoutingController
@@ -19,7 +19,6 @@ from .fw_common import build_linear_network, build_tree_network, print_fw_counte
 class ManualController(ClassicCommandDispatcherMixin, RoutingController):
     def __init__(self):
         super().__init__()
-        self.add_handler(self.handle_classic_command, RecvClassicPacket)
 
         self.ls_pkts: list[tuple[ClassicPacket, LinkStateMsg]] = []
         self.ls_entries: list[LinkStateEntry] = []

@@ -54,13 +54,13 @@ def _get_channel[C: BaseChannel](l: list[C], d: dict[tuple[str, str], C], q: tup
         for ch in l:
             if ch.name == name:
                 return ch
-        raise IndexError(f"channel {name} does not exist")
+        raise LookupError(f"channel {name} does not exist")
 
     a, b = sorted(q)
     try:
         return d[(a, b)]
     except KeyError:
-        raise IndexError(f"channel between {a} and {b} does not exist")
+        raise LookupError(f"channel between {a} and {b} does not exist") from None
 
 
 class QuantumNetwork:
@@ -171,12 +171,12 @@ class QuantumNetwork:
         Get QNode by name.
 
         Raises:
-            IndexError: node does not exist.
+            LookupError: Node does not exist.
         """
         try:
             return self._node_by_name[name]
         except KeyError:
-            raise IndexError(f"node {name} does not exist")
+            raise LookupError(f"node {name} does not exist") from None
 
     def set_controller(self, controller: Controller):
         """
@@ -191,10 +191,10 @@ class QuantumNetwork:
         Get the Controller of this network.
 
         Raises:
-            IndexError: controller does not exist.
+            LookupError: Controller does not exist.
         """
         if self.controller is None:
-            raise IndexError("network does not have a controller")
+            raise LookupError("network does not have a controller")
         return self.controller
 
     def add_qchannel(self, qchannel: QuantumChannel):
@@ -210,7 +210,7 @@ class QuantumNetwork:
         Retrieve QuantumChannel by name.
 
         Raises:
-            IndexError: channel does not exist.
+            LookupError: channel does not exist.
         """
 
     @overload
@@ -219,7 +219,7 @@ class QuantumNetwork:
         Retrieve QuantumChannel by node names.
 
         Raises:
-            IndexError: channel does not exist.
+            LookupError: channel does not exist.
         """
 
     def get_qchannel(self, *q: str) -> QuantumChannel:
@@ -238,7 +238,7 @@ class QuantumNetwork:
         Retrieve ClassicalChannel by name.
 
         Raises:
-            IndexError: channel does not exist.
+            LookupError: channel does not exist.
         """
 
     @overload
@@ -247,7 +247,7 @@ class QuantumNetwork:
         Retrieve ClassicalChannel by node names.
 
         Raises:
-            IndexError: channel does not exist.
+            LookupError: channel does not exist.
         """
 
     def get_cchannel(self, *q: str) -> ClassicChannel:

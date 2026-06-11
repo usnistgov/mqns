@@ -3,7 +3,7 @@ from typing import override
 from mqns.entity.node import Application, QNode
 from mqns.entity.qchannel import QuantumChannel, RecvQubitPacket
 from mqns.models.qubit import Qubit
-from mqns.simulator import Event, Simulator, func_to_event
+from mqns.simulator import Simulator, event_handler, func_to_event
 
 
 class SendApp(Application[QNode]):
@@ -28,10 +28,10 @@ class SendApp(Application[QNode]):
 class RecvApp(Application[QNode]):
     def __init__(self):
         super().__init__()
-        self.add_handler(self.RecvQubitHandler, RecvQubitPacket)
         self.count = 0
 
-    def RecvQubitHandler(self, _: Event) -> bool | None:
+    @event_handler
+    def RecvQubitHandler(self, _: RecvQubitPacket) -> bool | None:
         self.count += 1
 
 

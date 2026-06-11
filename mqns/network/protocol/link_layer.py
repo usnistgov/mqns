@@ -31,6 +31,7 @@ from mqns.network.protocol.event import (
     QubitEntangledEvent,
     QubitReleasedEvent,
 )
+from mqns.simulator import event_handler
 from mqns.utils import AutoIncrementIdentifier, json_encodable, log, rng
 
 _AUTOID = AutoIncrementIdentifier("llk_")
@@ -166,19 +167,13 @@ class LinkLayer(Application[QNode]):
         Counters.
         """
 
-        # event handlers
-        self.add_handler(self.handle_sync_phase, TimingPhaseEvent)
-        self.add_handler(self.RecvClassicPacketHandler, RecvClassicPacket)
-        self.add_handler(self.handle_manage_active_channels, ManageActiveChannels)
-        self.add_handler(self.handle_success_entangle, LinkArchSuccessEvent)
-        self.add_handler(self.handle_release, QubitReleasedEvent)
-
     @override
     def install(self, node):
         self._application_install(node, QNode)
         self.memory = self.node.memory
         """Quantum memory of the node."""
 
+    @event_handler
     def handle_sync_phase(self, event: TimingPhaseEvent):
         """
         Handle timing phase signals, only used in SYNC timing mode.
@@ -206,6 +201,7 @@ class LinkLayer(Application[QNode]):
             case TimingPhase.INTERNAL, False:
                 self.memory.clear()
 
+    @event_handler
     def RecvClassicPacketHandler(self, event: RecvClassicPacket) -> bool:
         msg = event.packet.get()
         if not (isinstance(msg, dict) and "cmd" in msg):
@@ -221,6 +217,7 @@ class LinkLayer(Application[QNode]):
             case _:
                 return False
 
+    @event_handler
     def handle_manage_active_channels(self, event: ManageActiveChannels) -> bool:
         """Handle ManageActiveChannels event from forwarder."""
         if event.start:
@@ -439,6 +436,7 @@ class LinkLayer(Application[QNode]):
         self.simulator.add_event(LinkArchSuccessEvent(self.node, key, epr, t=t_notify_a, attempts=k))
         self.simulator.add_event(LinkArchSuccessEvent(next_hop, key, epr, t=t_notify_b, attempts=k))
 
+    @event_handler
     def handle_success_entangle(self, event: LinkArchSuccessEvent):
         assert self.node.timing.is_external()
 
@@ -461,6 +459,7 @@ class LinkLayer(Application[QNode]):
         qubit.state = QubitState.ENTANGLED0
         self.simulator.add_event(QubitEntangledEvent(self.node, neighbor, qubit, t=self.simulator.tc))
 
+    @event_handler
     def handle_release(self, event: QubitReleasedEvent) -> bool:
         qubit = event.qubit
         log.debug(f"{self}: {event}")

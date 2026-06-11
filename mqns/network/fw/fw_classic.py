@@ -1,9 +1,9 @@
 import functools
 from collections.abc import Callable, Mapping
-from typing import Any, cast
+from typing import Any
 
-from mqns.entity.cchannel import ClassicCommandDispatcherMixin, ClassicPacket, RecvClassicPacket, classic_cmd_handler
-from mqns.entity.node import Application, Node, QNode
+from mqns.entity.cchannel import ClassicCommandDispatcherMixin, ClassicPacket, classic_cmd_handler
+from mqns.entity.node import Node, QNode
 from mqns.network.fw.fib import Fib, FibEntry
 from mqns.network.network import QuantumNetwork
 from mqns.utils import log
@@ -19,7 +19,7 @@ def fw_control_cmd_handler(cmd: str):
     def decorator(f: Callable[[Any, Any], Any]):
         @functools.wraps(f)
         def wrapper(self: "ForwarderClassicMixin", pkt: ClassicPacket, msg: dict):
-            log.debug(f"{self}: received control message from {pkt.src} | {msg}")
+            log.debug(f"{self}: received control message from {pkt.src.name} | {msg}")
             f(self, msg)
             return True
 
@@ -41,7 +41,7 @@ def fw_signaling_cmd_handler(cmd: str):
             path_id: int = msg["path_id"]
             try:
                 fib_entry = self.fib.get(path_id)
-            except IndexError:
+            except LookupError:
                 log.debug(f"{self}: dropping signaling message from {pkt.src.name}, reason=no-fib-entry | {msg}")
                 return True
 
@@ -69,12 +69,6 @@ class ForwarderClassicMixin(ClassicCommandDispatcherMixin):
     node: QNode
     network: QuantumNetwork
     fib: Fib
-
-    def _init_classic_mixin(self) -> None:
-        """
-        Initializer, must be called from ``Forwarder.__init__()``.
-        """
-        cast(Application, self).add_handler(self.handle_classic_command, RecvClassicPacket)
 
     def send_ctrl(self, msg: Mapping):
         ctrl = self.network.get_controller()

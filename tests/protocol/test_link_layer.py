@@ -14,7 +14,7 @@ from mqns.network.network import QuantumNetwork, TimingModeSync
 from mqns.network.protocol.event import ManageActiveChannels, QubitEntangledEvent, QubitReleasedEvent
 from mqns.network.protocol.link_layer import LinkLayer, LinkLayerCounters
 from mqns.network.topology import ClassicTopology, CustomTopology, LinearTopology
-from mqns.simulator import Simulator
+from mqns.simulator import Simulator, event_handler
 from mqns.utils import log
 
 
@@ -28,15 +28,13 @@ class NetworkLayer(Application[QNode]):
         self.decohere: list[float] = []
         """Decoherence events, each entry is event time."""
 
-        self.add_handler(self.handle_entangle, QubitEntangledEvent)
-        self.add_handler(self.handle_decohere, MemoryDecohereEvent)
-
     @override
     def install(self, node):
         self._application_install(node, QNode)
         self.memory = self.node.memory
         self.epr_type = self.node.network.epr_type
 
+    @event_handler
     def handle_entangle(self, event: QubitEntangledEvent):
         qubit, epr = self.memory.read(event.qubit.addr, has=self.epr_type)
         assert qubit is event.qubit
@@ -50,6 +48,7 @@ class NetworkLayer(Application[QNode]):
         self.simulator.add_event(QubitReleasedEvent(self.node, event.qubit, t=event.t + self.release_after))
         self.release_after = None
 
+    @event_handler
     def handle_decohere(self, event: MemoryDecohereEvent):
         self.decohere.append(event.t.sec)
         event.qubit.state = QubitState.RELEASE

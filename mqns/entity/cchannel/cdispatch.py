@@ -2,6 +2,7 @@ from collections.abc import Callable
 from typing import Any
 
 from mqns.entity.cchannel.cchannel import ClassicPacket, RecvClassicPacket
+from mqns.simulator import event_handler
 
 
 def classic_cmd_handler(cmd: str):
@@ -34,6 +35,7 @@ class ClassicCommandDispatcherMixin:
     assuming the classic packet contains JSON dict with "cmd" key.
     """
 
+    @event_handler
     def handle_classic_command(self, event: RecvClassicPacket) -> bool:
         cls: type = type(self)
 

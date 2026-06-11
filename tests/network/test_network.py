@@ -1,7 +1,7 @@
 from mqns.entity.node import Application, Controller, Node
 from mqns.network.network import QuantumNetwork, TimingModeSync, TimingPhase, TimingPhaseEvent
 from mqns.network.topology import BasicTopology
-from mqns.simulator import Simulator
+from mqns.simulator import Simulator, event_handler
 
 
 class SyncCheckApp(Application[Node]):
@@ -9,8 +9,8 @@ class SyncCheckApp(Application[Node]):
         super().__init__()
         self.enters = 0
         self.exits = 0
-        self.add_handler(self.handle_sync_signal, TimingPhaseEvent)
 
+    @event_handler
     def handle_sync_signal(self, event: TimingPhaseEvent):
         t = self.simulator.tc.sec
         if event.enter:

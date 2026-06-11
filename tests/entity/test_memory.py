@@ -13,7 +13,7 @@ from mqns.entity.node import Application, QNode
 from mqns.entity.qchannel import QuantumChannel
 from mqns.models.epr import WernerStateEntanglement
 from mqns.models.qubit import Qubit
-from mqns.simulator import Simulator
+from mqns.simulator import Simulator, event_handler
 
 
 class TwoNodes:
@@ -132,7 +132,7 @@ def test_memory_clear_and_deallocate():
     assert len(addrs) == 1
     addr = addrs[0]
     mem.deallocate(addr)
-    with pytest.raises(IndexError):
+    with pytest.raises(LookupError):
         mem.deallocate(999)  # invalid
 
 
@@ -163,7 +163,7 @@ def test_memory_sync_qubit():
     assert mem.read("test_qubit") is not None
 
     assert mem.read("nonexistent") is None
-    assert pytest.raises(IndexError, lambda: mem.read("nonexistent", must=True))
+    assert pytest.raises(LookupError, lambda: mem.read("nonexistent", must=True))
 
 
 def test_memory_sync_qubit_limited():
@@ -176,7 +176,7 @@ def test_memory_sync_qubit_limited():
         assert mem.count == i + 1
 
     q = Qubit(name="q5")
-    with pytest.raises(IndexError, match="qubit not found"):
+    with pytest.raises(LookupError, match="qubit q5 not found"):
         mem.write("q5", q)
     assert mem.count == 5
 
@@ -193,11 +193,10 @@ def test_memory_async_qubit():
     class MemoryReadResponseApp(Application[QNode]):
         def __init__(self):
             super().__init__()
-            self.add_handler(self.handleMemoryRead, MemoryReadResponseEvent)
-            self.add_handler(self.handleMemoryWrite, MemoryWriteResponseEvent)
             self.nReads = 0
             self.nWrites = 0
 
+        @event_handler
         def handleMemoryRead(self, event: MemoryReadResponseEvent) -> bool | None:
             self.nReads += 1
             result = event.result
@@ -211,6 +210,7 @@ def test_memory_async_qubit():
             assert qubit.addr == 0
             assert isinstance(data, Qubit)
 
+        @event_handler
         def handleMemoryWrite(self, event: MemoryWriteResponseEvent) -> bool | None:
             self.nWrites += 1
             result = event.result

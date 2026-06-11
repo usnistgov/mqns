@@ -69,7 +69,7 @@ class FibEntry:
             [1]: Swapping rank of the node, explained in ``PathInstructions``.
 
         Raises:
-            IndexError: node does not exist in route.
+            LookupError: Node does not exist in route.
         """
         idx = self.route.index(node_name)
         return idx, self.swap[idx]
@@ -249,12 +249,12 @@ class Fib:
         Retrieve an entry by path_id.
 
         Raises:
-            IndexError: Entry not found.
+            LookupError: Entry not found.
         """
         try:
             return self.table[path_id]
         except KeyError:
-            raise IndexError(f"FIB entry not found for path_id={path_id}")
+            raise LookupError(f"FIB entry not found for path_id={path_id}") from None
 
     def insert_or_replace(self, entry: FibEntry):
         """

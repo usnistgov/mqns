@@ -46,6 +46,7 @@ from mqns.network.fw.mux_buffer_space import MuxSchemeBufferSpace
 from mqns.network.fw.select import SelectPurifQubit, call_select_purif_qubit
 from mqns.network.network import TimingPhase, TimingPhaseEvent
 from mqns.network.protocol.event import QubitEntangledEvent, QubitReleasedEvent
+from mqns.simulator import event_handler
 from mqns.utils import json_encodable, log
 
 
@@ -167,7 +168,6 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
         and classical communication handling.
         """
         super().__init__()
-        self._init_classic_mixin()
 
         self.cutoff: CutoffScheme = copy.deepcopy(kwargs.get("cutoff")) or CutoffSchemeWaitTime()
         """EPR age cut-off scheme."""
@@ -183,10 +183,6 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
             delay=parse_delay(kwargs.get("swap_delay", 0)),
             error=parse_error(kwargs.get("swap_error"), PerfectErrorModel, -1),
         )
-
-        self.add_handler(self.handle_sync_phase, TimingPhaseEvent)
-        self.add_handler(self.qubit_is_entangled, QubitEntangledEvent)
-        self.add_handler(self.qubit_is_decohered, MemoryDecohereEvent)
 
         self.waiting_etg: list[QubitEntangledEvent] = []
         """
@@ -214,6 +210,7 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
         self.purif.install(self)
         self.swap.install(self)
 
+    @event_handler
     def handle_sync_phase(self, event: TimingPhaseEvent):
         """
         Handle timing phase signals, only used in SYNC timing mode.
@@ -355,6 +352,7 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
     def _handle_swap_update(self, msg: SwapUpdateMsg, fib_entry: FibEntry):
         self.swap.handle_update(msg, fib_entry)
 
+    @event_handler
     def qubit_is_entangled(self, event: QubitEntangledEvent):
         """
         Handle a qubit entering ENTANGLED state, i.e. having an elementary entanglement.
@@ -524,6 +522,7 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
 
         self.release_qubit(qubit)
 
+    @event_handler
     def qubit_is_decohered(self, event: MemoryDecohereEvent):
         assert self.node.timing.is_async(), f"unexpected {event} in SYNC timing mode, (t_ext+t_int) too high"
         self.release_qubit(event.qubit, is_decoh=True)
