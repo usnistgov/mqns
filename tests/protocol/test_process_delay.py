@@ -2,7 +2,7 @@ from typing import cast, final, override
 
 from mqns.entity.node import Application, Node
 from mqns.network.protocol.node_process_delay import NodeProcessDelayApp
-from mqns.simulator import Event, Simulator, Time
+from mqns.simulator import Event, Simulator, Time, event_handler
 
 
 @final
@@ -17,10 +17,6 @@ class ProcessEvent(Event):
 
 
 class ProcessApp(Application[Node]):
-    def __init__(self):
-        super().__init__()
-        self.add_handler(self.EventHandler, ProcessEvent)
-
     @override
     def install(self, node):
         self._application_install(node, Node)
@@ -30,7 +26,8 @@ class ProcessApp(Application[Node]):
             event = ProcessEvent(t=t, dest=self.node)
             self.simulator.add_event(event)
 
-    def EventHandler(self, event: Event) -> bool | None:
+    @event_handler
+    def EventHandler(self, event: ProcessEvent) -> bool | None:
         expected_recv_time = [i + 0.5 for i in range(0, 10)]
         print(f"recv event at {event.t}")
         assert cast(Time, event.t).sec in expected_recv_time

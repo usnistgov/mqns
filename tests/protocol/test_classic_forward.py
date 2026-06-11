@@ -6,7 +6,7 @@ from mqns.network.network import QuantumNetwork
 from mqns.network.protocol.classicforward import ClassicPacketForwardApp
 from mqns.network.route import DijkstraRouteAlgorithm, RouteAlgorithm
 from mqns.network.topology import ClassicTopology, LinearTopology
-from mqns.simulator import Simulator, func_to_event
+from mqns.simulator import Simulator, event_handler, func_to_event
 
 
 class SendApp(Application[Node]):
@@ -42,10 +42,7 @@ class SendApp(Application[Node]):
 
 # the receiving application
 class RecvApp(Application[Node]):
-    def __init__(self):
-        super().__init__()
-        self.add_handler(self.RecvClassicPacketHandler, RecvClassicPacket)
-
+    @event_handler
     def RecvClassicPacketHandler(self, event: RecvClassicPacket):
         packet = event.packet
         msg = packet.get()

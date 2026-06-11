@@ -26,7 +26,7 @@ from mqns.entity.qchannel import QuantumChannel, RecvQubitPacket
 from mqns.models.core import BASIS_X, BASIS_Z, Basis, MeasureOutcome
 from mqns.models.core.state import QUBIT_STATE_0, QUBIT_STATE_1, QUBIT_STATE_N, QUBIT_STATE_P
 from mqns.models.qubit import Qubit
-from mqns.simulator import func_to_event
+from mqns.simulator import event_handler, func_to_event
 from mqns.utils import rng
 
 
@@ -96,8 +96,6 @@ class BB84SendApp(Application[QNode]):
         self.bit_leak = 0
         self.successful_key = []
 
-        self.add_handler(self.handleClassicPacket, RecvClassicPacket)
-
     @override
     def install(self, node: Node):
         self._application_install(node, QNode)
@@ -115,6 +113,7 @@ class BB84SendApp(Application[QNode]):
         #     event = func_to_event(t, self.send_qubit)
         #     self._simulator.add_event(event)
 
+    @event_handler
     def handleClassicPacket(self, event: RecvClassicPacket):
         if event.cchannel is not self.cchannel:
             return False
@@ -405,14 +404,13 @@ class BB84RecvApp(Application[QNode]):
         self.bit_leak = 0
         self.successful_key = []
 
-        self.add_handler(self.handleQuantumPacket, RecvQubitPacket)
-        self.add_handler(self.handleClassicPacket, RecvClassicPacket)
-
+    @event_handler
     def handleQuantumPacket(self, event: RecvQubitPacket):
         if event.qchannel is not self.qchannel:
             return False
         return self.recv(event)
 
+    @event_handler
     def handleClassicPacket(self, event: RecvClassicPacket):
         if event.cchannel is not self.cchannel:
             return False

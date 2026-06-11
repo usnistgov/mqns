@@ -15,6 +15,8 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from typing import override
+
 from mqns.entity.node import Application, Node
 from mqns.simulator import Event
 
@@ -42,6 +44,7 @@ class NodeProcessDelayApp(Application[Node]):
             return True
         return isinstance(event, self.delay_event_list)
 
+    @override
     def handle(self, event: Event) -> bool:
         if not self.check_in_delay_event_list(event):
             return False

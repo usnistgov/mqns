@@ -18,6 +18,7 @@
 from mqns.entity.cchannel import RecvClassicPacket
 from mqns.entity.node import Application, Node
 from mqns.network.route import RouteAlgorithm
+from mqns.simulator import event_handler
 
 
 class ClassicPacketForwardApp(Application[Node]):
@@ -32,8 +33,8 @@ class ClassicPacketForwardApp(Application[Node]):
         """
         super().__init__()
         self.route = route
-        self.add_handler(self.handleClassicPacket, RecvClassicPacket)
 
+    @event_handler
     def handleClassicPacket(self, event: RecvClassicPacket):
         packet = event.packet
 

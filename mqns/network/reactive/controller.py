@@ -19,11 +19,11 @@ from collections import defaultdict, deque
 from itertools import pairwise
 from typing import cast, override
 
-from mqns.entity.cchannel import ClassicCommandDispatcherMixin, ClassicPacket, RecvClassicPacket, classic_cmd_handler
+from mqns.entity.cchannel import ClassicCommandDispatcherMixin, ClassicPacket, classic_cmd_handler
 from mqns.network.fw import RoutingController, RoutingPathStatic, SwapPolicy
 from mqns.network.network import Request, TimingModeSync, TimingPhase, TimingPhaseEvent
 from mqns.network.reactive.message import LinkStateMsg
-from mqns.simulator import func_to_event
+from mqns.simulator import event_handler, func_to_event
 from mqns.utils import json_encodable, log
 
 
@@ -68,9 +68,6 @@ class ReactiveRoutingController(ClassicCommandDispatcherMixin, RoutingController
         Counters.
         """
 
-        self.add_handler(self.handle_classic_command, RecvClassicPacket)
-        self.add_handler(self.handle_sync_phase, TimingPhaseEvent)
-
         self._tls = defaultdict[tuple[str, str], deque[str]](deque)
         """
         Topology link state.
@@ -88,6 +85,7 @@ class ReactiveRoutingController(ClassicCommandDispatcherMixin, RoutingController
         self.timing = cast(TimingModeSync, self.node.timing)
         self.d_rtg = self.simulator.time(time_slot=self.timing.t_rtg.time_slot // 2)
 
+    @event_handler
     def handle_sync_phase(self, event: TimingPhaseEvent):
         match event.action:
             case TimingPhase.ROUTING, True:

@@ -1,9 +1,9 @@
 import functools
 from collections.abc import Callable, Mapping
-from typing import Any, cast
+from typing import Any
 
-from mqns.entity.cchannel import ClassicCommandDispatcherMixin, ClassicPacket, RecvClassicPacket, classic_cmd_handler
-from mqns.entity.node import Application, Node, QNode
+from mqns.entity.cchannel import ClassicCommandDispatcherMixin, ClassicPacket, classic_cmd_handler
+from mqns.entity.node import Node, QNode
 from mqns.network.fw.fib import Fib, FibEntry
 from mqns.network.network import QuantumNetwork
 from mqns.utils import log
@@ -69,12 +69,6 @@ class ForwarderClassicMixin(ClassicCommandDispatcherMixin):
     node: QNode
     network: QuantumNetwork
     fib: Fib
-
-    def _init_classic_mixin(self) -> None:
-        """
-        Initializer, must be called from ``Forwarder.__init__()``.
-        """
-        cast(Application, self).add_handler(self.handle_classic_command, RecvClassicPacket)
 
     def send_ctrl(self, msg: Mapping):
         ctrl = self.network.get_controller()

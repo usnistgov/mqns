@@ -13,7 +13,7 @@ from mqns.entity.node import Application, QNode
 from mqns.entity.qchannel import QuantumChannel
 from mqns.models.epr import WernerStateEntanglement
 from mqns.models.qubit import Qubit
-from mqns.simulator import Simulator
+from mqns.simulator import Simulator, event_handler
 
 
 class TwoNodes:
@@ -193,11 +193,10 @@ def test_memory_async_qubit():
     class MemoryReadResponseApp(Application[QNode]):
         def __init__(self):
             super().__init__()
-            self.add_handler(self.handleMemoryRead, MemoryReadResponseEvent)
-            self.add_handler(self.handleMemoryWrite, MemoryWriteResponseEvent)
             self.nReads = 0
             self.nWrites = 0
 
+        @event_handler
         def handleMemoryRead(self, event: MemoryReadResponseEvent) -> bool | None:
             self.nReads += 1
             result = event.result
@@ -211,6 +210,7 @@ def test_memory_async_qubit():
             assert qubit.addr == 0
             assert isinstance(data, Qubit)
 
+        @event_handler
         def handleMemoryWrite(self, event: MemoryWriteResponseEvent) -> bool | None:
             self.nWrites += 1
             result = event.result

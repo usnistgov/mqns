@@ -16,25 +16,20 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from abc import ABC
-from collections import defaultdict
-from collections.abc import Callable, Iterable
 from typing import TYPE_CHECKING, Any, cast
 
-from mqns.simulator import Event
+from mqns.simulator import EventDispatcherMixin
 
 if TYPE_CHECKING:
     from mqns.entity.node.node import Node
 
 
-class Application[N: "Node"](ABC):
+class Application[N: "Node"](EventDispatcherMixin, ABC):
     """
     Application deployed on a node.
 
     ``N`` type parameter indicates which ``Node`` subclass is required for installing this application.
     """
-
-    def __init__(self):
-        self._dispatch_table = defaultdict[type[Event], list[Callable[[Event], bool | None]]](lambda: [])
 
     def install(self, node: "Node"):
         """
@@ -57,42 +52,6 @@ class Application[N: "Node"](ABC):
         assert isinstance(node, node_type)
         self.node: N = node
         """Node that owns this application."""
-
-    def handle(self, event: Event) -> bool | None:
-        """
-        Dispatch an event in the application.
-
-        Args:
-            event: the event.
-
-        Return: if True, further applications will not handle this event
-        """
-        return self._dispatch(event)
-
-    def _dispatch(self, event: Event) -> bool:
-        for handler in self._dispatch_table.get(type(event), []):
-            skip = handler(event)
-            if skip is True:
-                return skip
-        return False
-
-    def add_handler[E: Event](
-        self,
-        handler: Callable[[E], bool | None],
-        event_type: type[E] | Iterable[type[E]],
-    ):
-        """
-        Add an event handler function.
-
-        Args:
-            handler: Event handler function.
-            event_type: Event type(s). Each class must be marked `@final`.
-        """
-        ets = [event_type] if isinstance(event_type, type) else event_type
-        eh = cast(Any, handler)
-        for et in cast(Iterable[type[E]], ets):
-            assert getattr(et, "__final__", False) is True, f"event type {et} must be marked @final"
-            self._dispatch_table[et].append(eh)
 
     def __repr__(self: Any) -> str:
         """

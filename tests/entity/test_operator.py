@@ -2,7 +2,7 @@ from mqns.entity.node import Application, QNode
 from mqns.entity.operator import OperateRequestEvent, OperateResponseEvent, QuantumOperator
 from mqns.models.qubit import Qubit
 from mqns.models.qubit.gate import H
-from mqns.simulator import Simulator
+from mqns.simulator import Simulator, event_handler
 
 
 def gate_z_and_measure(qubit: Qubit):
@@ -29,9 +29,9 @@ def test_operator_sync():
 class RecvOperateApp(Application[QNode]):
     def __init__(self):
         super().__init__()
-        self.add_handler(self.OperateResponseEventhandler, OperateResponseEvent)
         self.count = 0
 
+    @event_handler
     def OperateResponseEventhandler(self, event: OperateResponseEvent) -> bool | None:
         result = event.result
         assert self.simulator.tc.sec == 0.5

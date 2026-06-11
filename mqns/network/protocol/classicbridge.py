@@ -7,7 +7,7 @@ from typing import Protocol, override
 
 from mqns.entity.cchannel import ClassicPacket, RecvClassicPacket
 from mqns.entity.node import Application, Node
-from mqns.simulator import Event, Simulator, func_to_event
+from mqns.simulator import Event, Simulator, event_handler, func_to_event
 from mqns.utils import log
 
 try:
@@ -241,7 +241,6 @@ class ClassicBridge(Application[Node]):
     def __init__(self, *, nats_prefix=DEFAULT_NATS_PREFIX):
         super().__init__()
         self.nats_prefix = nats_prefix
-        self.add_handler(self.handle_packet, RecvClassicPacket)
 
     @override
     def install(self, node):
@@ -255,6 +254,7 @@ class ClassicBridge(Application[Node]):
             raise ValueError("every ClassicBridge in a scenario must have the same nats_prefix setting")
         self.conn.bridges[self.node.name] = self
 
+    @event_handler
     def handle_packet(self, event: RecvClassicPacket) -> bool:
         pkt = event.packet
         if pkt.dest is not self.node:
