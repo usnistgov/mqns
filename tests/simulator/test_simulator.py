@@ -6,7 +6,7 @@ from typing import override
 
 import pytest
 
-from mqns.simulator import Event, Simulator, Time
+from mqns.simulator import Event, EventHandleSet, Simulator, Time
 
 
 @pytest.fixture(autouse=True)
@@ -206,3 +206,37 @@ def test_gate():
     s.stop()
     th.join(timeout=1)
     assert not th.is_alive()
+
+
+def test_handle_set():
+    class EventA(SimpleEvent):
+        pass
+
+    class EventB(SimpleEvent):
+        pass
+
+    class EventC(SimpleEvent):
+        pass
+
+    s = Simulator(0, 1, accuracy=1000)
+
+    hs = EventHandleSet()
+
+    s.add_event(event := EventA(s.ts, "A0"))
+    hs.add(event)
+    s.add_event(event := EventA(s.ts, "A1"))
+    hs.add(event)
+
+    s.add_event(event := EventB(s.ts, "B0"))
+    hs.add(event)
+    hs.discard(EventB)
+
+    s.add_event(event := EventC(s.ts, "C0"))
+    hs.add(event)
+
+    s.run()
+
+    assert len(SimpleEvent.invokes["A0"]) == 0
+    assert len(SimpleEvent.invokes["A1"]) == 1
+    assert len(SimpleEvent.invokes["B0"]) == 0
+    assert len(SimpleEvent.invokes["C0"]) == 1
