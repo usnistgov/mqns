@@ -306,7 +306,7 @@ class QuantumMemory(Entity):
             Qubit and associated data (possibly empty), or None if qubit is not found by EPR name.
 
         Raises:
-            IndexError: qubit address out of range.
+            LookupError: Qubit address out of range.
         """
 
     @overload
@@ -326,8 +326,8 @@ class QuantumMemory(Entity):
             Qubit and associated data (possibly empty).
 
         Raises:
-            IndexError: qubit not found.
-            ValueError: no quantum information is stored.
+            LookupError: Qubit not found.
+            ValueError: No quantum information is stored.
         """
 
     @overload
@@ -355,8 +355,8 @@ class QuantumMemory(Entity):
             Qubit and associated data (has type specified in ``has``).
 
         Raises:
-            IndexError: qubit not found.
-            ValueError: no quantum information is stored or it is not the expected type.
+            LookupError: Qubit not found.
+            ValueError: No quantum information is stored or it is not the expected type.
         """
 
     def read[M: QuantumModel](
@@ -375,7 +375,7 @@ class QuantumMemory(Entity):
 
         if qubit is None:
             if must or has:
-                raise IndexError(f"{self}: cannot find {key}")
+                raise LookupError(f"{self}: cannot find {key}")
             return None
 
         if has and type(data) is not has:
@@ -406,7 +406,7 @@ class QuantumMemory(Entity):
             Qubit where the data is stored.
 
         Raises:
-            IndexError: qubit not found by ``key`` or no qubit available.
+            LookupError: qubit not found by ``key`` or no qubit available.
             ValueError: ``replace=False`` but qubit has existing data.
         """
         if type(key) is int:
@@ -415,7 +415,7 @@ class QuantumMemory(Entity):
             qubit, old = next(self.find(lambda q, _: q.key == key), (None, None))
 
         if qubit is None:
-            raise IndexError("qubit not found")
+            raise LookupError(f"{self}: qubit {key} not found")
 
         if not replace and old is not None:
             raise ValueError(f"{self}: {qubit} contains existing data: {old}")

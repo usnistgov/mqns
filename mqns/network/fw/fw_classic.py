@@ -19,7 +19,7 @@ def fw_control_cmd_handler(cmd: str):
     def decorator(f: Callable[[Any, Any], Any]):
         @functools.wraps(f)
         def wrapper(self: "ForwarderClassicMixin", pkt: ClassicPacket, msg: dict):
-            log.debug(f"{self}: received control message from {pkt.src} | {msg}")
+            log.debug(f"{self}: received control message from {pkt.src.name} | {msg}")
             f(self, msg)
             return True
 
@@ -41,7 +41,7 @@ def fw_signaling_cmd_handler(cmd: str):
             path_id: int = msg["path_id"]
             try:
                 fib_entry = self.fib.get(path_id)
-            except IndexError:
+            except LookupError:
                 log.debug(f"{self}: dropping signaling message from {pkt.src.name}, reason=no-fib-entry | {msg}")
                 return True
 

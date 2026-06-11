@@ -123,7 +123,7 @@ class Node(Entity):
             app_type: Application type/class.
 
         Raises:
-            IndexError: application does not exist, or there are multiple instances
+            LookupError: Application does not exist, or there are multiple instances.
         """
         if self._app_by_type is None:  # this is called before self.install() populates _app_by_type
             self.ensure_not_installed()
@@ -138,7 +138,7 @@ class Node(Entity):
     def _get_app_from_apps[A: Application](self, app_type: type[A]) -> A:
         apps = self.get_apps(app_type)
         if len(apps) != 1:
-            raise IndexError(f"node does not have exactly one instance of {app_type}")
+            raise LookupError(f"node does not have exactly one instance of {app_type}")
         return apps[0]
 
     def _add_channel[C: "BaseChannel"](self, channel: C, channels: list[C]) -> None:
@@ -171,7 +171,7 @@ class Node(Entity):
         Retrieve the classic channel that connects to ``dst``.
 
         Raises:
-            IndexError: channel does not exist
+            LookupError: channel does not exist
         """
         return self._get_channel(dst, self._cchannel_by_dst)
 

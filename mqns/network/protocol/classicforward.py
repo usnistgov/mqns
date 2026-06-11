@@ -51,7 +51,7 @@ class ClassicPacketForwardApp(Application[Node]):
         next_hop = route_result[0][1]
         try:
             cchannel = self.node.get_cchannel(next_hop)
-        except IndexError:
+        except LookupError:
             # not found the classic channel, drop the packet
             return True
         cchannel.send(packet, next_hop=next_hop)

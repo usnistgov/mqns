@@ -167,7 +167,7 @@ class Topology(ABC):
             net = self.controller.network
             for cchannel in cchannels:
                 net.add_cchannel(cchannel)
-        except IndexError:
+        except AttributeError:  # controller is not part of a network
             pass
 
         return cchannels

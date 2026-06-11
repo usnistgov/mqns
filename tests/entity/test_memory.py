@@ -132,7 +132,7 @@ def test_memory_clear_and_deallocate():
     assert len(addrs) == 1
     addr = addrs[0]
     mem.deallocate(addr)
-    with pytest.raises(IndexError):
+    with pytest.raises(LookupError):
         mem.deallocate(999)  # invalid
 
 
@@ -163,7 +163,7 @@ def test_memory_sync_qubit():
     assert mem.read("test_qubit") is not None
 
     assert mem.read("nonexistent") is None
-    assert pytest.raises(IndexError, lambda: mem.read("nonexistent", must=True))
+    assert pytest.raises(LookupError, lambda: mem.read("nonexistent", must=True))
 
 
 def test_memory_sync_qubit_limited():
@@ -176,7 +176,7 @@ def test_memory_sync_qubit_limited():
         assert mem.count == i + 1
 
     q = Qubit(name="q5")
-    with pytest.raises(IndexError, match="qubit not found"):
+    with pytest.raises(LookupError, match="qubit q5 not found"):
         mem.write("q5", q)
     assert mem.count == 5
 

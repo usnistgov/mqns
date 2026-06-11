@@ -53,4 +53,4 @@ class RoutingController(Application[Controller]):
         for node_name in instructions["route"]:
             qnode = self.net.get_node(node_name)
             self.node.send_cpacket(qnode, ClassicPacket(msg, src=self.node, dest=qnode))
-            log.debug(f"{self}: {msg['cmd']} #{msg['path_id']} at {qnode}: {instructions}")
+            log.debug(f"{self}: {msg['cmd']} #{msg['path_id']} at {qnode.name}: {instructions}")
