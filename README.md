@@ -8,7 +8,7 @@
 
 ![MQNS logo](docs/mqns-logo.svg)
 
-This software is developed at the [Smart Connected Systems Division](https://www.nist.gov/ctl/smart-connected-systems-division) of the [National Institute of Standards and Technology](https://www.nist.gov/).
+This software is developed at the [Quantum Communications Division](https://www.nist.gov/ctl/quantum-communications-division) of the [National Institute of Standards and Technology](https://www.nist.gov/).
 
 This project is part of an ongoing research effort to evaluate the quantum networking approaches presented in our survey:
 🔗 [Entanglement Routing in Quantum Networks: A Comprehensive Survey](https://ieeexplore.ieee.org/document/10882978).
