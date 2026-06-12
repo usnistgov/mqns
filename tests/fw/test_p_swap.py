@@ -4,9 +4,11 @@ Test suite for ProactiveForwarder focused on swapping.
 
 import itertools
 from collections.abc import Sequence
+from typing import cast
 
 import pytest
 
+from mqns.entity.node import QNode
 from mqns.entity.timer import Timer
 from mqns.models.delay import ConstantDelayModel
 from mqns.models.epr import Entanglement, MixedStateEntanglement
@@ -714,3 +716,87 @@ def test_tree2_statistical(
     assert fwD.cnt.n_consumed == n_consumed[0] == fwF.cnt.n_consumed
     assert fwE.cnt.n_consumed == n_consumed[1] == fwG.cnt.n_consumed
     assert sum(fw.cnt.n_su_lower[4] for fw in (fwD, fwE, fwF, fwG)) == (2 if sum(n_consumed) == 0 else 0)
+
+
+@pytest.mark.parametrize(
+    ("path0", "path1", "etgs", "selected_qubit", "selected_path", "n_consumed"),
+    [
+        # H--\     /--A
+        #     D---B
+        # I--/     \--E---K
+        #
+        # 1. D chooses H-D over I-D, swaps H-D-B, heralds B for H-B q_paths={0}.
+        # 2. B ignores B-E, swaps H-B-A, heralds H (via D) and A for H-A q_paths={0}.
+        ("HDBA", "IDBEK", "HD,ID:DB:BE:BA", {"D": "H"}, {}, (1, 0)),
+        # 1. D chooses I-D over H-D, swaps I-D-B, heralds B for I-B q_paths={1}.
+        # 2. B ignores B-A, swaps I-B-E, heralds E for I-E q_paths={1}.
+        # 3. E swaps I-E-K, heralds I (via B,D) and K for I-K q_paths={1}.
+        ("HDBA", "IDBEK", "HD,ID:DB:BA,BE:EK", {"D": "I"}, {}, (0, 1)),
+        #
+        # H---D--\         /--F
+        #         B---A---C
+        #     E--/         \--G--N
+        #
+        # 1. Outer EPRs arrive first.
+        #    D swaps H-D-B and heralds B for H-B q_paths={0}.
+        #    G swaps C-G-N and heralds C for C-N q_paths={1}.
+        # 2. B,A,C swaps at the same time.
+        #    B chooses H-D-B over E-B, heralds A for H-A q_paths={0}.
+        #    C chooses C-F over C-G-N, heralds A for A-F q_paths={0}.
+        #    A chooses path0 as representative.
+        # 3. A receives heralding from C, heralds H (via B,D) for H-F q_paths={0}.
+        #    A receives heralding from B, heralds F (via C) for H-F q_paths={0}.
+        ("HDBACF", "EBACGN", "HD,DB,EB,CF,CG,GN:BA,AC", {"B": "D", "C": "F"}, {"A": 0}, (1, 0)),
+        # Similar, but A chooses path1 as representative.
+        ("HDBACF", "EBACGN", "HD,DB,EB,CF,CG,GN:BA,AC", {"B": "D", "C": "F"}, {"A": 1}, (1, 0)),
+        # Similar, but B and C choose path1 qubits.
+        ("HDBACF", "EBACGN", "HD,DB,EB,CF,CG,GN:BA,AC", {"B": "E", "C": "G"}, {"A": 0}, (0, 1)),
+        # Similar, but B and C make conflicting choices.
+        ("HDBACF", "EBACGN", "HD,DB,EB,CF,CG,GN:BA,AC", {"B": "D", "C": "G"}, {"A": 0}, (0, 0)),
+    ],
+)
+def test_tree3_statistical(
+    path0: str,
+    path1: str,
+    etgs: str,
+    selected_qubit: dict[str, str],
+    selected_path: dict[str, int],
+    n_consumed: tuple[int, int],
+):
+    """
+    Test MuxSchemeStatistical in tree (height=3) topology with uneven paths.
+    """
+
+    def select_qubit(candidates: list[MemoryEprTuple], fw: Forwarder, mt0: MemoryEprTuple) -> MemoryEprTuple:
+        _ = mt0
+        partner = selected_qubit[fw.node.name]
+        chosen = next((mt1 for mt1 in candidates if partner in (cast(QNode, mt1[1].src).name, cast(QNode, mt1[1].dst).name)))
+        assert chosen is not None
+        return chosen
+
+    def select_path(candidates: list[int], fw: Forwarder, epr0: Entanglement, epr1: Entanglement) -> int:
+        _ = candidates, epr0, epr1
+        return selected_path[fw.node.name]
+
+    net, simulator = build_tree_network(
+        height=3,
+        fw={"p_swap": 1.0, "mux": MuxSchemeStatistical(select_swap_qubit=select_qubit, select_path=select_path)},
+        end_time=2,
+        swap_table_leak_tol=2,
+    )
+    fws = {node.name: node.get_app(ProactiveForwarder) for node in net.nodes}
+
+    for path in path0, path1:
+        install_path(net, RoutingPathStatic(path, m_v=QubitAllocationType.DISABLED))
+
+    def expand_etgs():
+        for t, edges in enumerate(etgs.split(":")):
+            for edge in edges.split(","):
+                yield t, fws[edge[0]], fws[edge[1]]
+
+    provide_entanglements(*expand_etgs(), transform_t=lambda ms: 1 + ms / 1000)
+    simulator.run()
+    print_fw_counters(net)
+
+    assert fws[path0[0]].cnt.n_consumed == n_consumed[0]
+    assert fws[path1[0]].cnt.n_consumed == n_consumed[1]

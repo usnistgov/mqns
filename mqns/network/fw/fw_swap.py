@@ -81,9 +81,9 @@ class SwapTask:
     """Is my own local swap started?"""
     o_complete = False
     """Is my own local swap completed?"""
-    l_complete: bool
+    l_complete = False
     """Is the chain to my left completed?"""
-    r_complete: bool
+    r_complete = False
     """Is the chain to my right completed?"""
 
     expiry: int | None = None
@@ -116,8 +116,6 @@ class SwapTask:
     def __init__(self, proc: "ForwarderSwapProc", fib_entry: FibEntry):
         self.proc = proc
         self.sg = fib_entry.sg
-        self.l_complete = self.sg.l_most
-        self.r_complete = self.sg.r_most
 
     def begin_local_swap(self, la: SwapArm, ra: SwapArm) -> None:
         """
@@ -133,7 +131,14 @@ class SwapTask:
         self.rc_paths = cast(list[int], ra.mq.epr_path_ids)
         self.q_paths = _intersect_path_ids(self.q_paths, self.lc_paths)
         self.q_paths = _intersect_path_ids(self.q_paths, self.rc_paths)
+
+        # Choose a SwapGroup based on chosen swap arms.
+        # If own node is leftmost/rightmost in the SwapGroup, we won't hear from left/right peer.
         self._pivot_sg()
+        if self.sg.l_most:
+            self.l_complete = True
+        if self.sg.r_most:
+            self.r_complete = True
 
         # These EPRs are known by both own node and the adjacent nodes.
         self.la_key = la.p_key
@@ -217,13 +222,12 @@ class SwapTask:
         """
         If current SwapGroup is no longer a viable path but there are other viable paths,
         pivot SwapGroup to another viable path.
+        This mechanism can only trigger when used with ``MuxSchemeStatistical``.
         """
         if not self.q_paths or self.sg.path_id in self.q_paths:
             return
 
-        sg = self.proc.fw.fib.get(self.q_paths[0]).sg
-        assert sg.nodes == self.sg.nodes
-        self.sg = sg
+        self.sg = self.proc.fw.fib.get(self.q_paths[0]).sg
 
     def _check_triggers(self) -> list[SwapHerald]:
         sg = self.sg

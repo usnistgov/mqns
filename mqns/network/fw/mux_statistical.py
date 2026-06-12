@@ -69,6 +69,10 @@ class MuxSchemeDynamicBase(MuxScheme):
 class MuxSchemeStatistical(MuxSchemeDynamicBase):
     """
     Statistical multiplexing scheme.
+
+    Limitations:
+    * Across all paths, each node is either a repeater or an end node.
+    * Across all paths, each link must have the same direction (left to right).
     """
 
     type SelectSwapQubit = Callable[[list[MemoryEprTuple], "Forwarder", MemoryEprTuple], MemoryEprTuple]
@@ -128,7 +132,7 @@ class MuxSchemeStatistical(MuxSchemeDynamicBase):
             return fib_entry.own_swap_rank - p_rank
 
         rank_diff = [calc_rank_diff(path_id) for path_id in cast(list[int], mq.epr_path_ids)]
-        assert min(rank_diff) == max(rank_diff)  # failure means one route is a substring of another route, unsupported
+        assert min(rank_diff) == max(rank_diff)  # failure means one node is both repeater and end node, unsupported
         if rank_diff[0] > 0:
             # Own node has higher rank and cannot initiate swap; qubit stays in ENTANGLED1 state.
             return None
