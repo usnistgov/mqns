@@ -24,13 +24,16 @@ from mqns.utils import rng
 
 
 class RandomTopology(Topology):
-    """RandomTopology includes ``nodes_number`` nodes. The topology is randomly generated."""
+    """
+    RandomTopology includes ``nodes_number`` nodes.
+    The topology is randomly generated.
+    """
 
     def __init__(self, nodes_number: int, lines_number: int, **kwargs: Unpack[TopologyInitKwargs]):
-        """Args:
-        nodes_number: the number of Qnodes
-        lines_number: the number of lines (QuantumChannel)
-
+        """
+        Args:
+            nodes_number: Number of quantum nodes.
+            lines_number: Number of quantum channels.
         """
         super().__init__(nodes_number, **kwargs)
         self.lines_number = lines_number
@@ -40,22 +43,22 @@ class RandomTopology(Topology):
         nl: list[QNode] = []
         ll: list[QuantumChannel] = []
 
-        mat = [[0 for i in range(self.nodes_number)] for j in range(self.nodes_number)]
+        mat = [[0 for _ in range(self.nodes_number)] for j in range(self.nodes_number)]
 
         if self.nodes_number >= 1:
-            n = QNode(f"n{1}")
+            n = QNode(self._name_node(0))
             nl.append(n)
 
         for i in range(self.nodes_number - 1):
-            n = QNode(f"n{i + 2}")
+            n = QNode(self._name_node(1 + i))
             nl.append(n)
 
-            idx = rng.integers(0, i, endpoint=True)
+            idx = rng.integers(0, i, endpoint=True, dtype=int)
             pn = nl[idx]
             mat[idx][i + 1] = 1
             mat[i + 1][idx] = 1
 
-            link = QuantumChannel(name=f"l{idx + 1},{i + 2}", **self.qchannel_args)
+            link = QuantumChannel(self._name_channel(idx, 1 + i), **self.qchannel_args)
             ll.append(link)
             pn.add_qchannel(link)
             n.add_qchannel(link)
@@ -63,15 +66,15 @@ class RandomTopology(Topology):
         if self.lines_number > self.nodes_number - 1:
             for i in range(self.nodes_number - 1, self.lines_number):
                 while True:
-                    a = rng.integers(0, self.nodes_number)
-                    b = rng.integers(0, self.nodes_number)
+                    a = rng.integers(0, self.nodes_number, dtype=int)
+                    b = rng.integers(0, self.nodes_number, dtype=int)
                     if a != b and mat[a][b] == 0:
                         break
                 mat[a][b] = 1
                 mat[b][a] = 1
                 n = nl[a]
                 pn = nl[b]
-                link = QuantumChannel(name=f"l{a + 1},{b + 1}", **self.qchannel_args)
+                link = QuantumChannel(self._name_channel(a, b), **self.qchannel_args)
                 ll.append(link)
                 pn.add_qchannel(link)
                 n.add_qchannel(link)

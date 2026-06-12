@@ -30,33 +30,30 @@ def test_4_swap(epr_type: type[Entanglement], timing_mode: str, swap: SwapSequen
     net, simulator = build_linear_network(
         4, swap_table_leak_tol=256, end_time=3.0, timing=timing, epr_type=epr_type, has_link_layer=True
     )
-    f1 = net.get_node("n1").get_app(ProactiveForwarder)
-    f2 = net.get_node("n2").get_app(ProactiveForwarder)
-    f3 = net.get_node("n3").get_app(ProactiveForwarder)
-    f4 = net.get_node("n4").get_app(ProactiveForwarder)
+    fwA, fwB, fwC, fwD = (node.get_app(ProactiveForwarder) for node in net.nodes)
 
-    install_path(net, RoutingPathSingle("n1", "n4", swap=swap))
+    install_path(net, RoutingPathSingle("A", "D", swap=swap))
     simulator.run()
     print_fw_counters(net)
 
     # The main purpose of integrated test is to verify that the forwarder can return released qubits back to LinkLayer
     # for re-generating elementary entanglements.
     # Hence, these numeric bounds are much smaller than usual values, but must be greater than the memory capacity.
-    assert f2.cnt.n_swapped >= 16
-    assert f3.cnt.n_swapped >= 16
-    assert f1.cnt.n_consumed >= 16
-    assert f4.cnt.n_consumed >= 16
-    assert -4 <= f1.cnt.n_consumed - f4.cnt.n_consumed <= 4
+    assert fwB.cnt.n_swapped >= 16
+    assert fwC.cnt.n_swapped >= 16
+    assert fwA.cnt.n_consumed >= 16
+    assert fwD.cnt.n_consumed >= 16
+    assert -4 <= fwA.cnt.n_consumed - fwD.cnt.n_consumed <= 4
 
 
 def test_rect_uninstall_path():
     """Test uninstall_path in rectangle topology."""
     net, simulator = build_rect_network(swap_table_leak_tol=256, has_link_layer=True)
-    f2 = net.get_node("n2").get_app(ProactiveForwarder)
-    f3 = net.get_node("n3").get_app(ProactiveForwarder)
-    ll1 = net.get_node("n1").get_app(LinkLayer)
-    ll2 = net.get_node("n2").get_app(LinkLayer)
-    ll3 = net.get_node("n3").get_app(LinkLayer)
+    fwB = net.get_node("B").get_app(ProactiveForwarder)
+    fwC = net.get_node("C").get_app(ProactiveForwarder)
+    llA = net.get_node("A").get_app(LinkLayer)
+    llB = net.get_node("B").get_app(LinkLayer)
+    llC = net.get_node("C").get_app(LinkLayer)
 
     counters: list[tuple[int, int, int, int, int]] = []
 
@@ -64,28 +61,28 @@ def test_rect_uninstall_path():
         print_fw_counters(net)
         counters.append(
             (
-                f2.cnt.n_swapped,
-                ll2.cnt.n_attempts,
-                f3.cnt.n_swapped,
-                ll3.cnt.n_attempts,
-                ll1.cnt.n_attempts,
+                fwB.cnt.n_swapped,
+                llB.cnt.n_attempts,
+                fwC.cnt.n_swapped,
+                llC.cnt.n_attempts,
+                llA.cnt.n_attempts,
             )
         )
 
     timer = Timer("save_counters", start_time=0.500, end_time=9.501, step_time=1.000, trigger_func=save_counters)
     timer.install(simulator)
 
-    install_path(net, RoutingPathStatic(["n1", "n2", "n4"], swap=[1, 0, 1]), t_install=2, t_uninstall=6)
-    install_path(net, RoutingPathStatic(["n1", "n3", "n4"], swap=[1, 0, 1]), t_install=4, t_uninstall=8)
+    install_path(net, RoutingPathStatic("ABD"), t_install=2, t_uninstall=6)
+    install_path(net, RoutingPathStatic("ACD"), t_install=4, t_uninstall=8)
     simulator.run()
 
     assert len(counters) == 10
-    for i in 0, 1:  # f2.cnt.n_swapped and ll2.cnt.n_attempts
+    for i in 0, 1:  # fwB.cnt.n_swapped and llB.cnt.n_attempts
         assert counters[0][i] == counters[1][i]
         assert counters[6][i] == counters[9][i]
-    for i in 2, 3:  # f3.cnt.n_swapped and ll3.cnt.n_attempts
+    for i in 2, 3:  # fwC.cnt.n_swapped and llC.cnt.n_attempts
         assert counters[0][i] == counters[3][i]
         assert counters[8][i] == counters[9][i]
-    # ll1.cnt.n_attempts
+    # llA.cnt.n_attempts
     assert counters[0][4] == counters[1][4]
     assert counters[8][4] == counters[9][4]

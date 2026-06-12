@@ -23,14 +23,17 @@ from mqns.network.topology.topo import Topology
 
 
 class BasicTopology(Topology):
-    """BasicTopology includes ``nodes_number`` Qnodes. None of them are connected with each other"""
+    """
+    BasicTopology includes ``nodes_number`` Qnodes.
+    None of them are connected with each other.
+    """
 
     @override
     def build(self) -> tuple[list[QNode], list[QuantumChannel]]:
         nl: list[QNode] = []
         ll: list[QuantumChannel] = []
         for i in range(self.nodes_number):
-            n = QNode(f"n{i + 1}")
+            n = QNode(self._name_node(i))
             nl.append(n)
 
         self._add_apps(nl)

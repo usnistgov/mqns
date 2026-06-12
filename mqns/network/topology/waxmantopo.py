@@ -31,12 +31,14 @@ class WaxmanTopology(Topology):
     """WaxmanTopology is the random topology generator using Waxman's model."""
 
     def __init__(self, nodes_number: int, size: float, alpha: float, beta: float, **kwargs: Unpack[TopologyInitKwargs]):
-        """Args:
-        nodes_number (int): the number of Qnodes
-        size (float): the area size (meter)
-        alpha (float): alpha parameter in Waxman's model
-        beta (float): beta parameter in Waxman's model
+        """
+        Args:
+            nodes_number: the number of Qnodes.
+            size: the area size (meter).
+            alpha: alpha parameter in Waxman's model.
+            beta: beta parameter in Waxman's model.
 
+        Note: this generator does not follow ``nodes_naming`` parameter for qchannel naming.
         """
         super().__init__(nodes_number, **kwargs)
         self.size = size
@@ -52,7 +54,7 @@ class WaxmanTopology(Topology):
         distance_table: dict[tuple[QNode, QNode], float] = {}
 
         for i in range(self.nodes_number):
-            n = QNode(f"n{i + 1}")
+            n = QNode(self._name_node(i))
             nl.append(n)
             x = rng.uniform(0, self.size)
             y = rng.uniform(0, self.size)
@@ -75,7 +77,7 @@ class WaxmanTopology(Topology):
             if rng.random() < p:
                 qchannel_args = copy.deepcopy(self.qchannel_args)
                 qchannel_args.setdefault("length", d)
-                link = QuantumChannel(name=f"l{n1}-{n2}", **qchannel_args)
+                link = QuantumChannel(name=f"l{n1.name}-{n2.name}", **qchannel_args)
                 ll.append(link)
                 n1.add_qchannel(link)
                 n2.add_qchannel(link)

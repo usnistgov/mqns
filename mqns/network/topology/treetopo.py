@@ -29,10 +29,10 @@ class TreeTopology(Topology):
     """
 
     def __init__(self, nodes_number, children_number: int = 2, **kwargs: Unpack[TopologyInitKwargs]):
-        """Args:
-        nodes_number (int): the total number of QNodes
-        children_number (int): the number of children one parent has
-
+        """
+        Args:
+            nodes_number: Total number of QNodes.
+            children_number: Number of children one parent has.
         """
         super().__init__(nodes_number, **kwargs)
         self.children_number = children_number
@@ -43,13 +43,13 @@ class TreeTopology(Topology):
         ll: list[QuantumChannel] = []
 
         for i in range(self.nodes_number):
-            n = QNode(f"n{i + 1}")
+            n = QNode(self._name_node(i))
             nl.append(n)
 
         for i in range(self.nodes_number):
             for j in range(i * self.children_number + 1, (i + 1) * self.children_number + 1):
                 if j < self.nodes_number:
-                    link = QuantumChannel(name=f"l{i},{j}", **self.qchannel_args)
+                    link = QuantumChannel(self._name_channel(i, j), **self.qchannel_args)
                     ll.append(link)
                     nl[i].add_qchannel(link)
                     nl[j].add_qchannel(link)

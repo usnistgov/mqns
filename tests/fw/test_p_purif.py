@@ -8,12 +8,7 @@ from mqns.network.fw import RoutingPathSingle
 from mqns.network.proactive import ProactiveForwarder
 from mqns.utils import rng
 
-from .fw_common import (
-    build_linear_network,
-    install_path,
-    print_fw_counters,
-    provide_entanglements,
-)
+from .fw_common import build_linear_network, check_fw_counters, install_path, print_fw_counters, provide_entanglements
 
 
 def force_purify_outcome(monkeypatch: pytest.MonkeyPatch, *success: bool):
@@ -50,72 +45,75 @@ def force_purify_outcome(monkeypatch: pytest.MonkeyPatch, *success: bool):
 )
 def test_link_rounds(monkeypatch: pytest.MonkeyPatch, n_rounds: int, purif_success: list[int], n_purif: list[int]):
     """Test multi-round purification on a single link with various purification outcomes."""
-    n_etg = 2**n_rounds
+    n_etg: int = 2**n_rounds
     net, simulator = build_linear_network(2, qchannel_capacity=n_etg, fw={"p_swap": 0.0})
-    f1 = net.get_node("n1").get_app(ProactiveForwarder)
-    f2 = net.get_node("n2").get_app(ProactiveForwarder)
+    fwA = net.get_node("A").get_app(ProactiveForwarder)
+    fwB = net.get_node("B").get_app(ProactiveForwarder)
 
-    install_path(net, RoutingPathSingle("n1", "n2", swap=[0, 0], purif={"n1-n2": n_rounds}))
-    provide_entanglements(*((1.001 + i / 1000, f1, f2) for i in range(n_etg)))
+    install_path(net, RoutingPathSingle("A", "B", swap=[0, 0], purif={"A-B": n_rounds}))
+    provide_entanglements(*((1.001 + i / 1000, fwA, fwB) for i in range(n_etg)))
     force_purify_outcome(monkeypatch, *(True if i > 0 else False for i in purif_success))
     simulator.run()
     print_fw_counters(net)
 
-    assert f1.cnt.n_entg == n_etg == f2.cnt.n_entg
-    assert f1.cnt.n_purif == n_purif == f2.cnt.n_purif
+    assert fwA.cnt.n_purif == n_purif == fwB.cnt.n_purif
     n_eligible = 0 if len(n_purif) < n_rounds else n_purif[-1]
-    assert f1.cnt.n_eligible == n_eligible == f2.cnt.n_eligible
-    assert f1.cnt.n_consumed == n_eligible == f2.cnt.n_consumed
+    check_fw_counters(
+        net,
+        n_entg=(n_etg, n_etg),
+        n_eligible=(n_eligible, n_eligible),
+        n_consumed=(n_eligible, n_eligible),
+    )
 
 
 def test_4_l2r(monkeypatch: pytest.MonkeyPatch):
     """Test multi-segment purification on 4-node topology with l2r swapping order."""
     net, simulator = build_linear_network(4, qchannel_capacity=8, fw={"p_swap": 1.0})
-    f1 = net.get_node("n1").get_app(ProactiveForwarder)
-    f2 = net.get_node("n2").get_app(ProactiveForwarder)
-    f3 = net.get_node("n3").get_app(ProactiveForwarder)
-    f4 = net.get_node("n4").get_app(ProactiveForwarder)
+    fwA, fwB, fwC, fwD = (node.get_app(ProactiveForwarder) for node in net.nodes)
 
     install_path(
         net,
-        RoutingPathSingle("n1", "n4", swap=[2, 0, 1, 2], purif={"n1-n2": 1, "n2-n3": 1, "n3-n4": 1, "n1-n3": 1, "n1-n4": 1}),
+        RoutingPathSingle("A", "D", swap=[2, 0, 1, 2], purif={"A-B": 1, "B-C": 1, "C-D": 1, "A-C": 1, "A-D": 1}),
     )
     provide_entanglements(
-        (1.001, f1, f2),  # \
-        (1.002, f1, f2),  # -+ n1-n2 purif_rounds=1 \
-        (1.003, f2, f3),  # \                        \
-        (1.004, f2, f3),  # -+ n2-n3 purif_rounds=1 --+ n1-n3 purif_rounds=0
-        (1.005, f1, f2),  # \                                \
-        (1.006, f1, f2),  # -+ n1-n2 purif_rounds=1 \         + n1-n3 purif_rounds=1
-        (1.007, f2, f3),  # \                        \       /                \
-        (1.008, f2, f3),  # -+ n2-n3 purif_rounds=1 --+ n1-n3 purif_rounds=0   + n1-n4 purif_rounds=0
-        (1.009, f3, f4),  # \                                                 /     \
-        (1.010, f3, f4),  # -+ n3-n4 purif_rounds=1 -------------------------/       \
-        (1.011, f1, f2),  # \                                                         |
-        (1.012, f1, f2),  # -+ n1-n2 purif_rounds=1 \                                 |
-        (1.013, f2, f3),  # \                        \                                +-- n1-n4 purif_rounds=1
-        (1.014, f2, f3),  # -+ n2-n3 purif_rounds=1 --+ n1-n3 purif_rounds=0          |
-        (1.015, f1, f2),  # \                                \                        |
-        (1.016, f1, f2),  # -+ n1-n2 purif_rounds=1 \         + n1-n3 purif_rounds=1  /
-        (1.017, f2, f3),  # \                        \       /                \      /
-        (1.018, f2, f3),  # -+ n2-n3 purif_rounds=1 --+ n1-n3 purif_rounds=0   + n1-n4 purif_rounds=0
-        (1.019, f3, f4),  # \                                                 /
-        (1.020, f3, f4),  # -+ n3-n4 purif_rounds=1 -------------------------/
+        (1.001, fwA, fwB),  # \
+        (1.002, fwA, fwB),  # -+ A-B purif_rounds=1 \
+        (1.003, fwB, fwC),  # \                      \
+        (1.004, fwB, fwC),  # -+ B-C purif_rounds=1 --+ A-C purif_rounds=0
+        (1.005, fwA, fwB),  # \                             \
+        (1.006, fwA, fwB),  # -+ A-B purif_rounds=1 \        + A-C purif_rounds=1
+        (1.007, fwB, fwC),  # \                      \      /              \
+        (1.008, fwB, fwC),  # -+ B-C purif_rounds=1 --+ A-C purif_rounds=0  + A-D purif_rounds=0
+        (1.009, fwC, fwD),  # \                                            /      \
+        (1.010, fwC, fwD),  # -+ C-D purif_rounds=1 ----------------------/        \
+        (1.011, fwA, fwB),  # \                                                     |
+        (1.012, fwA, fwB),  # -+ A-B purif_rounds=1 \                               |
+        (1.013, fwB, fwC),  # \                      \                              +-- A-D purif_rounds=1
+        (1.014, fwB, fwC),  # -+ B-C purif_rounds=1 --+ A-C purif_rounds=0          |
+        (1.015, fwA, fwB),  # \                             \                       |
+        (1.016, fwA, fwB),  # -+ A-B purif_rounds=1 \        + A-C purif_rounds=1  /
+        (1.017, fwB, fwC),  # \                      \      /              \      /
+        (1.018, fwB, fwC),  # -+ B-C purif_rounds=1 --+ A-C purif_rounds=0  + A-D purif_rounds=0
+        (1.019, fwC, fwD),  # \                                            /
+        (1.020, fwC, fwD),  # -+ C-D purif_rounds=1 ----------------------/
     )
     force_purify_outcome(monkeypatch, *[True] * 19)
     simulator.run()
     print_fw_counters(net)
 
-    assert f1.cnt.n_purif == [4 + 2 + 1]  # 4 with n2, 2 with n3, 1 with n4
-    assert f2.cnt.n_purif == [4 + 4]  # 4 with n1, 4 with n3
-    assert f3.cnt.n_purif == [4 + 2 + 2]  # 4 with n2, 2 with n4, 2 with n1
-    assert f4.cnt.n_purif == [2 + 1]  # 2 with n3, 1 with n1
+    assert fwA.cnt.n_purif == [4 + 2 + 1]  # 4 with fwB, 2 with fwC, 1 with fwD
+    assert fwB.cnt.n_purif == [4 + 4]  # 4 with fwA, 4 with fwC
+    assert fwC.cnt.n_purif == [4 + 2 + 2]  # 4 with fwB, 2 with fwD, 2 with fwA
+    assert fwD.cnt.n_purif == [2 + 1]  # 2 with fwC, 1 with fwA
 
-    # An entanglement becomes eligible if it completes all purification and the node has lower/equal swap rank.
-    # This differs from .cnt.n_purif[0], which does not consider the node's swap rank.
-    assert f1.cnt.n_eligible == 1  # 1 with n4
-    assert f2.cnt.n_eligible == 4 + 4  # 4 with n1, 4 with n3
-    assert f3.cnt.n_eligible == 2 + 2  # 2 with n4, 2 with n1
-    assert f4.cnt.n_eligible == 1  # 1 with n1
-
-    assert f1.cnt.n_consumed == 1 == f4.cnt.n_consumed
+    check_fw_counters(
+        net,
+        # An entanglement becomes eligible if it completes all purification and the node has lower/equal swap rank.
+        # This differs from .cnt.n_purif[0], which does not consider the node's swap rank.
+        # fwA: 1 with fwD
+        # fwB: 4 with fwA, 4 with fwC
+        # fwC: 2 with fwD, 2 with fwA
+        # fwD: 1 with fwA
+        n_eligible=(1, 4 + 4, 2 + 2, 1),
+        n_consumed=(1, 0, 0, 1),
+    )
