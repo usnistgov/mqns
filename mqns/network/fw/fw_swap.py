@@ -115,7 +115,7 @@ class SwapTask:
 
     def __init__(self, proc: "ForwarderSwapProc", fib_entry: FibEntry):
         self.proc = proc
-        self.sg = FibSwapGroup.compute(fib_entry)
+        self.sg = fib_entry.sg
         self.l_complete = self.sg.l_most
         self.r_complete = self.sg.r_most
 
@@ -221,7 +221,7 @@ class SwapTask:
         if not self.q_paths or self.sg.path_id in self.q_paths:
             return
 
-        sg = FibSwapGroup.compute(self.proc.fw.fib.get(self.q_paths[0]))
+        sg = self.proc.fw.fib.get(self.q_paths[0]).sg
         assert sg.nodes == self.sg.nodes
         self.sg = sg
 

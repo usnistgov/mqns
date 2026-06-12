@@ -125,7 +125,7 @@ def test_fib_swap_group(purif: str | None, own: str, expected: tuple[str, str, s
             FibSwapGroup.compute(entry)
         return
 
-    sg = FibSwapGroup.compute(entry)
+    sg = entry.sg
     assert sg.nodes == list(expected[1])
     assert sg.own_idx == sg.nodes.index(own)
     assert (sg.l_neigh, "".join(sg.nodes), sg.r_neigh, sg.dir) == expected

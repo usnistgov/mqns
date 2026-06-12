@@ -15,6 +15,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import functools
 from collections.abc import Callable, Iterable, Iterator, Set
 from dataclasses import dataclass
 from typing import Literal, final
@@ -74,6 +75,10 @@ class FibEntry:
         idx = self.route.index(node_name)
         return idx, self.swap[idx]
 
+    @functools.cached_property
+    def sg(self) -> "FibSwapGroup":
+        return FibSwapGroup.compute(self)
+
 
 class FibSwapGroup:
     """
@@ -120,8 +125,6 @@ class FibSwapGroup:
 
     @staticmethod
     def compute(entry: FibEntry) -> "FibSwapGroup":
-        # TODO implement caching
-
         route_len = len(entry.route)
         if entry.own_idx in (0, route_len - 1):
             raise ValueError("FibSwapGroup is undefined for end nodes")

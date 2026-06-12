@@ -339,7 +339,6 @@ def provide_entanglements(
             q._state = QubitState.ENTANGLED0
             q.key = ll_key
             node.memory.write(q.addr, epr)
-            print(f"pe {src} {dst} {q.addr}")
             simulator.add_event(QubitEntangledEvent(node.node, neighbor.node, q, t=t_creation + d_notify))
 
     def sched_entangle(t: float, src: Forwarder, dst: Forwarder):
