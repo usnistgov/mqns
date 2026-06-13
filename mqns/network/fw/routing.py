@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from enum import Enum, auto
 from itertools import pairwise
 from typing import TypedDict, Unpack, override
@@ -142,13 +142,13 @@ class RoutingPathStatic(RoutingPath):
 
     def __init__(
         self,
-        route: list[str],
+        route: Sequence[str],
         *,
         m_v: MultiplexingVector | QubitAllocationType = QubitAllocationType.FOLLOW_QCHANNEL,
         **kwargs: Unpack[RoutingPathInitArgs],
     ):
         super().__init__(route[0], route[-1], **kwargs)
-        self.route = route
+        self.route = list(route)
         self.m_v = m_v
 
     @override

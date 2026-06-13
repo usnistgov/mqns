@@ -28,11 +28,14 @@ from mqns.network.topology.topo import Topology, TopologyInitKwargs
 class GridTopology(Topology):
     """
     GridTopology builds a grid topology with a rectangle shape.
-    If ``shape`` is a tuple, it specifies how many rows and columns are in the topology.
-    If ``shape`` is an integer, it specifies total number of nodes and must be a perfect square number.
     """
 
     def __init__(self, shape: int | tuple[int, int], **kwargs: Unpack[TopologyInitKwargs]):
+        """
+        Args:
+            shape: either a tuple that specifies how many rows and columns are in the topology,
+                   or an integer that specifies total number of nodes, which must be a perfect square number.
+        """
         super().__init__(int(np.prod(shape)), **kwargs)
         if isinstance(shape, tuple):
             self.rows, self.cols = shape
@@ -47,11 +50,11 @@ class GridTopology(Topology):
         ll: list[QuantumChannel] = []
 
         for i in range(self.nodes_number):
-            n = QNode(f"n{i + 1}")
+            n = QNode(self._name_node(i))
             nl.append(n)
 
         def qc(a: int, b: int):
-            link = QuantumChannel(name=f"l{a},{b}", **self.qchannel_args)
+            link = QuantumChannel(self._name_channel(a, b), **self.qchannel_args)
             ll.append(link)
             nl[a].add_qchannel(link)
             nl[b].add_qchannel(link)

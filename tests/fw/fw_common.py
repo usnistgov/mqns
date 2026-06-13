@@ -108,6 +108,7 @@ def _make_topo_args(d: BuildNetworkArgs, *, memory_capacity_factor: int) -> Topo
             nodes_apps.append(ReactiveForwarder(**fw_args))
 
     return TopologyInitKwargs(
+        nodes_naming="A",
         nodes_apps=nodes_apps,
         qchannel_args=d.get("qchannel_args", dflt_qchannel_args),
         cchannel_args=d.get("cchannel_args", dflt_cchannel_args),
@@ -170,23 +171,23 @@ def build_tree_network(
     """
     If height==2, build the following topology:
 
-        n4           n6
-        |            |
-        +n2---n1---n3+
-        |            |
-        n5           n7
+        D       F
+        |       |
+        B---A---C
+        |       |
+        E       G
 
     If height==3, build the following topology:
 
-             n8           n12
-             |            |
-        n9---n4           n6---n13
-             |            |
-             +n2---n1---n3+
-             |            |
-        n10--n5           n7---n14
-             |            |
-             n11          n15
+            H       L
+            |       |
+        I---D       F---M
+            |       |
+            B---A---C
+            |       |
+        J---E       G---N
+            |       |
+            K       O
     """
     if height == 2:
         nnodes = 7
@@ -208,9 +209,9 @@ def build_rect_network(
     """
     Build the following topology:
 
-        n1---n2
-        |     |
-        n3---n4
+        A---B
+        |   |
+        C---D
 
     The network uses Yen routing algorithm with 2 paths.
     """
@@ -338,7 +339,6 @@ def provide_entanglements(
             q._state = QubitState.ENTANGLED0
             q.key = ll_key
             node.memory.write(q.addr, epr)
-            print(f"pe {src} {dst} {q.addr}")
             simulator.add_event(QubitEntangledEvent(node.node, neighbor.node, q, t=t_creation + d_notify))
 
     def sched_entangle(t: float, src: Forwarder, dst: Forwarder):

@@ -161,11 +161,11 @@ class CustomTopology(Topology):
 
     @override
     def add_cchannels(self, *, classic_topo: ClassicTopology = ClassicTopology.Empty, **_):
-        if classic_topo == ClassicTopology.Follow:
+        if classic_topo is ClassicTopology.Follow:
             assert "cchannels" not in self.topo
             return self._add_cchannels_from(_qchannel_to_cchannel(qc) for qc in self.topo["qchannels"])
         else:
-            assert classic_topo == ClassicTopology.Empty
+            assert classic_topo is ClassicTopology.Empty
             assert "cchannels" in self.topo
             return self._add_cchannels_from(self.topo["cchannels"])
 

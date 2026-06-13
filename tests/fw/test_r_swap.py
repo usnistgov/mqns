@@ -3,6 +3,7 @@ Test suite for ReactiveForwarder focused on swapping.
 """
 
 from collections import defaultdict
+from itertools import pairwise
 
 import pytest
 
@@ -13,7 +14,7 @@ from mqns.network.reactive import ReactiveForwarder, ReactiveRoutingController
 from mqns.network.reactive.message import LinkStateEntry, LinkStateMsg
 from mqns.simulator import func_to_event
 
-from .fw_common import build_linear_network, build_tree_network, print_fw_counters, provide_entanglements
+from .fw_common import build_linear_network, build_tree_network, check_fw_counters, print_fw_counters, provide_entanglements
 
 
 class ManualController(ClassicCommandDispatcherMixin, RoutingController):
@@ -41,29 +42,25 @@ def test_tree2_one():
         timing=TimingModeSync(t_ext=0.006, t_rtg=0.001, t_int=0.003),
         ctrl=ctrl,
     )
-    f4 = net.get_node("n4").get_app(ReactiveForwarder)
-    f2 = net.get_node("n2").get_app(ReactiveForwarder)
-    f1 = net.get_node("n1").get_app(ReactiveForwarder)
-    f3 = net.get_node("n3").get_app(ReactiveForwarder)
-    f6 = net.get_node("n6").get_app(ReactiveForwarder)
+    fwA, fwB, fwC, fwD, _, fwF, _ = (node.get_app(ReactiveForwarder) for node in net.nodes)
 
     def do_routing():
         assert len(ctrl.ls_pkts) == 5
         assert len(ctrl.ls_entries) == 8
-        ctrl.install_path(RoutingPathStatic(["n4", "n2", "n1", "n3", "n6"], swap=[2, 0, 1, 0, 2]))
+        ctrl.install_path(RoutingPathStatic(["D", "B", "A", "C", "F"], swap=[2, 0, 1, 0, 2]))
 
     simulator.add_event(func_to_event(simulator.time(sec=0.0065), do_routing))
 
     provide_entanglements(
-        (0.0011, f4, f2),
-        (0.0012, f2, f1),
-        (0.0013, f1, f3),
-        (0.0014, f3, f6),
+        (0.0011, fwD, fwB),
+        (0.0012, fwB, fwA),
+        (0.0013, fwA, fwC),
+        (0.0014, fwC, fwF),
     )
     simulator.run()
     print_fw_counters(net)
 
-    assert f4.cnt.n_consumed == 1
+    assert fwD.cnt.n_consumed == 1
 
 
 def test_tree2_two():
@@ -78,13 +75,7 @@ def test_tree2_two():
         timing=TimingModeSync(t_ext=0.006, t_rtg=0.001, t_int=0.003),
         ctrl=ctrl,
     )
-    f4 = net.get_node("n4").get_app(ReactiveForwarder)
-    f5 = net.get_node("n5").get_app(ReactiveForwarder)
-    f2 = net.get_node("n2").get_app(ReactiveForwarder)
-    f1 = net.get_node("n1").get_app(ReactiveForwarder)
-    f3 = net.get_node("n3").get_app(ReactiveForwarder)
-    f6 = net.get_node("n6").get_app(ReactiveForwarder)
-    f7 = net.get_node("n7").get_app(ReactiveForwarder)
+    fwA, fwB, fwC, fwD, fwE, fwF, fwG = (node.get_app(ReactiveForwarder) for node in net.nodes)
 
     def do_routing():
         assert len(ctrl.ls_pkts) == 7
@@ -94,48 +85,30 @@ def test_tree2_two():
         for entry in ctrl.ls_entries:
             qubits_by_channel[f"{entry['node']}{entry['neighbor']}"].append(entry["qubit"])
 
-        ctrl.install_path(
-            RoutingPathStatic(
-                ["n4", "n2", "n1", "n3", "n6"],
-                swap=[2, 0, 1, 0, 2],
-                m_v=[
-                    qubits_by_channel["n4n2"].pop(),
-                    qubits_by_channel["n2n1"].pop(),
-                    qubits_by_channel["n1n3"].pop(),
-                    qubits_by_channel["n3n6"].pop(),
-                ],
+        for route in "DBACF", "EBACG":
+            ctrl.install_path(
+                RoutingPathStatic(
+                    route, swap=[2, 0, 1, 0, 2], m_v=[qubits_by_channel[f"{a}{b}"].pop() for a, b in pairwise(route)]
+                )
             )
-        )
-        ctrl.install_path(
-            RoutingPathStatic(
-                ["n5", "n2", "n1", "n3", "n7"],
-                swap=[2, 0, 1, 0, 2],
-                m_v=[
-                    qubits_by_channel["n5n2"].pop(),
-                    qubits_by_channel["n2n1"].pop(),
-                    qubits_by_channel["n1n3"].pop(),
-                    qubits_by_channel["n3n7"].pop(),
-                ],
-            )
-        )
 
     simulator.add_event(func_to_event(simulator.time(sec=0.0065), do_routing))
 
     provide_entanglements(
-        (0.0011, f4, f2),
-        (0.0012, f2, f1),
-        (0.0013, f1, f3),
-        (0.0014, f3, f6),
-        (0.0021, f5, f2),
-        (0.0022, f2, f1),
-        (0.0023, f1, f3),
-        (0.0024, f3, f7),
+        (0.0011, fwD, fwB),
+        (0.0012, fwB, fwA),
+        (0.0013, fwA, fwC),
+        (0.0014, fwC, fwF),
+        (0.0021, fwE, fwB),
+        (0.0022, fwB, fwA),
+        (0.0023, fwA, fwC),
+        (0.0024, fwC, fwG),
     )
     simulator.run()
     print_fw_counters(net)
 
-    assert f4.cnt.n_consumed == 1
-    assert f5.cnt.n_consumed == 1
+    assert fwD.cnt.n_consumed == 1
+    assert fwE.cnt.n_consumed == 1
 
 
 @pytest.mark.parametrize(
@@ -166,22 +139,21 @@ def test_3_minimal(req_active: tuple[float, float], etg12: list[float], etg23: l
         timing=TimingModeSync(t_ext=0.006, t_rtg=0.001, t_int=0.003),
     )
     ctrl = net.get_controller().get_app(ReactiveRoutingController)
-    f1 = net.get_node("n1").get_app(ReactiveForwarder)
-    f2 = net.get_node("n2").get_app(ReactiveForwarder)
-    f3 = net.get_node("n3").get_app(ReactiveForwarder)
+    fwA, fwB, fwC = (node.get_app(ReactiveForwarder) for node in net.nodes)
 
-    simulator.add_event(func_to_event(simulator.time(sec=req_active[0]), lambda: net.add_request(f1.node, f3.node)))
+    simulator.add_event(func_to_event(simulator.time(sec=req_active[0]), lambda: net.add_request(fwA.node, fwC.node)))
     simulator.add_event(func_to_event(simulator.time(sec=req_active[1]), net.requests.clear))
     provide_entanglements(
-        *((t, f1, f2) for t in etg12),
-        *((t, f2, f3) for t in etg23),
+        *((t, fwA, fwB) for t in etg12),
+        *((t, fwB, fwC) for t in etg23),
     )
     simulator.run()
     print(ctrl.cnt)
     print_fw_counters(net)
 
     assert (ctrl.cnt.n_ls, ctrl.cnt.n_satisfy) == cnt
-    assert f1.cnt.n_consumed == cnt[1]
-    assert f2.cnt.n_consumed == 0
-    assert f3.cnt.n_consumed == cnt[1]
-    assert f2.cnt.n_swapped == cnt[1]
+    check_fw_counters(
+        net,
+        n_consumed=(cnt[1], 0, cnt[1]),
+        n_swapped=(0, cnt[1], 0),
+    )
