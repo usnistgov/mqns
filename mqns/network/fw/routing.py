@@ -122,7 +122,6 @@ class RoutingPath(ABC):
             "req_id": self.req_id,
             "route": route,
             "swap": swap,
-            "swap_cutoff": [-1] * len(swap),
             "purif": self.purif,
         }
         if self.swap_cutoff is not None:

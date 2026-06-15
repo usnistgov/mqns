@@ -38,7 +38,7 @@ pub struct PathInstructions {
     pub req_id: u32,
     pub route: Vec<String>,
     pub swap: Vec<i32>,
-    pub swap_cutoff: Vec<i32>,
+    pub swap_cutoff: Option<Vec<i32>>,
     pub m_v: Option<Vec<MultiplexingVectorElem>>,
     pub purif: HashMap<String, String>,
 }

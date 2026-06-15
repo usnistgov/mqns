@@ -38,17 +38,17 @@ class PathInstructions(TypedDict):
     without attempting entanglement swapping.
     """
 
-    swap_cutoff: list[int]
+    swap_cutoff: NotRequired[list[int]]
     """
     Swap cutoff time -- maximum age at each swapping step.
 
-    This list shall have the same length as ``swap``.
-    The i-th element corresponds to the i-th node in the ``route`` list.
+    This list shall have two elements per intermediate node, i.e. `2*(len(route)-2)`.
+    The (2i)-th and (2i+1)-th element corresponds to left and right qchannel of the i-th intermediate node.
     Each element is a duration in time_slot unit (see ``Time`` class); ``-1`` means no restriction.
 
-    The semantics of "age" depend on the CutoffScheme passed to ProactiveForwarder.
-    Since the first and last nodes in ``route`` do not perform swapping, the first and last elements
-    in this list have no effect. Likewise, if swapping has been disabled, this list has no effect.
+    The semantics of "age" depend on the CutoffScheme passed to Forwarder.
+    If swapping has been disabled, this list has no effect.
+    If this list is omitted, it is equivalent to all ``-1`` i.e. no restriction on any node.
     """
 
     m_v: NotRequired[MultiplexingVector]
@@ -98,8 +98,8 @@ def validate_path_instructions(instructions: PathInstructions) -> None:
     if len(instructions["swap"]) != len(route):
         raise ValueError("swapping order does not match route length")
 
-    if "swap_cutoff" in instructions and len(instructions["swap_cutoff"]) != len(route):
-        raise ValueError("swap_cutoff does not match swapping order length")
+    if "swap_cutoff" in instructions and len(instructions["swap_cutoff"]) != 2 * (len(route) - 2):
+        raise ValueError("swap_cutoff does not match route length")
 
     if "m_v" in instructions and len(instructions["m_v"]) != len(route) - 1:
         raise ValueError("multiplexing vector does not match route length")

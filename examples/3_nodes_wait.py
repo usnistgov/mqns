@@ -110,7 +110,7 @@ def run_simulation(seed: int, args: Args, t_cohere: float, t_wait: float):
         .request(
             "S-D",
             swap=[1, 0, 1],
-            swap_cutoff=[0, t_wait, 0],
+            swap_cutoff=[t_wait, t_wait],
         )
         .make_network()
     )

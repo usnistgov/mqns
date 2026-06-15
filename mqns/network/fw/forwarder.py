@@ -46,7 +46,7 @@ from mqns.network.fw.mux_buffer_space import MuxSchemeBufferSpace
 from mqns.network.fw.select import SelectPurifQubit, call_select_purif_qubit
 from mqns.network.network import TimingPhase, TimingPhaseEvent
 from mqns.network.protocol.event import QubitEntangledEvent, QubitReleasedEvent
-from mqns.simulator import event_handler
+from mqns.simulator import Time, event_handler
 from mqns.utils import json_encodable, log
 
 
@@ -248,13 +248,17 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
 
         # populate FIB
         route = instructions["route"]
+        if "swap_cutoff" in instructions:
+            swap_cutoff = [None if t < 0 else self.simulator.time(time_slot=t) for t in instructions["swap_cutoff"]]
+        else:
+            swap_cutoff: list[Time | None] = [None] * (2 * (len(route) - 2))
         fib_entry = FibEntry(
             path_id=path_id,
             req_id=instructions["req_id"],
             route=route,
             own_idx=route.index(self.node.name),
             swap=instructions["swap"],
-            swap_cutoff=[None if t < 0 else self.simulator.time(time_slot=t) for t in instructions["swap_cutoff"]],
+            swap_cutoff=swap_cutoff,
             purif=instructions["purif"],
         )
         self.fib.insert_or_replace(fib_entry)
@@ -501,7 +505,7 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
             self.cutoff.before_swap(qubit, mq1, fib_entry)
             self.swap.start(qubit, mq1, fib_entry)
         else:
-            self.cutoff.before_store_eligible(qubit, fib_entry)
+            self.cutoff.before_store_eligible(qubit, PathDirection.L if epr.src is self.node else PathDirection.R, fib_entry)
 
     def can_consume(self, fib_entry: FibEntry | None, epr: Entanglement) -> bool:
         if fib_entry is None:

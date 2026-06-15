@@ -160,7 +160,7 @@ fn make_path(req_id: u32, nodes: &str, opt: PathOpt) -> PathInstructions {
         req_id,
         route,
         swap: opt.to_swap(),
-        swap_cutoff: vec![-1; len],
+        swap_cutoff: None,
         m_v: Some(vec![MultiplexingVectorElem::Count(1, 1); len - 1]),
         purif: HashMap::new(),
     }

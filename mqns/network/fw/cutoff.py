@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, final, override
 
-from mqns.entity.memory import MemoryQubit
+from mqns.entity.memory import MemoryQubit, PathDirection
 from mqns.entity.node import QNode
 from mqns.network.fw.fib import FibEntry
 from mqns.network.fw.message import CutoffDiscardMsg
@@ -16,7 +16,7 @@ class CutoffScheme(ABC):
     """
     EPR age cut-off scheme.
 
-    This determines how PathInstructions.swap_cutoff is interpreted.
+    This determines how ``PathInstructions.swap_cutoff`` is interpreted.
     """
 
     fw: "Forwarder"
@@ -97,7 +97,7 @@ class CutoffScheme(ABC):
         fw.release_qubit(qubit)
 
     @abstractmethod
-    def before_store_eligible(self, mq: MemoryQubit, fib_entry: FibEntry | None) -> None:
+    def before_store_eligible(self, mq: MemoryQubit, dir: PathDirection, fib_entry: FibEntry | None) -> None:
         """
         Handle an ELIGIBLE qubit stored for future swapping.
         """
@@ -160,14 +160,19 @@ class CutoffSchemeWaitTime(CutoffScheme):
     Note that ``swap_delay`` does not count against the wait budget.
     """
 
+    _DIR_OFFSET = {
+        PathDirection.L: -2,
+        PathDirection.R: -1,
+    }
+
     def __init__(self, name="wait-time"):
         super().__init__(name)
 
         self.cnt = CutoffSchemeWaitTimeCounters()
 
     @override
-    def before_store_eligible(self, mq: MemoryQubit, fib_entry: FibEntry | None) -> None:
-        if not fib_entry or (wait_budget := fib_entry.swap_cutoff[fib_entry.own_idx]) is None:
+    def before_store_eligible(self, mq: MemoryQubit, dir: PathDirection, fib_entry: FibEntry | None) -> None:
+        if not fib_entry or (wait_budget := fib_entry.swap_cutoff[2 * fib_entry.own_idx + self._DIR_OFFSET[dir]]) is None:
             return
 
         now = self.simulator.tc

@@ -44,7 +44,7 @@ def test_path_validation():
 
     route3 = ["A", "B", "C"]
     swap3 = [1, 0, 1]
-    scut3 = [-1, 1000, -1]
+    scut3 = [2000, 1000]
     mv3 = [(1, 1)] * 2
 
     with pytest.raises(ValueError, match="route is empty"):
@@ -57,7 +57,7 @@ def test_path_validation():
 
     with pytest.raises(ValueError, match="swap_cutoff"):
         validate_path_instructions(
-            {"req_id": 0, "route": route3, "swap": swap3, "swap_cutoff": [-1, 1000, 1000, -1], "purif": {}}
+            {"req_id": 0, "route": route3, "swap": swap3, "swap_cutoff": [2000, 1000, 1000], "purif": {}}
         )
 
     with pytest.raises(ValueError, match="multiplexing vector"):

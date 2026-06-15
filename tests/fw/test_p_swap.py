@@ -140,7 +140,7 @@ def test_3_waittime(etg_sec: tuple[float, float], swap_delay: float, n_consumed:
     net, simulator = build_linear_network(3, t_cohere=0.004, fw={"p_swap": 1.0, "swap_delay": swap_delay}, end_time=1.010)
     fwA, fwB, fwC = (node.get_app(ProactiveForwarder) for node in net.nodes)
 
-    install_path(net, RoutingPathStatic("ABC", swap_cutoff=[0, 0.002, 0]))
+    install_path(net, RoutingPathStatic("ABC", swap_cutoff=[0.002, 0.002]))
     provide_entanglements(
         (etg_sec[0], fwA, fwB),
         (etg_sec[1], fwB, fwC),
@@ -526,7 +526,7 @@ def test_5_decohere(
     net, simulator = build_linear_network(5, t_cohere=0.010, fw={"p_swap": 1.0, "swap_delay": swap_delay}, end_time=2)
     fwA, fwB, fwC, fwD, fwE = (node.get_app(ProactiveForwarder) for node in net.nodes)
 
-    swap_cutoff = None if cutoff4 is None else [-1, -1, -1, cutoff4, -1]
+    swap_cutoff = None if cutoff4 is None else [-1, -1, -1, -1, cutoff4, cutoff4]
     install_path(net, RoutingPathStatic("ABCDE", swap_cutoff=swap_cutoff))
     provide_entanglements(
         (etg_ms, (fwA, fwB, fwC, fwD, fwE)),
