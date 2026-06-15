@@ -1,9 +1,10 @@
 import copy
 from abc import ABC, abstractmethod
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import NotRequired, Protocol, TypedDict, Unpack, override
 
 from mqns.entity.node import QNode
+from mqns.models.core.bell_diagonal import make_bell_diagonal_probv
 from mqns.models.delay import DelayModel
 from mqns.models.epr import Entanglement, EntanglementInitKwargs, MixedStateEntanglement, WernerStateEntanglement
 from mqns.models.error import ErrorModel, TimeDecayFunc, time_decay_nop
@@ -52,11 +53,14 @@ class LinkArchParameters(TypedDict):
     """Local operation delay in seconds."""
     epr_type: type[Entanglement]
     """EPR type, either ``WernerStateEntanglement`` or ``MixedStateEntanglement``."""
-    init_fidelity: NotRequired[float | None]
+    init_fidelity: NotRequired[float | Sequence[float] | None]
     """
     Initial fidelity value.
 
-    If set, every entanglement has a Werner state with the specified fidelity.
+    If set as float, every entanglement has a Werner state with the specified fidelity.
+    If set as four floats, every entanglement has a Bell-diagonal state with the specified I,Z,X,Y values.
+    In these cases, the specified fidelity must be tuned to the EPR creation time,
+    which is generally when the first photon is emitted or absorbed by a memory.
 
     If omitted or ``None``, a mini simulation is performed to determine the proper fidelity values,
     by applying error models to the memories, fibers, etc.
@@ -170,6 +174,17 @@ class LinkArchBase(ABC, LinkArch):
 
         if (init_fidelity := kwargs.get("init_fidelity")) is None:
             self._make_epr: MakeEprFunc = self._prepare_make_epr(kwargs, ch, tau_l)
+        elif isinstance(init_fidelity, Sequence):
+            assert kwargs["epr_type"] is MixedStateEntanglement
+            assert len(init_fidelity) == 4
+            probv = make_bell_diagonal_probv(*init_fidelity)
+
+            def _make_epr_with_probv(a: EntanglementInitKwargs) -> Entanglement:
+                epr = MixedStateEntanglement(**a)
+                epr.set_probv(probv, normalize=False)
+                return epr
+
+            self._make_epr = _make_epr_with_probv
         else:
             epr_type = kwargs["epr_type"]
             assert 0 <= init_fidelity <= 1

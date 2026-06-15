@@ -86,6 +86,32 @@ def make_epr(link_arch: LinkArch, t_cohere: Time):
 
 
 @pytest.mark.parametrize(
+    ("E", "use_probv"),
+    [
+        (WernerStateEntanglement, False),
+        (MixedStateEntanglement, False),
+        (MixedStateEntanglement, True),
+    ],
+)
+def test_init_fidelity(E: type[Entanglement], use_probv: bool):
+    ch = FakeQuantumChannel(0)
+    t_cohere = Time.from_sec(1, accuracy=ACCURACY)
+    link_arch = LinkArchDimDual()
+    link_arch.set(
+        ch=ch, eta_s=1, eta_d=1, reset_time=0, tau_0=0, epr_type=E, init_fidelity=(70, 20, 5, 5) if use_probv else 0.7
+    )
+
+    epr, _, _ = make_epr(link_arch, t_cohere)
+    assert epr.fidelity_time == EPR_TIME
+    assert epr.fidelity == pytest.approx(0.7, abs=1e-6)
+    if type(epr) is MixedStateEntanglement:
+        if use_probv:
+            assert epr.probv[1] == pytest.approx(0.2, abs=1e-6)
+        else:
+            assert epr.probv[1] == pytest.approx(0.1, abs=1e-6)
+
+
+@pytest.mark.parametrize(
     ("LA", "E"),
     list(
         itertools.product(
