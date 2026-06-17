@@ -63,8 +63,7 @@ def run_simulation(
             nodes=N_NODES,
             mem_capacity=TOTAL_QUBITS,
             t_cohere=t_cohere,
-            channel_length=CHANNEL_LENGTHS,
-            channel_capacity=ch_capacities,
+            channels=list(zip(CHANNEL_LENGTHS, ch_capacities, strict=True)),
         )
         .proactive_centralized()
         .request("S-D", swap=swapping_order)

@@ -94,14 +94,14 @@ def run_simulation(seed: int, args: Args, t_cohere: float, t_wait: float):
             epr_type=args.epr_type,
         )
         .topo_linear(
-            nodes=("S", "R", "D"),
+            nodes="SRD",
             t_cohere=t_cohere,
             memory_decay=args.memory_decay,
-            channel_length=args.L,
+            channels=args.L,
+            init_fidelity=None if args.link_arch_sim else 0.99,
             fiber_error=args.fiber_error,
             bsa_error=args.bsa_error,
             link_arch=args.link_arch,
-            init_fidelity=None if args.link_arch_sim else 0.99,
         )
         .proactive_centralized(
             swap_delay=args.swap_delay,

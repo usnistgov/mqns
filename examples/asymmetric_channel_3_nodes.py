@@ -20,7 +20,7 @@ import numpy as np
 from tap import Tap
 
 from mqns.entity.qchannel import LinkArch, LinkArchDimBk, LinkArchSim, LinkArchSr
-from mqns.network.builder import CTRL_DELAY, NetworkBuilder
+from mqns.network.builder import CTRL_DELAY, ChannelParam, NetworkBuilder
 from mqns.network.proactive import ProactiveForwarder
 from mqns.simulator import Simulator
 from mqns.utils import log, rng
@@ -56,10 +56,11 @@ def run_simulation(
     net = (
         NetworkBuilder()
         .topo_linear(
-            nodes=("S", "R", "D"),
-            channel_length=ch_lengths,
-            channel_capacity=ch_capacities,
-            link_arch=link_architectures,
+            nodes="SRD",
+            channels=[
+                ChannelParam(ch_length=l, ch_capacity=m, link_arch=la)
+                for l, m, la in zip(ch_lengths, ch_capacities, link_architectures, strict=True)
+            ],
             t_cohere=t_cohere,
         )
         .proactive_centralized()

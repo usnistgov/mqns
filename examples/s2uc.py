@@ -86,8 +86,8 @@ def run_simulation(seed: int, args: Args, ri: RowInput) -> Stats:
             epr_type=MixedStateEntanglement,
         )
         .topo_linear(
-            nodes=("S", "R", "D"),
-            channel_length=(32, 18),
+            nodes="SRD",
+            channels=(32, 18),
             fiber_alpha=0.2,
             link_arch=LinkArchDimDual,
             t_cohere=1 / 10,  # TODO change coherence rate of S to 5 Hz

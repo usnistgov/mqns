@@ -121,8 +121,8 @@ class ParameterSet:
             .topo_linear(
                 nodes=2 + self.number_of_routers,
                 t_cohere=self.t_cohere,
-                channel_length=distances,
-                channel_capacity=self.qchannel_capacity,
+                channels=distances,
+                ch_capacity=self.qchannel_capacity,
             )
             .proactive_centralized()
             .request("S-D", swap=swap)

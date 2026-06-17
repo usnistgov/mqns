@@ -30,10 +30,10 @@ def run_simulation(t_cohere: float, seed: int):
     net = (
         NetworkBuilder()
         .topo_linear(
-            nodes=("S", "R", "D"),
+            nodes="SRD",
             t_cohere=t_cohere,
-            channel_length=[32, 18],
-            channel_capacity=2,
+            channels=[32, 18],
+            ch_capacity=2,
             init_fidelity=0.7,
         )
         .proactive_centralized()

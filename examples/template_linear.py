@@ -64,37 +64,31 @@ DEFAULT_RUNS = 10  #  Can be changed via --runs flag
 #   - list[str]: explicit names (must include "S" and "D")
 NODES: int | list[str] = 4
 
-# channel_length:
-#   - float: uniform length for every link
-#   - list[float]: per-link lengths (must have n_links = len(nodes)-1 values)
-CHANNEL_LENGTH: float | list[float] = [32.0, 18.0, 10.0]
+# channel_length (must have n_links = len(nodes)-1 values)
+CHANNEL_LENGTH: list[float] = [32.0, 18.0, 10.0]
 
-# channel_capacity:
-#   - int: uniform capacity for every link (left == right == capacity)
-#   - list[int]: per-link capacity (left == right for each link)
-#   - list[tuple[int,int]]: per-link (left,right) endpoint allocation
+# Channel capacity used when SWEEP = False
 #
-# NetworkBuilder interprets (left,right) as:
-#   - capacity1 = allocation at node i
-#   - capacity2 = allocation at node i+1
-CHANNEL_CAPACITY: int | list[int] | list[tuple[int, int]] = 3
+# Note: NetworkBuilder allows specifying distinct channel capacities for each link.
+# To use this feature, pass a list of ChannelParam objects into channels= argument.
+CHANNEL_CAPACITY: int = 3
 
 # mem_capacity:
-#   - None: derived from channel_capacity (recommended for allocation-consistent setups)
-#   - int: uniform #qubits per node
-#   - list[int]: per-node #qubits
-MEM_CAPACITY: int | list[int] | None = None
+#   - -1: derived from channel_capacity (recommended for allocation-consistent setups)
+#   - positive integer: uniform #qubits per node
+MEM_CAPACITY: int = -1
 
 # Memory coherence time (seconds) used when SWEEP = False
 T_COHERE = 0.01
 
-# link_arch:
-#   - pass a LinkArch instance (broadcast to all links)
-#   - pass list[LinkArch] (per-link)
+# Link Architecture:
+#   - LinkArchDimBk: Detection-in-Midpoint with single-rail encoding using Barrett-Kok protocol
+#   - LinkArchSim: Source-in-Midpoint with dual-rail polarization encoding
+#   - LinkArchSr: Sender-Receiver with dual-rail polarization encoding
 #
-# If you want custom architectures, uncomment and edit:
-# LINK_ARCH = [LinkArchSr(), LinkArchSim(), ...]
-LINK_ARCH = [LinkArchDimBk(), LinkArchDimBk(), LinkArchDimBk()]
+# Note: NetworkBuilder allows specifying distinct link architectures for each link.
+# To use this feature, pass a list of ChannelParam objects into channels= argument.
+LINK_ARCH = LinkArchDimBk
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -133,7 +127,7 @@ SWEEP = True
 # Supported sweep variables:
 t_cohere_values = [0.005, 0.01, 0.02]  # seconds
 swap_values: list[SwapSequenceInput] = ["l2r", "r2l", "asap"]  # see SWAP
-channel_capacity_values = [CHANNEL_CAPACITY]  # include alternative allocations if desired
+channel_capacity_values = [2, 3]  # include alternative allocations if desired
 
 
 # What to measure:
@@ -149,8 +143,7 @@ def run_simulation(
     seed: int,
     t_cohere: float,
     swap: SwapSequenceInput,
-    channel_capacity: int | list[int] | list[tuple[int, int]],
-    channel_length: float | list[float] = CHANNEL_LENGTH,
+    channel_capacity: int,
     nodes: int | list[str] = NODES,
 ) -> dict[str, float]:
     """
@@ -169,10 +162,9 @@ def run_simulation(
             nodes=nodes,
             mem_capacity=MEM_CAPACITY,
             t_cohere=t_cohere,
-            channel_length=channel_length,
-            channel_capacity=channel_capacity,
+            channels=CHANNEL_LENGTH,
+            ch_capacity=channel_capacity,
             fiber_alpha=FIBER_ALPHA,
-            link_arch=LINK_ARCH,
             entg_attempt_rate=ENTG_ATTEMPT_RATE,
             init_fidelity=INIT_FIDELITY,
             eta_d=ETA_D,
@@ -215,7 +207,7 @@ def run_row(
     n_runs: int,
     t_cohere: float,
     swap: SwapSequenceInput,
-    channel_capacity: int | list[int] | list[tuple[int, int]],
+    channel_capacity: int,
 ) -> dict[str, Any]:
     """
     Run n_runs trials for one parameter point and return mean/std + raw lists.

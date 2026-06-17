@@ -42,8 +42,7 @@ def run_simulation(seed: int, args: Args):
         NetworkBuilder()
         .topo_linear(
             nodes=4,
-            channel_length=[32, 18, 10],
-            channel_capacity=[(4, 3), (1, 2), (2, 4)],
+            channels=[(32, (4, 3)), (18, (1, 2)), (10, (2, 4))],
             t_cohere=0.01,
         )
         .proactive_centralized()
