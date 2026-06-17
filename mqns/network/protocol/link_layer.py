@@ -16,7 +16,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from collections import deque
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from typing import Literal, TypedDict, cast, override
 
@@ -108,7 +108,7 @@ class LinkLayer(Application[QNode]):
         eta_d: float = 1.0,
         frequency: float = 80e6,
         tau_0: float = 0.0,
-        init_fidelity: float | None = 0.99,
+        init_fidelity: float | Sequence[float] | None = 0.99,
     ):
         """
         Constructor.

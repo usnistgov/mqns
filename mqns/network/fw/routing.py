@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from enum import Enum, auto
 from itertools import pairwise
 from typing import TypedDict, Unpack, override
@@ -47,9 +47,9 @@ class RoutingPathInitArgs(TypedDict, total=False):
     """Path identifier for the first path, defaults to auto-assignment."""
     swap: SwapSequenceInput
     """Swap sequence or swap policy, defaults to ASAP."""
-    swap_cutoff: list[float] | None
+    swap_cutoff: Sequence[float] | None
     """Swap cut-off times in seconds."""
-    purif: dict[str, int] | None
+    purif: Mapping[str, int] | None
     """Purification scheme."""
 
 
@@ -84,7 +84,7 @@ class RoutingPath(ABC):
         """
         self.swap: SwapSequenceInput = kwargs.get("swap") or "asap"
         self.swap_cutoff = kwargs.get("swap_cutoff")
-        self.purif = kwargs.get("purif") or {}
+        self.purif = dict(kwargs.get("purif") or {})
 
     @abstractmethod
     def compute_paths(self, net: QuantumNetwork) -> Iterator[PathInstructions]:

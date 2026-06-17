@@ -125,7 +125,7 @@ class TopoCommonArgs(TypedDict, total=False):
     """Memory time decay function, defaults to dephasing in ``t_cohere``."""
     entg_attempt_rate: float
     """Maximum entanglement attempts per second, defaults to ``50_000_000`` but currently ineffective."""
-    init_fidelity: float | None
+    init_fidelity: float | Sequence[float] | None
     """
     Fidelity of generated entangled pairs, defaults to ``0.99``.
     If ``None``, determine with error models in link architecture.
