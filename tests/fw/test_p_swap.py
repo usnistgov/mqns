@@ -16,6 +16,7 @@ from mqns.models.error import PerfectErrorModel
 from mqns.network.fw import (
     Fib,
     Forwarder,
+    ForwarderConsumeCounters,
     MemoryEprTuple,
     MuxSchemeDynamicEpr,
     MuxSchemeStatistical,
@@ -34,6 +35,7 @@ from .fw_common import (
     build_tree_network,
     check_fw_counters,
     check_memory_released,
+    check_path_counters,
     collect_cpacket_counts,
     install_path,
     print_fw_counters,
@@ -62,9 +64,9 @@ def test_3_disabled():
     print_fw_counters(net)
     check_fw_counters(
         net,
-        n_consumed=(1, 2, 1),
         n_swapped=(0, 0, 0),
     )
+    assert fwA.cnt.n_consumed + fwB.cnt.n_consumed + fwC.cnt.n_consumed == 2
 
 
 @pytest.mark.parametrize(
@@ -101,9 +103,9 @@ def test_3_decohere(swap_delay: float, n_consumed: int):
     print_fw_counters(net)
     check_fw_counters(
         net,
-        n_consumed=(n_consumed, 0, n_consumed),
         n_su_lower=(1, 0, 1),
     )
+    check_path_counters(net, n_consumed=n_consumed)
 
 
 @pytest.mark.parametrize(
@@ -150,12 +152,12 @@ def test_3_waittime(etg_sec: tuple[float, float], swap_delay: float, n_consumed:
 
     check_fw_counters(
         net,
-        n_consumed=(n_consumed, 0, n_consumed),
         n_swapped=(0, n_consumed, 0),
     )
     assert fwA.cnt.n_cutoff == [0, n_cutoff[0]]
     assert fwB.cnt.n_cutoff == [sum(n_cutoff), 0]
     assert fwC.cnt.n_cutoff == [0, n_cutoff[1]]
+    check_path_counters(net, n_consumed=n_consumed)
 
 
 @pytest.mark.parametrize(
@@ -202,9 +204,9 @@ def test_4_sync(t_ext: float, expected: tuple[int, int, int, int]):
     print_fw_counters(net)
     check_fw_counters(
         net,
-        n_consumed=(expected[0], 0, 0, expected[3]),
         n_swapped=(0, expected[1], expected[2], 0),
     )
+    check_path_counters(net, n_consumed=min(expected[0], expected[3]))
 
 
 @pytest.mark.parametrize(
@@ -237,21 +239,21 @@ def test_4_asap(etg_ms: tuple[int, int, int], ps3: int):
     if ps3 == 1:
         check_fw_counters(
             net,
-            n_consumed=(1, 0, 0, 1),
             n_swapped=(0, 1, 1, 0),
             n_swap_fail=(0, 0, 0, 0),
             n_su_same=(0, 1, 1, 0),
             n_su_lower=(1, 0, 0, 1),
         )
+        check_path_counters(net, n_consumed=1)
     else:
         check_fw_counters(
             net,
-            n_consumed=(0, 0, 0, 0),
             n_swapped=(0, 1, 0, 0),
             n_swap_fail=(0, 0, 1, 0),
             n_su_same=(0, 1, (0, 1), 0),  # if B hears C's failure before its own swap, it does not herald C
             n_su_lower=(1, 0, 0, 1),
         )
+        check_path_counters(net, n_consumed=0)
     check_memory_released(net)
 
 
@@ -354,10 +356,10 @@ def test_4_delayed(
     print("cpacket_cnt", cpacket_cnt)
 
     assert fwB_n_swapped_values == [0, 0, 0, 0, 0, n_swap2, n_swap2, n_swap2]
-    assert fwA.cnt.n_consumed == n_consumed
+    consume_cnt = ForwarderConsumeCounters.of_path(net, "A", "D")
+    assert consume_cnt.n_consumed == n_consumed
     if n_consumed > 0:
-        assert 0.5 < fwA.cnt.consumed_avg_fidelity <= 0.75
-        assert fwA.cnt.consumed_avg_fidelity == pytest.approx(fwD.cnt.consumed_avg_fidelity)
+        assert 0.5 < consume_cnt.consumed_avg_fidelity <= 0.75
 
     assert list(fw.node.get_app(QubitReleaseReset).last_t for fw in (fwA, fwB, fwC, fwD)) == [
         simulator.time(sec=t) for t in t_release
@@ -407,9 +409,9 @@ def test_4_decohere(swap_delay: float, n_consumed: int):
     print_fw_counters(net)
     check_fw_counters(
         net,
-        n_consumed=(n_consumed, 0, 0, n_consumed),
         n_su_lower=(1, 0, 0, 1),
     )
+    check_path_counters(net, n_consumed=n_consumed)
     check_memory_released(net)
 
 
@@ -434,12 +436,12 @@ def test_5_asap(
     print_fw_counters(net)
     check_fw_counters(
         net,
-        n_consumed=(n_consumed, 0, 0, 0, n_consumed),
         n_swapped=(0, 1, n_consumed, 1, 0),
         n_swap_fail=(0, 0, 1 - n_consumed, 0, 0),
         n_su_same=(0, 1, (0, 1, 2), 1, 0),
         n_su_lower=(1, 0, 0, 0, 1),
     )
+    check_path_counters(net, n_consumed=n_consumed)
     check_memory_released(net)
 
 
@@ -472,12 +474,12 @@ def test_5_sequential(swap_sulower: tuple[Sequence[int], Sequence[int]], etg_ms:
     print_fw_counters(net)
     check_fw_counters(
         net,
-        n_consumed=(1, 0, 0, 0, 1),
         n_swapped=(0, 1, 1, 1, 0),
         n_swap_fail=(0, 0, 0, 0, 0),
         n_su_same=(0, 0, 0, 0, 0),
         n_su_lower=su_lower,
     )
+    check_path_counters(net, n_consumed=1)
 
 
 @pytest.mark.parametrize(
@@ -534,11 +536,11 @@ def test_5_decohere(
     )
     simulator.run()
     print_fw_counters(net)
-    check_fw_counters(
-        net,
-        n_consumed=(n_consumed, 0, 0, 0, n_consumed),
-        # n_su_lower=(1, 0, 0, 0, 1),
-    )
+    # check_fw_counters(
+    #     net,
+    #     n_su_lower=(1, 0, 0, 0, 1),
+    # )
+    check_path_counters(net, n_consumed=n_consumed)
     check_memory_released(net)
     assert list(node.get_app(QubitReleaseReset).last_t for node in net.nodes[: len(t_release)]) == [
         simulator.time(sec=t) for t in t_release
@@ -575,8 +577,7 @@ def test_rect_multipath(has_etg: tuple[int, int, int, int], n_swapped: tuple[int
     )
     simulator.run()
     print_fw_counters(net)
-
-    assert fwA.cnt.n_consumed == n_consumed == fwD.cnt.n_consumed
+    check_path_counters(net, n_consumed=n_consumed)
     assert (fwB.cnt.n_swapped, fwC.cnt.n_swapped) == n_swapped
 
 
@@ -634,8 +635,8 @@ def test_tree2_dynepr(t_edge_etg: float, selected_path: tuple[int, int], n_consu
     simulator.run()
     print_fw_counters(net)
 
-    assert fwD.cnt.n_consumed == n_consumed[0] == fwF.cnt.n_consumed
-    assert fwE.cnt.n_consumed == n_consumed[1] == fwG.cnt.n_consumed
+    check_path_counters(net, rp0, n_consumed=n_consumed[0])
+    check_path_counters(net, rp1, n_consumed=n_consumed[1])
 
 
 @pytest.mark.parametrize(
@@ -703,8 +704,8 @@ def test_tree2_statistical(
     )
     fwA, fwB, fwC, fwD, fwE, fwF, fwG = (node.get_app(ProactiveForwarder) for node in net.nodes)
 
-    install_path(net, RoutingPathStatic("DBACF", m_v=QubitAllocationType.DISABLED))
-    install_path(net, RoutingPathStatic("EBACG", m_v=QubitAllocationType.DISABLED))
+    rp0 = install_path(net, RoutingPathStatic("DBACF", m_v=QubitAllocationType.DISABLED))
+    rp1 = install_path(net, RoutingPathStatic("EBACG", m_v=QubitAllocationType.DISABLED))
 
     edges = ((fwD, fwB), (fwE, fwB), (fwB, fwA), (fwA, fwC), (fwC, fwF), (fwC, fwG))
     provide_entanglements(
@@ -717,8 +718,8 @@ def test_tree2_statistical(
         # For test cases without unused EPRs, swap conflict should release memory quickly.
         check_memory_released(net)
 
-    assert fwD.cnt.n_consumed == n_consumed[0] == fwF.cnt.n_consumed
-    assert fwE.cnt.n_consumed == n_consumed[1] == fwG.cnt.n_consumed
+    check_path_counters(net, rp0, n_consumed=n_consumed[0])
+    check_path_counters(net, rp1, n_consumed=n_consumed[1])
     assert sum(fw.cnt.n_su_lower[4] for fw in (fwD, fwE, fwF, fwG)) == (2 if sum(n_consumed) == 0 else 0)
 
 
@@ -790,8 +791,8 @@ def test_tree3_statistical(
     )
     fws = {node.name: node.get_app(ProactiveForwarder) for node in net.nodes}
 
-    for path in path0, path1:
-        install_path(net, RoutingPathStatic(path, m_v=QubitAllocationType.DISABLED))
+    rp0 = install_path(net, RoutingPathStatic(path0, m_v=QubitAllocationType.DISABLED))
+    rp1 = install_path(net, RoutingPathStatic(path1, m_v=QubitAllocationType.DISABLED))
 
     def expand_etgs():
         for t, edges in enumerate(etgs.split(":")):
@@ -802,5 +803,5 @@ def test_tree3_statistical(
     simulator.run()
     print_fw_counters(net)
 
-    assert fws[path0[0]].cnt.n_consumed == n_consumed[0]
-    assert fws[path1[0]].cnt.n_consumed == n_consumed[1]
+    check_path_counters(net, rp0, n_consumed=n_consumed[0])
+    check_path_counters(net, rp1, n_consumed=n_consumed[1])

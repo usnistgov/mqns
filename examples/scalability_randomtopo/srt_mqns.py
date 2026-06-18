@@ -2,7 +2,7 @@ import json
 import os.path
 
 from mqns.entity.node import QNode
-from mqns.network.fw import QubitAllocationType, RoutingPathSingle
+from mqns.network.fw import ForwarderConsumeCounters, QubitAllocationType, RoutingPathSingle
 from mqns.network.network import Request
 from mqns.network.proactive import ProactiveForwarder, ProactiveRoutingController
 from mqns.network.protocol.link_layer import LinkLayer
@@ -37,8 +37,8 @@ def run_simulation(args: RunArgs) -> RunResult:
 
     # Collect results.
     def gather_request_stats(req: Request) -> RequestStats:
-        fw = req.src.get_app(ProactiveForwarder)
-        return fw.cnt.n_consumed / sim_duration, fw.cnt.consumed_avg_fidelity
+        consume_cnt = ForwarderConsumeCounters.of_path(net, req.src.name, req.dst.name)
+        return consume_cnt.get_rate(sim_duration), consume_cnt.consumed_avg_fidelity
 
     def gather_node_stats(node: QNode):
         fw = node.get_app(ProactiveForwarder)

@@ -25,8 +25,7 @@ import numpy as np
 from tap import Tap
 
 from mqns.network.builder import CTRL_DELAY, NetworkBuilder
-from mqns.network.fw import MuxScheme, MuxSchemeDynamicEpr, MuxSchemeStatistical
-from mqns.network.proactive import ProactiveForwarder
+from mqns.network.fw import ForwarderConsumeCounters, MuxScheme, MuxSchemeDynamicEpr, MuxSchemeStatistical
 from mqns.simulator import Simulator
 from mqns.utils import log, rng
 
@@ -81,13 +80,12 @@ def run_simulation(seed: int, args: Args, mux: MuxScheme, t_cohere: float):
     s.run()
 
     #### get stats: e2e_rate and mean_fidelity
-    fw_s1 = net.get_node("S1").get_app(ProactiveForwarder)
-    fw_s2 = net.get_node("S2").get_app(ProactiveForwarder)
     # [(path 1), (path 2), ...]
-    return [
-        (fw_s1.cnt.n_consumed / args.sim_duration, fw_s1.cnt.consumed_avg_fidelity),
-        (fw_s2.cnt.n_consumed / args.sim_duration, fw_s2.cnt.consumed_avg_fidelity),
+    consume_cnts = [
+        ForwarderConsumeCounters.of_path(net, "S1", "D1"),
+        ForwarderConsumeCounters.of_path(net, "S2", "D2"),
     ]
+    return [(c.get_rate(args.sim_duration), c.consumed_avg_fidelity) for c in consume_cnts]
 
 
 class PathStats(NamedTuple):

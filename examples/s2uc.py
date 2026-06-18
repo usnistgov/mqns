@@ -16,7 +16,7 @@ from tap import Tap
 from mqns.entity.qchannel import LinkArchDimDual
 from mqns.models.epr import MixedStateEntanglement
 from mqns.network.builder import CTRL_DELAY, ChannelParam, NetworkBuilder, NodeDef, tap_configure
-from mqns.network.proactive import ProactiveForwarder
+from mqns.network.fw import ForwarderConsumeCounters
 from mqns.simulator import Simulator
 from mqns.utils import log, rng
 
@@ -115,21 +115,16 @@ def run_simulation(seed: int, args: Args, ri: RowInput) -> Stats:
         .make_network()
     )
 
-    fwS = net.get_node("S").get_app(ProactiveForwarder)
-    fwD = net.get_node("D").get_app(ProactiveForwarder)
-
-    fwS.cnt.enable_collect_all()
+    ForwarderConsumeCounters.enable_collect_all_on_path(net, "S", "D")
 
     s = Simulator(0, args.sim_duration + CTRL_DELAY, accuracy=SIMULATOR_ACCURACY, install_to=(log, net))
     s.run()
 
-    # XXX off-by-one is possible if the simulation terminates when the final message is in flight
-    assert fwS.cnt.n_consumed == fwD.cnt.n_consumed
-    assert abs(fwS.cnt.consumed_sum_fidelity - fwD.cnt.consumed_sum_fidelity) < 1e-3
-    assert fwS.cnt.consumed_fidelity_values is not None
+    consume_cnt = ForwarderConsumeCounters.of_path(net, "S", "D")
+    assert consume_cnt.consumed_fidelity_values is not None
     return Stats(
-        count=fwS.cnt.n_consumed,
-        fid=fwS.cnt.consumed_fidelity_values,
+        count=consume_cnt.n_consumed,
+        fid=consume_cnt.consumed_fidelity_values,
     )
 
 

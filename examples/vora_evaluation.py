@@ -51,9 +51,9 @@ import pandas as pd
 from tap import Tap
 
 from mqns.network.builder import CTRL_DELAY, NetworkBuilder
-from mqns.network.fw import SwapPolicy, SwapSequence, SwapSequenceInput
+from mqns.network.fw import ForwarderConsumeCounters, SwapPolicy, SwapSequence, SwapSequenceInput
 from mqns.network.network import QuantumNetwork
-from mqns.network.proactive import ProactiveForwarder, compute_vora_swap_sequence
+from mqns.network.proactive import compute_vora_swap_sequence
 from mqns.network.protocol.link_layer import LinkLayerCounters
 from mqns.simulator import Simulator
 from mqns.utils import log, rng
@@ -193,9 +193,9 @@ def run_simulation(p: ParameterSet, seed: int) -> tuple[float, float]:
     s.run()
 
     #### get stats
-    total_decohered = LinkLayerCounters.aggregate(net.nodes).n_decoh
-    e2e_count = net.get_node("S").get_app(ProactiveForwarder).cnt.n_consumed
-    return e2e_count / p.sim_duration, total_decohered / e2e_count if e2e_count > 0 else 0
+    consume_cnt = ForwarderConsumeCounters.of_path(net, "S", "D")
+    ll_cnt = LinkLayerCounters.aggregate(net.nodes)
+    return consume_cnt.get_rate(p.sim_duration), consume_cnt.get_per_consumed(ll_cnt.n_decoh)
 
 
 def run_row(p: ParameterSet, num_routers: int, dist_prop: str, swap_conf: str) -> dict:

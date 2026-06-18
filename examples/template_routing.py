@@ -49,6 +49,7 @@ from tap import Tap
 
 from mqns.network.builder import CTRL_DELAY, NetworkBuilder
 from mqns.network.fw import (
+    ForwarderConsumeCounters,
     MultiplexingVector,
     MuxScheme,
     MuxSchemeBufferSpace,
@@ -61,7 +62,6 @@ from mqns.network.fw import (
 )
 from mqns.network.network import QuantumNetwork
 from mqns.network.network.timing import TimingModeSync
-from mqns.network.proactive import ProactiveForwarder
 from mqns.network.route import DijkstraRouteAlgorithm, YenRouteAlgorithm
 from mqns.simulator import Simulator
 from mqns.utils import log, rng
@@ -297,13 +297,11 @@ def run_one(t_cohere: float, seed: int) -> dict[str, tuple[float, float]]:
     sim = Simulator(0, SIM_DURATION + CTRL_DELAY, accuracy=1_000_000, install_to=(log, net))
     sim.run()
 
-    # Collect stats at selected sources (one per “request” in this tutorial pattern)
+    # Collect stats for selected requests
     out: dict[str, tuple[float, float]] = {}
-    for src, label in zip(SC.measured_sources, SC.measured_labels):
-        fw = net.get_node(src).get_app(ProactiveForwarder)
-        rate = fw.cnt.n_consumed / SIM_DURATION
-        fid = fw.cnt.consumed_avg_fidelity
-        out[label] = (rate, fid)
+    for rp, label in zip(SC.install_paths, SC.measured_labels, strict=True):
+        consume_cnt = ForwarderConsumeCounters.of_path(net, rp.src, rp.dst)
+        out[label] = consume_cnt.get_rate(SIM_DURATION), consume_cnt.consumed_avg_fidelity
 
     return out
 

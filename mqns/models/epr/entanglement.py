@@ -88,6 +88,12 @@ class Entanglement(QuantumModel):
     """Elementary entanglements that swapped into this entanglement."""
     affectionated_path_id: int = -1
     """Path ID chosen by MuxSchemeDynamicEpr or MuxSchemeStatistical(coordinated_decisions=True)."""
+    consumed_sides: int = 0b00
+    """
+    Whether the entanglement has been consumed via ``consume_with_store_decay_side()`` on each side, as bitmap:
+    * 0b01: Left side.
+    * 0b10: Right side.
+    """
 
     def __init__(self, **kwargs: Unpack[EntanglementInitKwargs]):
         """
@@ -158,12 +164,34 @@ class Entanglement(QuantumModel):
             now: Current time point.
         """
         t = now - self.fidelity_time
+        assert self.consumed_sides == 0b00
         if self.read or t.time_slot == 0:
             return
         for se in self.store_decays:
             se(self, t)
         self.fidelity_time = now
         self.read = True
+
+    def consume_with_store_decay_side(self, now: Time, *, side: int) -> bool:
+        """
+        Apply memory time-based decays for one qubit in this EPR, when it is ready for consumption.
+
+        Args:
+            now: Current time point.
+            side: 0 for left side, 1 for right side.
+
+        Returns: Whether both qubits are consumed.
+
+        This differs from ``apply_store_decays()`` in that:
+        * ``fidelity_time`` is not updated, so that the other side can update from the same origin time.
+        * ``consumed_sides`` indicates which side(s) have performed this update.
+        """
+        side_bit = 1 << side
+        assert (self.consumed_sides & side_bit) == 0b00
+        self.store_decays[side](self, now - self.fidelity_time)
+        self.consumed_sides |= side_bit
+        self.read = True
+        return self.consumed_sides == 0b11
 
     @staticmethod
     def swap[E: Entanglement](
