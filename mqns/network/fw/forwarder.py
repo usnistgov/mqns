@@ -17,7 +17,7 @@
 
 import copy
 from abc import abstractmethod
-from typing import TypedDict, Unpack, override
+from typing import Literal, TypedDict, Unpack, override
 
 import numpy as np
 
@@ -52,11 +52,13 @@ from mqns.utils import json_encodable, log
 
 class ForwarderInitKwargs(TypedDict, total=False):
     p_swap: float
-    """Probability of successful entanglement swapping, default is 1.0."""
+    """Probability of successful entanglement swapping, default is ``1.0``."""
     swap_delay: DelayInput
     """Swapping delay model, default is zero."""
     swap_error: ErrorModelInputBasic
     """Swapping error model, default is perfect."""
+    swap_error_at: Literal["s", "f"]
+    """Swapping error applied at start or finish time, default is ``s``."""
     cutoff: CutoffScheme | None
     """EPR age cut-off scheme, default is wait-time."""
     mux: MuxScheme | None
@@ -182,6 +184,7 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
             ps=kwargs.get("p_swap", 1.0),
             delay=parse_delay(kwargs.get("swap_delay", 0)),
             error=parse_error(kwargs.get("swap_error"), PerfectErrorModel, -1),
+            error_at_finish=kwargs.get("swap_error_at", "s") == "f",
         )
 
         self.waiting_etg: list[QubitEntangledEvent] = []

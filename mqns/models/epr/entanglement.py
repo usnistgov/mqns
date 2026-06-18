@@ -180,7 +180,8 @@ class Entanglement(QuantumModel):
         Args:
             epr0: Left entanglement.
             epr1: Right entanglement.
-            now: Current timestamp.
+            now: Timestamp to stop accumulating errors on ``epr0`` and ``epr1``,
+                and start accumulating errors on new entanglement.
             ps: Probability of successful swapping.
             error: BSA error model.
 
@@ -190,7 +191,7 @@ class Entanglement(QuantumModel):
         """
 
         assert type(epr0) is type(epr1)
-        assert epr0.dst == epr1.src  # it's okay for src and dst to be None
+        assert epr0.dst is epr1.src  # it's okay for src and dst to be None
 
         orig_eprs: list[E] = []
         for epr in (epr0, epr1):
@@ -220,10 +221,9 @@ class Entanglement(QuantumModel):
 
         local_failure = ps < 1.0 and rng.random() >= ps
         ne.is_decohered = epr0.is_decohered or epr1.is_decohered or local_failure
-        if ne.is_decohered:
-            epr0.is_decohered = epr1.is_decohered = True
-        else:
+        if not ne.is_decohered:
             ne.apply_error(error)
+        epr0.is_decohered = epr1.is_decohered = True
         return ne, not local_failure
 
     @staticmethod
