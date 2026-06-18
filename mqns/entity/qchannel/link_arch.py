@@ -25,12 +25,14 @@ class ChannelParameters(Protocol):
     Fiber propagation delay in seconds, also used as one-way classical message delay.
     This must reflect a constant delay.
     """
+    init_fidelity: float | Sequence[float] | None
+    """Initial fidelity value for entanglements delivered by this channel."""
     transfer_error: ErrorModel
     """
     Fiber transfer error model.
     This is only used if ``init_fidelity`` is omitted or negative.
 
-    If the LinkArch subclass needs to apply transfer error at a different length,
+    If the ``LinkArch`` subclass needs to apply transfer error at a different length,
     it will clone the instance and adjust the length while preserving the decoherence rate.
     """
     bsa_error: ErrorModel
@@ -53,18 +55,6 @@ class LinkArchParameters(TypedDict):
     """Local operation delay in seconds."""
     epr_type: type[Entanglement]
     """EPR type, either ``WernerStateEntanglement`` or ``MixedStateEntanglement``."""
-    init_fidelity: NotRequired[float | Sequence[float] | None]
-    """
-    Initial fidelity value.
-
-    If set as float, every entanglement has a Werner state with the specified fidelity.
-    If set as four floats, every entanglement has a Bell-diagonal state with the specified I,Z,X,Y values.
-    In these cases, the specified fidelity must be tuned to the EPR creation time,
-    which is generally when the first photon is emitted or absorbed by a memory.
-
-    If omitted or ``None``, a mini simulation is performed to determine the proper fidelity values,
-    by applying error models to the memories, fibers, etc.
-    """
     t0: NotRequired[Time]
     """
     Time reference for mini simulation; only the accuracy is used.
@@ -172,7 +162,7 @@ class LinkArchBase(ABC, LinkArch):
             tau_0=kwargs["tau_0"],
         )
 
-        if (init_fidelity := kwargs.get("init_fidelity")) is None:
+        if (init_fidelity := ch.init_fidelity) is None:
             self._make_epr: MakeEprFunc = self._prepare_make_epr(kwargs, ch, tau_l)
         elif isinstance(init_fidelity, Sequence):
             assert kwargs["epr_type"] is MixedStateEntanglement

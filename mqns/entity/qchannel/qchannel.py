@@ -26,6 +26,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import copy
+from collections.abc import Sequence
 from typing import Unpack, final, override
 
 from mqns.entity.base_channel import BaseChannel, BaseChannelInitKwargs, calc_transmission_prob
@@ -52,6 +53,18 @@ class QuantumChannelInitKwargs(BaseChannelInitKwargs, total=False):
     In ``LinkArch``, this parameter determines the success probability,
     but does not affect the decoherence / quality of the state given the photon arrived.
     """
+    init_fidelity: float | Sequence[float] | None
+    """
+    Initial fidelity value for entanglements delivered by this channel.
+
+    If set as float, every entanglement has a Werner state with the specified fidelity.
+    If set as four floats, every entanglement has a Bell-diagonal state with the specified I,Z,X,Y values.
+    In these cases, the specified fidelity must be tuned to the EPR creation time,
+    which is generally when the first photon is emitted or absorbed by a memory.
+
+    If omitted or ``None``, ``LinkArch`` performs a mini simulation to determine the proper fidelity values,
+    by applying error models to the memories, fibers, etc.
+    """
     transfer_error: ErrorModelInputLength
     """
     Transfer error model for loss of quantum information.
@@ -75,6 +88,8 @@ class QuantumChannel(BaseChannel[QNode]):
     In entanglement routing experiments, MQNS does not use the ``send()`` method to transmit photonic qubits.
     Instead, the ``LinkLayer`` application calculates entanglement arrival times and fidelity from channel parameters
     such as ``length`` and ``link_arch``, and directly schedules entanglement arrivals.
+
+    This class implements the protocol ``mqns.entity.qchannel.ChannelParameters``.
     """
 
     def __init__(self, name: str, **kwargs: Unpack[QuantumChannelInitKwargs]):
@@ -85,23 +100,13 @@ class QuantumChannel(BaseChannel[QNode]):
         """Link architecture model (separate instance per channel)."""
 
         self.alpha = kwargs.get("alpha", 0.0)
-        """Fiber attenuation loss in dB/km."""
         assert self.alpha >= 0
         if self.drop_rate == 0 and self.length > 0 and self.alpha > 0:
             self.drop_rate = 1 - calc_transmission_prob(self.length, self.alpha)
 
+        self.init_fidelity = kwargs.get("init_fidelity")
         self.transfer_error = parse_error(kwargs.get("transfer_error"), DepolarErrorModel, self.length)
-        """
-        Transfer error model.
-
-        It reflects loss of quantum information when a qubit/EPR is sent through the fiber.
-        It does not reflect loss of photons.
-        """
-
         self.bsa_error = parse_error(kwargs.get("bsa_error"), DepolarErrorModel, -1)
-        """
-        Bell-state analyzer or absorptive memory capture (depending on link architecture) error model.
-        """
 
     @override
     def handle(self, event: Event):

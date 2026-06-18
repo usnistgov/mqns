@@ -16,7 +16,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from collections import deque
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Literal, TypedDict, cast, override
 
@@ -108,7 +108,6 @@ class LinkLayer(Application[QNode]):
         eta_d: float = 1.0,
         frequency: float = 80e6,
         tau_0: float = 0.0,
-        init_fidelity: float | Sequence[float] | None = 0.99,
     ):
         """
         Constructor.
@@ -119,7 +118,6 @@ class LinkLayer(Application[QNode]):
             eta_d: detector efficiency (default: 1.0).
             frequency: entanglement source frequency in Hz (default: 80e6).
             tau_0: local operation delay in seconds for emitting and absorbing photon (default: 0.0).
-            init_fidelity: fidelity of generated entangled pairs (default: 0.99).
 
         """
         super().__init__()
@@ -134,8 +132,6 @@ class LinkLayer(Application[QNode]):
         """Minimum time between two consecutive photon excitations/absorptions."""
         self.tau_0 = tau_0
         """Local operation delay in seconds."""
-        self.init_fidelity = init_fidelity
-        """Fidelity of generated entangled pairs."""
 
         self.active_channels: dict[tuple[QuantumChannel, int | None], tuple[QNode, int]] = {}
         """
@@ -248,7 +244,6 @@ class LinkLayer(Application[QNode]):
             reset_time=self.reset_time,
             tau_0=self.tau_0,
             epr_type=self.node.network.epr_type,
-            init_fidelity=self.init_fidelity,
             t0=self.simulator.tc,
             store_decays=(self.memory.time_decay, neighbor.memory.time_decay),
         )

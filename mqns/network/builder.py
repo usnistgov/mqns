@@ -156,6 +156,11 @@ class ChannelArgs(TypedDict, total=False):
     Fiber loss in dB/km, defaults to ``0.2``.
     This determines success probability.
     """
+    init_fidelity: float | Sequence[float] | None
+    """
+    Fidelity of generated entangled pairs, defaults to ``0.99``.
+    If ``None``, determine with error models in link architecture.
+    """
     fiber_error: ErrorModelInputLength
     """
     Fiber error model, defaults to depolarizing with ``0.01`` error probability.
@@ -191,11 +196,6 @@ class TopoCommonArgs(NodeArgs, ChannelArgs):
     # Conceptually these should belong to either NodeArgs or ChannelArgs,
     # but implementation limitation made them non-configurable.
     # If use case arises, these could be refactored to be per-node or per-channel.
-    init_fidelity: NotRequired[float | Sequence[float] | None]
-    """
-    Fidelity of generated entangled pairs, defaults to ``0.99``.
-    If ``None``, determine with error models in link architecture.
-    """
     entg_attempt_rate: NotRequired[float]
     """Maximum entanglement attempts per second, defaults to ``50_000_000`` but currently ineffective."""
     eta_d: NotRequired[float]
@@ -204,6 +204,8 @@ class TopoCommonArgs(NodeArgs, ChannelArgs):
     """Source efficiency, defaults to ``0.95``."""
     frequency: NotRequired[float]
     """Entanglement source frequency, defaults to ``1_000_000``."""
+    tau_0: NotRequired[float]
+    """Local operation delay in seconds for emitting and absorbing photon, defaults to ``0.0``."""
 
 
 class AppsCommonArgs(TypedDict, total=False):
@@ -332,6 +334,7 @@ class NetworkBuilder:
                     "length": d.get("ch_length", 1.0) if length is None else length,
                     "link_arch": la,
                     "alpha": d.get("fiber_alpha", 0.2),
+                    "init_fidelity": d.get("init_fidelity", 0.99),
                     "transfer_error": d.get("fiber_error", "DEPOLAR:0.01"),
                     "bsa_error": d.get("bsa_error", "PERFECT"),
                 },
@@ -463,10 +466,10 @@ class NetworkBuilder:
         self.qnode_apps.append(
             LinkLayer(
                 attempt_rate=self.d.get("entg_attempt_rate", 50e6),
-                init_fidelity=self.d.get("init_fidelity", 0.99),
                 eta_d=self.d.get("eta_d", 0.95),
                 eta_s=self.d.get("eta_s", 0.95),
                 frequency=self.d.get("frequency", 1e6),
+                tau_0=self.d.get("tau_0", 0.0),
             )
         )
 

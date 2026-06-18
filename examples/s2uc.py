@@ -15,7 +15,7 @@ from tap import Tap
 
 from mqns.entity.qchannel import LinkArchDimDual
 from mqns.models.epr import MixedStateEntanglement
-from mqns.network.builder import CTRL_DELAY, NetworkBuilder, tap_configure
+from mqns.network.builder import CTRL_DELAY, ChannelParam, NetworkBuilder, NodeDef, tap_configure
 from mqns.network.proactive import ProactiveForwarder
 from mqns.simulator import Simulator
 from mqns.utils import log, rng
@@ -86,22 +86,27 @@ def run_simulation(seed: int, args: Args, ri: RowInput) -> Stats:
             epr_type=MixedStateEntanglement,
         )
         .topo_linear(
-            nodes="SRD",
-            channels=(32, 18),
+            nodes=[
+                NodeDef("S", t_cohere=1 / 5),
+                "R",
+                "D",
+            ],
+            t_cohere=1 / 10,
+            channels=[
+                ChannelParam(ch_length=32, init_fidelity=convert_fidelity(0.9474, 0.1427, 0.1427, 0.7147)),
+                ChannelParam(ch_length=18, init_fidelity=convert_fidelity(0.9677, 0.1547, 0.1547, 0.6907)),
+            ],
             fiber_alpha=0.2,
             link_arch=LinkArchDimDual,
-            t_cohere=1 / 10,  # TODO change coherence rate of S to 5 Hz
-            init_fidelity=convert_fidelity(0.9677, 0.1547, 0.1547, 0.6907),
-            # TODO two links should have different init_fidelity
             eta_d=0.58,
             eta_s=0.99,
             frequency=80e6,
+            tau_0=10e-6,
         )
         .proactive_centralized(
             p_swap=0.5,
             swap_delay=340e-6,
             swap_error=None,  # TODO memory decoherence should continue during swap
-            # TODO set LinkArch local processing time tau_0=10e-6
         )
         .request(
             "S-D",

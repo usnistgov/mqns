@@ -1,5 +1,5 @@
 import itertools
-from dataclasses import dataclass
+from collections.abc import Sequence
 
 import pytest
 
@@ -13,18 +13,28 @@ from mqns.models.error import DepolarErrorModel, ErrorModel, parse_time_decay, t
 from mqns.simulator import Simulator, Time
 
 
-@dataclass
 class FakeQuantumChannel:
     length: float
     alpha: float
     delay: DelayModel
+    init_fidelity: float | Sequence[float] | None
     transfer_error: ErrorModel
     bsa_error: ErrorModel
 
-    def __init__(self, length: float, *, alpha=0.2, delay=-1.0, transfer_error_rate=0.0, bsa_error_prob=0.0):
+    def __init__(
+        self,
+        length: float,
+        *,
+        alpha=0.2,
+        delay=-1.0,
+        init_fidelity: float | Sequence[float] | None = None,
+        transfer_error_rate=0.0,
+        bsa_error_prob=0.0,
+    ):
         self.length = length
         self.alpha = alpha
         self.delay = ConstantDelayModel(delay if delay >= 0 else length / default_light_speed[0])
+        self.init_fidelity = init_fidelity
         self.transfer_error = DepolarErrorModel().set(rate=transfer_error_rate, length=0)
         self.bsa_error = DepolarErrorModel().set(p_error=bsa_error_prob)
 
@@ -56,7 +66,6 @@ def test_delays(LA: type[LinkArch], multipliers: tuple[float, float, float, floa
         reset_time=0,
         tau_0=tau_0,
         epr_type=WernerStateEntanglement,
-        init_fidelity=1.0,
     )
 
     d1_epr_creation, d1_notify_a, d1_notify_b = link_arch.delays(1)
@@ -94,12 +103,10 @@ def make_epr(link_arch: LinkArch, t_cohere: Time):
     ],
 )
 def test_init_fidelity(E: type[Entanglement], use_probv: bool):
-    ch = FakeQuantumChannel(0)
+    ch = FakeQuantumChannel(0, init_fidelity=(70, 20, 5, 5) if use_probv else 0.7)
     t_cohere = Time.from_sec(1, accuracy=ACCURACY)
     link_arch = LinkArchDimDual()
-    link_arch.set(
-        ch=ch, eta_s=1, eta_d=1, reset_time=0, tau_0=0, epr_type=E, init_fidelity=(70, 20, 5, 5) if use_probv else 0.7
-    )
+    link_arch.set(ch=ch, eta_s=1, eta_d=1, reset_time=0, tau_0=0, epr_type=E)
 
     epr, _, _ = make_epr(link_arch, t_cohere)
     assert epr.fidelity_time == EPR_TIME
