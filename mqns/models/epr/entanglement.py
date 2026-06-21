@@ -72,13 +72,6 @@ class Entanglement(QuantumModel):
     It must not be used to guide decision prior to measurement.
     """
 
-    read: bool = False
-    """
-    Whether the entanglement has been read from the memory by either node.
-
-    Note: This is a legacy attribute, planned for removal.
-    """
-
     ch_index: int = -1
     """
     Index of elementary entanglement in a path, smaller indices are on the left side.
@@ -165,12 +158,11 @@ class Entanglement(QuantumModel):
         """
         t = now - self.fidelity_time
         assert self.consumed_sides == 0b00
-        if self.read or t.time_slot == 0:
+        if t.time_slot == 0:
             return
         for se in self.store_decays:
             se(self, t)
         self.fidelity_time = now
-        self.read = True
 
     def consume_with_store_decay_side(self, now: Time, *, side: int) -> bool:
         """
@@ -190,7 +182,6 @@ class Entanglement(QuantumModel):
         assert (self.consumed_sides & side_bit) == 0b00
         self.store_decays[side](self, now - self.fidelity_time)
         self.consumed_sides |= side_bit
-        self.read = True
         return self.consumed_sides == 0b11
 
     @staticmethod

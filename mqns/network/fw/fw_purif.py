@@ -49,8 +49,11 @@ class ForwarderPurifProc:
             partner: quantum node with which entanglements are shared.
         """
         # read qubits to set fidelity at this time
-        _, epr0 = self.memory.read(mq0.addr, has=self.epr_type, set_fidelity=True)
-        _, epr1 = self.memory.read(mq1.addr, has=self.epr_type, set_fidelity=True, remove=True)
+        now = self.simulator.tc
+        _, epr0 = self.memory.read(mq0.addr, has=self.epr_type)
+        _, epr1 = self.memory.read(mq1.addr, has=self.epr_type, remove=True)
+        epr0.apply_store_decays(now)
+        epr1.apply_store_decays(now)
 
         log.debug(
             f"{self}: request purif qubit {mq0.addr} (F={epr0.fidelity}) and "
@@ -92,8 +95,8 @@ class ForwarderPurifProc:
         """
         # mq0 is the "kept" memory whose fidelity would be increased if purification succeeds
         # mq1 is the "measured" memory that is consumed during purification
-        mq0, epr0 = self.memory.read(msg["key0"], has=self.epr_type, set_fidelity=True)
-        mq1, epr1 = self.memory.read(msg["key1"], has=self.epr_type, set_fidelity=True, remove=True)
+        mq0, epr0 = self.memory.read(msg["key0"], has=self.epr_type)
+        mq1, epr1 = self.memory.read(msg["key1"], has=self.epr_type, remove=True)
         # TODO: handle the exception case when an EPR is decohered and not found in memory
         p_key0 = _qubit_p_key(mq0)
         p_key1 = _qubit_p_key(mq1)
