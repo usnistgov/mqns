@@ -1,0 +1,24 @@
+<svg width="300" height="100" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    text, tspan {
+      text-anchor: middle;
+      dominant-baseline: middle;
+    }
+  </style>
+  <g transform="translate(50 50)">
+    <line x2="100" stroke="#111" stroke-width="2"/>
+    <text font-size="16" x="50" y="-25">32 km</text>
+    <circle r="30" fill="#7FDBFF"/>
+    <text font-size="20">S</text>
+  </g>
+  <g transform="translate(150 50)">
+    <line x2="100" stroke="#111" stroke-width="2"/>
+    <text font-size="16" x="50" y="-25">18 km</text>
+    <circle r="30" fill="#7FDBFF"/>
+    <text font-size="20">R</text>
+  </g>
+  <g transform="translate(250 50)">
+    <circle r="30" fill="#7FDBFF"/>
+    <text font-size="20">D</text>
+  </g>
+</svg>

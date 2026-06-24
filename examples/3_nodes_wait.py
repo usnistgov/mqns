@@ -1,6 +1,36 @@
 """
-This script runs a single repeater with active fidelity enforcement via T_wait.
-It gathers statistics of the end-to-end rate and fidelity.
+Simulate a 3-node repeater network running active fidelity enforcement via wait-time cutoffs.
+
+.. figure:: /_static/examples/3_nodes_32_18.svg
+   :alt: 3-node linear topology
+   :align: center
+
+This script evaluates how bounding the maximum storage duration of elementary entangled pairs at a
+repeater station preserves end-to-end state fidelity at the expense of generation throughput.
+
+The execution model implements and evaluates:
+
+* A 3-node linear topology (``S``, ``R``, ``D``) with configurable fiber link lengths (``--L``).
+* An EPR age cut-off scheme applied at the central forwarder node ``R`` with
+  user-specified or auto-swept wait-time budgets (``--t_wait``).
+* Optional initial edge fidelities derived dynamically using an inner LinkArch mini-simulation (``--link_arch_sim``),
+  based on quantum error models including memory decoherence rates (``--memory_decay``),
+  distance-dependent fiber depolarization (``--fiber_error``), capture/photonic Bell-state analyzer
+  defects (``--bsa_error``), and explicit swapping apparatus delays and faults (``--swap_delay``, ``--swap_error``).
+
+**Operational Modes:**
+
+* If ``--t_wait`` is left empty, the script automatically triggers an adaptive sweep logic.
+  It executes an unrestricted control run to find the mean baseline wait time, and then sweeps exponentially
+  from the fundamental physical transit-time lower bound (propagation delay across the fiber channels)
+  up to the maximum effective coherence limit.
+* Otherwise, the sweep tests each wait-time budget in ``--t_wait`` list.
+
+**Outputs:**
+Aggregated multi-run statistics are evaluated across targeted memory coherence thresholds, capturing
+mean throughput rates, elementary pair drop frequencies, end-to-end fidelity yields, and realized storage times.
+The script profiles these distributions into multi-panel figure plots (including F_min vs.
+Rate curves and count histograms), CSV summaries, and complete JSON experimental matrices.
 """
 
 import itertools

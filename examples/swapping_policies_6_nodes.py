@@ -3,6 +3,10 @@ This script evaluates entanglement swapping strategies combined with memory allo
 ``S-R1-R2-R3-R4-D``, with link lengths of 32 km, 18 km, 35 km, 16 km, and 24 km.
 Each node has six quantum memories.
 
+.. figure:: /_static/examples/swapping_policies_6_nodes.svg
+   :alt: 6-node linear topology
+   :align: center
+
 It compares two memory allocation schemes: a uniform configuration ``[3, 3, 3, 3, 3]``
 and a non-uniform one ``[4, 2, 4, 2, 4]``, representing the number of qubits assigned to each channel.
 Coherence times are set to 5 ms, 10 ms, or 20 ms.
