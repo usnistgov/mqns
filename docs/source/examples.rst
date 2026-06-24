@@ -18,10 +18,25 @@ asymmetric_channel_3_nodes example
 
 .. automodule:: asymmetric_channel_3_nodes
 
+asymmetric_channel_memory example
+---------------------------------
+
+.. automodule:: asymmetric_channel_memory
+
 linear_attempts example
 -----------------------
 
 .. automodule:: linear_attempts
+
+multi_request_single_path example
+---------------------------------
+
+.. automodule:: multi_request_single_path
+
+single_request_multipath example
+--------------------------------
+
+.. automodule:: single_request_multipath
 
 swapping_policies_6_nodes example
 ---------------------------------

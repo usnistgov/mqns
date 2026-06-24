@@ -7,7 +7,7 @@ Simulate 3-node linear topology and report end-to-end throughput.
 
 This script sets up and executes simulations using:
 
-* a generated topology based with varying qubit coherence time
+* a generated topology with varying qubit coherence times
 * a quantum network with Dijkstra-based routing algorithm
 * a seeded random number generator
 

@@ -2,23 +2,26 @@
 This script simulates a linear network without swapping and reports per-link statistics.
 
 The network consists of one or more quantum channels.
-The quantum channel lengths can be specified with `--L` flags.
+The quantum channel lengths can be specified with ``--L`` flags.
 
 One or more memory pairs are assigned to each channel.
-The number of memory pairs can be specified with `--M` flags.
+The number of memory pairs can be specified with ``--M`` flags.
 If multiple numbers are specified, they will be simulated in separate scenarios.
 
-The quantum link architecture may be specified with `--link_arch` flags.
+The quantum link architecture may be specified with ``--link_arch`` flags.
 If multiple link architectures are specified, they will be simulated in separate scenarios.
 Note that plotting will be disabled if there are multiple link architectures.
 
 The following statistics are gathered for each quantum channel:
 
-* Attempts rate: how many entanglements are attempted per second.
+* Attempt rate: how many entanglements are attempted per second.
 * Entanglement rate: how many entanglements are established per second.
-* Success rate: Entanglement rate divided by Attempts rate.
+* Success fraction: Entanglement rate divided by Attempt rate.
 
-The results are saved as JSON (every simulation run), CSV (mean and stdev per scenario), and plots.
+The results are saved as:
+
+* JSON: details from every simulation run.
+* CSV and plots: mean and standard deviation per scenario.
 """
 
 import itertools
@@ -53,7 +56,6 @@ class Args(Tap):
 
     @override
     def configure(self) -> None:
-        super().configure()
         self.add_argument("--link_arch", type=str, nargs="+", choices=LINK_ARCH_MAP.keys())
 
 

@@ -1,10 +1,12 @@
 """
 This script investigates how memory allocation affects entanglement distribution
 in a three-node topology with different link architectures.
+
 The setup consists of two fiber links of 30 km each.
-Each node has six qubits.
+Each node has up to six memory qubits.
 We consider several allocation profiles at the central node, where the number of qubits assigned
-to each link varies, without exceeding six.
+to each link varies, subject to the six-qubit node maximum.
+
 Each allocation profile was simulated under memory coherence times of 5 ms and 10 ms.
 It reports generation rate and fidelity.
 """

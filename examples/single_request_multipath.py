@@ -1,3 +1,19 @@
+"""
+This script simulates a single end-to-end request utilizing multipath routing.
+
+.. figure:: /_static/examples/single_request_multipath.png
+   :alt: topology diagram
+   :align: center
+
+The script sets up a network with 7 nodes and 7 quantum channels.
+There is a single request between source node `S` and destination node `D`,
+with two potential paths computed by Yen's K-Shortest Path routing algorithm,
+where each path has different channel lengths and capacity.
+
+The simulation analyzes how multipath distribution and localized capacity constraints
+alter the total end-to-end entanglement generation rate and overall qubit decoherence ratio.
+"""
+
 from tap import Tap
 
 from mqns.network.builder import CTRL_DELAY, NetworkBuilder
