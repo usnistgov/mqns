@@ -1,6 +1,10 @@
 """
 Simulate 3-node linear topology and report end-to-end throughput.
 
+.. figure:: /_static/examples/3_nodes_thruput.png
+   :alt: 3-node linear topology
+   :align: center
+
 This script sets up and executes simulations using:
 
 * a generated topology based with varying qubit coherence time
