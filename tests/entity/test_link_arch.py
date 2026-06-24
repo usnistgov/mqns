@@ -87,9 +87,11 @@ def make_epr(link_arch: LinkArch, t_cohere: Time):
 
 @pytest.mark.parametrize(
     ("LA", "E"),
-    itertools.product(
-        [LinkArchDimBk, LinkArchDimBkSeq, LinkArchDimDual, LinkArchSr],
-        [WernerStateEntanglement, MixedStateEntanglement],
+    list(
+        itertools.product(
+            [LinkArchDimBk, LinkArchDimBkSeq, LinkArchDimDual, LinkArchSr],
+            [WernerStateEntanglement, MixedStateEntanglement],
+        )
     ),
 )
 def test_perfect_error(LA: type[LinkArch], E: type[Entanglement]):
