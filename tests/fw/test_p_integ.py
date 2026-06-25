@@ -18,10 +18,12 @@ from .fw_common import build_linear_network, build_rect_network, install_path, p
 
 @pytest.mark.parametrize(
     ("epr_type", "timing_mode", "swap"),
-    itertools.product(
-        (WernerStateEntanglement, MixedStateEntanglement),
-        ("ASYNC", "SYNC"),
-        ("asap", "l2r", "r2l"),
+    list(
+        itertools.product(
+            (WernerStateEntanglement, MixedStateEntanglement),
+            ("ASYNC", "SYNC"),
+            ("asap", "l2r", "r2l"),
+        )
     ),
 )
 def test_4_swap(epr_type: type[Entanglement], timing_mode: str, swap: SwapSequenceInput):

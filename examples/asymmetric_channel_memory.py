@@ -1,3 +1,22 @@
+"""
+This script simulates a 4-node linear network with highly asymmetric links and memory capacities.
+
+.. figure:: /_static/examples/asymmetric_channel_memory.png
+   :alt: 4-node asymmetric network topology
+   :align: center
+   :width: 100%
+
+The network model spans three quantum channels with distinct configurations:
+
+* Fiber links of varying lengths: 32 km, 18 km, and 10 km.
+* Heterogeneous, directional channel capacities restricting local qubit allocations.
+
+The simulation executes under a proactive centralized configuration with a rigid left-to-right
+(`l2r`) swapping strategy. It runs for a single trail with a memory coherence time fixed
+at 10 ms, evaluating how localized structural bottlenecks and asymmetric resource limits
+impact the end-to-end entanglement rate and qubit decoherence ratios.
+"""
+
 from tap import Tap
 
 from mqns.network.builder import CTRL_DELAY, NetworkBuilder

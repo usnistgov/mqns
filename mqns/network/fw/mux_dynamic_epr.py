@@ -29,7 +29,7 @@ def _select_path_swap_weighted(epr: Entanglement, fib: Fib, path_ids: list[int])
 
 class MuxSchemeDynamicEpr(MuxSchemeFibBase, MuxSchemeDynamicBase):
     """
-    Dynamic EPR Affection multiplexing scheme.
+    Dynamic EPR Allocation multiplexing scheme.
     """
 
     type SelectPath = Callable[[Entanglement, Fib, list[int]], int | FibEntry]
@@ -58,7 +58,7 @@ class MuxSchemeDynamicEpr(MuxSchemeFibBase, MuxSchemeDynamicBase):
 
     def __init__(
         self,
-        name="dynamic EPR affection",
+        name="dynamic EPR allocation",
         *,
         select_swap_qubit: MuxSchemeFibBase.SelectSwapQubit | None = None,
         select_path: SelectPath = SelectPath_random,

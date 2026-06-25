@@ -1,14 +1,25 @@
 """
-Simulate 3-node linear topology and report end-to-end throughput.
+Simulate a 3-node linear topology and report end-to-end throughput.
 
-This script sets up and executes simulations using:
+.. figure:: /_static/examples/3_nodes_32_18.svg
+   :alt: 3-node linear topology
+   :align: center
 
-* a generated topology based with varying qubit coherence time
-* a quantum network with Dijkstra-based routing algorithm
-* a seeded random number generator
+This script sets up and executes parallelized quantum network simulations using:
 
-After simulation, it reports the number of successful entanglement generations per second.
-The statistics can be saved and plotted.
+* A linear network with configurable quantum channel lengths (``--L``).
+* Heterogeneous or uniform memory allocation patterns per channel direction (``--M``).
+* Network-wide choices for EPR pair types (``--epr_type``) and link architectures (``--link_arch``).
+* Operation modes (``--mode``):
+    * ``PCA``: Proactive forwarding, Centralized control, Async timing.
+    * ``PCS``: Proactive forwarding, Centralized control, Sync timing.
+    * ``PCA``: Reactive forwarding, Centralized control, Sync timing.
+* User-provided SYNC timing phase durations via ``--sync_timing``.
+* A seeded random number generator running across parallel execution pool workers.
+
+After simulation execution, it aggregates and reports end-to-end entanglement generation rates,
+mean quantum state fidelities, and memory decoherence metrics over a sweep of qubit coherence times.
+The resulting statistics can be saved to JSON/CSV files and plotted.
 """
 
 import itertools

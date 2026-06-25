@@ -1,3 +1,23 @@
+"""
+This script evaluates multiplexing schemes serving concurrent requests over a shared link.
+
+.. figure:: /_static/examples/multi_request_single_path.png
+   :alt: topology diagram
+   :align: center
+
+The topology models two distinct paths, S1-D1 and S2-D2, which has a shared link R2-R3.
+The script evaluates and benchmarks three multiplexing schemes:
+
+* Statistical Multiplexing
+* Dynamic EPR Allocation with random allocation
+* Dynamic EPR Allocation with swap-weighted allocation
+
+Simulations run under a proactive centralized configuration across varying memory coherence times
+(5 ms, 10 ms, and 20 ms). The script tracks the impacts of traffic contention and capacity sharing
+on end-to-end throughput and average state fidelity for both paths, outputting comparative plots
+and JSON data summaries.
+"""
+
 import json
 from typing import NamedTuple, cast
 
@@ -151,10 +171,7 @@ def plot(results: dict[str, list[list[PathStats]]], *, save_plt: str):
 
 # Simulation constants
 STRATEGIES: dict[str, MuxScheme] = {
-    # XXX https://github.com/usnistgov/mqns/pull/134#issuecomment-4362659122
-    # This is set to coordinated_decisions=True to workaround bugs in ASAP swap.
-    # It should be changed back to coordinated_decisions=False for more realistic solution.
-    "Statistical Mux.": MuxSchemeStatistical(coordinated_decisions=True),
+    "Statistical Mux.": MuxSchemeStatistical(coordinated_decisions=False),
     "Random Alloc.": MuxSchemeDynamicEpr(),
     "Swap-weighted Alloc.": MuxSchemeDynamicEpr(select_path=MuxSchemeDynamicEpr.SelectPath_swap_weighted),
 }

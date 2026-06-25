@@ -209,14 +209,16 @@ def test_4_sync(t_ext: float, expected: tuple[int, int, int, int]):
 
 @pytest.mark.parametrize(
     ("etg_ms", "ps3"),
-    itertools.product(
-        [
-            (1, 2, 1),
-            (2, 1, 2),
-            (1, 2, 3),
-            (3, 2, 1),
-        ],
-        (1, 0),
+    list(
+        itertools.product(
+            [
+                (1, 2, 1),
+                (2, 1, 2),
+                (1, 2, 3),
+                (3, 2, 1),
+            ],
+            (1, 0),
+        )
     ),
 )
 def test_4_asap(etg_ms: tuple[int, int, int], ps3: int):
@@ -411,7 +413,7 @@ def test_4_decohere(swap_delay: float, n_consumed: int):
     check_memory_released(net)
 
 
-@pytest.mark.parametrize(("ps3", "etg_ms"), itertools.product((1, 0), ((2, 1, 1, 2), (1, 2, 2, 1))))
+@pytest.mark.parametrize(("ps3", "etg_ms"), list(itertools.product((1, 0), ((2, 1, 1, 2), (1, 2, 2, 1)))))
 def test_5_asap(
     ps3: float,
     etg_ms: tuple[int, int, int, int],
@@ -443,13 +445,15 @@ def test_5_asap(
 
 @pytest.mark.parametrize(
     ("swap_sulower", "etg_ms"),
-    itertools.product(
-        [
-            ((3, 0, 1, 2, 3), (1, 0, 1, 1, 1)),  # l2r
-            ((3, 2, 1, 0, 3), (1, 1, 1, 0, 1)),  # r2l
-            ((3, 0, 1, 0, 3), (1, 0, 2, 0, 1)),  # baln
-        ],
-        itertools.permutations(range(4), 4),
+    list(
+        itertools.product(
+            [
+                ((3, 0, 1, 2, 3), (1, 0, 1, 1, 1)),  # l2r
+                ((3, 2, 1, 0, 3), (1, 1, 1, 0, 1)),  # r2l
+                ((3, 0, 1, 0, 3), (1, 0, 2, 0, 1)),  # baln
+            ],
+            itertools.permutations(range(4), 4),
+        )
     ),
 )
 def test_5_sequential(swap_sulower: tuple[Sequence[int], Sequence[int]], etg_ms: tuple[int, int, int, int]):
