@@ -43,7 +43,6 @@ def test_swap():
 
     e1 = MixedStateEntanglement(fidelity=0.95, fidelity_time=now, decohere_time=decohere)
     e2 = MixedStateEntanglement(fidelity=0.95, fidelity_time=now, decohere_time=decohere)
-    e1.read, e2.read = True, True
 
     ne, local_success = MixedStateEntanglement.swap(e1, e2, now=now)
     assert local_success is True

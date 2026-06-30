@@ -82,8 +82,8 @@ def run_simulation(seed: int, sim_duration: float, L: list[float], M: int, link_
         NetworkBuilder()
         .topo_linear(
             nodes=len(L) + 1,
-            channel_length=L,
-            channel_capacity=M,
+            channels=L,
+            ch_capacity=M,
             link_arch=link_arch,
             t_cohere=0.1,
         )

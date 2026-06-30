@@ -1,9 +1,10 @@
 import copy
 from abc import ABC, abstractmethod
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import NotRequired, Protocol, TypedDict, Unpack, override
 
 from mqns.entity.node import QNode
+from mqns.models.core.bell_diagonal import make_bell_diagonal_probv
 from mqns.models.delay import DelayModel
 from mqns.models.epr import Entanglement, EntanglementInitKwargs, MixedStateEntanglement, WernerStateEntanglement
 from mqns.models.error import ErrorModel, TimeDecayFunc, time_decay_nop
@@ -24,12 +25,14 @@ class ChannelParameters(Protocol):
     Fiber propagation delay in seconds, also used as one-way classical message delay.
     This must reflect a constant delay.
     """
+    init_fidelity: float | Sequence[float] | None
+    """Initial fidelity value for entanglements delivered by this channel."""
     transfer_error: ErrorModel
     """
     Fiber transfer error model.
     This is only used if ``init_fidelity`` is omitted or negative.
 
-    If the LinkArch subclass needs to apply transfer error at a different length,
+    If the ``LinkArch`` subclass needs to apply transfer error at a different length,
     it will clone the instance and adjust the length while preserving the decoherence rate.
     """
     bsa_error: ErrorModel
@@ -52,15 +55,6 @@ class LinkArchParameters(TypedDict):
     """Local operation delay in seconds."""
     epr_type: type[Entanglement]
     """EPR type, either ``WernerStateEntanglement`` or ``MixedStateEntanglement``."""
-    init_fidelity: NotRequired[float | None]
-    """
-    Initial fidelity value.
-
-    If set, every entanglement has a Werner state with the specified fidelity.
-
-    If omitted or ``None``, a mini simulation is performed to determine the proper fidelity values,
-    by applying error models to the memories, fibers, etc.
-    """
     t0: NotRequired[Time]
     """
     Time reference for mini simulation; only the accuracy is used.
@@ -168,8 +162,19 @@ class LinkArchBase(ABC, LinkArch):
             tau_0=kwargs["tau_0"],
         )
 
-        if (init_fidelity := kwargs.get("init_fidelity")) is None:
+        if (init_fidelity := ch.init_fidelity) is None:
             self._make_epr: MakeEprFunc = self._prepare_make_epr(kwargs, ch, tau_l)
+        elif isinstance(init_fidelity, Sequence):
+            assert kwargs["epr_type"] is MixedStateEntanglement
+            assert len(init_fidelity) == 4
+            probv = make_bell_diagonal_probv(*init_fidelity)
+
+            def _make_epr_with_probv(a: EntanglementInitKwargs) -> Entanglement:
+                epr = MixedStateEntanglement(**a)
+                epr.set_probv(probv, normalize=False)
+                return epr
+
+            self._make_epr = _make_epr_with_probv
         else:
             epr_type = kwargs["epr_type"]
             assert 0 <= init_fidelity <= 1

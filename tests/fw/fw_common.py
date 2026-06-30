@@ -12,7 +12,7 @@ from mqns.entity.memory import QubitState
 from mqns.entity.node import Application, Controller, Node, QNode
 from mqns.entity.qchannel import LinkArchAlways, LinkArchDimBk, QuantumChannelInitKwargs
 from mqns.models.epr import Entanglement, WernerStateEntanglement
-from mqns.network.fw import Forwarder, ForwarderInitKwargs, RoutingController, RoutingPath
+from mqns.network.fw import Forwarder, ForwarderConsumeCounters, ForwarderInitKwargs, RoutingController, RoutingPath
 from mqns.network.fw.fw_swap import ForwarderSwapProc
 from mqns.network.network import QuantumNetwork, TimingMode, TimingModeAsync, TimingPhase, TimingPhaseEvent
 from mqns.network.proactive import ProactiveForwarder, ProactiveRoutingController
@@ -66,6 +66,7 @@ class QubitReleaseReset(Application[QNode]):
 
 dflt_qchannel_args = QuantumChannelInitKwargs(
     length=100,  # delay is 0.0005 seconds
+    init_fidelity=1.0,
     link_arch=LinkArchAlways(LinkArchDimBk()),  # etg creation in 0.001 seconds and arrival in 0.002 seconds
 )
 
@@ -87,7 +88,6 @@ class BuildNetworkArgs(TypedDict, total=False):
     timing: TimingMode  # network timing mode, defaults to ASYNC
     epr_type: type[Entanglement]  # entanglement type, defaults to werner state
     has_link_layer: bool  # whether to include full LinkLayer application, defaults to False
-    init_fidelity: float  # initial fidelity, defaults to 0.99
 
 
 def _make_topo_args(d: BuildNetworkArgs, *, memory_capacity_factor: int) -> TopologyInitKwargs:
@@ -95,7 +95,7 @@ def _make_topo_args(d: BuildNetworkArgs, *, memory_capacity_factor: int) -> Topo
 
     nodes_apps: list[Application[QNode]] = []
     if d.get("has_link_layer", False):
-        nodes_apps.append(LinkLayer(init_fidelity=d.get("init_fidelity", 0.99)))
+        nodes_apps.append(LinkLayer())
     else:
         nodes_apps.append(QubitReleaseReset())
 
@@ -288,6 +288,14 @@ def install_path(
     return rp
 
 
+def check_path_counters(net: QuantumNetwork, rp: RoutingPath | None = None, *, n_consumed: int):
+    if rp is None:
+        cnt = ForwarderConsumeCounters.of_path(net, net.nodes[0].name, net.nodes[-1].name)
+    else:
+        cnt = ForwarderConsumeCounters.of_path(net, rp.src, rp.dst)
+    assert cnt.n_consumed == n_consumed
+
+
 _provide_entanglements_autoid = AutoIncrementIdentifier("Tpe_")
 
 
@@ -318,7 +326,6 @@ def provide_entanglements(
             reset_time=0,
             tau_0=0,
             epr_type=src.network.epr_type,
-            init_fidelity=1.0,
         )
         _, d_notify_a, d_notify_b = ch.link_arch.delays(1)
 

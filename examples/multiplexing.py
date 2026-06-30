@@ -7,6 +7,7 @@ from tap import Tap
 
 from mqns.network.builder import CTRL_DELAY, NetworkBuilder
 from mqns.network.fw import (
+    ForwarderConsumeCounters,
     MultiplexingVector,
     MuxScheme,
     MuxSchemeBufferSpace,
@@ -200,9 +201,8 @@ def run_simulation(seed: int, args: Args, mux: MuxScheme, active_flows: list[Flo
 
     # Collect per-source stats in fixed order [AK, BL, CI, DH, GM]
     def _get_rate_fid(flow: FlowDef):
-        node = net.get_node(flow.route[0])
-        fw = node.get_app(ProactiveForwarder)
-        return (fw.cnt.n_consumed / args.sim_duration, fw.cnt.consumed_avg_fidelity)
+        consume_cnt = ForwarderConsumeCounters.of_path(net, flow.route[0], flow.route[-1])
+        return consume_cnt.get_rate(args.sim_duration), consume_cnt.consumed_avg_fidelity
 
     stats: list[tuple[float, float]] = []  # [(AK), (BL), (CI), (DH), (GM)] # disabled flows have zero stats
     for flow in FLOWS:

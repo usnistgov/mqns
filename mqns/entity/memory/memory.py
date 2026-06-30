@@ -337,7 +337,6 @@ class QuantumMemory(Entity):
         *,
         must: Literal[True] = True,
         has: type[M],
-        set_fidelity=False,
         remove: bool | QuantumModel = False,
     ) -> tuple[MemoryQubit, M]:
         """
@@ -347,7 +346,6 @@ class QuantumMemory(Entity):
             key: Qubit address or reservation key.
             must: True (implied).
             has: Expected type of stored data.
-            set_fidelity: Whether to update fidelity, XXX current formula is inaccurate for EPRs.
             remove: Whether to remove the data.
                     If specified as QuantumModel, remove only if stored data is the same object.
 
@@ -365,7 +363,6 @@ class QuantumMemory(Entity):
         *,
         must=False,
         has: type[M] | None = None,
-        set_fidelity=False,
         remove: bool | QuantumModel = False,
     ):
         if type(key) is int:
@@ -380,9 +377,6 @@ class QuantumMemory(Entity):
 
         if has and type(data) is not has:
             raise ValueError(f"{self}: data at {qubit.addr} is not {has}")
-
-        if set_fidelity and isinstance(data, Entanglement) and not data.read:
-            data.apply_store_decays(self.simulator.tc)
 
         if remove in (True, data):
             qubit.events.discard(MemoryDecohereEvent)

@@ -8,13 +8,20 @@ from itertools import pairwise
 import pytest
 
 from mqns.entity.cchannel import ClassicCommandDispatcherMixin, ClassicPacket, classic_cmd_handler
-from mqns.network.fw import RoutingController, RoutingPathStatic
+from mqns.network.fw import ForwarderConsumeCounters, RoutingController, RoutingPathStatic
 from mqns.network.network import TimingModeSync
 from mqns.network.reactive import ReactiveForwarder, ReactiveRoutingController
 from mqns.network.reactive.message import LinkStateEntry, LinkStateMsg
 from mqns.simulator import func_to_event
 
-from .fw_common import build_linear_network, build_tree_network, check_fw_counters, print_fw_counters, provide_entanglements
+from .fw_common import (
+    build_linear_network,
+    build_tree_network,
+    check_fw_counters,
+    check_path_counters,
+    print_fw_counters,
+    provide_entanglements,
+)
 
 
 class ManualController(ClassicCommandDispatcherMixin, RoutingController):
@@ -60,7 +67,8 @@ def test_tree2_one():
     simulator.run()
     print_fw_counters(net)
 
-    assert fwD.cnt.n_consumed == 1
+    consume_cnt = ForwarderConsumeCounters.of_path(net, "D", "F")
+    assert consume_cnt.n_consumed == 1
 
 
 def test_tree2_two():
@@ -107,8 +115,10 @@ def test_tree2_two():
     simulator.run()
     print_fw_counters(net)
 
-    assert fwD.cnt.n_consumed == 1
-    assert fwE.cnt.n_consumed == 1
+    consumeDF = ForwarderConsumeCounters.of_path(net, "D", "F")
+    assert consumeDF.n_consumed == 1
+    consumeEG = ForwarderConsumeCounters.of_path(net, "E", "G")
+    assert consumeEG.n_consumed == 1
 
 
 @pytest.mark.parametrize(
@@ -154,6 +164,6 @@ def test_3_minimal(req_active: tuple[float, float], etg12: list[float], etg23: l
     assert (ctrl.cnt.n_ls, ctrl.cnt.n_satisfy) == cnt
     check_fw_counters(
         net,
-        n_consumed=(cnt[1], 0, cnt[1]),
         n_swapped=(0, cnt[1], 0),
     )
+    check_path_counters(net, n_consumed=cnt[1])

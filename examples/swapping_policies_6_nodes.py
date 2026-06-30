@@ -29,9 +29,7 @@ import numpy as np
 from tap import Tap
 
 from mqns.network.builder import CTRL_DELAY, NetworkBuilder
-from mqns.network.fw import SwapPolicy
-from mqns.network.proactive import ProactiveForwarder
-from mqns.network.protocol.link_layer import LinkLayerCounters
+from mqns.network.fw import ForwarderConsumeCounters, SwapPolicy
 from mqns.simulator import Simulator
 from mqns.utils import log, rng
 
@@ -63,8 +61,7 @@ def run_simulation(
             nodes=N_NODES,
             mem_capacity=TOTAL_QUBITS,
             t_cohere=t_cohere,
-            channel_length=CHANNEL_LENGTHS,
-            channel_capacity=ch_capacities,
+            channels=list(zip(CHANNEL_LENGTHS, ch_capacities, strict=True)),
         )
         .proactive_centralized()
         .request("S-D", swap=swapping_order)
@@ -75,11 +72,8 @@ def run_simulation(
     s.run()
 
     #### get stats
-    decoh_ratio = LinkLayerCounters.aggregate(net.nodes).decoh_ratio
-    fw_s = net.get_node("S").get_app(ProactiveForwarder)
-    e2e_rate = fw_s.cnt.n_consumed / sim_duration
-    mean_fidelity = fw_s.cnt.consumed_avg_fidelity
-    return e2e_rate, decoh_ratio, mean_fidelity
+    consume_cnt = ForwarderConsumeCounters.of_path(net, "S", "D")
+    return consume_cnt.get_rate(sim_duration)
 
 
 type Results = dict[str, dict[SwapPolicy, dict[float, tuple[float, float]]]]
@@ -172,7 +166,7 @@ if __name__ == "__main__":
 
                     ch_capacities = mem_allocs
 
-                    rate, *_ = run_simulation(
+                    rate = run_simulation(
                         ch_capacities=ch_capacities,
                         t_cohere=t_cohere,
                         swapping_order=swapping_config,

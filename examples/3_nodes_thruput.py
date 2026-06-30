@@ -31,8 +31,8 @@ import numpy as np
 import pandas as pd
 from tap import Tap
 
-from mqns.network.builder import CTRL_DELAY, EprTypeLiteral, LinkArchLiteral, NetworkBuilder, tap_configure
-from mqns.network.fw import Forwarder
+from mqns.network.builder import CTRL_DELAY, ChannelParam, EprTypeLiteral, LinkArchLiteral, NetworkBuilder, tap_configure
+from mqns.network.fw import ForwarderConsumeCounters
 from mqns.network.protocol.link_layer import LinkLayerCounters
 from mqns.simulator import Simulator
 from mqns.utils import log, rng
@@ -71,9 +71,9 @@ class Args(Tap):
         if min(self.M) < 1:
             raise ValueError("--M must be positive")
 
-    def qchannel_capacity(self) -> int | list[tuple[int, int]]:
+    def linear_channels(self) -> tuple[ChannelParam, ChannelParam]:
         """
-        Derive ``NetworkBuilder.topo_linear(channel_capacity=)`` from ``--M``.
+        Derive ``NetworkBuilder.topo_linear(channels=)`` from ``--L`` and ``--M``.
 
         If ``--M`` has one integer, it is used as channel capacity on both S-R and R-D.
 
@@ -84,10 +84,15 @@ class Args(Tap):
         3. number of qubits on R assigned to R-D channel
         4. number of qubits on D assigned to R-D channel
         """
+        lSR, lRD = self.L
         if len(self.M) == 1:
-            return self.M[0]
-        mSr, mRl, mRr, mDl = self.M
-        return [(mSr, mRl), (mRr, mDl)]
+            mSr = mRl = mRr = mDl = self.M[0]
+        else:
+            mSr, mRl, mRr, mDl = self.M
+        return (
+            ChannelParam(ch_length=lSR, ch_capacity=(mSr, mRl)),
+            ChannelParam(ch_length=lRD, ch_capacity=(mRr, mDl)),
+        )
 
 
 SEED_BASE = 100
@@ -105,10 +110,9 @@ def run_simulation(seed: int, args: Args, t_cohere: float) -> Stats:
     rng.reseed(seed)
 
     b = NetworkBuilder().topo_linear(
-        nodes=("S", "R", "D"),
+        nodes="SRD",
         t_cohere=t_cohere,
-        channel_length=args.L,
-        channel_capacity=args.qchannel_capacity(),
+        channels=args.linear_channels(),
         link_arch=args.link_arch,
     )
 
@@ -129,14 +133,14 @@ def run_simulation(seed: int, args: Args, t_cohere: float) -> Stats:
     s = Simulator(0, total_duration, accuracy=1000000, install_to=(log, net))
     s.run()
 
-    fw_s_cnt = net.get_node("S").get_app(Forwarder).cnt
+    consume_cnt = ForwarderConsumeCounters.of_path(net, "S", "D")
     ll_cnt = LinkLayerCounters.aggregate(net.nodes)
     stats = Stats(
         t_cohere=t_cohere,
-        throughput_eps=fw_s_cnt.n_consumed / args.sim_duration,
-        mean_fidelity=fw_s_cnt.consumed_avg_fidelity,
+        throughput_eps=consume_cnt.get_rate(args.sim_duration),
+        mean_fidelity=consume_cnt.consumed_avg_fidelity,
         expired_ratio=ll_cnt.decoh_ratio,
-        expired_per_e2e=ll_cnt.n_decoh / fw_s_cnt.n_consumed if fw_s_cnt.n_consumed > 0 else 0,
+        expired_per_e2e=consume_cnt.get_per_consumed(ll_cnt.n_decoh),
     )
     return stats
 

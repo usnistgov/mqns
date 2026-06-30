@@ -17,7 +17,7 @@
 
 import copy
 from abc import abstractmethod
-from typing import TypedDict, Unpack, override
+from typing import Literal, TypedDict, Unpack, override
 
 import numpy as np
 
@@ -44,19 +44,21 @@ from mqns.network.fw.message import (
 from mqns.network.fw.mux import MuxScheme
 from mqns.network.fw.mux_buffer_space import MuxSchemeBufferSpace
 from mqns.network.fw.select import SelectPurifQubit, call_select_purif_qubit
-from mqns.network.network import TimingPhase, TimingPhaseEvent
+from mqns.network.network import QuantumNetwork, TimingPhase, TimingPhaseEvent
 from mqns.network.protocol.event import QubitEntangledEvent, QubitReleasedEvent
-from mqns.simulator import event_handler
+from mqns.simulator import Time, event_handler
 from mqns.utils import json_encodable, log
 
 
 class ForwarderInitKwargs(TypedDict, total=False):
     p_swap: float
-    """Probability of successful entanglement swapping, default is 1.0."""
+    """Probability of successful entanglement swapping, default is ``1.0``."""
     swap_delay: DelayInput
     """Swapping delay model, default is zero."""
     swap_error: ErrorModelInputBasic
     """Swapping error model, default is perfect."""
+    swap_error_at: Literal["s", "f"]
+    """Swapping error applied at start or finish time, default is ``s``."""
     cutoff: CutoffScheme | None
     """EPR age cut-off scheme, default is wait-time."""
     mux: MuxScheme | None
@@ -66,10 +68,104 @@ class ForwarderInitKwargs(TypedDict, total=False):
 
 
 @json_encodable
-class ForwarderCounters:
+class ForwarderConsumeCounters:
+    """
+    Consumption counters of ``Forwarder``.
+
+    Each entangled pair is delivered and consumed by two forwarders, possibly at different times due to
+    heralding timing. However, only the forwarder that measures the second qubit logs the consumption,
+    because the final end-to-end fidelity can only be calculate when memory error models on both sides are applied.
+    """
+
+    n_consumed = 0
+    """How many entanglements were consumed (either end-to-end or in swap-disabled mode)."""
+    consumed_sum_fidelity = 0.0
+    """
+    Sum of fidelity of consumed entanglements.
+    """
+    consumed_fidelity_values: list[float] | None = None
+    """
+    Fidelity values of consumed entanglements, None disables collection.
+    """
+
+    @staticmethod
+    def of_path(net: QuantumNetwork, src: str, dst: str) -> "ForwarderConsumeCounters":
+        """
+        Obtain consumption counters of a path.
+
+        Args:
+            net: Quantum network.
+            src: Left end node, which must belong to exactly one path.
+            dst: Right end node, which must belong to exactly one path.
+        """
+        a = net.get_node(src).get_app(Forwarder).cnt
+        b = net.get_node(dst).get_app(Forwarder).cnt
+
+        g = ForwarderConsumeCounters()
+        g.n_consumed = a.n_consumed + b.n_consumed
+        g.consumed_sum_fidelity = a.consumed_sum_fidelity + b.consumed_sum_fidelity
+        if a.consumed_fidelity_values is b.consumed_fidelity_values:
+            g.consumed_fidelity_values = a.consumed_fidelity_values
+        return g
+
+    @staticmethod
+    def enable_collect_all_on_path(net: QuantumNetwork, src: str, dst: str) -> None:
+        """
+        Enable collecting all values for histogram generation.
+
+        Args:
+            net: Quantum network.
+            src: Left end node, which must belong to exactly one path.
+            dst: Right end node, which must belong to exactly one path.
+        """
+        a = net.get_node(src).get_app(Forwarder).cnt
+        b = net.get_node(dst).get_app(Forwarder).cnt
+
+        assert a.consumed_fidelity_values is None
+        assert b.consumed_fidelity_values is None
+        a.consumed_fidelity_values = b.consumed_fidelity_values = []
+
+    def increment_n_consumed(self, fidelity: float) -> None:
+        self.n_consumed += 1
+        self.consumed_sum_fidelity += fidelity
+        if self.consumed_fidelity_values is not None:
+            self.consumed_fidelity_values.append(fidelity)
+
+    @property
+    def consumed_avg_fidelity(self) -> float:
+        """Average fidelity of consumed entanglements."""
+        if self.consumed_fidelity_values is not None and len(self.consumed_fidelity_values) == self.n_consumed > 0:
+            return np.mean(self.consumed_fidelity_values).item()
+        return self.get_per_consumed(self.consumed_sum_fidelity)
+
+    def get_rate(self, duration: float) -> float:
+        """
+        Calculate entanglement rate.
+
+        Args:
+            duration: How many seconds did the path remain active.
+
+        Returns: Entanglement rate in entanglements per second.
+        """
+        return self.n_consumed / duration
+
+    def get_per_consumed(self, x: float) -> float:
+        """
+        Divide a value by ``n_consumed``, but return zero if ``n_consumed`` is zero.
+        """
+        return x / self.n_consumed if self.n_consumed > 0 else 0.0
+
+    def __repr__(self) -> str:
+        return f"consumed={self.n_consumed} (F={self.consumed_avg_fidelity})"
+
+
+@json_encodable
+class ForwarderCounters(ForwarderConsumeCounters):
     """Counters of ``Forwarder``."""
 
     def __init__(self):
+        super().__init__()
+
         self.n_entg = 0
         """How many elementary entanglements received from link layer."""
         self.n_purif: list[int] = []
@@ -97,12 +193,6 @@ class ForwarderCounters:
         * [0]: normal
         * [1]: previous-swap-failure
         """
-        self.n_consumed = 0
-        """How many entanglements were consumed (either end-to-end or in swap-disabled mode)."""
-        self.consumed_sum_fidelity = 0.0
-        """Sum of fidelity of consumed entanglement.s"""
-        self.consumed_fidelity_values: list[float] | None = None
-        """Fidelity values of consumed entanglements, None disables collection."""
         self.n_cutoff = [0, 0]
         """
         How many entanglements are discarded by CutoffScheme.
@@ -113,21 +203,10 @@ class ForwarderCounters:
         * [2r+1]: purif_cutoff[r] exceeded on partner forwarder
         """
 
-    def enable_collect_all(self) -> None:
-        """Enable collecting all values for histogram generation."""
-        assert self.n_consumed == 0
-        self.consumed_fidelity_values = []
-
     def increment_n_purif(self, i: int) -> None:
         if len(self.n_purif) <= i:
             self.n_purif += [0] * (i + 1 - len(self.n_purif))
         self.n_purif[i] += 1
-
-    def increment_n_consumed(self, fidelity: float) -> None:
-        self.n_consumed += 1
-        self.consumed_sum_fidelity += fidelity
-        if self.consumed_fidelity_values is not None:
-            self.consumed_fidelity_values.append(fidelity)
 
     def increment_n_cutoff(self, round: int, local: bool) -> None:
         minlen = 2 * (round + 1)
@@ -135,21 +214,12 @@ class ForwarderCounters:
             self.n_cutoff += [0] * (minlen - len(self.n_cutoff))
         self.n_cutoff[2 * round + (0 if local else 1)] += 1
 
-    @property
-    def consumed_avg_fidelity(self) -> float:
-        """Average fidelity of consumed entanglements."""
-        if self.n_consumed == 0:
-            return 0.0
-        if self.consumed_fidelity_values is None:
-            return self.consumed_sum_fidelity / self.n_consumed
-        return np.mean(self.consumed_fidelity_values).item()
-
     def __repr__(self) -> str:
         return (
             f"entg={self.n_entg} purif={self.n_purif} eligible={self.n_eligible} "
             f"swapped={self.n_swapped} swap-fail={self.n_swap_fail} "
             f"su-lower={self.n_su_lower} su-same={self.n_su_same} cutoff-discard={self.n_cutoff} "
-            f"consumed={self.n_consumed} (F={self.consumed_avg_fidelity})"
+            f"{ForwarderConsumeCounters.__repr__(self)}"
         )
 
 
@@ -182,6 +252,7 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
             ps=kwargs.get("p_swap", 1.0),
             delay=parse_delay(kwargs.get("swap_delay", 0)),
             error=parse_error(kwargs.get("swap_error"), PerfectErrorModel, -1),
+            error_at_finish=kwargs.get("swap_error_at", "s") == "f",
         )
 
         self.waiting_etg: list[QubitEntangledEvent] = []
@@ -248,13 +319,17 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
 
         # populate FIB
         route = instructions["route"]
+        if "swap_cutoff" in instructions:
+            swap_cutoff = [None if t < 0 else self.simulator.time(time_slot=t) for t in instructions["swap_cutoff"]]
+        else:
+            swap_cutoff: list[Time | None] = [None] * (2 * (len(route) - 2))
         fib_entry = FibEntry(
             path_id=path_id,
             req_id=instructions["req_id"],
             route=route,
             own_idx=route.index(self.node.name),
             swap=instructions["swap"],
-            swap_cutoff=[None if t < 0 else self.simulator.time(time_slot=t) for t in instructions["swap_cutoff"]],
+            swap_cutoff=swap_cutoff,
             purif=instructions["purif"],
         )
         self.fib.insert_or_replace(fib_entry)
@@ -501,7 +576,7 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
             self.cutoff.before_swap(qubit, mq1, fib_entry)
             self.swap.start(qubit, mq1, fib_entry)
         else:
-            self.cutoff.before_store_eligible(qubit, fib_entry)
+            self.cutoff.before_store_eligible(qubit, PathDirection.L if epr.src is self.node else PathDirection.R, fib_entry)
 
     def can_consume(self, fib_entry: FibEntry | None, epr: Entanglement) -> bool:
         if fib_entry is None:
@@ -516,9 +591,10 @@ class Forwarder(ForwarderClassicMixin, Application[QNode]):
         """
         Consume an entangled qubit.
         """
-        _, qm = self.memory.read(qubit.addr, has=self.epr_type, set_fidelity=True, remove=True)
-        log.debug(f"{self}: consume EPR: {qm}")
-        self.cnt.increment_n_consumed(qm.fidelity)
+        _, epr = self.memory.read(qubit.addr, has=self.epr_type, remove=True)
+        log.debug(f"{self}: consume EPR: {epr}")
+        if epr.consume_with_store_decay_side(self.simulator.tc, side=0 if epr.src is self.node else 1):
+            self.cnt.increment_n_consumed(epr.fidelity)
 
         self.release_qubit(qubit)
 

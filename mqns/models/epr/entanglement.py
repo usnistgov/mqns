@@ -72,13 +72,6 @@ class Entanglement(QuantumModel):
     It must not be used to guide decision prior to measurement.
     """
 
-    read: bool = False
-    """
-    Whether the entanglement has been read from the memory by either node.
-
-    Note: This is a legacy attribute, planned for removal.
-    """
-
     ch_index: int = -1
     """
     Index of elementary entanglement in a path, smaller indices are on the left side.
@@ -88,6 +81,12 @@ class Entanglement(QuantumModel):
     """Elementary entanglements that swapped into this entanglement."""
     affectionated_path_id: int = -1
     """Path ID chosen by MuxSchemeDynamicEpr or MuxSchemeStatistical(coordinated_decisions=True)."""
+    consumed_sides: int = 0b00
+    """
+    Whether the entanglement has been consumed via ``consume_with_store_decay_side()`` on each side, as bitmap:
+    * 0b01: Left side.
+    * 0b10: Right side.
+    """
 
     def __init__(self, **kwargs: Unpack[EntanglementInitKwargs]):
         """
@@ -158,12 +157,32 @@ class Entanglement(QuantumModel):
             now: Current time point.
         """
         t = now - self.fidelity_time
-        if self.read or t.time_slot == 0:
+        assert self.consumed_sides == 0b00
+        if t.time_slot == 0:
             return
         for se in self.store_decays:
             se(self, t)
         self.fidelity_time = now
-        self.read = True
+
+    def consume_with_store_decay_side(self, now: Time, *, side: int) -> bool:
+        """
+        Apply memory time-based decays for one qubit in this EPR, when it is ready for consumption.
+
+        Args:
+            now: Current time point.
+            side: 0 for left side, 1 for right side.
+
+        Returns: Whether both qubits are consumed.
+
+        This differs from ``apply_store_decays()`` in that:
+        * ``fidelity_time`` is not updated, so that the other side can update from the same origin time.
+        * ``consumed_sides`` indicates which side(s) have performed this update.
+        """
+        side_bit = 1 << side
+        assert (self.consumed_sides & side_bit) == 0b00
+        self.store_decays[side](self, now - self.fidelity_time)
+        self.consumed_sides |= side_bit
+        return self.consumed_sides == 0b11
 
     @staticmethod
     def swap[E: Entanglement](
@@ -180,7 +199,8 @@ class Entanglement(QuantumModel):
         Args:
             epr0: Left entanglement.
             epr1: Right entanglement.
-            now: Current timestamp.
+            now: Timestamp to stop accumulating errors on ``epr0`` and ``epr1``,
+                and start accumulating errors on new entanglement.
             ps: Probability of successful swapping.
             error: BSA error model.
 
@@ -190,7 +210,7 @@ class Entanglement(QuantumModel):
         """
 
         assert type(epr0) is type(epr1)
-        assert epr0.dst == epr1.src  # it's okay for src and dst to be None
+        assert epr0.dst is epr1.src  # it's okay for src and dst to be None
 
         orig_eprs: list[E] = []
         for epr in (epr0, epr1):
@@ -220,10 +240,9 @@ class Entanglement(QuantumModel):
 
         local_failure = ps < 1.0 and rng.random() >= ps
         ne.is_decohered = epr0.is_decohered or epr1.is_decohered or local_failure
-        if ne.is_decohered:
-            epr0.is_decohered = epr1.is_decohered = True
-        else:
+        if not ne.is_decohered:
             ne.apply_error(error)
+        epr0.is_decohered = epr1.is_decohered = True
         return ne, not local_failure
 
     @staticmethod

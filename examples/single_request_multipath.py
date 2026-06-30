@@ -17,7 +17,7 @@ alter the total end-to-end entanglement generation rate and overall qubit decohe
 from tap import Tap
 
 from mqns.network.builder import CTRL_DELAY, NetworkBuilder
-from mqns.network.proactive import ProactiveForwarder
+from mqns.network.fw import ForwarderConsumeCounters
 from mqns.network.protocol.link_layer import LinkLayerCounters
 from mqns.network.route import YenRouteAlgorithm
 from mqns.simulator import Simulator
@@ -72,8 +72,8 @@ def run_simulation(seed: int, args: Args):
 
     #### get stats
     decoh_ratio = LinkLayerCounters.aggregate(net.nodes).decoh_ratio
-    e2e_rate = net.get_node("S").get_app(ProactiveForwarder).cnt.n_consumed / args.sim_duration
-    return e2e_rate, decoh_ratio
+    consume_cnt = ForwarderConsumeCounters.of_path(net, "S", "D")
+    return consume_cnt.get_rate(args.sim_duration), decoh_ratio
 
 
 if __name__ == "__main__":

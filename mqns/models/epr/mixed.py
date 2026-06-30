@@ -19,6 +19,8 @@ from mqns.models.core.state import (
 from mqns.models.epr.entanglement import Entanglement, EntanglementInitKwargs
 from mqns.utils import rng
 
+_probv_1 = make_bell_diagonal_probv(1, 0, 0, 0)
+
 
 @final
 class MixedStateEntanglement(Entanglement):
@@ -58,7 +60,7 @@ class MixedStateEntanglement(Entanglement):
         *,
         probv: BellDiagonalProbV | None = None,
         fidelity: float | None = None,
-        i=1.0,
+        i: float | None = None,
         z=0.0,
         x=0.0,
         y=0.0,
@@ -67,11 +69,12 @@ class MixedStateEntanglement(Entanglement):
         super().__init__(**kwargs)
         if probv is not None:
             self.set_probv(probv)
-        elif fidelity is None:
+        elif i is not None:
             self.set_probv(make_bell_diagonal_probv(i, z, x, y), normalize=False)
-            """Probability vector: I,Z,X,Y."""
-        else:
+        elif fidelity is not None:
             self.fidelity = fidelity
+        else:
+            self.set_probv(_probv_1, normalize=False)
 
     @property
     @override

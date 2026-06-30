@@ -8,7 +8,14 @@ from mqns.network.fw import RoutingPathSingle
 from mqns.network.proactive import ProactiveForwarder
 from mqns.utils import rng
 
-from .fw_common import build_linear_network, check_fw_counters, install_path, print_fw_counters, provide_entanglements
+from .fw_common import (
+    build_linear_network,
+    check_fw_counters,
+    check_path_counters,
+    install_path,
+    print_fw_counters,
+    provide_entanglements,
+)
 
 
 def force_purify_outcome(monkeypatch: pytest.MonkeyPatch, *success: bool):
@@ -62,8 +69,8 @@ def test_link_rounds(monkeypatch: pytest.MonkeyPatch, n_rounds: int, purif_succe
         net,
         n_entg=(n_etg, n_etg),
         n_eligible=(n_eligible, n_eligible),
-        n_consumed=(n_eligible, n_eligible),
     )
+    check_path_counters(net, n_consumed=n_eligible)
 
 
 def test_4_l2r(monkeypatch: pytest.MonkeyPatch):
@@ -115,5 +122,5 @@ def test_4_l2r(monkeypatch: pytest.MonkeyPatch):
         # fwC: 2 with fwD, 2 with fwA
         # fwD: 1 with fwA
         n_eligible=(1, 4 + 4, 2 + 2, 1),
-        n_consumed=(1, 0, 0, 1),
     )
+    check_path_counters(net, n_consumed=1)

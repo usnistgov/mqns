@@ -1,9 +1,11 @@
 import functools
-from collections.abc import Mapping, Sequence
-from typing import Literal, Self, TypedDict, Unpack, cast, overload
+import itertools
+from collections.abc import Sequence
+from typing import Literal, NotRequired, Self, TypedDict, Unpack, cast, overload
 
 from tap import Tap
 
+from mqns.entity.memory import QuantumMemoryInitKwargs
 from mqns.entity.node import Application, QNode
 from mqns.entity.qchannel import (
     LinkArch,
@@ -118,24 +120,92 @@ so that the QNodes can perform entanglement forwarding for the full intended dur
 """
 
 
-class TopoCommonArgs(TypedDict, total=False):
+class NodeArgs(TypedDict, total=False):
+    mem_capacity: int
+    """Memory capacity, defaults to ``-1`` for deriving from channel capacities."""
     t_cohere: float
     """Memory coherence time in seconds, defaults to ``0.02``."""
     memory_decay: TimeDecayInput
     """Memory time decay function, defaults to dephasing in ``t_cohere``."""
-    entg_attempt_rate: float
-    """Maximum entanglement attempts per second, defaults to ``50_000_000`` but currently ineffective."""
-    init_fidelity: float | None
+
+
+class NodeDef:
+    """Node definition."""
+
+    def __init__(self, name: str, **kwargs: Unpack[NodeArgs]):
+        self.name = name
+        self.d = kwargs
+
+
+class ChannelArgs(TypedDict, total=False):
+    ch_length: float
+    """
+    Channel length in kilometer, defaults to ``1.0``.
+    """
+    ch_capacity: int | tuple[int, int]
+    """
+    Channel capacity, defaults to ``1``.
+    An integer applies to both sides; a tuple applies to ``(left,right)`` sides.
+    """
+    link_arch: LinkArchDef
+    """
+    Link architecture, defaults to ``LinkArchDimBkSeq``.
+    """
+    fiber_alpha: float
+    """
+    Fiber loss in dB/km, defaults to ``0.2``.
+    This determines success probability.
+    """
+    init_fidelity: float | Sequence[float] | None
     """
     Fidelity of generated entangled pairs, defaults to ``0.99``.
     If ``None``, determine with error models in link architecture.
     """
-    eta_d: float
+    fiber_error: ErrorModelInputLength
+    """
+    Fiber error model, defaults to depolarizing with ``0.01`` error probability.
+    This determines qualify of entangled state.
+    """
+    bsa_error: ErrorModelInputBasic
+    """
+    Photonic Bell-state analyzer or absorptive memory capture error model, defaults to perfect.
+    This determines qualify of entangled state.
+    """
+
+
+class ChannelParam:
+    """Channel parameters."""
+
+    def __init__(self, **kwargs: Unpack[ChannelArgs]):
+        self.d = kwargs
+
+
+class ChannelDef(ChannelParam):
+    """Channel definition."""
+
+    def __init__(self, np: NodePair, /, **kwargs: Unpack[ChannelArgs]):
+        super().__init__(**kwargs)
+        self.np = np
+
+
+class TopoCommonArgs(NodeArgs, ChannelArgs):
+    """
+    Combination of ``NodeArgs`` and ``ChannelArgs``, with additional parameters.
+    """
+
+    # Conceptually these should belong to either NodeArgs or ChannelArgs,
+    # but implementation limitation made them non-configurable.
+    # If use case arises, these could be refactored to be per-node or per-channel.
+    entg_attempt_rate: NotRequired[float]
+    """Maximum entanglement attempts per second, defaults to ``50_000_000`` but currently ineffective."""
+    eta_d: NotRequired[float]
     """Detector efficiency, defaults to ``0.95``."""
-    eta_s: float
+    eta_s: NotRequired[float]
     """Source efficiency, defaults to ``0.95``."""
-    frequency: float
+    frequency: NotRequired[float]
     """Entanglement source frequency, defaults to ``1_000_000``."""
+    tau_0: NotRequired[float]
+    """Local operation delay in seconds for emitting and absorbing photon, defaults to ``0.0``."""
 
 
 class AppsCommonArgs(TypedDict, total=False):
@@ -155,14 +225,6 @@ class AppsForwarderArgs(AppsCommonArgs, ForwarderInitKwargs):
     """
 
 
-def _broadcast[T](name: str, input: T | Sequence[T], n: int) -> Sequence[T]:
-    if isinstance(input, Sequence) and not isinstance(input, (str, bytes, bytearray, memoryview)):
-        if len(input) != n:
-            raise ValueError(f"{name} must have {n} items")
-        return input
-    return [cast(T, input)] * n
-
-
 def _split_node_pair(np: NodePair) -> tuple[str, str]:
     if isinstance(np, str):
         tokens = np.split("-")
@@ -170,15 +232,6 @@ def _split_node_pair(np: NodePair) -> tuple[str, str]:
             raise ValueError(f"expect two node names in '{np}'")
         return cast(tuple[str, str], tuple(tokens))
     return np
-
-
-def _split_channel_capacity(item: int | tuple[int, int]) -> tuple[int, int]:
-    return (item, item) if isinstance(item, int) else item
-
-
-def _convert_link_arch(la: LinkArchDef) -> LinkArch:
-    la = LINK_ARCH_MAP.get(cast(LinkArchLiteral, la), cast(LinkArch | type[LinkArch], la))
-    return la() if callable(la) else la
 
 
 class NetworkBuilder:
@@ -211,6 +264,8 @@ class NetworkBuilder:
         self.epr_type = epr_type if isinstance(epr_type, type) else EPR_TYPE_MAP[epr_type]
 
         self.qnodes: list[TopoQNode] = []
+        self.qnode_by_name: dict[str, TopoQNode] = {}
+        self.extensible_memory_by_name: dict[str, QuantumMemoryInitKwargs] = {}
         self.qnode_apps: list[Application] = []
         self.qchannels: list[TopoQChannel] = []
         self.controller_apps: list[Application] = []
@@ -218,35 +273,57 @@ class NetworkBuilder:
         self.qubit_allocation = QubitAllocationType.DISABLED
         self.requests: list[tuple[str, str]] = []
 
-    def _parse_topo_args(self, d: TopoCommonArgs) -> None:
-        self.t_cohere = d.get("t_cohere", 0.02)
-        self.memory_decay = d.get("memory_decay")
-        self.entg_attempt_rate = d.get("entg_attempt_rate", 50e6)
-        self.init_fidelity = d.get("init_fidelity", 0.99)
-        self.eta_d = d.get("eta_d", 0.95)
-        self.eta_s = d.get("eta_s", 0.95)
-        self.frequency = d.get("frequency", 1e6)
+    def _save_topo_args(self, d: TopoCommonArgs) -> None:
+        self.d = d
 
-    def _add_qnode(self, name: str, mem_cap: int) -> TopoQNode:
+    def _add_qnode(self, name: str, d: NodeArgs | None = None) -> TopoQNode:
+        if old_node := self.qnode_by_name.get(name):
+            return old_node
+
+        d = (self.d | d) if d else self.d
+        mem_capacity = d.get("mem_capacity", -1)
         node: TopoQNode = {
             "name": name,
-            "memory": {"capacity": mem_cap},
+            "memory": {
+                "capacity": max(0, mem_capacity),
+                "t_cohere": d.get("t_cohere", 0.02),
+                "time_decay": d.get("memory_decay"),
+            },
         }
         self.qnodes.append(node)
+
+        self.qnode_by_name[name] = node
+        if mem_capacity < 0:
+            self.extensible_memory_by_name[name] = node["memory"]
         return node
+
+    def _inc_memory(self, name: str, n: int) -> None:
+        if memory := self.extensible_memory_by_name.get(name):
+            assert "capacity" in memory
+            memory["capacity"] += n
 
     def _add_qchannel(
         self,
         node1: str,
         node2: str,
-        cap1: int,
-        cap2: int,
-        length: float,
-        fiber_alpha: float,
-        fiber_error: ErrorModelInputLength,
-        bsa_error: ErrorModelInputBasic,
-        la: LinkArchDef,
+        d: ChannelArgs | None,
+        length: float | None = None,
+        capacity: int | tuple[int, int] | None = None,
     ):
+        d = (self.d | d) if d else self.d
+
+        caps: int | tuple[int, int] = capacity or d.get("ch_capacity", 1)
+        cap1, cap2 = (caps, caps) if isinstance(caps, int) else caps
+
+        la = d.get("link_arch", LinkArchDimBkSeq)
+        la = LINK_ARCH_MAP.get(cast(LinkArchLiteral, la), cast(LinkArch | type[LinkArch], la))
+        la = la() if callable(la) else la
+
+        self._add_qnode(node1)
+        self._add_qnode(node2)
+        self._inc_memory(node1, cap1)
+        self._inc_memory(node2, cap2)
+
         self.qchannels.append(
             {
                 "node1": node1,
@@ -254,11 +331,12 @@ class NetworkBuilder:
                 "capacity1": cap1,
                 "capacity2": cap2,
                 "parameters": {
-                    "length": length,
-                    "link_arch": _convert_link_arch(la),
-                    "alpha": fiber_alpha,
-                    "transfer_error": fiber_error,
-                    "bsa_error": bsa_error,
+                    "length": d.get("ch_length", 1.0) if length is None else length,
+                    "link_arch": la,
+                    "alpha": d.get("fiber_alpha", 0.2),
+                    "init_fidelity": d.get("init_fidelity", 0.99),
+                    "transfer_error": d.get("fiber_error", "DEPOLAR:0.01"),
+                    "bsa_error": d.get("bsa_error", "PERFECT"),
                 },
             }
         )
@@ -266,116 +344,67 @@ class NetworkBuilder:
     def topo(
         self,
         *,
-        mem_capacity: int | Mapping[str, int] | None = None,
-        channels: Sequence[tuple[NodePair, float] | tuple[NodePair, float, int | tuple[int, int]]],
-        channel_capacity: int = 1,
-        fiber_alpha: float = 0.2,
-        fiber_error: ErrorModelInputLength = "DEPOLAR:0.01",
-        bsa_error: ErrorModelInputBasic = "PERFECT",
-        link_arch: LinkArchDef | Sequence[LinkArchDef] = LinkArchDimBkSeq,
+        channels: Sequence[ChannelDef | tuple[NodePair, float] | tuple[NodePair, float, int | tuple[int, int]]],
+        nodes: Sequence[NodeDef] = [],
         **kwargs: Unpack[TopoCommonArgs],
     ) -> Self:
         """
         Build a general topology.
 
         Args:
-            mem_capacity: Number of memory qubits per node.
-                If specified as number, it is applied to all nodes.
-                If specified as dict, it maps from node name to node memory capacity.
-                If ``None`` or for unspecified nodes, it is derived from channels.
             channels: List of channels.
-                First tuple item is channel end points; nodes are automatically created.
-                Second tuple item is channel length in kilometer.
-                Third tuple item is channel capacity, defaults to ``channel_capacity``;
-                for each qchannel, an integer applies to both sides, a tuple applies to (left,right) sides.
-            channel_capacity: Qubit allocation per qchannel, if not specified in ``channels``.
-            fiber_alpha: Fiber loss in dB/km, determines success probability.
-            fiber_error: Fiber error model, determines qualify of entangled state.
-            bsa_error: Photonic Bell-state analyzer or absorptive memory capture error model,
-                       determines qualify of entangled state.
-            link_arch: Link architecture per qchannel.
-                If specified as list, it must have same length as ``channel_length``.
-                If specified as instance/type/string, it is broadcast to all qchannels.
+                Each element is either a ``ChannelDef`` or a tuple.
+                If specified as tuple:
+                * First tuple item is channel end points.
+                * Second tuple item is channel length in kilometer.
+                * Third tuple item is channel capacity, if it differs from ``kwargs.ch_capacity``.
+            nodes: Node parameter overrides (optional).
+                It is unnecessary to list a node unless its parameter differs from ``kwargs``.
+            kwargs: Default node and channel parameters.
+                To override a node's parameters, pass ``NodeDef`` to ``nodes``.
+                To override a channel's parameters, pass ``ChannelDef`` to ``channels``.
         """
-        self._parse_topo_args(kwargs)
+        self._save_topo_args(kwargs)
 
-        n_links = len(channels)
-        link_arch = _broadcast("link_arch", link_arch, n_links)
-        node_by_name: dict[str, TopoQNode | Literal[True]] = {}
+        for node in nodes:
+            self._add_qnode(node.name, node.d)
 
-        def ensure_node(name: str, ch_cap: int):
-            node = node_by_name.get(name)
-            if node is True:  # node created with mem_capacity
-                return
-
-            if node is not None:  # need to increase mem_capacity
-                assert "memory" in node
-                assert "capacity" in node["memory"]
-                node["memory"]["capacity"] += ch_cap
-                return
-
-            # need to create new node
-            if mem_capacity is None:
-                mem_cap, defined_mem_cap = ch_cap, False
-            elif isinstance(mem_capacity, int):
-                mem_cap, defined_mem_cap = mem_capacity, True
-            elif name in mem_capacity:
-                mem_cap, defined_mem_cap = mem_capacity[name], True
+        for ch in channels:
+            capacity = None
+            if isinstance(ch, ChannelDef):
+                np = ch.np
+                d = ch.d
+                length = None
             else:
-                mem_cap, defined_mem_cap = ch_cap, False
-
-            node = self._add_qnode(name, mem_cap)
-            node_by_name[name] = True if defined_mem_cap else node
-
-        for (np, length, *opt_cap), la in zip(channels, link_arch, strict=True):
-            node1, node2 = _split_node_pair(np)
-            cap1, cap2 = _split_channel_capacity(opt_cap[0] if len(opt_cap) > 0 else channel_capacity)
-            ensure_node(node1, cap1)
-            ensure_node(node2, cap2)
-            self._add_qchannel(node1, node2, cap1, cap2, length, fiber_alpha, fiber_error, bsa_error, la)
+                np, length, *opt_capacity = ch
+                if opt_capacity:
+                    (capacity,) = opt_capacity
+                d = None
+            self._add_qchannel(*_split_node_pair(np), d, length, capacity)
 
         return self
 
     def topo_linear(
         self,
         *,
-        nodes: int | Sequence[str],
-        mem_capacity: int | Sequence[int] | None = None,
-        channel_length: float | Sequence[float],
-        channel_capacity: int | Sequence[int | tuple[int, int]] = 1,
-        fiber_alpha: float = 0.2,
-        fiber_error: ErrorModelInputLength = "DEPOLAR:0.01",
-        bsa_error: ErrorModelInputBasic = "PERFECT",
-        link_arch: LinkArchDef | Sequence[LinkArchDef] = LinkArchDimBkSeq,
+        nodes: int | Sequence[NodeDef | str],
+        channels: Sequence[ChannelParam | float | tuple[float, int | tuple[int, int]]] | None = None,
         **kwargs: Unpack[TopoCommonArgs],
     ) -> Self:
         """
         Build a linear topology consisting of zero or more repeaters.
 
         Args:
-            nodes: Number of nodes or list of node names, minimum is 2.
+            nodes: Number of nodes or list of node definitions / names, minimum is 2 nodes.
                 If specified as number, the nodes are named ``S R1 R2 .. Rn D``.
                 If specified as list, each node name must be unique.
-            mem_capacity: Number of memory qubits per node.
-                If specified as list, it must have same length as ``nodes``.
-                If specified as number, it is broadcast to all nodes.
-                If ``None``, it is derived from ``channel_capacity``.
-            channel_length: Lengths of qchannels between adjacent nodes in kilometer.
-                If specified as list, it must have length ``len(nodes)-1``.
-                If specified as number, all qchannels have uniform length.
-            channel_capacity: Qubit allocation per qchannel.
-                If specified as list, it must have same length as ``channel_length``.
-                If specified as number, it is broadcast to all qchannels.
-                For each qchannel, an integer applies to both sides, a tuple applies to (left,right) sides.
-            fiber_alpha: Fiber loss in dB/km, determines success probability.
-            fiber_error: Fiber error model, determines qualify of entangled state.
-            bsa_error: Photonic Bell-state analyzer or absorptive memory capture error model,
-                       determines qualify of entangled state.
-            link_arch: Link architecture per qchannel.
-                If specified as list, it must have same length as ``channel_length``.
-                If specified as instance/type/string, it is broadcast to all qchannels.
+            channels: Channel parameter overrides (optional).
+                This is necessary only if some channel's parameter differs from ``kwargs``.
+            kwargs: Default node and channel parameters.
+                To override a node's parameters, pass ``NodeDef`` to ``nodes``.
+                To override a channel's parameters, pass ``ChannelDef`` to ``channels``.
         """
-        self._parse_topo_args(kwargs)
+        self._save_topo_args(kwargs)
 
         if isinstance(nodes, int):
             if nodes < 2:
@@ -388,27 +417,30 @@ class NetworkBuilder:
         if n_nodes < 2:
             raise ValueError("at least two nodes")
         n_links = n_nodes - 1
-
-        channel_length = _broadcast("channel_length", channel_length, n_links)
-        channel_capacity = _broadcast("channel_capacity", channel_capacity, n_links)
-        link_arch = _broadcast("link_arch", link_arch, n_links)
-
-        if mem_capacity is None:
-            mem_capacity = [0]
-            for caps in channel_capacity:
-                capL, capR = _split_channel_capacity(caps)
-                mem_capacity[-1] += capL
-                mem_capacity.append(capR)
+        if channels is None:
+            chs = [None] * n_links
+        elif len(channels) == n_links:
+            chs = channels
         else:
-            mem_capacity = _broadcast("mem_capacity", mem_capacity, n_nodes)
+            raise ValueError("incorrect number of channels")
 
-        for name, mem_capacity in zip(nodes, mem_capacity, strict=True):
-            self._add_qnode(name, mem_capacity)
+        node_names: list[str] = []
+        for node in nodes:
+            if isinstance(node, NodeDef):
+                self._add_qnode(node.name, node.d)
+                node_names.append(node.name)
+            else:
+                self._add_qnode(node)
+                node_names.append(node)
 
-        for i, (length, caps, la) in enumerate(zip(channel_length, channel_capacity, link_arch, strict=True)):
-            node1, node2 = nodes[i], nodes[i + 1]
-            cap1, cap2 = _split_channel_capacity(caps)
-            self._add_qchannel(node1, node2, cap1, cap2, length, fiber_alpha, fiber_error, bsa_error, la)
+        for np, ch in zip(itertools.pairwise(node_names), chs, strict=True):
+            if isinstance(ch, ChannelParam):
+                self._add_qchannel(*np, ch.d)
+            elif isinstance(ch, tuple):
+                length, capacity = ch
+                self._add_qchannel(*np, None, length, capacity)
+            else:
+                self._add_qchannel(*np, None, ch)
 
         return self
 
@@ -425,18 +457,19 @@ class NetworkBuilder:
         elif timing is None:
             self.timing = TimingModeAsync()
         else:
+            t_cohere = self.d.get("t_cohere", 0.02)
             if len(timing) == 0:
-                timing = (self.t_cohere / 2 - 2 * CTRL_DELAY, 4 * CTRL_DELAY, self.t_cohere / 2 - 2 * CTRL_DELAY)
+                timing = (t_cohere / 2 - 2 * CTRL_DELAY, 4 * CTRL_DELAY, t_cohere / 2 - 2 * CTRL_DELAY)
             self.timing = TimingModeSync(durations=timing)
 
     def _add_link_layer(self):
         self.qnode_apps.append(
             LinkLayer(
-                attempt_rate=self.entg_attempt_rate,
-                init_fidelity=self.init_fidelity,
-                eta_d=self.eta_d,
-                eta_s=self.eta_s,
-                frequency=self.frequency,
+                attempt_rate=self.d.get("entg_attempt_rate", 50e6),
+                eta_d=self.d.get("eta_d", 0.95),
+                eta_s=self.d.get("eta_s", 0.95),
+                frequency=self.d.get("frequency", 1e6),
+                tau_0=self.d.get("tau_0", 0.0),
             )
         )
 
@@ -586,10 +619,6 @@ class NetworkBuilder:
         return CustomTopology(
             topo,
             nodes_apps=self.qnode_apps,
-            memory_args={
-                "t_cohere": self.t_cohere,
-                "time_decay": self.memory_decay,
-            },
         )
 
     def make_network(

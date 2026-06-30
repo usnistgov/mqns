@@ -337,7 +337,7 @@ class ForwarderSwapProc:
     memory: QuantumMemory
     mux: MuxScheme
 
-    def __init__(self, *, ps: float, delay: DelayModel, error: ErrorModel):
+    def __init__(self, *, ps: float, delay: DelayModel, error: ErrorModel, error_at_finish: bool):
         self.ps = ps
         """Probability of successful entanglement swapping."""
         assert 0.0 <= self.ps <= 1.0
@@ -345,6 +345,8 @@ class ForwarderSwapProc:
         """Swapping delay model."""
         self.error = error
         """Swapping error model."""
+        self.error_at_finish = error_at_finish
+        """Whether to apply memory errors at swap finish time instead of swap start time."""
 
         self.waiting_su: dict[str, tuple[SwapUpdateMsg, FibEntry]] = {}
         """
@@ -458,7 +460,9 @@ class ForwarderSwapProc:
         # Schedule swap completion event.
         now = self.simulator.tc
         finish_time = now + self.delay.calculate()
-        self.simulator.add_event(func_to_event(finish_time, self._s_finish, arms, fib_entry, now, task))
+        self.simulator.add_event(
+            func_to_event(finish_time, self._s_finish, arms, fib_entry, finish_time if self.error_at_finish else now, task)
+        )
 
         log.debug(f"{self}: SWAP_START {task} retrieved-from={task_from} saved-at={task_saved} finish-time={finish_time}")
 
@@ -516,7 +520,7 @@ class ForwarderSwapProc:
             task_saved.append(f"task_by_qubit[{arm.o_key}]")
         return task_saved
 
-    def _s_finish(self, arms: Sequence[SwapArm], fib_entry: FibEntry, swap_start: Time, task_via_event: SwapTask):
+    def _s_finish(self, arms: Sequence[SwapArm], fib_entry: FibEntry, error_t: Time, task_via_event: SwapTask):
         """
         Complete swapping between two memory qubits.
 
@@ -541,7 +545,7 @@ class ForwarderSwapProc:
             phy_eprs.append(phy)
 
         # Attempt physical swap.
-        new_epr, outcome_str, local_success = self._s_physical_swap(swap_start, phy_eprs)
+        new_epr, outcome_str, local_success = self._s_physical_swap(error_t, phy_eprs)
         log.debug(f"{self}: {outcome_str} rank={fib_entry.own_swap_rank} | {arms[0]} x {arms[1]} = {new_epr}")
 
         # Release consumed qubits.

@@ -8,7 +8,7 @@ import pytest
 
 from mqns.entity.timer import Timer
 from mqns.models.epr import Entanglement, MixedStateEntanglement, WernerStateEntanglement
-from mqns.network.fw import RoutingPathSingle, RoutingPathStatic, SwapSequenceInput
+from mqns.network.fw import ForwarderConsumeCounters, RoutingPathSingle, RoutingPathStatic, SwapSequenceInput
 from mqns.network.network import TimingModeAsync, TimingModeSync
 from mqns.network.proactive import ProactiveForwarder
 from mqns.network.protocol.link_layer import LinkLayer
@@ -32,7 +32,7 @@ def test_4_swap(epr_type: type[Entanglement], timing_mode: str, swap: SwapSequen
     net, simulator = build_linear_network(
         4, swap_table_leak_tol=256, end_time=3.0, timing=timing, epr_type=epr_type, has_link_layer=True
     )
-    fwA, fwB, fwC, fwD = (node.get_app(ProactiveForwarder) for node in net.nodes)
+    _, fwB, fwC, _ = (node.get_app(ProactiveForwarder) for node in net.nodes)
 
     install_path(net, RoutingPathSingle("A", "D", swap=swap))
     simulator.run()
@@ -43,9 +43,8 @@ def test_4_swap(epr_type: type[Entanglement], timing_mode: str, swap: SwapSequen
     # Hence, these numeric bounds are much smaller than usual values, but must be greater than the memory capacity.
     assert fwB.cnt.n_swapped >= 16
     assert fwC.cnt.n_swapped >= 16
-    assert fwA.cnt.n_consumed >= 16
-    assert fwD.cnt.n_consumed >= 16
-    assert -4 <= fwA.cnt.n_consumed - fwD.cnt.n_consumed <= 4
+    consume_cnt = ForwarderConsumeCounters.of_path(net, "A", "D")
+    assert consume_cnt.n_consumed >= 16
 
 
 def test_rect_uninstall_path():

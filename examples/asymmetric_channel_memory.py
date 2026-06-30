@@ -20,7 +20,7 @@ impact the end-to-end entanglement rate and qubit decoherence ratios.
 from tap import Tap
 
 from mqns.network.builder import CTRL_DELAY, NetworkBuilder
-from mqns.network.proactive import ProactiveForwarder
+from mqns.network.fw import ForwarderConsumeCounters
 from mqns.network.protocol.link_layer import LinkLayerCounters
 from mqns.simulator import Simulator
 from mqns.utils import log, rng
@@ -42,8 +42,7 @@ def run_simulation(seed: int, args: Args):
         NetworkBuilder()
         .topo_linear(
             nodes=4,
-            channel_length=[32, 18, 10],
-            channel_capacity=[(4, 3), (1, 2), (2, 4)],
+            channels=[(32, (4, 3)), (18, (1, 2)), (10, (2, 4))],
             t_cohere=0.01,
         )
         .proactive_centralized()
@@ -55,9 +54,9 @@ def run_simulation(seed: int, args: Args):
     s.run()
 
     #### get stats
-    decoh_ratio = LinkLayerCounters.aggregate(net.nodes).decoh_ratio
-    e2e_rate = net.get_node("S").get_app(ProactiveForwarder).cnt.n_consumed / args.sim_duration
-    return e2e_rate, decoh_ratio
+    consume_cnt = ForwarderConsumeCounters.of_path(net, "S", "D")
+    ll_cnt = LinkLayerCounters.aggregate(net.nodes)
+    return consume_cnt.get_rate(args.sim_duration), ll_cnt.decoh_ratio
 
 
 if __name__ == "__main__":

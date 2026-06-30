@@ -3,7 +3,7 @@ import pandas as pd
 from tap import Tap
 
 from mqns.network.builder import CTRL_DELAY, NetworkBuilder
-from mqns.network.proactive import ProactiveForwarder
+from mqns.network.fw import ForwarderConsumeCounters
 from mqns.simulator import Simulator
 from mqns.utils import log, rng
 
@@ -30,10 +30,10 @@ def run_simulation(t_cohere: float, seed: int):
     net = (
         NetworkBuilder()
         .topo_linear(
-            nodes=("S", "R", "D"),
+            nodes="SRD",
             t_cohere=t_cohere,
-            channel_length=[32, 18],
-            channel_capacity=2,
+            channels=[32, 18],
+            ch_capacity=2,
             init_fidelity=0.7,
         )
         .proactive_centralized()
@@ -45,8 +45,8 @@ def run_simulation(t_cohere: float, seed: int):
     s.run()
 
     #### get stats
-    fw_s = net.get_node("S").get_app(ProactiveForwarder)
-    return fw_s.cnt.n_consumed / sim_duration, fw_s.cnt.consumed_avg_fidelity
+    consume_cnt = ForwarderConsumeCounters.of_path(net, "S", "D")
+    return consume_cnt.get_rate(sim_duration), consume_cnt.consumed_avg_fidelity
 
 
 results = {"T_cohere": [], "Mean Rate": [], "Std Rate": [], "Mean F": [], "Std F": []}
