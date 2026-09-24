@@ -414,10 +414,11 @@ def test_path_delete(
         # t=4.8, n1 is notified
         # t=5.1, n2 is notified
         # t=6.5, qubits decohere
-        pytest.param(None, [], None, 0, [1.6, 4.8], [1.9, 5.1], id="stable"),
+        pytest.param(None, [], None, -1, [1.6, 4.8], [1.9, 5.1], id="stable"),
         # Delete and reinsert when RESERVE_REQ is in-flight.
         # Rest of timeline is same as stable case delayed by 0.1s.
-        pytest.param(0.2, [], 0.3, 7, [1.8, 5.0], [2.1, 5.3], id="RESERVE_REQ"),
+        pytest.param(0.2, [], 0.3, 7, [1.8, 5.0], [2.1, 5.3], id="RESERVE_REQ-same"),
+        pytest.param(0.2, [], 0.3, 9, [1.8, 5.0], [2.1, 5.3], id="RESERVE_REQ-diff"),
         # Delete and reinsert when RESERVE_RES is in-flight.
         #
         # t=0.1, initial path is inserted
@@ -428,7 +429,8 @@ def test_path_delete(
         # t=0.8, n2 processes cancellation
         # t=0.9, n2 accepts reservation
         # Rest of timeline is same as stable case delayed by 0.5s.
-        pytest.param(0.5, [], 0.6, 7, [2.1, 5.3], [2.4, 5.6], id="RESERVE_RES"),
+        pytest.param(0.5, [], 0.6, 7, [2.1, 5.3], [2.4, 5.6], id="RESERVE_RES-same"),
+        pytest.param(0.5, [], 0.6, 9, [2.1, 5.3], [2.4, 5.6], id="RESERVE_RES-diff"),
         # Delete and reinsert during the first (failing) attempt.
         # The first entanglement can no longer happen.
         # The second entanglement starts its reservation at reinsertion time.
@@ -440,8 +442,9 @@ def test_path_delete(
         # t=2.4, n1 is notified
         # t=2.7, n2 is notified
         # t=4.1, qubits decohere
-        pytest.param(0.8, [], 0.9, 7, [2.4], [2.7], id="attempt1"),
-        # Delete and reinsert during the second (successful) attempt.
+        pytest.param(0.8, [], 0.9, 7, [2.4], [2.7], id="attempt1-same"),
+        pytest.param(0.8, [], 0.9, 9, [2.4], [2.7], id="attempt1-diff"),
+        # Delete and reinsert during the second (successful) attempt, same path_id.
         # The first entanglement is delivered per normal timeline.
         # The second entanglement starts its reservation after qubits release.
         # ---------------- second entanglement, k=2 ----------------
@@ -452,7 +455,19 @@ def test_path_delete(
         # t=3.2, n1 is notified
         # t=3.5, n2 is notified
         # t=4.0, qubits decohere
-        pytest.param(1.4, [0.1], 1.5, 7, [1.6, 3.2], [1.9, 3.5], id="attempt2"),
+        pytest.param(1.4, [0.1], 1.5, 7, [1.6, 3.2], [1.9, 3.5], id="attempt2-same"),
+        # Delete and reinsert during the second (successful) attempt, different path_id.
+        # The first entanglement is delivered per normal timeline.
+        # The second entanglement is using separate qubits and starts its reservation at insertion time.
+        # ---------------- second entanglement, k=2 ----------------
+        # t=1.5, n1 requests reservation
+        # t=1.8, n2 accepts reservation
+        # t=2.1, first attempt begins
+        # t=2.7, second attempt begins
+        # t=3.0, n1 is notified
+        # t=3.3, n2 is notified
+        # t=3.8, qubits decohere
+        pytest.param(1.4, [0.1], 1.5, 9, [1.6, 3.0], [1.9, 3.3], id="attempt2-diff"),
     ],
 )
 def test_path_reinsert(
@@ -460,14 +475,13 @@ def test_path_reinsert(
     t_delete: float | None,
     nl_release: list[float],
     t_insert: float | None,
-    path_id: int,  # negative means reverse direction
+    path_id: int,
     t_entangle1: list[float],
     t_entangle2: list[float],
 ):
     """
     Test PATH_DELETE followed by PATH_INSERT.
     """
-    path_id, reversed = abs(path_id), path_id < 0
     same_path = path_id == 7
     net, ch, ll1, ll2, nl1, nl2 = make_2nodes(
         qchannel_args={"delay": 0.3, "link_arch": LinkArchSr()},
@@ -476,7 +490,7 @@ def test_path_reinsert(
     simulator = Simulator(0.0, 6.0, install_to=(log, net))
 
     activate_path(0.1, t_delete, nl1, nl2, path_id=7)
-    activate_path(t_insert, None, *((nl2, nl1) if reversed else (nl1, nl2)), path_id=path_id, n=0 if same_path else 1)
+    activate_path(t_insert, None, nl1, nl2, path_id=path_id, n=0 if same_path else 1)
     check_link_arch_delays(0.1, ch, attempt_interval=0.6, d_notify_pri=0.3, d_notify_2nd=0.6)
     force_attempts(monkeypatch, ll1, n2=[2, 2, 10000])
     force_attempts(monkeypatch, ll2, n1=[2, 2, 10000])
@@ -488,6 +502,13 @@ def test_path_reinsert(
 
     assert nl1.entangle == pytest.approx(t_entangle1, abs=1e-6)
     assert nl2.entangle == pytest.approx(t_entangle2, abs=1e-6)
+
+    # Given t_delete and t_insert are less than t_cohere apart, the per-channel counters would not
+    # be deleted, so that they should include the entanglements from both activations.
+    assert (cnt1 := ll1.cnt_channel(ch)) is not None
+    assert cnt1.n_etg == len(t_entangle1)
+    assert (cnt2 := ll2.cnt_channel(ch)) is not None
+    assert cnt2.n_etg == 0
 
 
 def test_skip_ahead():

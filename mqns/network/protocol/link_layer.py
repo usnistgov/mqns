@@ -17,7 +17,7 @@
 
 from collections import deque
 from collections.abc import Iterable
-from typing import Final, Literal, NamedTuple, TypedDict, final, override
+from typing import Final, Literal, NamedTuple, Self, TypedDict, final, override
 
 from mqns.entity.cchannel import ClassicCommandDispatcherMixin, ClassicPacket, classic_cmd_handler
 from mqns.entity.memory import MemoryQubit, QuantumMemory, QubitState
@@ -33,6 +33,50 @@ _AUTOID = AutoIncrementIdentifier("llk_")
 """
 Automatically assigned ``RESERVE_REQ["key"]`` name.
 """
+
+
+@json_encodable
+class LinkLayerCounters:
+    @staticmethod
+    def aggregate(nodes: Iterable[QNode]) -> "LinkLayerCounters":
+        """
+        Aggregate ``LinkLayerCounters`` from a network.
+
+        Args:
+            nodes: List of nodes, such as ``QuantumNetwork.nodes``.
+        """
+        r = LinkLayerCounters()
+        for node in nodes:
+            for ll in node.get_apps(LinkLayer):
+                r += ll.cnt
+        return r
+
+    n_etg: int = 0
+    """How many entanglements generated as the primary node."""
+
+    n_attempts: int = 0
+    """How many attempts made for successful entanglements."""
+
+    n_decoh: int = 0
+    """How many qubits decohered."""
+
+    def __iadd__(self, cnt: "LinkLayerCounters") -> Self:
+        self.n_etg += cnt.n_etg
+        self.n_attempts += cnt.n_attempts
+        self.n_decoh += cnt.n_decoh
+        return self
+
+    def increment_n_etg(self, attempts: int) -> None:
+        self.n_etg += 1
+        self.n_attempts += attempts
+
+    @property
+    def decoh_ratio(self) -> float:
+        """Decoherence ratio, ``n_decoh/n_etg``."""
+        return self.n_decoh / self.n_etg if self.n_etg > 0 else 0
+
+    def __repr__(self) -> str:
+        return f"etg={self.n_etg} attempts={self.n_attempts} decoh={self.n_decoh} decoh_ratio={self.decoh_ratio}"
 
 
 class ReserveMsg(TypedDict):
@@ -96,12 +140,16 @@ class _ActiveChannel:
     ``path_id`` for paths that could initiate entanglements, excluding those pending deletion.
     """
 
+    cnt: LinkLayerCounters
+    """Counters."""
+
     def __init__(self, qchannel: QuantumChannel, partner: QNode, is_primary: bool):
         self.qchannel = qchannel
         self.partner = partner
         self.is_primary = is_primary
         self.paths = {}
         self.live_paths = set()
+        self.cnt = LinkLayerCounters()
 
     def __repr__(self) -> str:
         return f"ActiveChannel({self.partner.name})"
@@ -242,45 +290,6 @@ class _Entangle2ndEvent(_EntangleEvent):
         super().__init__(t, unwrap_cast(epr.dst), unwrap_cast(epr.src), key, epr)
 
 
-@json_encodable
-class LinkLayerCounters:
-    @staticmethod
-    def aggregate(nodes: Iterable[QNode]) -> "LinkLayerCounters":
-        """
-        Aggregate ``LinkLayerCounters`` from a network.
-
-        Args:
-            nodes: List of nodes, such as ``QuantumNetwork.nodes``.
-        """
-        r = LinkLayerCounters()
-        for node in nodes:
-            for ll in node.get_apps(LinkLayer):
-                r.n_etg += ll.cnt.n_etg
-                r.n_attempts += ll.cnt.n_attempts
-                r.n_decoh += ll.cnt.n_decoh
-        return r
-
-    def __init__(self):
-        self.n_etg = 0
-        """how many entanglements generated as the primary node"""
-        self.n_attempts = 0
-        """how many attempts made for successful entanglements"""
-        self.n_decoh = 0
-        """how many qubits decohered"""
-
-    def increment_n_etg(self, attempts: int) -> None:
-        self.n_etg += 1
-        self.n_attempts += attempts
-
-    @property
-    def decoh_ratio(self) -> float:
-        """decoherence ratio, ``n_decoh/n_etg``"""
-        return self.n_decoh / self.n_etg if self.n_etg > 0 else 0
-
-    def __repr__(self) -> str:
-        return f"etg={self.n_etg} attempts={self.n_attempts} decoh={self.n_decoh} decoh_ratio={self.decoh_ratio}"
-
-
 class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
     """
     Network function for creating elementary entanglements over qchannels.
@@ -312,16 +321,40 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         Key is partner node name.
         """
 
-        self.cnt = LinkLayerCounters()
-        """
-        Counters.
-        """
+        self._cnt_deleted_channels = LinkLayerCounters()
 
     @override
     def install(self, node) -> None:
         self._application_install(node, QNode)
         self.memory = self.node.memory
         """Quantum memory of the node."""
+
+    @property
+    def cnt(self) -> LinkLayerCounters:
+        """Retrieve total counters."""
+        r = LinkLayerCounters()
+        r += self._cnt_deleted_channels
+        for ac in self.channels.values():
+            r += ac.cnt
+        return r
+
+    def cnt_channel(self, ch: QuantumChannel) -> LinkLayerCounters | None:
+        """
+        Retrieve per-channel counters.
+
+        Args:
+            ch: A quantum channel.
+
+        Returns:
+            Counters of an active channel, None if the channel is inactive.
+
+        Note:
+            If a channel is recently deactivated but not yet deleted, its counters would still be returned.
+            If the same channel is reactivated, the counters would continue accumulating without reset.
+        """
+        partner = ch.find_peer(self.node)
+        ac = self.channels.get(partner.name)
+        return ac and ac.cnt
 
     @sync_phase_handler(TimingPhase.EXTERNAL, True)
     def sync_external_enter(self) -> None:
@@ -526,6 +559,7 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
 
         # If the channel has no more active paths, delete the channel.
         del self.channels[partner.name]
+        self._cnt_deleted_channels += ac.cnt
         self.log_debug("CHANNEL_DEACTIVATE_%s %s partner=%s", PathActivateEvent.ROLE_STR[ac.is_primary], ch.name, partner.name)
 
     @classic_cmd_handler("RESERVE_ABORT")
@@ -766,7 +800,7 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
     @event_handler
     def _notify_pri(self, event: _EntanglePriEvent) -> None:
         del event.task.ap.oreq_table[event.key]
-        self.cnt.increment_n_etg(event.task.k)
+        event.task.ac.cnt.increment_n_etg(event.task.k)
         self._notify_entangle("pri", event)
 
     @event_handler
@@ -815,7 +849,7 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         if ac.is_primary:
             self.log_debug("%s processed role=primary", event)
             if event.is_decoh:
-                self.cnt.n_decoh += 1
+                ac.cnt.n_decoh += 1
             if self.node.timing.is_async():
                 self.start_reservation(ac, ap, mq)
         else:
