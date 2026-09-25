@@ -257,6 +257,8 @@ def sync_phase_handler(phase: TimingPhase, enter: bool):
         def sync_phase_handler_wrapper(self: Any, _: Event) -> None:
             f(self)
 
-        return event_handler(_PHASE_EVENTS[phase, enter])(sync_phase_handler_wrapper)
+        h = event_handler(_PHASE_EVENTS[phase, enter])(sync_phase_handler_wrapper)
+        h.__doc__ = f.__doc__ or f"In SYNC timing mode, {'enter' if enter else 'exit'} {phase.name} phase."
+        return h
 
     return decorator

@@ -339,9 +339,6 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
 
     @sync_phase_handler(TimingPhase.EXTERNAL, True)
     def sync_external_enter(self) -> None:
-        """
-        In SYNC timing mode, enter EXTERNAL phase.
-        """
         # Start reservation for each active channel where this node is primary.
         for ac in self.channels.values():
             if ac.is_primary:
@@ -349,9 +346,6 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
 
     @sync_phase_handler(TimingPhase.EXTERNAL, False)
     def sync_external_exit(self) -> None:
-        """
-        In SYNC timing mode, exit EXTERNAL phase.
-        """
         for ac in self.channels.values():
             if ac.is_primary:
                 # Clear incomplete reservations.
@@ -364,9 +358,6 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
 
     @sync_phase_handler(TimingPhase.INTERNAL, False)
     def sync_internal_exit(self) -> None:
-        """
-        In SYNC timing mode, exit INTERNAL phase.
-        """
         # Clear existing memory qubits.
         self.memory.clear()
 

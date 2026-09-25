@@ -61,17 +61,11 @@ class ReactiveForwarder(Forwarder):
 
     @sync_phase_handler(TimingPhase.ROUTING, True)
     def sync_routing_enter(self):
-        """
-        In SYNC timing mode, enter ROUTING phase.
-        """
         # Transmit link states based on entangled qubits arrived during EXTERNAL phase.
         self.nb.send_link_state()
 
     @sync_phase_handler(TimingPhase.INTERNAL, False)
     def sync_internal_exit(self):
-        """
-        In SYNC timing mode, exit INTERNAL phase.
-        """
         # Clear FIB and path assignments, as these are only useful for one slot.
         self.fib.clear()
         self.planner.clear()

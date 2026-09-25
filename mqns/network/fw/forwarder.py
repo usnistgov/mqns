@@ -184,9 +184,6 @@ class Forwarder(ClassicCommandDispatcherMixin, Application[QNode]):
 
     @sync_phase_handler(TimingPhase.INTERNAL, True)
     def sync_internal_enter(self) -> None:
-        """
-        In SYNC timing mode, enter INTERNAL phase.
-        """
         # Start processing elementary entanglements that arrived during EXTERNAL phase.
         for etg_event in self.entangled_in_external:
             self.qubit_is_entangled_in_internal(etg_event)
@@ -194,9 +191,6 @@ class Forwarder(ClassicCommandDispatcherMixin, Application[QNode]):
 
     @sync_phase_handler(TimingPhase.INTERNAL, False)
     def sync_internal_exit(self) -> None:
-        """
-        In SYNC timing mode, exit INTERNAL phase.
-        """
         self.swap.sync_internal_exit()
 
     @event_handler
