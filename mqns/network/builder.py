@@ -21,7 +21,7 @@ from mqns.network.proactive import (
 )
 from mqns.network.protocol.classicbridge import ClassicBridge
 from mqns.network.protocol.consumer import Consumer
-from mqns.network.protocol.link_layer import LinkLayer
+from mqns.network.protocol.link_layer import LinkLayer, LinkLayerInitKwargs
 from mqns.network.reactive import ReactiveForwarder, ReactiveRoutingController
 from mqns.network.route import DijkstraRouteAlgorithm, RouteAlgorithm
 from mqns.network.topology import ClassicTopology, Topology
@@ -91,6 +91,10 @@ class NodeArgs(TypedDict, total=False):
     """Memory coherence time in seconds, defaults to ``0.02``."""
     memory_decay: TimeDecayInput
     """Memory time decay function, defaults to dephasing in ``t_cohere``."""
+    frequency: NotRequired[float]
+    """Entanglement source frequency, defaults to ``1_000_000``."""
+    tau_0: NotRequired[float]
+    """Local operation delay in seconds for emitting and absorbing photon, defaults to ``0.0``."""
 
 
 class NodeDef:
@@ -118,6 +122,16 @@ class ChannelArgs(TypedDict, total=False):
     fiber_alpha: float
     """
     Fiber loss in dB/km, defaults to ``0.2``.
+    This determines success probability.
+    """
+    eta_s: NotRequired[float]
+    """
+    Source efficiency between 0 and 1, defaults to ``0.95``.
+    This determines success probability.
+    """
+    eta_d: NotRequired[float]
+    """
+    Detector efficiency between 0 and 1, defaults to ``0.95``.
     This determines success probability.
     """
     init_fidelity: float | Sequence[float] | None
@@ -154,20 +168,8 @@ class ChannelDef(ChannelParam):
 
 class TopoCommonArgs(NodeArgs, ChannelArgs):
     """
-    Combination of ``NodeArgs`` and ``ChannelArgs``, with additional parameters.
+    Combination of ``NodeArgs`` and ``ChannelArgs``.
     """
-
-    # Conceptually these should belong to either NodeArgs or ChannelArgs,
-    # but implementation limitation made them non-configurable.
-    # If use case arises, these could be refactored to be per-node or per-channel.
-    eta_d: NotRequired[float]
-    """Detector efficiency, defaults to ``0.95``."""
-    eta_s: NotRequired[float]
-    """Source efficiency, defaults to ``0.95``."""
-    frequency: NotRequired[float]
-    """Entanglement source frequency, defaults to ``1_000_000``."""
-    tau_0: NotRequired[float]
-    """Local operation delay in seconds for emitting and absorbing photon, defaults to ``0.0``."""
 
 
 class AppsCommonArgs(TypedDict, total=False):
@@ -218,7 +220,8 @@ class NetworkBuilder:
 
         self.qnodes: list[TopoQNode] = []
         self.qnode_by_name: dict[str, TopoQNode] = {}
-        self.extensible_memory_by_name: dict[str, QuantumMemoryInitKwargs] = {}
+        self.extensible_memory_by_node: dict[str, QuantumMemoryInitKwargs] = {}
+        self.link_layer_by_node: dict[str, LinkLayerInitKwargs] = {}
         self.qnode_apps: list[Application] = []
         self.qchannels: list[TopoQChannel] = []
         self.controller_apps: list[Application] = []
@@ -243,14 +246,20 @@ class NetworkBuilder:
             },
         }
         self.qnodes.append(node)
-
         self.qnode_by_name[name] = node
+
         if mem_capacity < 0:
-            self.extensible_memory_by_name[name] = node["memory"]
+            self.extensible_memory_by_node[name] = node["memory"]
+
+        self.link_layer_by_node[name] = LinkLayerInitKwargs(
+            frequency=d.get("frequency", 1e6),
+            tau_0=d.get("tau_0", 0.0),
+        )
+
         return node
 
     def _inc_memory(self, name: str, n: int) -> None:
-        if memory := self.extensible_memory_by_name.get(name):
+        if memory := self.extensible_memory_by_node.get(name):
             assert "capacity" in memory
             memory["capacity"] += n
 
@@ -282,6 +291,8 @@ class NetworkBuilder:
                     "length": d.get("ch_length", 1.0) if length is None else length,
                     "link_arch": d.get("link_arch"),
                     "alpha": d.get("fiber_alpha", 0.2),
+                    "eta_s": d.get("eta_s", 0.95),
+                    "eta_d": d.get("eta_d", 0.95),
                     "init_fidelity": d.get("init_fidelity", 0.99),
                     "transfer_error": d.get("fiber_error", "DEPOLAR:0.01"),
                     "bsa_error": d.get("bsa_error", "PERFECT"),
@@ -411,14 +422,8 @@ class NetworkBuilder:
             self.timing = TimingModeSync(durations=timing)
 
     def _add_link_layer(self):
-        self.qnode_apps.append(
-            LinkLayer(
-                eta_d=self.d.get("eta_d", 0.95),
-                eta_s=self.d.get("eta_s", 0.95),
-                frequency=self.d.get("frequency", 1e6),
-                tau_0=self.d.get("tau_0", 0.0),
-            )
-        )
+        for name, node in self.qnode_by_name.items():
+            node.setdefault("apps", []).append(LinkLayer(**self.link_layer_by_node[name]))
 
     def _add_consumer(self):
         self.qnode_apps.append(Consumer())

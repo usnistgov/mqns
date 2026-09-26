@@ -162,13 +162,13 @@ def run_simulation(
             nodes=nodes,
             mem_capacity=MEM_CAPACITY,
             t_cohere=t_cohere,
+            frequency=FREQUENCY,
             channels=CHANNEL_LENGTH,
             ch_capacity=channel_capacity,
             fiber_alpha=FIBER_ALPHA,
-            init_fidelity=INIT_FIDELITY,
-            eta_d=ETA_D,
             eta_s=ETA_S,
-            frequency=FREQUENCY,
+            eta_d=ETA_D,
+            init_fidelity=INIT_FIDELITY,
         )
         .proactive_centralized(
             p_swap=P_SWAP,

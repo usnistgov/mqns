@@ -3,19 +3,13 @@ from typing import override
 
 import pytest
 
-from mqns.entity.memory import (
-    MemoryDecohereEvent,
-    MemoryQubit,
-    QuantumMemory,
-    QuantumMemoryInitKwargs,
-    QubitState,
-)
+from mqns.entity.memory import MemoryDecohereEvent, MemoryQubit, QuantumMemory, QuantumMemoryInitKwargs, QubitState
 from mqns.entity.node import Application, QNode
 from mqns.entity.qchannel import LinkArchAlways, LinkArchDimBk, LinkArchSr, QuantumChannel, QuantumChannelInitKwargs
 from mqns.models.epr import Entanglement, MixedStateEntanglement, WernerStateEntanglement
 from mqns.network.network import QuantumNetwork, TimingMode, TimingModeAsync, TimingModeSync
 from mqns.network.protocol.event import PathActivateEvent, PathDeactivateEvent, QubitEntangledEvent, QubitReleasedEvent
-from mqns.network.protocol.link_layer import LinkLayer, LinkLayerCounters
+from mqns.network.protocol.link_layer import LinkLayer, LinkLayerCounters, LinkLayerInitKwargs
 from mqns.network.topology import ClassicTopology, LinearTopology
 from mqns.simulator import Simulator, event_handler, func_to_event
 from mqns.utils import log, rng
@@ -80,6 +74,7 @@ class NetworkLayer(Application[QNode]):
 
 def make_2nodes(
     *,
+    ll_args: LinkLayerInitKwargs = {},
     qchannel_args: QuantumChannelInitKwargs,
     memory_args: QuantumMemoryInitKwargs,
     timing: TimingMode = TimingModeAsync(),
@@ -87,7 +82,7 @@ def make_2nodes(
 ) -> tuple[QuantumNetwork, QuantumChannel, LinkLayer, LinkLayer, NetworkLayer, NetworkLayer]:
     topo = LinearTopology(
         nodes_number=2,
-        nodes_apps=[NetworkLayer(), LinkLayer()],
+        nodes_apps=[NetworkLayer(), LinkLayer(**ll_args)],
         qchannel_args=qchannel_args,
         cchannel_args="from_qchannel_args",
         memory_args=memory_args,
@@ -484,6 +479,7 @@ def test_path_reinsert(
     """
     same_path = path_id == 7
     net, ch, ll1, ll2, nl1, nl2 = make_2nodes(
+        ll_args={"cnt_history": 2},
         qchannel_args={"delay": 0.3, "link_arch": LinkArchSr()},
         memory_args={"capacity": 1 if same_path else 2, "t_cohere": 2.0},
     )
@@ -503,12 +499,15 @@ def test_path_reinsert(
     assert nl1.entangle == pytest.approx(t_entangle1, abs=1e-6)
     assert nl2.entangle == pytest.approx(t_entangle2, abs=1e-6)
 
+    assert (cnt1 := ll1.cnt_channel(ch)) is not None
     # Given t_delete and t_insert are less than t_cohere apart, the per-channel counters would not
     # be deleted, so that they should include the entanglements from both activations.
-    assert (cnt1 := ll1.cnt_channel(ch)) is not None
     assert cnt1.n_etg == len(t_entangle1)
-    assert (cnt2 := ll2.cnt_channel(ch)) is not None
-    assert cnt2.n_etg == 0
+    # Each entanglement needs a total of 1.8 seconds: 0.6s reservation, 0.6s first attempt, 0.6s second attempt.
+    # .etg_rate is rate per memory pair, so that it does not change even when there are two pairs.
+    assert cnt1.etg_rate == pytest.approx(1 / 1.8, abs=1e-6)
+    # Secondary node does not keep per-channel counters.
+    assert ll2.cnt_channel(ch) is None
 
 
 def test_skip_ahead():

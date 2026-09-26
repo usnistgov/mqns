@@ -177,13 +177,13 @@ def _run_simulation(
 
     b.topo_linear(
         nodes=[NodeDef(node, t_cohere=1 / gam) for node, gam in zip("SRD", args.gam, strict=True)],
+        frequency=80e6,
+        tau_0=args.t_proc,
         channels=channels,
         link_arch=LinkArchDimDual,
         fiber_alpha=0.2,
-        eta_d=0.58,
         eta_s=0.99,
-        frequency=80e6,
-        tau_0=args.t_proc,
+        eta_d=0.58,
     ).proactive_centralized(
         p_swap=args.q,
         swap_delay=0 if modeled is None else modeled.Tswp,

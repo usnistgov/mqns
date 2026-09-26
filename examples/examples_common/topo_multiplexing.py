@@ -44,7 +44,7 @@ def define_topo(
             (("F", "I"), 30, (c0, c1)),
         ],
         fiber_alpha=0.17,
-        eta_d=0.5,
         eta_s=0.8,
+        eta_d=0.5,
         t_cohere=0.1,
     )

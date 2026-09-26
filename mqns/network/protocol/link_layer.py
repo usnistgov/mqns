@@ -17,12 +17,15 @@
 
 from collections import deque
 from collections.abc import Iterable
-from typing import Final, Literal, NamedTuple, Self, TypedDict, final, override
+from typing import Final, Literal, NamedTuple, Self, TypedDict, Unpack, final, override
+
+import numpy as np
 
 from mqns.entity.cchannel import ClassicCommandDispatcherMixin, ClassicPacket, classic_cmd_handler
 from mqns.entity.memory import MemoryQubit, QuantumMemory, QubitState
 from mqns.entity.node import Application, QNode
 from mqns.entity.qchannel import QuantumChannel
+from mqns.models.delay import ConstantDelayModel
 from mqns.models.epr import Entanglement
 from mqns.network.network import TimingPhase, sync_phase_handler
 from mqns.network.protocol.event import PathActivateEvent, PathDeactivateEvent, QubitEntangledEvent, QubitReleasedEvent
@@ -35,6 +38,18 @@ Automatically assigned ``RESERVE_REQ["key"]`` name.
 """
 
 
+class LinkLayerInitKwargs(TypedDict, total=False):
+    frequency: float
+    """Entanglement source frequency, defaults to ``1_000_000``."""
+    tau_0: float
+    """Local operation delay in seconds for emitting and absorbing photon, defaults to ``0.0``."""
+    cnt_history: int
+    """
+    How many recent entanglement to keep in per-channel history, default is ``0``.
+    A positive value enables online collection of channel entanglement rates.
+    """
+
+
 @json_encodable
 class LinkLayerCounters:
     @staticmethod
@@ -44,6 +59,10 @@ class LinkLayerCounters:
 
         Args:
             nodes: List of nodes, such as ``QuantumNetwork.nodes``.
+
+        These fields cannot be aggregated:
+
+        * ``etg_rate``
         """
         r = LinkLayerCounters()
         for node in nodes:
@@ -60,15 +79,50 @@ class LinkLayerCounters:
     n_decoh: int = 0
     """How many qubits decohered."""
 
+    def __init__(self, *, history=0, rtt=Time.SENTINEL):
+        """
+        Args:
+            history: How many recent entanglement to keep in history.
+                This must be positive for ``etg_rate`` calculation.
+            rtt: Round-trip duration for RESERVE_REQ and RESERVE_RES messages.
+                This is considered part of the entanglement generation duration.
+        """
+        # _history is a count-based window that tracks a variable duration of recent entanglements.
+        # If the quantum channel properties could change over time, this may need to be refactored as
+        # a time-based window or a time decay formula.
+        self._history = deque[int](maxlen=history) if history > 0 and rtt is not Time.SENTINEL else None
+        self._rtt = rtt
+
     def __iadd__(self, cnt: "LinkLayerCounters") -> Self:
+        self._history = None
         self.n_etg += cnt.n_etg
         self.n_attempts += cnt.n_attempts
         self.n_decoh += cnt.n_decoh
         return self
 
-    def increment_n_etg(self, attempts: int) -> None:
+    def save_etg(self, task: "_EntangleTask") -> None:
         self.n_etg += 1
-        self.n_attempts += attempts
+        self.n_attempts += task.k
+        if self._history is not None:
+            self._history.append(task.t_finish.slot - task.t_reserve.slot)
+
+    @property
+    def etg_rate(self) -> float:
+        """
+        Entanglement rate, average number of entanglements per second per memory pair.
+
+        This reflects the uncontested rate, as if the memory pair is always available for the LinkLayer
+        to perform entanglement generations, not locked by the forwarding function.
+
+        This property is available only if constructor received positive ``history`` and ``rtt``.
+        If history is disabled or empty, returns NaN.
+        """
+        if not self._history:
+            return np.nan
+        avg_duration = self._rtt.slot + np.mean(self._history).item()
+        if avg_duration <= 0:
+            return np.nan
+        return self._rtt.accuracy / avg_duration
 
     @property
     def decoh_ratio(self) -> float:
@@ -141,15 +195,19 @@ class _ActiveChannel:
     """
 
     cnt: LinkLayerCounters
-    """Counters."""
+    """
+    Counters.
+    This field only exists on the primary node of the channel.
+    """
 
-    def __init__(self, qchannel: QuantumChannel, partner: QNode, is_primary: bool):
+    def __init__(self, qchannel: QuantumChannel, partner: QNode, is_primary: bool, *, cnt_history: int, rtt: Time):
         self.qchannel = qchannel
         self.partner = partner
         self.is_primary = is_primary
         self.paths = {}
         self.live_paths = set()
-        self.cnt = LinkLayerCounters()
+        if is_primary:
+            self.cnt = LinkLayerCounters(history=cnt_history, rtt=rtt)
 
     def __repr__(self) -> str:
         return f"ActiveChannel({self.partner.name})"
@@ -227,6 +285,11 @@ class _EntangleTask:
     Time point when the successful attempt begins.
     ``Time.SENTINEL`` means the reservation has not been accepted.
     """
+    t_finish: Time = Time.SENTINEL
+    """
+    Time point when the last notify event occurs.
+    ``Time.SENTINEL`` means the reservation has not been accepted.
+    """
     notify_pri_event: "_EntanglePriEvent|None" = None
     """
     Event to notify primary, cancelable before ``t_success``.
@@ -296,24 +359,10 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
     It equips a QNode and is activated from the forwarding function (e.g., ProactiveForwarder).
     """
 
-    def __init__(
-        self,
-        *,
-        eta_s: float = 0.95,
-        eta_d: float = 0.95,
-        frequency: float = 1e6,
-        tau_0: float = 0.0,
-    ):
+    def __init__(self, **kwargs: Unpack[LinkLayerInitKwargs]):
         super().__init__()
-
-        self.eta_s = eta_s
-        """Source efficiency between 0 and 1."""
-        self.eta_d = eta_d
-        """Detector efficiency between 0 and 1."""
-        self.reset_time = 1 / frequency
-        """Minimum time between two consecutive photon excitations/absorptions."""
-        self.tau_0 = tau_0
-        """Local operation delay in seconds."""
+        self.reset_time = 1 / kwargs.get("frequency", 1e6)
+        self.tau_0 = kwargs.get("tau_0", 0.0)
 
         self.channels: dict[str, _ActiveChannel] = {}
         """
@@ -322,6 +371,7 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         """
 
         self._cnt_deleted_channels = LinkLayerCounters()
+        self._cnt_history = kwargs.get("cnt_history", 0)
 
     @override
     def install(self, node) -> None:
@@ -335,7 +385,8 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         r = LinkLayerCounters()
         r += self._cnt_deleted_channels
         for ac in self.channels.values():
-            r += ac.cnt
+            if ac.is_primary:
+                r += ac.cnt
         return r
 
     def cnt_channel(self, ch: QuantumChannel) -> LinkLayerCounters | None:
@@ -346,7 +397,8 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
             ch: A quantum channel.
 
         Returns:
-            Counters of an active channel, None if the channel is inactive.
+            Counters of an active channel where this node is primary.
+            None if the channel is inactive or this node is secondary.
 
         Note:
             If a channel is recently deactivated but not yet deleted, its counters would still be returned.
@@ -354,7 +406,9 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         """
         partner = ch.find_peer(self.node)
         ac = self.channels.get(partner.name)
-        return ac and ac.cnt
+        if ac and ac.is_primary:
+            return ac.cnt
+        return None
 
     @sync_phase_handler(TimingPhase.EXTERNAL, True)
     def sync_external_enter(self) -> None:
@@ -393,7 +447,8 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         # Find or insert the ActiveChannel record.
         ac = self.channels.get(partner.name)
         if not ac:
-            ac = _ActiveChannel(ch, partner, event.is_primary)
+            rtt = self.simulator.time(sec=ConstantDelayModel.extract(ch.delay) * 2)
+            ac = _ActiveChannel(ch, partner, event.is_primary, cnt_history=self._cnt_history, rtt=rtt)
             self.channels[partner.name] = ac
 
             self._activate_channel(ac)
@@ -440,8 +495,6 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         la.set(
             time_accuracy=self.simulator.accuracy,
             ch=ch,
-            eta_s=self.eta_s,
-            eta_d=self.eta_d,
             reset_time=self.reset_time,
             tau_0=self.tau_0,
             epr_type=self.node.network.epr_type,
@@ -559,7 +612,8 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
 
         # If the channel has no more active paths, delete the channel.
         del self.channels[partner.name]
-        self._cnt_deleted_channels += ac.cnt
+        if ac.is_primary:
+            self._cnt_deleted_channels += ac.cnt
         self.log_debug("CHANNEL_DEACTIVATE_%s %s partner=%s", PathActivateEvent.ROLE_STR[ac.is_primary], ch.name, partner.name)
 
     @classic_cmd_handler("RESERVE_ABORT")
@@ -759,10 +813,11 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         task.t_success = task.t_reserve + la.attempt_interval * (task.k - 1)
         t_notify_pri = task.t_success + la.d_notify_pri
         t_notify_2nd = task.t_success + la.d_notify_2nd
+        task.t_finish = max(t_notify_pri, t_notify_2nd)
 
         # If the network uses SYNC timing mode but the successful attempt would exceed the current EXTERNAL phase,
         # the EPR would not arrive in time, and therefore is not scheduled.
-        if not self.node.timing.is_external(max(t_notify_pri, t_notify_2nd)):
+        if not self.node.timing.is_external(task.t_finish):
             self.log_debug(
                 "EPR_SKIP partner=%s key=%s attempts=%s t_success=%s t_notify=%s,%s reason=beyond-external-phase",
                 ac.partner.name,
@@ -800,7 +855,7 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
     @event_handler
     def _notify_pri(self, event: _EntanglePriEvent) -> None:
         del event.task.ap.oreq_table[event.key]
-        event.task.ac.cnt.increment_n_etg(event.task.k)
+        event.task.ac.cnt.save_etg(event.task)
         self._notify_entangle("pri", event)
 
     @event_handler

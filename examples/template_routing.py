@@ -79,8 +79,8 @@ DEFAULT_SEED_BASE = 100  # Can be changed via MQNS_SEED environment variable
 SIM_DURATION = 3.0
 
 FIBER_ALPHA_DB_PER_KM = 0.2
-ETA_D = 0.95
 ETA_S = 0.95
+ETA_D = 0.95
 MEMORY_FREQUENCY = 1e6
 ENTG_ATTEMPT_RATE = 50e6  # attempts/sec -- ineffective
 INIT_FIDELITY = 0.99
@@ -260,10 +260,10 @@ def build_network(route_algo: Any, t_cohere: float) -> QuantumNetwork:
             (("R3", "D2"), L_R3_D2, CAP_DEFAULT),
         ],
         fiber_alpha=FIBER_ALPHA_DB_PER_KM,
-        eta_d=ETA_D,
         eta_s=ETA_S,
-        frequency=MEMORY_FREQUENCY,
+        eta_d=ETA_D,
         init_fidelity=INIT_FIDELITY,
+        frequency=MEMORY_FREQUENCY,
         t_cohere=t_cohere,
     )
 

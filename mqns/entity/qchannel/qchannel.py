@@ -51,6 +51,10 @@ class QuantumChannelInitKwargs(BaseChannelInitKwargs, total=False):
     In ``LinkArch``, this parameter determines the success probability,
     but does not affect the decoherence / quality of the state given the photon arrived.
     """
+    eta_s: float
+    """Source efficiency between 0 and 1, defaults to ``0.95``."""
+    eta_d: float
+    """Detector efficiency between 0 and 1, defaults to ``0.95``."""
     init_fidelity: float | Sequence[float] | None
     """
     Initial fidelity value for entanglements delivered by this channel.
@@ -100,6 +104,8 @@ class QuantumChannel(BaseChannel[QNode]):
         assert self.alpha >= 0
         if self.drop_rate == 0 and self.length > 0 and self.alpha > 0:
             self.drop_rate = 1 - calc_transmission_prob(self.length, self.alpha)
+        self.eta_s = kwargs.get("eta_s", 0.95)
+        self.eta_d = kwargs.get("eta_d", 0.95)
 
         self.init_fidelity = kwargs.get("init_fidelity")
         self.transfer_error = parse_error(kwargs.get("transfer_error"), DepolarErrorModel, self.length)

@@ -34,13 +34,13 @@ class TopoQNode(TypedDict):
     """
     Memory parameters.
 
-    If omitted, use ``memory_args`` passed to CustomTopo constructor.
+    This is merged into ``memory_args`` passed to CustomTopo constructor.
     """
     apps: NotRequired[list[Application]]
     """
     Applications installed on the node.
 
-    If omitted, use ``nodes_apps`` passed to CustomTopo constructor.
+    This is concatenated before ``nodes_apps`` passed to CustomTopo constructor.
     """
 
 
@@ -122,7 +122,7 @@ class CustomTopology(Topology):
         # Create quantum nodes
         for node in self.topo["qnodes"]:
             qn = QNode(node["name"])
-            qn.add_apps(node["apps"] if "apps" in node else copy.deepcopy(self.nodes_apps))
+            qn.add_apps(node.get("apps", []) + copy.deepcopy(self.nodes_apps))
 
             # Assign a new memory
             memory_args = self.memory_args | node.get("memory", {})

@@ -59,6 +59,8 @@ class QubitReleaseReset(Application[QNode]):
 
 dflt_qchannel_args = QuantumChannelInitKwargs(
     length=100,  # delay is 0.0005 seconds
+    eta_s=1,
+    eta_d=1,
     init_fidelity=1.0,
     link_arch=LinkArchAlways(LinkArchDimBk()),  # etg creation in 0.001 seconds and arrival in 0.002 seconds
 )
@@ -309,8 +311,6 @@ def provide_entanglements(
         la.set(
             time_accuracy=simulator.accuracy,
             ch=ch,
-            eta_s=1,
-            eta_d=1,
             reset_time=0,
             tau_0=0,
             epr_type=src.network.epr_type,

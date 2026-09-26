@@ -79,8 +79,8 @@ class RunArgs(ParamsArgs):
 # global simulation parameters
 # note: only applied to MQNS, not auto-converted to SeQUeNCe
 fiber_alpha = 0.2
-eta_d = 0.95
 eta_s = 0.95
+eta_d = 0.95
 frequency = 1e6  # memory frequency
 entg_attempt_rate = 50e6  # From fiber max frequency (50 MHz) AND detectors count rate (60 MHz) -- ineffective
 init_fidelity = 0.99
@@ -100,15 +100,11 @@ def build_network(args: RunArgs) -> QuantumNetwork:
     topo = RandomTopology(
         nodes_number=args.nodes,
         lines_number=args.edges,
-        qchannel_args={"length": 30, "alpha": fiber_alpha, "init_fidelity": init_fidelity},
+        qchannel_args={"length": 30, "alpha": fiber_alpha, "eta_s": eta_s, "eta_d": eta_d, "init_fidelity": init_fidelity},
         cchannel_args={"length": 30},
         memory_args={"capacity": nqubits, "t_cohere": t_cohere},
         nodes_apps=[
-            LinkLayer(
-                eta_d=eta_d,
-                eta_s=eta_s,
-                frequency=frequency,
-            ),
+            LinkLayer(frequency=frequency),
             ProactiveForwarder(p_swap=p_swap, mux="S"),
             Consumer(),
         ],
