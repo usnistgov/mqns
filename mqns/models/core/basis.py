@@ -52,7 +52,7 @@ BASIS_Z = Basis(
     s0=QUBIT_STATE_0,
     s1=QUBIT_STATE_1,
 )
-"""Measurement basis Z: projects onto ``|0>`` and ``|1>``."""
+"""Measurement basis Z -- projects onto ``|0>`` and ``|1>``."""
 
 BASIS_X = Basis(
     "X",
@@ -60,7 +60,7 @@ BASIS_X = Basis(
     s0=QUBIT_STATE_P,
     s1=QUBIT_STATE_N,
 )
-"""Measurement basis X: projects onto ``|+>`` and ``|->``.."""
+"""Measurement basis X -- projects onto ``|+>`` and ``|->``."""
 
 BASIS_Y = Basis(
     "Y",
@@ -68,7 +68,7 @@ BASIS_Y = Basis(
     s0=QUBIT_STATE_R,
     s1=QUBIT_STATE_L,
 )
-"""Measurement basis Y: projects onto ``|R>`` and ``|L>``.."""
+"""Measurement basis Y -- projects onto ``|R>`` and ``|L>``."""
 
 type MeasureOutcome = Literal[0, 1]
 """Measurement outcome."""

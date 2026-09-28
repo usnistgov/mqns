@@ -31,8 +31,9 @@ from typing import Unpack, final, overload, override
 
 import numpy as np
 
+from mqns.models.core import Basis
 from mqns.models.core.state import BELL_RHO_PHI_P, QubitRho, check_qubit_rho
-from mqns.models.epr.entanglement import Entanglement, EntanglementInitKwargs
+from mqns.models.epr.entanglement import Entanglement, EntanglementInitKwargs, PurifProtocol
 from mqns.utils import rng
 
 
@@ -50,10 +51,12 @@ _w_1 = _fidelity_to_w(1.0)
 
 @final
 class WernerStateEntanglement(Entanglement):
-    """A pair of entangled qubits in Werner State with a hidden-variable."""
+    """
+    Werner state entanglement model.
+    """
 
     @overload
-    def __init__(self, *, fidelity: float = 1.0, **kwargs: Unpack[EntanglementInitKwargs]):
+    def __init__(self, *, fidelity=1.0, **kwargs: Unpack[EntanglementInitKwargs]):
         """Construct with fidelity."""
 
     @overload
@@ -83,17 +86,18 @@ class WernerStateEntanglement(Entanglement):
         return WernerStateEntanglement(w=epr0.w * epr1.w, **kwargs)
 
     @override
-    def _do_purify(self, epr1: "WernerStateEntanglement") -> bool:
-        """
-        Perform distillation using Bennett 96 protocol and estimate lower bound.
-        """
-        fmin = min(self.fidelity, epr1.fidelity)
-        expr1 = fmin**2 + 5 / 9 * (1 - fmin) ** 2 + 2 / 3 * fmin * (1 - fmin)
+    def _do_purify(self, epr1: "WernerStateEntanglement", protocol: PurifProtocol, basis: Basis) -> bool:
+        _ = basis, protocol  # Note: DEJMPS on isotropic Werner states yields identical math to BBPSSW
 
-        if rng.random() > expr1:
+        f0 = self.fidelity
+        f1 = epr1.fidelity
+
+        p_succ = f0 * f1 + (1 / 3) * f0 * (1 - f1) + (1 / 3) * f1 * (1 - f0) + (5 / 9) * (1 - f0) * (1 - f1)
+
+        if rng.random() > p_succ:
             return False
 
-        self.fidelity = (fmin**2 + (1 - fmin) ** 2 / 9) / expr1
+        self.fidelity = (f0 * f1 + (1 - f0) * (1 - f1) / 9) / p_succ
         return True
 
     @override

@@ -28,6 +28,10 @@ _p1 = np.array([[0, 0], [0, 1]], dtype=np.complex128)  # projector matrix |1><1|
 def operate_single(qubit: Qubit, op: Operator) -> None:
     """
     Apply a single-qubit operator.
+
+    Args:
+        qubit: Target qubit.
+        op: Single-qubit operator.
     """
     state = qubit.state
     i, n = state.qubits.index(qubit), state.num
@@ -42,9 +46,9 @@ def operate_controlled(q0: Qubit, q1: Qubit, op: Operator) -> None:
     Apply a controlled operator.
 
     Args:
-        q0: controller qubit.
-        q1: target qubit.
-        op: single-qubit operator.
+        q0: Controller qubit.
+        q1: Target qubit.
+        op: Single-qubit operator.
     """
     assert op.n == 1
     state = QState.joint(q0, q1)
@@ -70,10 +74,10 @@ def operate_cc(q0: Qubit, q1: Qubit, q2: Qubit, op: Operator) -> None:
     Apply a controlled-controlled operator.
 
     Args:
-        q0: first controller qubit.
-        q1: second controller qubit.
-        q2: target qubit.
-        op: single-qubit operator.
+        q0: First controller qubit.
+        q1: Second controller qubit.
+        q2: Target qubit.
+        op: Single-qubit operator.
     """
     assert op.n == 1
     QState.joint(q0, q1)
@@ -132,44 +136,44 @@ def _make_cc(op: Operator):
 
 
 I = _make_single(OPERATOR_PAULI_I)
-"""Pauli I Gate"""
+"""Pauli I gate."""
 X = _make_single(OPERATOR_PAULI_X)
-"""Pauli X Gate"""
+"""Pauli X gate."""
 Y = _make_single(OPERATOR_PAULI_Y)
-"""Pauli Y Gate"""
+"""Pauli Y gate."""
 Z = _make_single(OPERATOR_PAULI_Z)
-"""Pauli Z Gate"""
+"""Pauli Z gate."""
 H = _make_single(OPERATOR_H)
-"""Hadamard Gate"""
+"""Hadamard gate."""
 T = _make_single(OPERATOR_T)
-"""T gate (pi/4 shift gate)"""
+"""T gate (pi/4 shift gate)."""
 S = _make_single(OPERATOR_S)
-"""S gate (pi/2 shift gate)"""
+"""S gate (pi/2 shift gate)."""
 
 
 R = _make_rotate(OPERATOR_PHASE_SHIFT)
-"""R gate (phase shift gate)"""
+"""R gate (phase shift gate)."""
 RX = _make_rotate(OPERATOR_RX)
-"""Rx gate (X rotate gate)"""
+"""Rx gate (X rotate gate)."""
 RY = _make_rotate(OPERATOR_RY)
-"""Ry gate (Y rotate gate)"""
+"""Ry gate (Y rotate gate)."""
 RZ = _make_rotate(OPERATOR_RZ)
-"""Rz gate (Z rotate gate)"""
+"""Rz gate (Z rotate gate)."""
 
 
 def U(qubit: Qubit, op: Operator) -> None:
-    """Arbitrary single qubit operation gate"""
+    """Arbitrary single qubit operation gate."""
     return operate_single(qubit, op)
 
 
 CX = _make_controlled(OPERATOR_PAULI_X)
-"""Controlled Pauli-X gate"""
+"""Controlled Pauli-X gate."""
 CY = _make_controlled(OPERATOR_PAULI_Y)
-"""Controlled Pauli-Y gate"""
+"""Controlled Pauli-Y gate."""
 CZ = _make_controlled(OPERATOR_PAULI_Z)
-"""Controlled Pauli-Z gate"""
+"""Controlled Pauli-Z gate."""
 CNOT = CX
-"""Controlled NOT gate"""
+"""Controlled NOT gate."""
 
 
 def _make_controlled_rotate(op: Callable[[float], Operator]):
@@ -180,7 +184,7 @@ def _make_controlled_rotate(op: Callable[[float], Operator]):
 
 
 CR = _make_controlled_rotate(OPERATOR_PHASE_SHIFT)
-"""Controlled Phase Rotate Gate"""
+"""Controlled Phase Rotate gate."""
 
 
 def Swap(q0: Qubit, q1: Qubit) -> None:
@@ -189,8 +193,9 @@ def Swap(q0: Qubit, q1: Qubit) -> None:
     i0 = state.qubits.index(q0)
     i1 = state.qubits.index(q1)
     assert i0 != i1, "Qubits must be distinct"
-    state.qubits[i0], state.qubits[i1] = state.qubits[i1], state.qubits[i0]
+    state.qubits[i0] = q1
+    state.qubits[i1] = q0
 
 
 Toffoli = _make_cc(OPERATOR_PAULI_X)
-"""Toffoli Gate"""
+"""Toffoli gate."""

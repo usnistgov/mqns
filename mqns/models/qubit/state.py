@@ -1,4 +1,5 @@
-from typing import TYPE_CHECKING
+from collections.abc import Callable, Sequence
+from typing import TYPE_CHECKING, cast, final, overload
 
 import numpy as np
 
@@ -10,6 +11,7 @@ if TYPE_CHECKING:
     from mqns.models.qubit.qubit import Qubit
 
 
+@final
 class QState:
     """QState tracks the state of one or more qubits."""
 
@@ -27,6 +29,13 @@ class QState:
             q.state = nq
         return nq
 
+    qubits: list["Qubit"]
+    """List of qubits in this state."""
+
+    rho: QubitRho
+    """Density matrix."""
+
+    @overload
     def __init__(
         self,
         qubits: list["Qubit"],
@@ -36,15 +45,32 @@ class QState:
     ):
         """
         Args:
-            qubits: list of qubits in this state.
-            state: state vector, required if ``rho`` is absent.
-            rho: density matrix, ignored if ``state`` is specified.
+            qubits: List of qubits in this state.
+            state: State vector, required if ``rho`` is absent.
+            rho: Density matrix, ignored if ``state`` is specified.
         """
-        self.qubits = qubits
-        """List of qubits in this state."""
+
+    @overload
+    def __init__(self, qubits: int, *, rho: QubitRho, make_qubit: Callable[["QState"], "Qubit"]):
+        """
+        Used by ``Qubit.create_multi()``.
+        """
+
+    def __init__(
+        self,
+        qubits: int | list["Qubit"],
+        *,
+        state: QubitState | None = None,
+        rho: QubitRho | None = None,
+        make_qubit: Callable[["QState"], "Qubit"] | None = None,
+    ):
+        if make_qubit:
+            self.qubits = [make_qubit(self) for _ in range(cast(int, qubits))]
+        else:
+            self.qubits = cast(list, qubits)
+
         if state is None:
             self.rho = check_qubit_rho(unwrap(rho), self.num)
-            """Density matrix."""
         else:
             self.rho = qubit_state_to_rho(state, self.num)
 
@@ -58,10 +84,11 @@ class QState:
         Measure a qubit using the specified basis.
 
         Args:
-            qubit: the qubit to be measured, which will be removed from the state.
-            basis: measurement basis.
+            qubit: The qubit to be measured, which will be removed from the state.
+            basis: Measurement basis.
 
-        Returns: Measurement outcome 0 or 1.
+        Returns:
+            Measurement outcome 0 or 1.
         """
         try:
             idx = self.qubits.index(qubit)
@@ -96,9 +123,9 @@ class QState:
         Remove a qubit from state without measurement.
 
         Args:
-            qubit: qubit in this state to be removed.
-            idx: index of qubit in ``self.qubits``, if known.
-            state: new state of the removed qubit.
+            qubit: Qubit in this state to be removed.
+            idx: Index of qubit in ``self.qubits``, if known.
+            state: New state of the removed qubit.
         """
         if idx is None:
             try:
@@ -106,7 +133,7 @@ class QState:
             except ValueError:
                 raise RuntimeError("qubit not in state")
 
-        self.rho = qubit_rho_remove(self.rho, idx, self.num)
+        self.rho = qubit_rho_remove(self.rho, [idx], self.num)
         self.qubits.remove(qubit)
 
         qubit.state = QState([qubit], state=state)
@@ -116,20 +143,20 @@ class QState:
         Apply an operator to the state.
 
         Args:
-            op: the operator or its matrix with the correct dimension.
+            op: The operator or its matrix with the correct dimension.
         """
         if not isinstance(op, Operator):
             op = Operator(op, self.num)
         self.rho = op(self.rho)
 
-    def stochastic_operate(self, operators: list[Operator] = [], probabilities: list[float] = []) -> None:
+    def stochastic_operate(self, operators: Sequence[Operator], probabilities: Sequence[float]) -> None:
         """
         Apply a set of operators with associated probabilities to the state.
         It usually turns a pure state into a mixed state.
 
         Args:
-            operators: a list of operators, each must have the correct dimension.
-            probabilities: the probability of applying each operator; their sum must be 1.
+            operators: List of operators, each must have the correct dimension.
+            probabilities: The probability of applying each operator; their sum must be 1.
         """
         assert len(operators) == len(probabilities), "must have same number of operators and probabilities"
         prob = np.array(probabilities, dtype=np.float64)
@@ -146,7 +173,8 @@ class QState:
         """
         Convert to state vector if this is a pure state.
 
-        Returns: Either a state vector, or None if this is a mixed state.
+        Returns:
+            Either a state vector, or None if this is a mixed state.
         """
         return qubit_rho_to_state(self.rho, self.num)
 

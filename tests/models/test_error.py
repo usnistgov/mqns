@@ -35,8 +35,7 @@ from mqns.models.error.input import (
     ErrorModelInputBasic,
     parse_error,
 )
-from mqns.models.qubit import Qubit
-from mqns.models.qubit.gate import CNOT, H
+from mqns.models.qubit import CNOT, H, Qubit
 from mqns.simulator import Time
 from mqns.utils import rng
 

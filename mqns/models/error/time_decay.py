@@ -1,15 +1,13 @@
 from collections.abc import Callable
-from typing import TYPE_CHECKING, TypedDict
+from typing import TypedDict
 
+from mqns.models.core import QuantumModel
 from mqns.models.error import ErrorModel
 from mqns.models.error.input import ErrorModelConstructor, parse_error_str
 from mqns.models.error.pauli import DephaseErrorModel
 from mqns.simulator import Time
 
-if TYPE_CHECKING:
-    from mqns.models.core import QuantumModel
-
-type TimeDecayFunc = Callable[["QuantumModel", Time], None]
+type TimeDecayFunc = Callable[[QuantumModel, Time], None]
 """
 Function to apply time based decay.
 
@@ -19,7 +17,7 @@ Args:
 """
 
 
-def _time_decay_nop(target: "QuantumModel", t: Time) -> None:
+def _time_decay_nop(target: QuantumModel, t: Time) -> None:
     _ = target, t
 
 

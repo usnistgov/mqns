@@ -15,24 +15,56 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from collections.abc import Sequence
 from typing import overload, override
 
 from mqns.models.core import QuantumModel
 from mqns.models.core.basis import BASIS_Z, MeasureOutcome
 from mqns.models.core.operator import Operator
-from mqns.models.core.state import (
-    QUBIT_RHO_0,
-    QUBIT_STATE_0,
-    QubitRho,
-    QubitState,
-)
-from mqns.models.error import DepolarErrorModel
+from mqns.models.core.state import QUBIT_RHO_0, QUBIT_STATE_0, QubitRho, QubitState
+from mqns.models.error import DepolarErrorModel, ErrorModel
 from mqns.models.error.input import ErrorModelInputBasic, parse_error
 from mqns.models.qubit.state import QState
 
 
 class Qubit(QuantumModel):
-    """Represent a qubit."""
+    """Qubit within a quantum state."""
+
+    @staticmethod
+    def create_multi(
+        n: int,
+        *,
+        rho: QubitRho,
+        operate_error: ErrorModelInputBasic = None,
+        measure_error: ErrorModelInputBasic = None,
+    ) -> list["Qubit"]:
+        """
+        Create multiple qubits sharing a density matrix.
+
+        Args:
+            n: Quantity of qubits.
+            rho: Density matrix.
+            operate_error: Operate error model.
+            measure_error: Measure error model.
+        """
+        return QState(
+            n,
+            rho=rho,
+            make_qubit=lambda qs: Qubit(
+                qs,
+                operate_error=operate_error,
+                measure_error=measure_error,
+            ),
+        ).qubits
+
+    name: str
+    """Descriptive name."""
+    state: QState
+    """QState that includes this qubit."""
+    operate_error: ErrorModel
+    """Operate error model."""
+    measure_error: ErrorModel
+    """Measure error model."""
 
     @overload
     def __init__(
@@ -47,10 +79,10 @@ class Qubit(QuantumModel):
         Construct with qubit state.
 
         Args:
-            state: initial state, default is ``|0>``.
-            operate_error: operate error model.
-            measure_error: measure error model.
-            name: descriptive name.
+            state: Initial state, default is ``|0>``.
+            operate_error: Operate error model.
+            measure_error: Measure error model.
+            name: Descriptive name.
         """
 
     @overload
@@ -66,15 +98,27 @@ class Qubit(QuantumModel):
         Construct with density matrix.
 
         Args:
-            state: initial density matrix.
-            operate_error: operate error model.
-            measure_error: measure error model.
-            name: descriptive name.
+            state: Initial density matrix.
+            operate_error: Operate error model.
+            measure_error: Measure error model.
+            name: Descriptive name.
+        """
+
+    @overload
+    def __init__(
+        self,
+        state: QState,
+        *,
+        operate_error: ErrorModelInputBasic,
+        measure_error: ErrorModelInputBasic,
+    ):
+        """
+        Used by ``Qubit.create_multi()``.
         """
 
     def __init__(
         self,
-        state: QubitState | None = None,
+        state: QubitState | QState | None = None,
         *,
         rho: QubitRho = QUBIT_RHO_0,
         operate_error: ErrorModelInputBasic = None,
@@ -82,13 +126,9 @@ class Qubit(QuantumModel):
         name="",
     ):
         self.name = name
-        """Descriptive name."""
-        self.state = QState([self], state=state, rho=rho)
-        """QState that includes this qubit."""
+        self.state = state if type(state) is QState else QState([self], state=state, rho=rho)
         self.operate_error = parse_error(operate_error, DepolarErrorModel, -1)
-        """Operate error model."""
         self.measure_error = parse_error(measure_error, DepolarErrorModel, -1)
-        """Measure error model."""
 
     def measure(self, basis=BASIS_Z) -> MeasureOutcome:
         """
@@ -102,17 +142,17 @@ class Qubit(QuantumModel):
         self.apply_error(self.measure_error)
         return self.state.measure(self, basis)
 
-    def stochastic_operate(self, operators: list[Operator] = [], probabilities: list[float] = []) -> None:
+    def stochastic_operate(self, operators: Sequence[Operator], probabilities: Sequence[float]) -> None:
         """
         Apply a set of operators with associated probabilities to the qubit.
         It usually turns a pure state into a mixed state.
 
         Args:
-            operators: a list of operators, each must operate on a single qubit.
-            probabilities: the probability of applying each operator; their sum must be 1.
+            operators: List of operators, each must operate on a single qubit.
+            probabilities: The probability of applying each operator; their sum must be 1.
         """
         i, n = self.state.qubits.index(self), self.state.num
-        full_operators: list[Operator] = [op.lift(i, n) for op in operators]
+        full_operators = [op.lift(i, n) for op in operators]
         self.state.stochastic_operate(full_operators, probabilities)
 
     @override
@@ -120,6 +160,4 @@ class Qubit(QuantumModel):
         error.qubit(self)
 
     def __repr__(self) -> str:
-        if self.name is not None:
-            return "<qubit " + self.name + ">"
-        return super().__repr__()
+        return "<qubit " + self.name + ">"

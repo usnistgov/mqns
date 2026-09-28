@@ -88,7 +88,7 @@ class QuantumNetwork:
         """
         self.timing = timing
         self.epr_type = parse_epr_type(epr_type)
-        assert getattr(self.epr_type, "__final__", False) is True, f"entanglement type {epr_type} must be marked @final"
+        assert getattr(self.epr_type, "__final__", False) is True, f"entanglement type {self.epr_type} must be marked @final"
 
         self._controller: Controller | None = None
         self._nodes: dict[str, QNode] = {}

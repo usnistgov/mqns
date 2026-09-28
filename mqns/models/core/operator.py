@@ -12,23 +12,28 @@ from mqns.models.core.state import ATOL, QubitRho, QubitState
 
 @final
 class Operator:
+    n: Final[int]
+    """Number of qubits this operator can be used with."""
+
+    u: Final[np.ndarray[tuple[int, int], np.dtype[np.complex128]]]
+    """Operator matrix."""
+
+    u_dagger: Final[np.ndarray[tuple[int, int], np.dtype[np.complex128]]]
+    """Hermitian conjugate of the operator matrix."""
+
     def __init__(self, input: np.ndarray | list[list[complex]], n=1, *, check_unitary=True):
         """
         Build an operator for ``n`` qubits.
 
         Args:
-            input: (2**n, 2**n) matrix.
-            n: number of qubits.
-            check_unitary: if True, enforce the operator is unitary.
+            input: Matrix with ``(2**n, 2**n)`` dimension.
+            n: Number of qubits.
+            check_unitary: If True, enforce the operator is unitary.
         """
-        self.n: Final = n
-        """Number of qubits this operator can be used with."""
-        self.u: Final = np.array(input, dtype=np.complex128)
-        """Operator matrix."""
-        self.u_dagger: Final = self.u.conj().T
-        """Hermitian conjugate of the operator."""
-
+        self.n = n
+        self.u = np.array(input, dtype=np.complex128)
         self.u.flags.writeable = False
+        self.u_dagger = self.u.conj().T
         self.u_dagger.flags.writeable = False
         self._validate(check_unitary)
 
@@ -44,12 +49,13 @@ class Operator:
         Apply an operator on qubits.
 
         Args:
-            state: either a state vector or a density matrix for ``self.n`` qubits.
+            state: Either a state vector or a density matrix for ``self.n`` qubits.
 
         Raises:
-            ValueError: mismatch between operator size and state size.
+            ValueError: Mismatch between operator size and state size.
 
-        Returns: Transformed state vector or density matrix.
+        Returns:
+            Transformed state vector or density matrix.
         """
         if state.shape[0] != self.u.shape[0]:
             raise ValueError("state dimension does not match operator dimension")
@@ -64,15 +70,16 @@ class Operator:
         Expand a single-qubit operator to apply on the i-th qubit of a n-qubit state.
 
         Args:
-            self: single-qubit operator.
-            i: target qubit index.
-            n: number of qubits in the state vector or density matrix.
+            self: Single-qubit operator.
+            i: Target qubit index.
+            n: Number of qubits in the state vector or density matrix.
 
         Raises:
-            AssertionError: this is not a single-qubit operator.
-            ValueError: i or n is out of range.
+            AssertionError: This is not a single-qubit operator.
+            ValueError: ``i`` or ``n`` is out of range.
 
-        Returns: n-qubit operator.
+        Returns:
+            An n-qubit operator.
         """
         assert self.n == 1, "can only lift 1-qubit operator"
         if not (0 <= i < n):
@@ -124,7 +131,7 @@ def OPERATOR_PHASE_SHIFT(theta: float):
     Build an operator for phase shift gate: ``|1> -> exp(i*theta)|1>``.
 
     Args:
-        theta: relative phase, in radians.
+        theta: Relative phase, in radians.
     """
     return Operator([[1, 0], [0, np.exp(1j * theta)]])
 
@@ -148,6 +155,6 @@ OPERATOR_PAULI_Y = Operator([[0, -1j], [1j, 0]])
 """Pauli-Y operator."""
 
 OPERATOR_CNOT = Operator([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]], n=2)
-"""Controlled Not operator: flip the second qubit if the first is ``|1>``."""
+"""Controlled Not operator -- flip the second qubit if the first is ``|1>``."""
 OPERATOR_SWAP = Operator([[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]], n=2)
 """SWAP operator."""

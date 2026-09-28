@@ -54,18 +54,18 @@ def test_swap_fidelity():
     )
 
     ne1t = micros(2500)
-    ne1, _ = Entanglement.swap(e1, e2, now=ne1t)
+    ne1, success1 = Entanglement.swap(e1, e2, now=ne1t)
     assert e1.w == pytest.approx(0.983711102, abs=1e-6)
     assert e2.w == pytest.approx(0.985680493, abs=1e-6)
-    assert ne1 is not None
+    assert success1 is True
     assert ne1.w == pytest.approx(0.969624844, abs=1e-6)
     assert ne1.fidelity == pytest.approx(0.977218633, abs=1e-6)
 
     ne2t = micros(3500)
-    ne2, _ = Entanglement.swap(ne1, e3, now=ne2t)
+    ne2, success2 = Entanglement.swap(ne1, e3, now=ne2t)
     assert ne1.w == pytest.approx(0.967687533, abs=1e-6)
     assert e3.w == pytest.approx(0.985680493, abs=1e-6)
-    assert ne2 is not None
+    assert success2 is True
     assert ne2.w == pytest.approx(0.953830724, abs=1e-6)
     assert ne2.fidelity == pytest.approx(0.965373043, abs=1e-6)
 
@@ -96,8 +96,8 @@ def test_swap_decohered_inputs(monkeypatch: pytest.MonkeyPatch):
 
 def test_purify_success(monkeypatch: pytest.MonkeyPatch):
     now = Time(0, accuracy=1000000)
-    e1 = WernerStateEntanglement(fidelity=0.85)
-    e2 = WernerStateEntanglement(fidelity=0.85)
+    e1 = WernerStateEntanglement(fidelity=0.85, fidelity_time=now)
+    e2 = WernerStateEntanglement(fidelity=0.85, fidelity_time=now)
 
     monkeypatch.setattr(rng, "random", lambda: 0.1)
     assert e1.purify(e2, now=now) is True
@@ -109,8 +109,8 @@ def test_purify_success(monkeypatch: pytest.MonkeyPatch):
 
 def test_purify_failure(monkeypatch: pytest.MonkeyPatch):
     now = Time(0, accuracy=1000000)
-    e1 = WernerStateEntanglement(fidelity=0.5)
-    e2 = WernerStateEntanglement(fidelity=0.5)
+    e1 = WernerStateEntanglement(fidelity=0.5, fidelity_time=now)
+    e2 = WernerStateEntanglement(fidelity=0.5, fidelity_time=now)
 
     monkeypatch.setattr(rng, "random", lambda: 0.99)
     assert e1.purify(e2, now=now) is False

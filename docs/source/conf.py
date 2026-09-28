@@ -40,9 +40,9 @@ autodoc_default_options = {
     # https://github.com/sphinx-doc/sphinx/issues/4961#issuecomment-1543858623
     "ignore-module-all": True
 }
+autodoc_typehints = "description"
 
 # -- Options for HTML output
-
 html_theme = "sphinx_rtd_theme"
 
 # -- Options for EPUB output

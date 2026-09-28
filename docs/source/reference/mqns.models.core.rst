@@ -28,6 +28,14 @@ mqns.models.core.basis module
    :show-inheritance:
    :undoc-members:
 
+mqns.models.core.bell_diagonal module
+-------------------------------------
+
+.. automodule:: mqns.models.core.bell_diagonal
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 Module contents
 ---------------
 

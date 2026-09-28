@@ -12,8 +12,7 @@ from mqns.models.core.state import (
     qubit_state_equal,
     qubit_state_normalize_phase,
 )
-from mqns.models.qubit import Qubit
-from mqns.models.qubit.gate import CNOT, CR, CZ, RX, RY, H, Swap, Toffoli, U, X, Z
+from mqns.models.qubit import CNOT, CR, CZ, RX, RY, H, Qubit, Swap, Toffoli, U, X, Z
 
 _sqrt1_2 = 1 / np.sqrt(2)
 

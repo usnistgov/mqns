@@ -92,13 +92,14 @@ def check_qubit_rho(rho: np.ndarray, n=1, *, maybe_zero=False) -> QubitRho:
 
     Args:
         rho: NDArray.
-        n: expected number of qubits.
-        maybe_zero: if True, don't error if the matrix is all zeros.
+        n: Expected number of qubits.
+        maybe_zero: If True, don't error if the matrix is all zeros.
 
     Raises:
         AssertionError: ``rho`` has wrong shape or is not normalized.
 
-    Returns: Validated input.
+    Returns:
+        Validated input.
     """
     _check_rho_shape(rho, n)
     # Unit Trace: the sum of the diagonal elements must be exactly 1,
@@ -122,13 +123,14 @@ def normalize_qubit_rho(rho: np.ndarray, n=1, *, maybe_zero=False) -> QubitRho:
 
     Args:
         rho: NDArray.
-        n: expected number of qubits.
-        maybe_zero: if True, don't error if the matrix is all zeros.
+        n: Expected number of qubits.
+        maybe_zero: If True, don't error if the matrix is all zeros.
 
     Raises:
         AssertionError: ``rho`` has wrong shape.
 
-    Returns: Validated input.
+    Returns:
+        Validated input.
     """
     _check_rho_shape(rho, n)
 
@@ -161,8 +163,8 @@ def qubit_rho_to_state(rho: QubitRho, n=1) -> QubitState | None:
     Convert density matrix to state vector.
 
     Args:
-        rho: density matrix.
-        n: number of qubits.
+        rho: Density matrix.
+        n: Number of qubits.
 
     Returns:
         * State vector if ``rho`` represents a pure state.
@@ -212,23 +214,25 @@ def qubit_rho_classify_noise(ideal: QubitRho, noisy: QubitRho) -> Literal["IDENT
     return "DEPOLAR"
 
 
-def qubit_rho_remove(rho: QubitRho, i: int, n: int) -> QubitRho:
+def qubit_rho_remove(rho: QubitRho, indices: Iterable[int], n: int) -> QubitRho:
     """
-    Remove the i-th qubit from a density matrix of n qubits.
+    Remove one or more qubits from a density matrix of n qubits.
 
     Args:
-        rho: a density matrix of n qubits.
-        i: the index of the qubit to be removed.
-        n: total number of qubits before the operation.
+        rho: A density matrix of n qubits.
+        indices: Indices of the qubits to be removed.
+        n: Total number of qubits before the operation.
 
     Returns:
-        Density matrix of n-1 qubits.
+        Density matrix of with qubits at ``indices`` removed.
     """
-    res = rho.reshape((2, 2) * n)
-    res: np.ndarray = res.trace(axis1=i, axis2=n + i)
-    dim = 2 ** (n - 1)
+    res = rho.reshape((2,) * (2 * n))
+    for i in sorted(indices, reverse=True):
+        res: np.ndarray = res.trace(axis1=i, axis2=n + i)
+        n -= 1
+    dim = 2**n
     res = res.reshape((dim, dim))
-    return normalize_qubit_rho(res, n - 1, maybe_zero=True)
+    return normalize_qubit_rho(res, n, maybe_zero=True)
 
 
 def _seal[A: np.ndarray](var: A) -> A:

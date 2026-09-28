@@ -14,5 +14,5 @@ class QuantumModel(ABC):
         Apply an error model.
 
         Args:
-            error: error model with assigned error probability.
+            error: Error model with assigned error probability.
         """

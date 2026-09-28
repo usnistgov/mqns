@@ -28,16 +28,15 @@
 import hashlib
 from abc import abstractmethod
 from collections.abc import Iterable
-from typing import TYPE_CHECKING, Self, TypedDict, Unpack, cast
+from enum import Enum, auto
+from typing import TYPE_CHECKING, Any, Self, TypedDict, Unpack, cast
 
 import numpy as np
 
-from mqns.models.core import QuantumModel
-from mqns.models.core.operator import OPERATOR_PAULI_I, Operator
+from mqns.models.core import BASIS_Z, Basis, QuantumModel
 from mqns.models.core.state import QUBIT_STATE_P, QubitRho, build_qubit_state, qubit_state_to_rho
 from mqns.models.error import ErrorModel, PerfectErrorModel, TimeDecayFunc, time_decay_nop
-from mqns.models.qubit import QState, Qubit
-from mqns.models.qubit.gate import CNOT, H, U, X, Y, Z
+from mqns.models.qubit import CNOT, H, Qubit, X, Z
 from mqns.simulator import Time
 from mqns.utils import AutoIncrementIdentifier, rng
 
@@ -59,6 +58,11 @@ class EntanglementInitKwargs(TypedDict, total=False):
     dst: "QNode|None"
     mem_keys: tuple[str | None, str | None]
     store_decays: tuple[TimeDecayFunc | None, TimeDecayFunc | None]
+
+
+class PurifProtocol(Enum):
+    BBPSSW = auto()
+    DEJMPS = auto()
 
 
 class Entanglement(QuantumModel):
@@ -231,7 +235,7 @@ class Entanglement(QuantumModel):
         assert epr0.dst is epr1.src  # it's okay for src and dst to be None
 
         orig_eprs: list[E] = []
-        for epr in (epr0, epr1):
+        for epr in epr0, epr1:
             epr.apply_store_decays(now)
             if epr.orig_eprs:
                 orig_eprs.extend(cast(list[E], epr.orig_eprs))
@@ -272,14 +276,23 @@ class Entanglement(QuantumModel):
         Subclass implementation should calculate the fidelity of new entanglement.
         """
 
-    def purify(self, epr1: Self, *, now: Time) -> bool:
+    def purify(
+        self,
+        epr1: Self,
+        *,
+        now: Time,
+        protocol: PurifProtocol = PurifProtocol.DEJMPS,
+        basis: Basis = BASIS_Z,
+    ) -> bool:
         """
         Perform purification on ``self`` consuming ``epr1``.
 
         Args:
-            self: kept entanglement.
-            epr1: consumed entanglement.
-            now: current timestamp.
+            self: Kept entanglement.
+            epr1: Consumed entanglement.
+            now: Current timestamp.
+            protocol: Distillation protocol, either BBPSSW or DEJMPS.
+            basis: Measurement basis, either ``BASIS_Z`` or ``BASIS_X``.
 
         Returns:
             Whether successful.
@@ -291,8 +304,10 @@ class Entanglement(QuantumModel):
         if self.is_decohered or epr1.is_decohered:
             return False
 
-        _ = now
-        ok = self._do_purify(epr1)
+        for epr in self, epr1:
+            epr.apply_store_decays(now)
+
+        ok = self._do_purify(epr1, protocol, basis)
 
         if not ok:
             self.is_decohered = True
@@ -301,30 +316,28 @@ class Entanglement(QuantumModel):
         return ok
 
     @abstractmethod
-    def _do_purify(self, epr1) -> bool:
+    def _do_purify(self, epr1: Any, protocol: PurifProtocol, basis: Basis) -> bool:
         pass
 
     def to_qubits(self) -> tuple[Qubit, Qubit]:
         """
-        Transport the entanglement into a pair of qubits based on the fidelity.
-        Maximally entanglement returns ``|Φ+>`` state.
+        Transport the entanglement into a pair of qubits.
+        Maximal entanglement returns ``|Φ+>`` state.
+
+        Post-condition:
+
+        * The entanglement is marked as decohered.
 
         Returns:
             A tuple of two qubits.
         """
         if self.is_decohered:
-            q0 = Qubit(QUBIT_STATE_P, name="q0")
-            q1 = Qubit(QUBIT_STATE_P, name="q1")
-            return (q0, q1)
-
-        q0 = Qubit(name="q0")
-        q1 = Qubit(name="q1")
-        qs = QState([q0, q1], rho=self._to_qubits_rho())
-        q0.state = qs
-        q1.state = qs
-
-        self.is_decohered = True
-        return (q0, q1)
+            q0 = Qubit(QUBIT_STATE_P)
+            q1 = Qubit(QUBIT_STATE_P)
+        else:
+            q0, q1 = Qubit.create_multi(2, rho=self._to_qubits_rho())
+            self.is_decohered = True
+        return q0, q1
 
     def _to_qubits_rho(self) -> QubitRho:
         a = np.sqrt(self.fidelity / 2)
@@ -334,21 +347,34 @@ class Entanglement(QuantumModel):
 
     def teleportation(self, qubit: Qubit) -> Qubit:
         """
-        Use ``self`` and ``qubit`` to perform teleportation.
+        Teleport the state of ``qubit`` to the remote half of this entangled pair.
+
+        Args:
+            qubit: The qubit whose state is to be teleported.
+                   It shall be co-located with the first qubit in ``self.to_qubits()``.
+
+        Post-condition and return value:
+
+        * ``qubit`` is consumed.
+        * The entanglement is consumed / decohered.
+        * Returned qubit has same state as input ``qubit``.
+          It is co-located with the second qubit from ``self.to_qubits()``.
         """
+        q0 = qubit
         q1, q2 = self.to_qubits()
-        CNOT(qubit, q1)
-        H(qubit)
-        c0 = qubit.measure()
-        c1 = q1.measure()
-        if c1 == 1 and c0 == 0:
+
+        # Perform Bell state measurement on the local half.
+        CNOT(q0, q1)
+        H(q0)
+        m0 = q0.measure()
+        m1 = q1.measure()
+
+        # Apply Pauli corrections on the remote half.
+        if m1 == 1:
             X(q2)
-        elif c1 == 0 and c0 == 1:
+        if m0 == 1:
             Z(q2)
-        elif c1 == 1 and c0 == 1:
-            Y(q2)
-            U(q2, Operator(np.complex128(1j) * OPERATOR_PAULI_I.u, 1))
-        self.is_decohered = True
+
         return q2
 
     def __repr__(self) -> str:

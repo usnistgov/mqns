@@ -15,7 +15,7 @@ from mqns.models.core.state import (
     qubit_rho_classify_noise,
     qubit_state_equal,
 )
-from mqns.models.epr import MixedStateEntanglement
+from mqns.models.epr import Entanglement, MixedStateEntanglement, PurifProtocol
 from mqns.models.error import DephaseErrorModel, DepolarErrorModel, DissipationErrorModel, PerfectErrorModel
 from mqns.models.error.input import ErrorModelInputBasic, parse_error
 from mqns.models.qubit import Qubit
@@ -44,7 +44,7 @@ def test_swap():
     e1 = MixedStateEntanglement(fidelity=0.95, fidelity_time=now, decohere_time=decohere)
     e2 = MixedStateEntanglement(fidelity=0.95, fidelity_time=now, decohere_time=decohere)
 
-    ne, local_success = MixedStateEntanglement.swap(e1, e2, now=now)
+    ne, local_success = Entanglement.swap(e1, e2, now=now)
     assert local_success is True
     assert ne.fidelity == pytest.approx(0.903333, abs=1e-6)
 
@@ -56,11 +56,11 @@ def test_purify_success(monkeypatch: pytest.MonkeyPatch):
 
     e3 = MixedStateEntanglement(fidelity=0.9033333333333332, fidelity_time=now, decohere_time=decohere)
     e6 = MixedStateEntanglement(fidelity=0.9033333333333332, fidelity_time=now, decohere_time=decohere)
-    assert e3.purify(e6, now=now) is True
+    assert e3.purify(e6, now=now, protocol=PurifProtocol.DEJMPS) is True
     assert e3.fidelity == pytest.approx(0.929080, abs=1e-6)
 
     e8 = MixedStateEntanglement(fidelity=0.95, fidelity_time=now, decohere_time=decohere)
-    assert e3.purify(e8, now=now) is True
+    assert e3.purify(e8, now=now, protocol=PurifProtocol.DEJMPS) is True
     assert e3.probv == pytest.approx((9.183907e-1, 8.179613e-5, 8.179613e-5, 8.144570e-2), rel=1e-6)
 
 
@@ -71,7 +71,7 @@ def test_purify_failure(monkeypatch: pytest.MonkeyPatch):
 
     e3 = MixedStateEntanglement(fidelity=0.9033333333333332, fidelity_time=now, decohere_time=decohere)
     e6 = MixedStateEntanglement(fidelity=0.9033333333333332, fidelity_time=now, decohere_time=decohere)
-    assert e3.purify(e6, now=now) is False
+    assert e3.purify(e6, now=now, protocol=PurifProtocol.DEJMPS) is False
 
 
 def test_teleportion():

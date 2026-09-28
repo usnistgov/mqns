@@ -10,13 +10,12 @@ from mqns.models.core.state import ATOL
 
 type BellDiagonalProbV = np.ndarray[tuple[Literal[4]], np.dtype[np.float64]]
 """
-Bell-Diagonal probability vector.
+Bell-Diagonal probability vector, with four elements:
 
-Elements:
-    i: Probability of desired state, i.e. fidelity.
-    z: Probability of Z-flip.
-    x: Probability of X-flip.
-    y: Probability of Y-flip.
+* i: Probability of desired state, i.e. fidelity.
+* z: Probability of Z-flip.
+* x: Probability of X-flip.
+* y: Probability of Y-flip.
 """
 
 
