@@ -160,8 +160,6 @@ class TopoCommonArgs(NodeArgs, ChannelArgs):
     # Conceptually these should belong to either NodeArgs or ChannelArgs,
     # but implementation limitation made them non-configurable.
     # If use case arises, these could be refactored to be per-node or per-channel.
-    entg_attempt_rate: NotRequired[float]
-    """Maximum entanglement attempts per second, defaults to ``50_000_000`` but currently ineffective."""
     eta_d: NotRequired[float]
     """Detector efficiency, defaults to ``0.95``."""
     eta_s: NotRequired[float]
@@ -415,7 +413,6 @@ class NetworkBuilder:
     def _add_link_layer(self):
         self.qnode_apps.append(
             LinkLayer(
-                attempt_rate=self.d.get("entg_attempt_rate", 50e6),
                 eta_d=self.d.get("eta_d", 0.95),
                 eta_s=self.d.get("eta_s", 0.95),
                 frequency=self.d.get("frequency", 1e6),

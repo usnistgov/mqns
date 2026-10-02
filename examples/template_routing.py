@@ -82,7 +82,7 @@ FIBER_ALPHA_DB_PER_KM = 0.2
 ETA_D = 0.95
 ETA_S = 0.95
 MEMORY_FREQUENCY = 1e6
-ENTG_ATTEMPT_RATE = 50e6  # if your LinkLayer uses attempt_rate
+ENTG_ATTEMPT_RATE = 50e6  # attempts/sec -- ineffective
 INIT_FIDELITY = 0.99
 P_SWAP = 0.5
 
@@ -262,7 +262,6 @@ def build_network(route_algo: Any, t_cohere: float) -> QuantumNetwork:
         fiber_alpha=FIBER_ALPHA_DB_PER_KM,
         eta_d=ETA_D,
         eta_s=ETA_S,
-        entg_attempt_rate=ENTG_ATTEMPT_RATE,
         frequency=MEMORY_FREQUENCY,
         init_fidelity=INIT_FIDELITY,
         t_cohere=t_cohere,

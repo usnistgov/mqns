@@ -290,27 +290,13 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
     def __init__(
         self,
         *,
-        attempt_rate: float = 1e6,
-        eta_s: float = 1.0,
-        eta_d: float = 1.0,
-        frequency: float = 80e6,
+        eta_s: float = 0.95,
+        eta_d: float = 0.95,
+        frequency: float = 1e6,
         tau_0: float = 0.0,
     ):
-        """
-        Constructor.
-
-        Args:
-            attempt_rate: max entanglement attempts per second (default: 1e6) (currently ineffective).
-            eta_s: source efficiency (default: 1.0).
-            eta_d: detector efficiency (default: 1.0).
-            frequency: entanglement source frequency in Hz (default: 80e6).
-            tau_0: local operation delay in seconds for emitting and absorbing photon (default: 0.0).
-
-        """
         super().__init__()
 
-        self.attempt_interval = 1 / attempt_rate
-        """Minimum interval spaced out between attempts (currently ineffective)."""
         self.eta_s = eta_s
         """Source efficiency between 0 and 1."""
         self.eta_d = eta_d

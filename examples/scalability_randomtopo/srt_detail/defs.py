@@ -82,7 +82,7 @@ fiber_alpha = 0.2
 eta_d = 0.95
 eta_s = 0.95
 frequency = 1e6  # memory frequency
-entg_attempt_rate = 50e6  # From fiber max frequency (50 MHz) AND detectors count rate (60 MHz)
+entg_attempt_rate = 50e6  # From fiber max frequency (50 MHz) AND detectors count rate (60 MHz) -- ineffective
 init_fidelity = 0.99
 t_cohere = 5e-3
 p_swap = 0.5
@@ -105,7 +105,6 @@ def build_network(args: RunArgs) -> QuantumNetwork:
         memory_args={"capacity": nqubits, "t_cohere": t_cohere},
         nodes_apps=[
             LinkLayer(
-                attempt_rate=entg_attempt_rate,
                 eta_d=eta_d,
                 eta_s=eta_s,
                 frequency=frequency,
