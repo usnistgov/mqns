@@ -57,7 +57,7 @@ log.set_default_level("CRITICAL")
 
 class Args(Tap):
     workers: int = 1  # number of workers for parallel execution
-    runs: int = 10  # number of trials per parameter set
+    runs: tuple[int, int] = (10, 10)  # number of trials per parameter set in calibration and evaluation
     sim_duration: tuple[float, float] = (5.0, 25.0)  # calibration and evaluation duration in seconds
     L: tuple[float, float] = (32, 18)  # link length
     M: tuple[int, int] = (1, 1)  # channel capacity
@@ -103,6 +103,8 @@ F_REQ_VALUES: Sequence[float] = [0.75, 0.7823, 0.8146, 0.8469, 0.8791, 0.8904, 0
 
 
 class Stats(TypedDict):
+    lam: list[float]
+    """LinkLayer arrival rate for each link -- collected via ActiveChannel counters."""
     rate: float
     """Rate -- number of entanglements consumed per second."""
     fid_mean: float
@@ -185,6 +187,7 @@ def _run_simulation(
         eta_s=0.99,
         eta_d=0.58,
     ).proactive_centralized(
+        ll={"cnt_history": 65536},
         p_swap=args.q,
         swap_delay=0 if modeled is None else modeled.Tswp,
         swap_error="PERFECT",  # no error applied by the swap gates
@@ -235,12 +238,17 @@ def run_evaluation(seed: int, args: Args, modeled: s2q_model.ComputedWaitTimeBud
     duration = args.sim_duration[1]
     net = _run_simulation(seed, args, duration, modeled)
 
+    lam = [
+        unwrap(net.get_node(ch[0]).get_app(LinkLayer).cnt_channel(net.get_qchannel(ch[0], ch[1]))).etg_rate
+        for ch in ("SR", "RD")
+    ]
+
     req_cnt = RequestCounters.of(net, 0, "S-D")
     rate = req_cnt.get_rate(duration)
     fids = np.array(unwrap(req_cnt.consumed_fidelity_values), dtype=float)
     if len(fids) == 0:
-        return Stats(rate=rate, fid_mean=0, fid_std=0)
-    return Stats(rate=rate, fid_mean=fids.mean(), fid_std=fids.std())
+        return Stats(lam=lam, rate=rate, fid_mean=0, fid_std=0)
+    return Stats(lam=lam, rate=rate, fid_mean=fids.mean(), fid_std=fids.std())
 
 
 def _make_queue_spec(m: int, lam1: float, w: float, t: float) -> s2q_model.QueueSpec:
@@ -259,7 +267,7 @@ def run_row(args: Args, f_req: float, lam_mean: list[float]) -> Row:
         depol=args.depol,
     )
 
-    runs = [run_evaluation(seed, args, modeled) for seed in seed_seq_env(args.runs, 100)]
+    runs = [run_evaluation(seed, args, modeled) for seed in seed_seq_env(args.runs[1], 0)]
 
     rates = np.fromiter((s["rate"] for s in runs), dtype=float)
     fids = np.fromiter((s["fid_mean"] if s["rate"] > 0 else np.nan for s in runs), dtype=float)
@@ -300,7 +308,7 @@ def run_row(args: Args, f_req: float, lam_mean: list[float]) -> Row:
 def main(args: Args) -> Report:
     # Run calibration step to determine LinkLayer arrival rates of each channel.
     with Pool(processes=args.workers) as pool:
-        lam_runs = pool.starmap(run_calibration, itertools.product(seed_seq_env(args.runs, 100), [args]))
+        lam_runs = pool.starmap(run_calibration, itertools.product(seed_seq_env(args.runs[0], 0), [args]))
     lam_mean: list[float] = []
     lam_std: list[float] = []
     # Collect mean LinkLayer arrival rates of each channel.

@@ -179,6 +179,11 @@ class AppsCommonArgs(TypedDict, total=False):
     If specified as three floats, construct ``TimingModeSync`` with these durations.
     """
 
+    ll: LinkLayerInitKwargs
+    """
+    LinkLayer parameters.
+    """
+
 
 class AppsForwarderArgs(AppsCommonArgs, ForwarderInitKwargs):
     """
@@ -421,9 +426,11 @@ class NetworkBuilder:
                 timing = (t_cohere / 2 - 2 * CTRL_DELAY, 4 * CTRL_DELAY, t_cohere / 2 - 2 * CTRL_DELAY)
             self.timing = TimingModeSync(durations=timing)
 
+        self.link_layer_args = d.pop("ll", {})
+
     def _add_link_layer(self):
         for name, node in self.qnode_by_name.items():
-            node.setdefault("apps", []).append(LinkLayer(**self.link_layer_by_node[name]))
+            node.setdefault("apps", []).append(LinkLayer(**(self.link_layer_by_node[name] | self.link_layer_args)))
 
     def _add_consumer(self):
         self.qnode_apps.append(Consumer())
