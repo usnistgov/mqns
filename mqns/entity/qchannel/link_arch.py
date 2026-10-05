@@ -25,6 +25,10 @@ class ChannelParameters(Protocol):
     Fiber propagation delay in seconds, also used as one-way classical message delay.
     This must reflect a constant delay.
     """
+    eta_s: float
+    """Source efficiency between 0 and 1."""
+    eta_d: float
+    """Detector efficiency between 0 and 1."""
     init_fidelity: float | Sequence[float] | None
     """Initial fidelity value for entanglements delivered by this channel."""
     transfer_error: ErrorModel
@@ -47,10 +51,6 @@ class LinkArchParameters(TypedDict):
     """Time accuracy."""
     ch: ChannelParameters
     """QuantumChannel to gather parameters from."""
-    eta_s: float
-    """Source efficiency between 0 and 1."""
-    eta_d: float
-    """Detector efficiency between 0 and 1."""
     reset_time: float
     """Inverse of source frequency in Hz."""
     tau_0: float
@@ -151,8 +151,8 @@ class LinkArchBase(ABC):
         self.success_prob = self._compute_success_prob(
             length=ch.length,
             alpha=ch.alpha,
-            eta_s=kwargs["eta_s"],
-            eta_d=kwargs["eta_d"],
+            eta_s=ch.eta_s,
+            eta_d=ch.eta_d,
         )
 
         attempt_interval, d_notify_pri, d_notify_2nd = self._compute_delays(

@@ -103,9 +103,6 @@ class ReactiveRoutingController(RoutingController):
 
     @sync_phase_handler(TimingPhase.ROUTING, True)
     def sync_routing_enter(self) -> None:
-        """
-        In SYNC timing mode, enter ROUTING phase.
-        """
         # Delete topology link state from previous time slot.
         self._tls.clear()
         # Wait half of ROUTING phase, then perform routing computation.

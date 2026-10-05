@@ -94,7 +94,7 @@ LINK_ARCH = LinkArchDimBk
 # ──────────────────────────────────────────────────────────────────────────────
 # USER CONFIG: Physics / Link-Layer parameters (passed into NetworkBuilder)
 # ──────────────────────────────────────────────────────────────────────────────
-ENTG_ATTEMPT_RATE = 50e6  # attempts/sec
+ENTG_ATTEMPT_RATE = 50e6  # attempts/sec -- ineffective
 INIT_FIDELITY = 0.99  # fidelity of generated elementary entanglement
 FIBER_ALPHA = 0.2  # dB/km
 ETA_D = 0.95  # detector efficiency
@@ -162,14 +162,13 @@ def run_simulation(
             nodes=nodes,
             mem_capacity=MEM_CAPACITY,
             t_cohere=t_cohere,
+            frequency=FREQUENCY,
             channels=CHANNEL_LENGTH,
             ch_capacity=channel_capacity,
             fiber_alpha=FIBER_ALPHA,
-            entg_attempt_rate=ENTG_ATTEMPT_RATE,
-            init_fidelity=INIT_FIDELITY,
-            eta_d=ETA_D,
             eta_s=ETA_S,
-            frequency=FREQUENCY,
+            eta_d=ETA_D,
+            init_fidelity=INIT_FIDELITY,
         )
         .proactive_centralized(
             p_swap=P_SWAP,

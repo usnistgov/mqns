@@ -37,7 +37,7 @@ from mqns.entity.qchannel import LINK_ARCH_MAP, LinkArchLiteral
 from mqns.network.builder import CTRL_DELAY, NetworkBuilder
 from mqns.network.protocol.link_layer import LinkLayer
 from mqns.simulator import Simulator
-from mqns.utils import log, rng, seed_seq_env
+from mqns.utils import log, rng, seed_seq_env, unwrap
 
 from examples_common.plotting import Axes1D, plt, plt_save
 
@@ -80,10 +80,10 @@ def run_simulation(seed: int, sim_duration: float, L: list[float], M: int, link_
         NetworkBuilder()
         .topo_linear(
             nodes=len(L) + 1,
+            t_cohere=0.1,
             channels=L,
             ch_capacity=M,
             link_arch=link_arch,
-            t_cohere=0.1,
         )
         .proactive_centralized()
         .request("S-D", swap="disabled")
@@ -94,9 +94,8 @@ def run_simulation(seed: int, sim_duration: float, L: list[float], M: int, link_
     s.run()
 
     res: list[ChannelResult] = []
-    for i, length in enumerate(L):
-        node = net.get_node("S" if i == 0 else f"R{i}")
-        cnt = node.get_app(LinkLayer).cnt
+    for length, (src, dst) in zip(L, itertools.pairwise(net.nodes), strict=True):
+        cnt = unwrap(src.get_app(LinkLayer).cnt_channel(src.get_qchannel(dst)))
         res.append(
             ChannelResult(
                 L=length,

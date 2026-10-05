@@ -18,6 +18,8 @@ EPR_TIME = Time(10, accuracy=ACCURACY)
 class FakeQuantumChannel:
     length: float
     alpha: float
+    eta_s: float = 1
+    eta_d: float = 1
     delay: DelayModel
     init_fidelity: float | Sequence[float] | None
     transfer_error: ErrorModel
@@ -59,8 +61,6 @@ def test_delays(LA: type[LinkArch], multipliers: tuple[float, float, float, floa
     la.set(
         time_accuracy=ACCURACY,
         ch=ch,
-        eta_s=1,
-        eta_d=1,
         reset_time=0,
         tau_0=tau_0,
         epr_type=WernerStateEntanglement,
@@ -100,8 +100,6 @@ def test_init_fidelity(E: type[Entanglement], use_probv: bool):
     la.set(
         time_accuracy=ACCURACY,
         ch=ch,
-        eta_s=1,
-        eta_d=1,
         reset_time=0,
         tau_0=0,
         epr_type=E,
@@ -126,8 +124,6 @@ def test_perfect_error(LA: type[LinkArch], E: type[Entanglement]):
     la.set(
         time_accuracy=ACCURACY,
         ch=ch,
-        eta_s=1,
-        eta_d=1,
         reset_time=0,
         tau_0=0,
         epr_type=E,
@@ -167,8 +163,6 @@ def test_realistic_error(LA: type[LinkArch], w_or_probv: float | tuple[float, fl
     la.set(
         time_accuracy=ACCURACY,
         ch=ch,
-        eta_s=1,
-        eta_d=1,
         reset_time=0,
         tau_0=0.000001,  # 1~10us
         epr_type=MixedStateEntanglement if isinstance(w_or_probv, tuple) else WernerStateEntanglement,
