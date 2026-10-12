@@ -1,13 +1,13 @@
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use async_nats;
 use bpaf::Bpaf;
 use mqns_example_extctrl::{
-    LinkStateEntry, LinkStateMsg, PathInstructions, Southbound, sec_to_time_slot,
+    LinkStateEntry, LinkStateMsg, PathAction, PathInstructions, Southbound, sec_to_time_slot,
 };
 use serde_json;
 use std::{
     collections::{HashMap, HashSet},
-    env,
+    env, slice,
 };
 use tokio::sync::mpsc;
 
@@ -119,6 +119,10 @@ struct Args {
     #[bpaf(long("path1_i"), argument("SEC"), fallback(0))]
     path1_i: u64,
 
+    /// S1-D1 path deletion time in seconds (no deletion if omitted)
+    #[bpaf(long("path1_d"), argument("SEC"))]
+    path1_d: Option<u64>,
+
     /// S2-D2 path enablement and swap order (asap|l2r|r2l|disabled)
     #[bpaf(fallback(PathOpt::Disabled))]
     path2: PathOpt,
@@ -126,6 +130,42 @@ struct Args {
     /// S2-D2 path insertion time in seconds
     #[bpaf(long("path2_i"), argument("SEC"), fallback(0))]
     path2_i: u64,
+
+    /// S2-D2 path deletion time in seconds (no deletion if omitted)
+    #[bpaf(long("path2_d"), argument("SEC"))]
+    path2_d: Option<u64>,
+}
+
+struct PathArgs {
+    name: &'static str,
+    req_id: u32,
+    opt: PathOpt,
+    t_insert: u64,
+    t_delete: Option<u64>,
+    route: &'static str,
+}
+
+impl Args {
+    fn paths(&self) -> [PathArgs; 2] {
+        [
+            PathArgs {
+                name: "path1",
+                req_id: 10,
+                opt: self.path1,
+                t_insert: self.path1_i,
+                t_delete: self.path1_d,
+                route: "S1-R1-R2-D1",
+            },
+            PathArgs {
+                name: "path2",
+                req_id: 20,
+                opt: self.path2,
+                t_insert: self.path2_i,
+                t_delete: self.path2_d,
+                route: "S2-R1-R2-D2",
+            },
+        ]
+    }
 }
 
 #[tokio::main]
@@ -154,35 +194,56 @@ async fn main() -> Result<()> {
 }
 
 async fn tx_loop_pca(args: &Args, sb: &Southbound) -> Result<()> {
-    for sec in 0..=args.sim_duration {
-        println!("Simulation Time: {} / {}", sec, args.sim_duration);
-        let t = sec * args.sim_accuracy;
-
-        if args.path1 != PathOpt::Disabled && args.path1_i == sec {
-            println!("    Installing path1");
-            let path = PathInstructions::new(10, PathInstructions::split_route("S1-R1-R2-D1"))
-                .bufferspace_mv(vec![1; 6])
-                .swap(args.path1.to_swap())
-                .build();
-            sb.path_insert(t, path.path_id, &[path]).await?;
+    let paths = args.paths();
+    let mut events: Vec<(u64, PathAction, &PathArgs)> = Vec::new();
+    for path in paths.iter() {
+        if path.opt == PathOpt::Disabled {
+            continue;
         }
-
-        if args.path2 != PathOpt::Disabled && args.path2_i == sec {
-            println!("    Installing path2");
-            let path = PathInstructions::new(20, PathInstructions::split_route("S2-R1-R2-D2"))
-                .bufferspace_mv(vec![1; 6])
-                .swap(args.path2.to_swap())
-                .build();
-            sb.path_insert(t, path.path_id, &[path]).await?;
-        }
-
-        if args.sim_duration == sec {
-            sb.stop(t).await?;
-        } else {
-            sb.update_gate(t).await?;
+        events.push((path.t_insert, PathAction::Insert, path));
+        if let Some(t_delete) = path.t_delete {
+            if t_delete <= path.t_insert {
+                return Err(anyhow!("{} deletion must occur after insertion", path.name));
+            }
+            events.push((t_delete, PathAction::Delete, path));
         }
     }
+    events.sort_by_key(|&(sec, act, path)| (sec, act as u8, path.req_id));
 
+    for (sec, act, path) in events {
+        if sec >= args.sim_duration {
+            println!(
+                "[{sec}] <tx_loop_pca> skipping {act} {}: past sim_duration",
+                path.name
+            );
+            continue;
+        }
+
+        let t = sec * args.sim_accuracy;
+        println!(
+            "[{sec}] <tx_loop_pca> sending {act} {}: route {}",
+            path.name, path.route
+        );
+
+        let inst = PathInstructions::new(path.req_id, PathInstructions::split_route(path.route))
+            .bufferspace_mv(vec![1; 6])
+            .swap(path.opt.to_swap())
+            .build();
+
+        sb.path_do(act, t, path.req_id, slice::from_ref(&inst))
+            .await?;
+
+        println!("[{sec}] <tx_loop_pca> DP is allowed to run until time slot {t}");
+        sb.update_gate(t).await?;
+        println!("[{sec}] <tx_loop_pca> DP has reached time slot {t}");
+    }
+
+    let t = args.sim_duration * args.sim_accuracy;
+    println!(
+        "[{}] <tx_loop_pca> DP is instructed to stop at time slot {t}",
+        args.sim_duration
+    );
+    sb.stop(t).await?;
     Ok(())
 }
 
@@ -248,6 +309,7 @@ async fn tx_loop_rcs(
     sb: &Southbound,
     mut link_state_ch: mpsc::Receiver<LinkStateMsg>,
 ) -> Result<()> {
+    let paths = args.paths();
     let t_ext = sec_to_time_slot(args.sync_timing.t_ext, args.sim_accuracy);
     let t_rtg = sec_to_time_slot(args.sync_timing.t_rtg, args.sim_accuracy);
     let t_int = sec_to_time_slot(args.sync_timing.t_int, args.sim_accuracy);
@@ -260,8 +322,9 @@ async fn tx_loop_rcs(
     while t < t_stop {
         let sec = t / args.sim_accuracy;
         let t_ext_lbound = t - t_offset;
+        let sec_f = t as f64 / args.sim_accuracy as f64;
 
-        println!("Simulation Time: {} / {}", t, t_stop);
+        println!("[{sec_f}] <tx_loop_rcs> DP is running until time slot {t}");
         sb.update_gate(t).await?;
 
         tls.clear();
@@ -273,43 +336,38 @@ async fn tx_loop_rcs(
                 tls.add(entry);
             }
         }
-        println!("    {:?}", tls);
+        println!("[{sec_f}] <tx_loop_rcs> {:?}", tls);
 
-        if args.path1 != PathOpt::Disabled && args.path1_i <= sec {
-            let route = PathInstructions::split_route("S1-R1-R2-D1");
-            if let Some(consumed) = tls.try_consume(&route) {
-                let path = PathInstructions::new(10, route)
-                    .reactive_qubits(consumed)
-                    .swap(args.path1.to_swap())
-                    .build();
+        for path in paths.iter() {
+            if path.opt != PathOpt::Disabled
+                && path.t_insert <= sec
+                && sec < path.t_delete.unwrap_or(args.sim_duration)
+            {
+                let route = PathInstructions::split_route(path.route);
+                if let Some(consumed) = tls.try_consume(&route) {
+                    let inst = PathInstructions::new(path.req_id, route)
+                        .reactive_qubits(consumed)
+                        .swap(path.opt.to_swap())
+                        .build();
 
-                println!(
-                    "    Installing path1: {}",
-                    serde_json::to_string(&path.reactive_qubits).unwrap()
-                );
-                sb.path_insert(t, path.path_id, &[path]).await?;
-            }
-        }
-
-        if args.path2 != PathOpt::Disabled && args.path2_i <= sec {
-            let route = PathInstructions::split_route("S2-R1-R2-D2");
-            if let Some(consumed) = tls.try_consume(&route) {
-                let path = PathInstructions::new(20, route)
-                    .reactive_qubits(consumed)
-                    .swap(args.path2.to_swap())
-                    .build();
-
-                println!(
-                    "    Installing path2: {}",
-                    serde_json::to_string(&path.reactive_qubits).unwrap()
-                );
-                sb.path_insert(t, path.path_id, &[path]).await?;
+                    println!(
+                        "[{sec_f}] <tx_loop_rcs> sending PATH_INSERT {}: qubits {}",
+                        path.name,
+                        serde_json::to_string(&inst.reactive_qubits).unwrap()
+                    );
+                    sb.path_insert(t, inst.path_id, slice::from_ref(&inst))
+                        .await?;
+                }
             }
         }
 
         t += t_slot;
     }
 
+    println!(
+        "[{}] <tx_loop_rcs> DP is instructed to stop at time slot {t_stop}",
+        args.sim_duration
+    );
     sb.stop(t_stop).await?;
 
     Ok(())
