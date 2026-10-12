@@ -1,6 +1,6 @@
 # extctrl: External Control Plane example
 
-This example demonstrates how to create a split-horizon simulation, in which:
+This example demonstrates how to create a split simulation, in which:
 
 * The data plane is running in `extctrl_dp.py` Python script, implemented with MQNS library.
 * The control plane is running as an external program.
@@ -8,7 +8,7 @@ This example demonstrates how to create a split-horizon simulation, in which:
 
 ## Scenario Explanation
 
-The `extctrl_dp.py` Python script uses `NetworkBuilder` class to define a six-node topology with one shared link between S1-R1-R2-S2 and S2-R1-R2-S2 paths:
+The `extctrl_dp.py` Python script uses `NetworkBuilder` class to define a six-node topology with one shared link between S1-R1-R2-D1 and S2-R1-R2-D2 paths:
 
 ![topology](extctrl-topo.svg)
 
@@ -27,7 +27,7 @@ It contains the simplified logic of a centralized controller application compara
 This program connects to the NATS Messaging service, and can then communicate with quantum nodes using the JSON-based message formats defined by these applications.
 
 The simulation clock is maintained in Python, but is synchronized with the external program through Conservative PDES (Parallel Discrete Event Simulation) technique.
-See `ClassicBridge` and `ClassicConnector` class documentation for details.
+See the "Clock Gate Basics" section in the `mqns.network.protocol.classicbridge` module documentation for details.
 
 ## Example Usage
 
@@ -55,8 +55,9 @@ bash run.sh --sim_accuracy 200000
 # proactive-centralized-async mode, enable S1-D1 path with asap swap order
 bash run.sh --mode PCA -- -- --path1 asap --path2 disabled
 
-# proactive-centralized-async mode, enable both paths with r2l swap order, install paths at different times
-bash run.sh --mode PCA -- -- --sim_duration 60 --path1 r2l --path1_i 0 --path2 r2l --path2_i 30
+# proactive-centralized-async mode, enable both paths with r2l swap order,
+# insert and delete paths at different times
+bash run.sh --mode PCA -- -- --sim_duration 60 --path1 r2l --path1_i 0 --path1_d 40 --path2 r2l --path2_i 30
 
 # reactive-centralized-sync mode
 bash run.sh --mode RCS

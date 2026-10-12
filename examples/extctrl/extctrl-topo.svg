@@ -1,31 +1,45 @@
 <svg width="400" height="200" xmlns="http://www.w3.org/2000/svg">
-  <line x1="50" y1="50" x2="150" y2="100" stroke="#111" stroke-width="2"/>
-  <line x1="50" y1="150" x2="150" y2="100" stroke="#111" stroke-width="2"/>
-  <line x1="150" y1="100" x2="250" y2="100" stroke="#111" stroke-width="2"/>
-  <line x1="250" y1="100" x2="350" y2="50" stroke="#111" stroke-width="2"/>
-  <line x1="250" y1="100" x2="350" y2="150" stroke="#111" stroke-width="2"/>
+  <style>
+    text, tspan {
+      text-anchor: middle;
+      dominant-baseline: middle;
+    }
+  </style>
+  <g style="stroke: #111; stroke-width: 2;">
+    <line x1="50" y1="50" x2="150" y2="100"/>
+    <line x1="50" y1="150" x2="150" y2="100"/>
+    <line x1="150" y1="100" x2="250" y2="100"/>
+    <line x1="250" y1="100" x2="350" y2="50"/>
+    <line x1="250" y1="100" x2="350" y2="150"/>
+  </g>
   <g transform="translate(50 50)">
     <circle r="30" fill="#7FDBFF"/>
-    <text font-size="20" text-anchor="middle" dominant-baseline="middle">S1</text>
+    <text font-size="20">S1</text>
   </g>
   <g transform="translate(50 150)">
     <circle r="30" fill="#7FDBFF"/>
-    <text font-size="20" text-anchor="middle" dominant-baseline="middle">S2</text>
+    <text font-size="20">S2</text>
   </g>
   <g transform="translate(150 100)">
     <circle r="30" fill="#7FDBFF"/>
-    <text font-size="20" text-anchor="middle" dominant-baseline="middle">R1</text>
+    <text font-size="20">R1</text>
   </g>
   <g transform="translate(250 100)">
     <circle r="30" fill="#7FDBFF"/>
-    <text font-size="20" text-anchor="middle" dominant-baseline="middle">R2</text>
+    <text font-size="20">R2</text>
   </g>
   <g transform="translate(350 50)">
     <circle r="30" fill="#7FDBFF"/>
-    <text font-size="20" text-anchor="middle" dominant-baseline="middle">D1</text>
+    <text font-size="20">D1</text>
   </g>
   <g transform="translate(350 150)">
     <circle r="30" fill="#7FDBFF"/>
-    <text font-size="20" text-anchor="middle" dominant-baseline="middle">D2</text>
+    <text font-size="20">D2</text>
   </g>
+  <g style="stroke: #85144B; stroke-width: 2; stroke-dasharray: 10 10; fill: none;">
+    <path d="M 70 35 Q 200 130 330 35"/>
+    <path d="M 70 165 Q 200 70 330 165"/>
+  </g>
+  <text x="200" y="60" font-size="18">path1</text>
+  <text x="200" y="140" font-size="18">path2</text>
 </svg>

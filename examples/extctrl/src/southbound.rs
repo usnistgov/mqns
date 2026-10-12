@@ -3,9 +3,25 @@ use anyhow::{Result, anyhow};
 use async_nats::{self, HeaderMap, jetstream};
 use bytes::Bytes;
 use serde_json;
-use std::{collections::BTreeSet, sync::Arc};
+use std::{collections::BTreeSet, fmt, sync::Arc};
 use tokio::sync::{Mutex, mpsc};
 use tokio_stream::StreamExt;
+
+#[derive(Clone, Copy)]
+pub enum PathAction {
+    Insert,
+    Delete,
+}
+
+impl fmt::Display for PathAction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            PathAction::Insert => "PATH_INSERT",
+            PathAction::Delete => "PATH_DELETE",
+        };
+        write!(f, "{}", s)
+    }
+}
 
 /// Southbound interface to interact with simulated quantum nodes.
 #[derive(Clone)]
@@ -93,6 +109,20 @@ impl Southbound {
             .await?
             .await?;
         Ok(())
+    }
+
+    /// Send PATH_INSERT or PATH_DELETE command.
+    pub async fn path_do(
+        &self,
+        act: PathAction,
+        t: u64,
+        req_id: u32,
+        paths: &[PathInstructions],
+    ) -> Result<()> {
+        match act {
+            PathAction::Insert => self.path_insert(t, req_id, paths).await,
+            PathAction::Delete => self.path_delete(t, req_id, paths).await,
+        }
     }
 
     /// Send PATH_INSERT command.
