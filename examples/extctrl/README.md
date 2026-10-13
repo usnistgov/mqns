@@ -10,7 +10,7 @@ This example demonstrates how to create a split-horizon simulation, in which:
 
 The `extctrl_dp.py` Python script uses `NetworkBuilder` class to define a six-node topology with one shared link between S1-R1-R2-S2 and S2-R1-R2-S2 paths:
 
-![topology](topo.svg)
+![topology](extctrl-topo.svg)
 
 The topology can be constructed in either proactive-centralized or reactive-centralized mode.
 In either mode, a `Controller` node is defined, where a centralized controller application would be installed.

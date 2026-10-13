@@ -30,4 +30,4 @@ Contents
 
    intro
    reference/mqns
-   examples
+   examples/index
