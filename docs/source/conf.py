@@ -43,6 +43,8 @@ autodoc_default_options = {
 }
 autodoc_typehints = "description"
 
+autoclass_content = "both"
+
 # -- Options for HTML output
 html_theme = "sphinx_rtd_theme"
 
