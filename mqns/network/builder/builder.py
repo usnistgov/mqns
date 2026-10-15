@@ -1,24 +1,16 @@
 import itertools
 from collections.abc import Sequence
-from typing import NotRequired, Self, TypedDict, Unpack, overload
-
-from tap import Tap
+from typing import Self, TypedDict, Unpack, overload
 
 from mqns.entity.memory import QuantumMemoryInitKwargs
 from mqns.entity.node import Application, NodePair, QNode, split_node_pair
-from mqns.entity.qchannel import LINK_ARCH_MAP, LinkArchInput, LinkArchLiteral, QuantumChannel
-from mqns.models.epr import EPR_TYPE_MAP, EprTypeInput, EprTypeLiteral
+from mqns.entity.qchannel import LinkArchInput, QuantumChannel
+from mqns.models.epr import EprTypeInput
 from mqns.models.error import TimeDecayInput
-from mqns.models.error.input import ErrorModelInputBasic, ErrorModelInputLength, ErrorModelInputTime
+from mqns.models.error.input import ErrorModelInputBasic, ErrorModelInputLength
 from mqns.network.fw import ForwarderInitKwargs, RoutingPath, RoutingPathInitArgs
 from mqns.network.network import QuantumNetwork, Request, TimingMode, TimingModeAsync, TimingModeSync
-from mqns.network.proactive import (
-    MUX_SCHEME_MAP,
-    MuxSchemeInput,
-    MuxSchemeLiteral,
-    ProactiveForwarder,
-    ProactiveRoutingController,
-)
+from mqns.network.proactive import MuxSchemeInput, ProactiveForwarder, ProactiveRoutingController
 from mqns.network.protocol.classicbridge import ClassicBridge
 from mqns.network.protocol.consumer import Consumer
 from mqns.network.protocol.link_layer import LinkLayer, LinkLayerInitKwargs
@@ -26,54 +18,6 @@ from mqns.network.reactive import ReactiveForwarder, ReactiveRoutingController
 from mqns.network.route import DijkstraRouteAlgorithm, RouteAlgorithm
 from mqns.network.topology import ClassicTopology, Topology
 from mqns.network.topology.customtopo import CustomTopology, Topo, TopoController, TopoQChannel, TopoQNode
-
-
-def tap_configure(tap: Tap) -> None:
-    """
-    When called from ``Tap.configure()`` function, define command line arguments for supported literal types.
-
-    Recognized keys:
-
-    * ``mode``
-    * ``sync_timing``
-
-    Recognized types:
-
-    * ``EprTypeLiteral``
-    * ``ErrorModelInput*``
-    * ``LinkArchLiteral``
-    * ``MuxSchemeLiteral``
-    * ``TimeDecayInput``
-    """
-    for key, typ in tap._annotations.items():
-        if key == "mode":
-            tap.add_argument(
-                f"--{key}",
-                help=f"(default={getattr(tap, key)}) choose mode: [P]roactive/[R]eactive forwarding, "
-                "[C]entralized/[D]istributed control, [A]sync/[S]ync timing",
-            )
-        elif key == "sync_timing":
-            dflt = getattr(tap, key, [])
-            dflt_desc = f"default={dflt}" if dflt else "default: derive from t_cohere"
-            tap.add_argument(
-                f"--{key}",
-                type=float,
-                nargs=3,
-                default=dflt,
-                metavar=("t_ext", "t_rtg", "t_int"),
-                help=f"(3*float, {dflt_desc}) SYNC timing mode phase durations in seconds",
-            )
-        elif typ is EprTypeLiteral:
-            tap.add_argument(f"--{key}", type=str, default="W", choices=EPR_TYPE_MAP.keys())
-        elif typ is ErrorModelInputBasic:
-            tap.add_argument(f"--{key}", type=str, metavar="ErrorModelType:p_error")
-        elif typ in (ErrorModelInputTime, ErrorModelInputLength, TimeDecayInput):
-            tap.add_argument(f"--{key}", type=str, metavar="ErrorModelType:rate")
-        elif typ is MuxSchemeLiteral:
-            tap.add_argument(f"--{key}", type=str, choices=MUX_SCHEME_MAP.keys())
-        elif typ is LinkArchLiteral:
-            tap.add_argument(f"--{key}", type=str, default="DIM-BK-SeQUeNCe", choices=LINK_ARCH_MAP.keys())
-
 
 CTRL_DELAY = 5e-06
 """
@@ -85,15 +29,17 @@ so that the QNodes can perform entanglement forwarding for the full intended dur
 
 
 class NodeArgs(TypedDict, total=False):
+    """Node parameters."""
+
     mem_capacity: int
     """Memory capacity, defaults to ``-1`` for deriving from channel capacities."""
     t_cohere: float
     """Memory coherence time in seconds, defaults to ``0.02``."""
     memory_decay: TimeDecayInput
     """Memory time decay function, defaults to dephasing in ``t_cohere``."""
-    frequency: NotRequired[float]
+    frequency: float
     """Entanglement source frequency, defaults to ``1_000_000``."""
-    tau_0: NotRequired[float]
+    tau_0: float
     """Local operation delay in seconds for emitting and absorbing photon, defaults to ``0.0``."""
 
 
@@ -106,6 +52,8 @@ class NodeDef:
 
 
 class ChannelArgs(TypedDict, total=False):
+    """Channel parameters."""
+
     ch_length: float
     """
     Channel length in kilometer, defaults to ``1.0``.
@@ -124,12 +72,12 @@ class ChannelArgs(TypedDict, total=False):
     Fiber loss in dB/km, defaults to ``0.2``.
     This determines success probability.
     """
-    eta_s: NotRequired[float]
+    eta_s: float
     """
     Source efficiency between 0 and 1, defaults to ``0.95``.
     This determines success probability.
     """
-    eta_d: NotRequired[float]
+    eta_d: float
     """
     Detector efficiency between 0 and 1, defaults to ``0.95``.
     This determines success probability.
@@ -187,7 +135,7 @@ class AppsCommonArgs(TypedDict, total=False):
 
 class AppsForwarderArgs(AppsCommonArgs, ForwarderInitKwargs):
     """
-    Combination of AppsCommonArgs and ForwarderInitKwargs.
+    Combination of ``AppsCommonArgs`` and ``ForwarderInitKwargs``.
 
     Args:
         p_swap: Probability of successful entanglement swapping in forwarder, defaults to ``0.5``.
@@ -196,7 +144,8 @@ class AppsForwarderArgs(AppsCommonArgs, ForwarderInitKwargs):
 
 class NetworkBuilder:
     """
-    Orchestrator of quantum network simulation with LinkLayer and forwarder.
+    Orchestrator of quantum network simulation with :py:class:`~mqns.network.protocol.link_layer.LinkLayer`
+    and :py:class:`~mqns.network.fw.Forwarder`.
 
     Usage:
 
@@ -317,16 +266,18 @@ class NetworkBuilder:
 
         Args:
             channels: List of channels.
-                Each element is either a ``ChannelDef`` or a tuple.
+                Each element is either a :py:class:`ChannelDef` or a tuple.
                 If specified as tuple:
+
                 * First tuple item is channel end points.
                 * Second tuple item is channel length in kilometer.
                 * Third tuple item is channel capacity, if it differs from ``kwargs.ch_capacity``.
+
             nodes: Node parameter overrides (optional).
                 It is unnecessary to list a node unless its parameter differs from ``kwargs``.
             kwargs: Default node and channel parameters.
-                To override a node's parameters, pass ``NodeDef`` to ``nodes``.
-                To override a channel's parameters, pass ``ChannelDef`` to ``channels``.
+                To override a node's parameters, pass :py:class:`NodeDef` to ``nodes``.
+                To override a channel's parameters, pass :py:class:`ChannelDef` to ``channels``.
         """
         self._save_topo_args(kwargs)
 
@@ -365,8 +316,8 @@ class NetworkBuilder:
             channels: Channel parameter overrides (optional).
                 This is necessary only if some channel's parameter differs from ``kwargs``.
             kwargs: Default node and channel parameters.
-                To override a node's parameters, pass ``NodeDef`` to ``nodes``.
-                To override a channel's parameters, pass ``ChannelDef`` to ``channels``.
+                To override a node's parameters, pass :py:class:`NodeDef` to ``nodes``.
+                To override a channel's parameters, pass :py:class:`ChannelDef` to ``channels``.
         """
         self._save_topo_args(kwargs)
 
@@ -462,6 +413,11 @@ class NetworkBuilder:
         return self
 
     def proactive_distributed(self) -> Self:
+        """
+        Choose proactive forwarding with distributed control.
+
+        This is unimplemented.
+        """
         self._assert_can_add_apps()
         raise NotImplementedError
 
@@ -484,6 +440,11 @@ class NetworkBuilder:
         return self
 
     def reactive_distributed(self) -> Self:
+        """
+        Choose reactive forwarding with distributed control.
+
+        This is unimplemented.
+        """
         self._assert_can_add_apps()
         raise NotImplementedError
 
@@ -493,16 +454,17 @@ class NetworkBuilder:
         nats_prefix=ClassicBridge.DEFAULT_NATS_PREFIX,
     ) -> Self:
         """
-        Replace the controller application with ``ClassicBridge``.
+        Replace the controller application with :py:class:`mqns.network.protocol.classicbridge.ClassicBridge`.
 
         Args:
             nats_prefix: Prefix of NATS subjects.
 
-        This must be called after ``proactive_centralized`` or ``reactive_centralized``.
-        The internal controller application is deleted and replaced with ``ClassicBridge``, which allows
+        This must be called after :py:meth:`proactive_centralized` or :py:meth:`reactive_centralized`.
+        The internal controller application is deleted and replaced with
+        :py:class:`~mqns.network.protocol.classicbridge.ClassicBridge`, which allows
         the controller logic to be implemented in an external program connected over NATS.
 
-        ``.request()`` method cannot be used.
+        :py:meth:`request` method cannot be used.
         Instead, requests or routing paths should be defined in the external controller.
         """
         self.controller_apps.clear()

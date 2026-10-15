@@ -1,9 +1,6 @@
 mqns.network.route package
 ==========================
 
-Submodules
-----------
-
 Module contents
 ---------------
 
