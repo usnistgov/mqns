@@ -1,6 +1,6 @@
 import itertools
 from collections.abc import Callable, Sequence
-from typing import Self, TypedDict, Unpack, overload
+from typing import Literal, Self, TypedDict, Unpack, overload
 
 from mqns.entity.memory import QuantumMemoryInitKwargs
 from mqns.entity.node import Application, NodePair, QNode, split_node_pair
@@ -303,6 +303,7 @@ class NetworkBuilder:
         self,
         *,
         nodes: int | Sequence[NodeDef | str],
+        nodes_naming: Literal["R1", "R", "n1", "A"] = "R",
         channels: Sequence[ChannelParam | tuple[()] | float | tuple[float, int | tuple[int, int]]] | None = None,
         **kwargs: Unpack[TopoCommonArgs],
     ) -> Self:
@@ -313,6 +314,13 @@ class NetworkBuilder:
             nodes: Number of nodes or list of node definitions / names, minimum is 2 nodes.
                 If specified as number, the nodes are named ``S R1 R2 .. Rn D``.
                 If specified as list, each node name must be unique.
+            nodes_naming: Node name pattern, used if ``nodes`` is an integer.
+
+                * *R1*: ``S R1 R2 .. Rn D``.
+                * *R*: ``S R D`` for three node, otherwise same as *R1*.
+                * *n1*: ``n1 n2 ..``.
+                * *A*: ``A B ..``, limited to 26 nodes.
+
             channels: Channel parameter overrides (optional).
                 This is necessary only if some channel's parameter differs from ``kwargs``.
             kwargs: Default node and channel parameters.
@@ -324,13 +332,22 @@ class NetworkBuilder:
         if isinstance(nodes, int):
             if nodes < 2:
                 raise ValueError("at least two nodes")
-            nodes = [f"R{i}" for i in range(nodes)]
-            nodes[0] = "S"
-            nodes[-1] = "D"
+            n_nodes = nodes
+            if nodes_naming == "R" and n_nodes == 3:
+                nodes = ["S", "R", "D"]
+            elif nodes_naming in ("R", "R1"):
+                nodes = ["S", *(f"R{i}" for i in range(1, n_nodes - 1)), "D"]
+            elif nodes_naming == "A":
+                if n_nodes > 26:
+                    raise ValueError("too many nodes for nodes_naming='A'")
+                nodes = [chr(0x41 + i) for i in range(n_nodes)]
+            else:
+                nodes = [f"n{i}" for i in range(1, 1 + n_nodes)]
+        else:
+            n_nodes = len(nodes)
+            if n_nodes < 2:
+                raise ValueError("at least two nodes")
 
-        n_nodes = len(nodes)
-        if n_nodes < 2:
-            raise ValueError("at least two nodes")
         n_links = n_nodes - 1
         if channels is None:
             chs = [None] * n_links

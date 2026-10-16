@@ -1,5 +1,6 @@
 import itertools
 from collections.abc import Sequence
+from typing import Any
 
 import pytest
 
@@ -27,6 +28,9 @@ def test_errors():
 
     with pytest.raises(ValueError, match="at least two nodes"):
         NetworkBuilder().topo_linear(nodes=["A"])
+
+    with pytest.raises(ValueError, match="too many nodes for nodes_naming='A'"):
+        NetworkBuilder().topo_linear(nodes=27, nodes_naming="A")
 
     with pytest.raises(ValueError, match="incorrect number of channels"):
         NetworkBuilder().topo_linear(nodes=4, channels=[10, 20])
@@ -65,19 +69,36 @@ def test_topo_manual():
     assert [ch.alpha for ch in channels] == pytest.approx([0.1, 0.1, 0.1, 0.4], abs=1e-6)
 
 
-def test_topo_linear_numbered():
+@pytest.mark.parametrize(
+    ("nodes_naming", "node_names"),
+    [
+        ("R1", ["S", "R1", "D"]),
+        ("R", ["S", "R", "D"]),
+        ("n1", ["n1", "n2", "n3"]),
+        ("A", ["A", "B", "C"]),
+        ("R1", ["S", "R1", "R2", "R3", "D"]),
+        ("R", ["S", "R1", "R2", "R3", "D"]),
+        ("n1", ["n1", "n2", "n3", "n4", "n5"]),
+        ("A", ["A", "B", "C", "D", "E"]),
+        ("A", list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")),
+    ],
+)
+def test_topo_linear_numbered(nodes_naming: Any, node_names: list[str]):
+    n_nodes = len(node_names)
+    ch_lengths = list(range(10, 10 * n_nodes, 10))
+
     b = NetworkBuilder()
     b.topo_linear(
-        nodes=4,
-        channels=[10, 20, 30],
+        nodes=n_nodes,
+        nodes_naming=nodes_naming,
+        channels=ch_lengths,
     )
     b.proactive_centralized()
     net = b.make_network()
 
-    node_names = ["S", "R1", "R2", "D"]
     assert [node.name for node in net.nodes] == node_names
     assert [tuple(node.name for node in ch.node_list) for ch in net.qchannels] == list(itertools.pairwise(node_names))
-    assert [ch.length for ch in net.qchannels] == [10, 20, 30]
+    assert [ch.length for ch in net.qchannels] == ch_lengths
 
 
 def test_topo_linear_named():

@@ -28,7 +28,7 @@ def run_simulation(seed: int, t_cohere: float):
     net = (
         NetworkBuilder()
         .topo_linear(
-            nodes="SRD",
+            nodes=3,
             t_cohere=t_cohere,
             channels=[32, 18],
             ch_capacity=2,
