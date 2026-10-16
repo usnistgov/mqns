@@ -7,7 +7,8 @@ import pytest
 from mqns.entity.memory import QuantumMemory
 from mqns.entity.qchannel import LinkArch, LinkArchAlways, LinkArchDimBk, LinkArchSr
 from mqns.entity.timer import Timer
-from mqns.models.epr import Entanglement, MixedStateEntanglement, WernerStateEntanglement
+from mqns.models.epr import EprTypeLiteral
+from mqns.network.builder import NetworkBuilder
 from mqns.network.fw import RoutingPath, RoutingPathInitArgs, SwapSequenceInput
 from mqns.network.network import Request, RequestState, TimingMode, TimingModeAsync, TimingModeSync
 from mqns.network.proactive import MuxSchemeInput, MuxSchemeStatistical, ProactiveForwarder
@@ -16,22 +17,28 @@ from mqns.network.protocol.link_layer import LinkLayer
 from mqns.simulator import Time
 
 from .fw_common import (
+    LA_ALWAYS,
     build_grid_network,
-    build_linear_network,
     build_tree_network,
     collect_cpacket_counts,
     dflt_qchannel_args,
+    make_network,
     print_node_counters,
 )
 
 
-@pytest.mark.parametrize("epr_type", [WernerStateEntanglement, MixedStateEntanglement])
+@pytest.mark.parametrize("epr_type", ["W", "M"])
 @pytest.mark.parametrize("timing", [TimingModeAsync(), TimingModeSync(t_ext=0.006, t_int=0.004)], ids=["ASYNC", "SYNC"])
 @pytest.mark.parametrize("swap", ["asap", "l2r", "r2l"])
-def test_4_swap(epr_type: type[Entanglement], timing: TimingMode, swap: SwapSequenceInput):
+def test_4_swap(epr_type: EprTypeLiteral, timing: TimingMode, swap: SwapSequenceInput):
     """Test swapping in 4-node topology."""
-    net, simulator = build_linear_network(
-        4, swap_table_leak_tol=256, end_time=3.0, timing=timing, epr_type=epr_type, has_link_layer=True
+    net, simulator = make_network(
+        NetworkBuilder(epr_type=epr_type)
+        .topo_linear(nodes="ABCD", t_cohere=1, ch_length=100, link_arch=LA_ALWAYS)
+        .proactive_centralized(timing=timing),
+        swap_table_leak_tol=256,
+        has_link_layer=True,
+        end_time=3.0,
     )
     _, fwB, fwC, _ = (node.get_app(ProactiveForwarder) for node in net.nodes)
 

@@ -10,22 +10,23 @@ import pytest
 from mqns.entity.memory import QuantumMemory
 from mqns.entity.timer import Timer
 from mqns.models.delay import ConstantDelayModel
-from mqns.models.epr import Entanglement, MixedStateEntanglement
+from mqns.models.epr import Entanglement
 from mqns.models.error import PerfectErrorModel
+from mqns.network.builder import NetworkBuilder
 from mqns.network.fw import Fib, FibPath, Forwarder, MemoryEprTuple, RoutingPath
-from mqns.network.network import TimingModeSync
 from mqns.network.proactive import MuxSchemeBufferSpace, MuxSchemeDynamicEpr, MuxSchemeStatistical, ProactiveForwarder
 from mqns.network.protocol.consumer import Consumer, RequestCounters
 from mqns.simulator import func_to_event
 from mqns.utils import unwrap, unwrap_cast
 
 from .fw_common import (
+    LA_ALWAYS,
     QubitReleaseReset,
     build_grid_network,
-    build_linear_network,
     build_tree_network,
     check_fw_counters,
     collect_cpacket_counts,
+    make_network,
     print_node_counters,
     provide_entanglements,
 )
@@ -33,7 +34,9 @@ from .fw_common import (
 
 def test_3_disabled():
     """Test swap disabled mode."""
-    net, simulator = build_linear_network(3, fw={"p_swap": 1.0})
+    net, simulator = make_network(
+        NetworkBuilder().topo_linear(nodes="ABC", t_cohere=1, link_arch=LA_ALWAYS).proactive_centralized(p_swap=1.0),
+    )
     fwA, fwB, fwC = (node.get_app(ProactiveForwarder) for node in net.nodes)
 
     net.add_request(rp := RoutingPath.static("ABC", swap=[0, 0, 0]))
@@ -71,12 +74,10 @@ def test_3_disabled():
 )
 def test_3_ssq(ssq: MuxSchemeBufferSpace.SelectSwapQubit | None, addrs: list[int] | None):
     """Test SelectSwapQubit in 3-node topology."""
-    net, simulator = build_linear_network(
-        3,
-        t_cohere=0.090,
-        ch_capacity=8,
-        fw={"p_swap": 1.0},
-        mux=MuxSchemeBufferSpace(select_swap_qubit=ssq),
+    net, simulator = make_network(
+        NetworkBuilder()
+        .topo_linear(nodes="ABC", t_cohere=0.090, ch_length=100, ch_capacity=8, link_arch=LA_ALWAYS)
+        .proactive_centralized(p_swap=1.0, mux=MuxSchemeBufferSpace(select_swap_qubit=ssq)),
         end_time=1.120,
     )
     fwA, fwB, fwC = (node.get_app(ProactiveForwarder) for node in net.nodes)
@@ -131,7 +132,12 @@ def test_3_ssq(ssq: MuxSchemeBufferSpace.SelectSwapQubit | None, addrs: list[int
 )
 def test_3_decohere(swap_delay: float, n_consumed: int):
     """Test short decoherence time in 3-node topology."""
-    net, simulator = build_linear_network(3, t_cohere=0.002, fw={"p_swap": 1.0, "swap_delay": swap_delay}, end_time=2)
+    net, simulator = make_network(
+        NetworkBuilder()
+        .topo_linear(nodes="ABC", t_cohere=0.002, ch_length=100, link_arch=LA_ALWAYS)
+        .proactive_centralized(p_swap=1.0, swap_delay=swap_delay),
+        end_time=2,
+    )
     fwA, fwB, fwC = (node.get_app(ProactiveForwarder) for node in net.nodes)
 
     net.add_request(rp := RoutingPath.static("ABC"))
@@ -179,7 +185,12 @@ def test_3_decohere(swap_delay: float, n_consumed: int):
 )
 def test_3_waittime(etg_sec: tuple[float, float], swap_delay: float, n_consumed: int, n_cutoff: tuple[int, int]):
     """Test CutoffSchemeWaitTime in 3-node topology."""
-    net, simulator = build_linear_network(3, t_cohere=0.006, fw={"p_swap": 1.0, "swap_delay": swap_delay}, end_time=1.010)
+    net, simulator = make_network(
+        NetworkBuilder()
+        .topo_linear(nodes="ABC", t_cohere=0.006, ch_length=100, link_arch=LA_ALWAYS)
+        .proactive_centralized(p_swap=1.0, swap_delay=swap_delay),
+        end_time=1.010,
+    )
     fwA, fwB, fwC = (node.get_app(ProactiveForwarder) for node in net.nodes)
 
     net.add_request(rp := RoutingPath.static("ABC", swap_cutoff=[0.002, 0.004]))
@@ -232,8 +243,12 @@ def test_3_waittime(etg_sec: tuple[float, float], swap_delay: float, n_consumed:
 )
 def test_4_sync(t_ext: float, expected: tuple[int, int, int, int]):
     """Test TimingModeSync in 4-node topology."""
-    timing = TimingModeSync(t_ext=t_ext, t_int=0.010000 - t_ext)
-    net, simulator = build_linear_network(4, t_cohere=0.015000, fw={"p_swap": 1.0}, timing=timing, end_time=0.029999)
+    net, simulator = make_network(
+        NetworkBuilder()
+        .topo_linear(nodes="ABCD", t_cohere=0.015, ch_length=100, link_arch=LA_ALWAYS)
+        .proactive_centralized(timing=(t_ext, 0, 0.010 - t_ext), p_swap=1.0),
+        end_time=0.029999,
+    )
     fwA, fwB, fwC, fwD = (node.get_app(ProactiveForwarder) for node in net.nodes)
 
     net.add_request(rp := RoutingPath.static("ABCD", swap=[2, 0, 1, 2]))
@@ -253,7 +268,12 @@ def test_4_sync(t_ext: float, expected: tuple[int, int, int, int]):
 @pytest.mark.parametrize("etg_ms", [(1, 2, 1), (2, 1, 2), (1, 2, 3), (3, 2, 1)])
 def test_4_asap(ps3: int, etg_ms: tuple[int, int, int]):
     """Test SWAP-ASAP in 4-node topology with various entanglement arrival orders."""
-    net, simulator = build_linear_network(4, fw={"p_swap": 1.0}, end_time=2)
+    net, simulator = make_network(
+        NetworkBuilder()
+        .topo_linear(nodes="ABCD", t_cohere=1, ch_length=100, link_arch=LA_ALWAYS)
+        .proactive_centralized(p_swap=1.0),
+        end_time=2,
+    )
     fwA, fwB, fwC, fwD = (node.get_app(ProactiveForwarder) for node in net.nodes)
     fwC.swap.ps = ps3
 
@@ -347,14 +367,10 @@ def test_4_delayed(
     n_cpacket: tuple[int, int, int, int],
 ):
     """Test swap delay model and error model in 4-node topology."""
-    net, simulator = build_linear_network(
-        4,
-        epr_type=MixedStateEntanglement,
-        fw={
-            "p_swap": 1.0,
-            "swap_delay": 0.050,
-            "swap_error": "DEPOLAR:0.3",
-        },
+    net, simulator = make_network(
+        NetworkBuilder(epr_type="M")
+        .topo_linear(nodes="ABCD", t_cohere=5, ch_length=100, link_arch=LA_ALWAYS, init_fidelity=1)
+        .proactive_centralized(p_swap=1.0, swap_delay=0.050, swap_error="DEPOLAR:0.3"),
         end_time=2,
     )
     fwA, fwB, fwC, fwD = (node.get_app(ProactiveForwarder) for node in net.nodes)
@@ -426,7 +442,12 @@ def test_4_delayed(
 )
 def test_4_decohere(swap_delay: float, n_consumed: int):
     """Test short decoherence time in 4-node topology."""
-    net, simulator = build_linear_network(4, t_cohere=0.003, fw={"p_swap": 1.0, "swap_delay": swap_delay}, end_time=2)
+    net, simulator = make_network(
+        NetworkBuilder()
+        .topo_linear(nodes="ABCD", t_cohere=0.003, ch_length=100, link_arch=LA_ALWAYS)
+        .proactive_centralized(p_swap=1.0, swap_delay=swap_delay),
+        end_time=2,
+    )
     fwA, fwB, fwC, fwD = (node.get_app(ProactiveForwarder) for node in net.nodes)
 
     net.add_request(rp := RoutingPath.static("ABCD"))
@@ -452,7 +473,12 @@ def test_5_asap(
     """Test SWAP-ASAP in 5-node topology with various entanglement arrival orders."""
     n_consumed = 1 if ps3 == 1 else 0
 
-    net, simulator = build_linear_network(5, fw={"p_swap": 1.0}, end_time=2)
+    net, simulator = make_network(
+        NetworkBuilder()
+        .topo_linear(nodes="ABCDE", t_cohere=1, ch_length=100, link_arch=LA_ALWAYS)
+        .proactive_centralized(p_swap=1.0),
+        end_time=2,
+    )
     fwA, fwB, fwC, fwD, fwE = (node.get_app(ProactiveForwarder) for node in net.nodes)
     fwC.swap.ps = ps3
 
@@ -485,7 +511,11 @@ def test_5_asap(
 @pytest.mark.parametrize("etg_ms", list(itertools.permutations(range(4), 4)))
 def test_5_sequential(swap: Sequence[int], su_lower: Sequence[int], etg_ms: tuple[int, int, int, int]):
     """Test sequential swap orders with various entanglement arrival orders."""
-    net, simulator = build_linear_network(5, fw={"p_swap": 1.0})
+    net, simulator = make_network(
+        NetworkBuilder()
+        .topo_linear(nodes="ABCDE", t_cohere=1, ch_length=100, link_arch=LA_ALWAYS)
+        .proactive_centralized(p_swap=1.0),
+    )
     fwA, fwB, fwC, fwD, fwE = (node.get_app(ProactiveForwarder) for node in net.nodes)
 
     net.add_request(rp := RoutingPath.static("ABCDE", swap=swap))
@@ -559,7 +589,12 @@ def test_5_decohere(
     etg_ms: tuple[int, int, int], swap_delay: float, cutoffD: float | None, t_release: tuple[float, ...], n_consumed: int
 ):
     """Test short decoherence time in 5-node topology."""
-    net, simulator = build_linear_network(5, t_cohere=0.010, fw={"p_swap": 1.0, "swap_delay": swap_delay}, end_time=2)
+    net, simulator = make_network(
+        NetworkBuilder()
+        .topo_linear(nodes="ABCDE", t_cohere=0.010, ch_length=100, link_arch=LA_ALWAYS)
+        .proactive_centralized(p_swap=1.0, swap_delay=swap_delay),
+        end_time=2,
+    )
     fwA, fwB, fwC, fwD, fwE = (node.get_app(ProactiveForwarder) for node in net.nodes)
 
     swap_cutoff = None if cutoffD is None else [-1, -1, -1, -1, cutoffD, cutoffD]

@@ -7,6 +7,7 @@ from collections.abc import Iterable, Mapping, Sequence
 import pytest
 
 from mqns.entity.memory import MemoryQubit, PathDirection, QuantumMemory, QubitState
+from mqns.network.builder import NetworkBuilder
 from mqns.network.fw import RoutingPath
 from mqns.network.network import Request
 from mqns.network.proactive import ProactiveForwarder
@@ -14,7 +15,7 @@ from mqns.network.protocol.consumer import RequestCounters
 from mqns.simulator import Time
 from mqns.utils import rng
 
-from .fw_common import build_linear_network, check_fw_counters, print_node_counters, provide_entanglements
+from .fw_common import LA_ALWAYS, check_fw_counters, make_network, print_node_counters, provide_entanglements
 
 
 def force_purify_outcome(monkeypatch: pytest.MonkeyPatch, *success: bool):
@@ -58,7 +59,11 @@ def force_purify_outcome(monkeypatch: pytest.MonkeyPatch, *success: bool):
 def test_link_rounds(monkeypatch: pytest.MonkeyPatch, n_rounds: int, purif_success: list[int], n_purif: list[int]):
     """Test multi-round purification on a single link with various purification outcomes."""
     n_etg: int = 2**n_rounds
-    net, simulator = build_linear_network(2, ch_capacity=n_etg, fw={"p_swap": 0.0})
+    net, simulator = make_network(
+        NetworkBuilder()
+        .topo_linear(nodes="AB", t_cohere=1, ch_capacity=n_etg, link_arch=LA_ALWAYS)
+        .proactive_centralized(p_swap=0.0),
+    )
     fwA = net.get_node("A").get_app(ProactiveForwarder)
     fwB = net.get_node("B").get_app(ProactiveForwarder)
 
@@ -149,7 +154,12 @@ def test_3_path_delete(
     t_raw: tuple[Sequence[float], ...],
 ):
     """Test PATH_DELETE cleanup during cut-off/swap/purify on 3-node topology."""
-    net, simulator = build_linear_network(3, t_cohere=5.0, ch_capacity=2, fw={"p_swap": 1.0, "swap_delay": 0.2}, end_time=5.0)
+    net, simulator = make_network(
+        NetworkBuilder()
+        .topo_linear(nodes="ABC", t_cohere=5, ch_length=100, ch_capacity=2, link_arch=LA_ALWAYS)
+        .proactive_centralized(p_swap=1.0, swap_delay=0.2),
+        end_time=5.0,
+    )
     chAB = net.get_qchannel("A", "B")
     chBC = net.get_qchannel("B", "C")
     fwA, fwB, fwC = (node.get_app(ProactiveForwarder) for node in net.nodes)
@@ -193,7 +203,12 @@ def test_3_path_delete(
 
 def test_4_l2r(monkeypatch: pytest.MonkeyPatch):
     """Test multi-segment purification on 4-node topology with l2r swapping order."""
-    net, simulator = build_linear_network(4, ch_capacity=8, fw={"p_swap": 1.0})
+    net, simulator = make_network(
+        NetworkBuilder()
+        .topo_linear(nodes="ABCD", t_cohere=1, ch_capacity=8, link_arch=LA_ALWAYS)
+        .proactive_centralized(p_swap=1.0),
+        end_time=5.0,
+    )
     fwA, fwB, fwC, fwD = (node.get_app(ProactiveForwarder) for node in net.nodes)
 
     net.add_request(

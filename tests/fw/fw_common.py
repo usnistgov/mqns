@@ -11,6 +11,7 @@ from mqns.entity.memory import QubitState
 from mqns.entity.node import Application, Controller, Node, QNode
 from mqns.entity.qchannel import LinkArchAlways, LinkArchDimBk, QuantumChannelInitKwargs
 from mqns.models.epr import Entanglement, WernerStateEntanglement
+from mqns.network.builder import NetworkBuilder
 from mqns.network.fw import Forwarder, ForwarderInitKwargs
 from mqns.network.fw.fw_swap import ForwarderSwapProc
 from mqns.network.network import QuantumNetwork, TimingMode, TimingModeAsync, TimingPhase, sync_phase_handler
@@ -24,9 +25,10 @@ from mqns.network.protocol.event import QubitEntangledEvent, QubitReleasedEvent
 from mqns.network.protocol.link_layer import LinkLayer
 from mqns.network.reactive import ReactiveForwarder, ReactiveRoutingController
 from mqns.network.route import DijkstraRouteAlgorithm, RouteAlgorithm, YenRouteAlgorithm
-from mqns.network.topology import ClassicTopology, GridTopology, LinearTopology, Topology, TopologyInitKwargs, TreeTopology
+from mqns.network.topology import ClassicTopology, GridTopology, Topology, TopologyInitKwargs, TreeTopology
+from mqns.network.topology.customtopo import Topo
 from mqns.simulator import Simulator, Time, event_handler, func_to_event
-from mqns.utils import AutoIncrementIdentifier, log, rng
+from mqns.utils import AutoIncrementIdentifier, log, rng, unwrap
 
 
 class QubitReleaseReset(Application[QNode]):
@@ -57,12 +59,14 @@ class QubitReleaseReset(Application[QNode]):
         return self.history[-1][1]
 
 
+LA_ALWAYS = LinkArchAlways(LinkArchDimBk())
+
 dflt_qchannel_args = QuantumChannelInitKwargs(
     length=100,  # delay is 0.0005 seconds
     eta_s=1,
     eta_d=1,
     init_fidelity=1.0,
-    link_arch=LinkArchAlways(LinkArchDimBk()),  # etg creation in 0.001 seconds and arrival in 0.002 seconds
+    link_arch=LA_ALWAYS,  # etg creation in 0.001 seconds and arrival in 0.002 seconds
 )
 
 dflt_cchannel_args = ClassicChannelInitKwargs(
@@ -151,17 +155,6 @@ def _build_network_finish(
     return net, simulator
 
 
-def build_linear_network(
-    n_nodes: int,
-    **kwargs: Unpack[BuildNetworkArgs],
-) -> tuple[QuantumNetwork, Simulator]:
-    topo = LinearTopology(
-        n_nodes,
-        **_make_topo_args(kwargs, node_max_degree=2),
-    )
-    return _build_network_finish(topo, kwargs)
-
-
 def build_tree_network(
     height=2,
     **kwargs: Unpack[BuildNetworkArgs],
@@ -226,6 +219,38 @@ def build_grid_network(
     )
     route = YenRouteAlgorithm(k_paths=k_paths) if k_paths > 0 else DijkstraRouteAlgorithm()
     return _build_network_finish(topo, kwargs, route=route)
+
+
+def make_network(
+    b: NetworkBuilder,
+    *,
+    swap_table_leak_tol=0,
+    has_link_layer=False,
+    end_time=10.0,
+) -> tuple[QuantumNetwork, Simulator]:
+    """
+    Finish building a network for unit testing.
+
+    Args:
+        b: NetworkBuilder with topology defined and applications installed.
+        swap_table_leak_tol: ForwarderSwapProc memory leak tolerance.
+        has_link_layer: Whether to include full LinkLayer application.
+        end_time: Simulation end time in seconds.
+    """
+    rng.reseed("env")
+    ForwarderSwapProc.table_leak_tol = swap_table_leak_tol
+
+    def modify_network(_, topo: Topo):
+        if not has_link_layer:
+            for node in topo["qnodes"]:
+                apps = unwrap(node.get("apps"))
+                assert isinstance(apps[0], LinkLayer)
+                apps[0] = QubitReleaseReset()
+
+    net = b.make_network(modify=modify_network)
+
+    simulator = Simulator(0.0, end_time, install_to=(log, net))
+    return net, simulator
 
 
 def collect_cpacket_counts(monkeypatch: pytest.MonkeyPatch, *, cp=False, dp=False, cmd=False) -> Mapping[str, int]:
