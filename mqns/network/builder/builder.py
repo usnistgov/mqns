@@ -1,5 +1,5 @@
 import itertools
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import Self, TypedDict, Unpack, overload
 
 from mqns.entity.memory import QuantumMemoryInitKwargs
@@ -16,7 +16,7 @@ from mqns.network.protocol.consumer import Consumer
 from mqns.network.protocol.link_layer import LinkLayer, LinkLayerInitKwargs
 from mqns.network.reactive import ReactiveForwarder, ReactiveRoutingController
 from mqns.network.route import DijkstraRouteAlgorithm, RouteAlgorithm
-from mqns.network.topology import ClassicTopology, Topology
+from mqns.network.topology import ClassicTopology
 from mqns.network.topology.customtopo import CustomTopology, Topo, TopoController, TopoQChannel, TopoQNode
 
 CTRL_DELAY = 5e-06
@@ -303,7 +303,7 @@ class NetworkBuilder:
         self,
         *,
         nodes: int | Sequence[NodeDef | str],
-        channels: Sequence[ChannelParam | float | tuple[float, int | tuple[int, int]]] | None = None,
+        channels: Sequence[ChannelParam | tuple[()] | float | tuple[float, int | tuple[int, int]]] | None = None,
         **kwargs: Unpack[TopoCommonArgs],
     ) -> Self:
         """
@@ -352,8 +352,11 @@ class NetworkBuilder:
             if isinstance(ch, ChannelParam):
                 self._add_qchannel(*np, ch.d)
             elif isinstance(ch, tuple):
-                length, capacity = ch
-                self._add_qchannel(*np, None, length, capacity)
+                if len(ch) == 2:
+                    length, capacity = ch
+                    self._add_qchannel(*np, None, length, capacity)
+                else:
+                    self._add_qchannel(*np, None)
             else:
                 self._add_qchannel(*np, None, ch)
 
@@ -490,7 +493,7 @@ class NetworkBuilder:
         **kwargs: Unpack[RoutingPathInitArgs],
     ) -> Self:
         if len(self.controller_apps) == 0:
-            raise TypeError("must install controller application first")
+            raise TypeError("must install controller application")
 
         if isinstance(arg1, RoutingPath):
             self.requests.append(Request(arg1))
@@ -499,37 +502,31 @@ class NetworkBuilder:
 
         return self
 
-    def make_topo(self) -> Topology:
-        """
-        Retrieve topology object.
-
-        This method is only necessary if you need to inspect or modify the topology factory object.
-        Otherwise, use ``.make_network()`` directly.
-        """
-        topo = Topo(qnodes=self.qnodes, qchannels=self.qchannels)
-        if len(self.controller_apps) > 0:
-            topo["controller"] = TopoController(name="ctrl", apps=self.controller_apps)
-        return CustomTopology(
-            topo,
-            nodes_apps=self.qnode_apps,
-        )
-
     def make_network(
         self,
         *,
-        topo: Topology | None = None,
+        modify: Callable[[Self, Topo], None] | None = None,
         connect_controller=True,
     ) -> QuantumNetwork:
         """
         Construct quantum network.
 
         Args:
-            topo: Result of ``.make_topo()`` method with possible modification, defaults to ``self.make_topo()``.
+            modify: Callback function to modify the topology definition if necessary.
             connect_controller: If True and controller exists, create cchannels between controller and each qnode.
 
-        Returns: QuantumNetwork ready for simulation.
+        Returns:
+            QuantumNetwork ready for simulation.
         """
-        topo = topo or self.make_topo()
+        if len(self.qnode_apps) == 0:
+            raise TypeError("must install applications")
+        topo_def = Topo(qnodes=self.qnodes, qchannels=self.qchannels)
+        if len(self.controller_apps) > 0:
+            topo_def["controller"] = TopoController(name="ctrl", apps=self.controller_apps)
+        if modify:
+            modify(self, topo_def)
+
+        topo = CustomTopology(topo_def, nodes_apps=self.qnode_apps)
         net = QuantumNetwork(
             topo,
             classic_topo=ClassicTopology.Follow,
