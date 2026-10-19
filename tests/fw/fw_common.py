@@ -1,31 +1,20 @@
-import copy
 import itertools
 from collections import defaultdict
 from collections.abc import Callable, Iterable, Mapping
-from typing import Literal, TypedDict, Unpack
 
 import pytest
 
-from mqns.entity.cchannel import ClassicChannelInitKwargs, ClassicPacket
+from mqns.entity.cchannel import ClassicPacket
 from mqns.entity.memory import QubitState
 from mqns.entity.node import Application, Controller, Node, QNode
-from mqns.entity.qchannel import LinkArchAlways, LinkArchDimBk, QuantumChannelInitKwargs
-from mqns.models.epr import Entanglement, WernerStateEntanglement
+from mqns.entity.qchannel import LinkArchAlways, LinkArchDimBk
 from mqns.network.builder import NetworkBuilder
-from mqns.network.fw import Forwarder, ForwarderInitKwargs
+from mqns.network.fw import Forwarder
 from mqns.network.fw.fw_swap import ForwarderSwapProc
-from mqns.network.network import QuantumNetwork, TimingMode, TimingModeAsync, TimingPhase, sync_phase_handler
-from mqns.network.proactive import (
-    MuxSchemeInput,
-    ProactiveForwarder,
-    ProactiveRoutingController,
-)
+from mqns.network.network import QuantumNetwork, TimingPhase, sync_phase_handler
 from mqns.network.protocol.consumer import Consumer
 from mqns.network.protocol.event import QubitEntangledEvent, QubitReleasedEvent
 from mqns.network.protocol.link_layer import LinkLayer
-from mqns.network.reactive import ReactiveForwarder, ReactiveRoutingController
-from mqns.network.route import DijkstraRouteAlgorithm, RouteAlgorithm, YenRouteAlgorithm
-from mqns.network.topology import ClassicTopology, GridTopology, Topology, TopologyInitKwargs, TreeTopology
 from mqns.network.topology.customtopo import Topo
 from mqns.simulator import Simulator, Time, event_handler, func_to_event
 from mqns.utils import AutoIncrementIdentifier, log, rng, unwrap
@@ -60,165 +49,6 @@ class QubitReleaseReset(Application[QNode]):
 
 
 LA_ALWAYS = LinkArchAlways(LinkArchDimBk())
-
-dflt_qchannel_args = QuantumChannelInitKwargs(
-    length=100,  # delay is 0.0005 seconds
-    eta_s=1,
-    eta_d=1,
-    init_fidelity=1.0,
-    link_arch=LA_ALWAYS,  # etg creation in 0.001 seconds and arrival in 0.002 seconds
-)
-
-dflt_cchannel_args = ClassicChannelInitKwargs(
-    length=100,  # delay is 0.0005 seconds
-)
-
-
-class BuildNetworkArgs(TypedDict, total=False):
-    mode: Literal["P", "R"]
-    t_cohere: float  # memory dephasing time, defaults to 5.0 seconds
-    ch_capacity: int  # quantum channel capacity, defaults to 1
-    qchannel_args: QuantumChannelInitKwargs
-    cchannel_args: ClassicChannelInitKwargs
-    fw: ForwarderInitKwargs  # forwarder parameters (`p_swap` defaults to 0.5)
-    mux: MuxSchemeInput  # multiplexing scheme for proactive forwarder/controller
-    drq_cap: int  # proactive controller deferred request queue capacity
-    swap_table_leak_tol: int  # ForwarderSwapProc memory leak tolerance
-    end_time: float  # simulation end time, defaults to 10.0 seconds
-    timing: TimingMode  # network timing mode, defaults to ASYNC
-    epr_type: type[Entanglement]  # entanglement type, defaults to Werner state
-    has_link_layer: bool  # whether to include full LinkLayer application, defaults to False
-
-
-def _make_topo_args(d: BuildNetworkArgs, *, node_max_degree: int) -> TopologyInitKwargs:
-    nodes_apps: list[Application[QNode]] = []
-    if d.get("has_link_layer", False):
-        nodes_apps.append(LinkLayer())
-    else:
-        nodes_apps.append(QubitReleaseReset())
-
-    fw_args = copy.copy(d.get("fw")) or {}
-    fw_args.setdefault("p_swap", 0.6)
-    match d.get("mode", "P"):
-        case "P":
-            nodes_apps.append(ProactiveForwarder(mux=d.get("mux"), **fw_args))
-        case "R":
-            nodes_apps.append(ReactiveForwarder(**fw_args))
-
-    nodes_apps.append(Consumer())
-
-    ch_capacity = d.get("ch_capacity", 1)
-    return TopologyInitKwargs(
-        nodes_naming="A",
-        nodes_apps=nodes_apps,
-        qchannel_args=d.get("qchannel_args", dflt_qchannel_args),
-        cchannel_args=d.get("cchannel_args", dflt_cchannel_args),
-        memory_args={
-            "t_cohere": d.get("t_cohere", 5.0),
-            "capacity": node_max_degree * ch_capacity,
-        },
-    )
-
-
-def _build_network_finish(
-    topo: Topology,
-    d: BuildNetworkArgs,
-    *,
-    route: RouteAlgorithm | None = None,
-):
-    rng.reseed("env")
-
-    ForwarderSwapProc.table_leak_tol = d.get("swap_table_leak_tol", 0)
-
-    ch_capacity = d.get("ch_capacity", 1)
-
-    match d.get("mode", "P"):
-        case "P":
-            ctrl = ProactiveRoutingController(mux=d.get("mux"), drq_cap=d.get("drq_cap", 0))
-        case "R":
-            ctrl = ReactiveRoutingController()
-    topo.controller = Controller("ctrl", apps=[ctrl])
-
-    net = QuantumNetwork(
-        topo=topo,
-        classic_topo=ClassicTopology.Follow,
-        route=route,
-        timing=d.get("timing", TimingModeAsync()),
-        epr_type=d.get("epr_type", WernerStateEntanglement),
-    )
-    for qchannel in net.qchannels:
-        qchannel.assign_memory_qubits(capacity=ch_capacity)
-    topo.connect_controller(net.nodes)
-
-    simulator = Simulator(0.0, d.get("end_time", 10.0), install_to=(log, net))
-
-    return net, simulator
-
-
-def build_tree_network(
-    height=2,
-    **kwargs: Unpack[BuildNetworkArgs],
-) -> tuple[QuantumNetwork, Simulator]:
-    """
-    If height==2, build the following topology:
-
-        D       F
-        |       |
-        B---A---C
-        |       |
-        E       G
-
-    If height==3, build the following topology:
-
-            H       L
-            |       |
-        I---D       F---M
-            |       |
-            B---A---C
-            |       |
-        J---E       G---N
-            |       |
-            K       O
-    """
-    if height == 2:
-        nnodes = 7
-    elif height == 3:
-        nnodes = 15
-    else:
-        raise ValueError("unsupported height")
-    topo = TreeTopology(
-        nodes_number=nnodes,
-        children_number=2,
-        **_make_topo_args(kwargs, node_max_degree=3),
-    )
-    return _build_network_finish(topo, kwargs)
-
-
-def build_grid_network(
-    shape: tuple[int, int] = (2, 2),
-    *,
-    k_paths=-1,
-    **kwargs: Unpack[BuildNetworkArgs],
-) -> tuple[QuantumNetwork, Simulator]:
-    """
-    Build a grid topology with specified shape.
-
-    The default parameters build the 2x2 rectangle topology:
-
-        A---B
-        |   |
-        C---D
-
-    Args:
-        shape: Grid shape, rows and columns.
-        k_paths: If positive, use ``YenRouteAlgorithm``; otherwise, use ``DijkstraRouteAlgorithm``.
-    """
-    topo = GridTopology(
-        shape,
-        **_make_topo_args(kwargs, node_max_degree=2 if max(shape) == 2 else 4),
-    )
-    route = YenRouteAlgorithm(k_paths=k_paths) if k_paths > 0 else DijkstraRouteAlgorithm()
-    return _build_network_finish(topo, kwargs, route=route)
 
 
 def make_network(

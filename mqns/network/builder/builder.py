@@ -469,6 +469,7 @@ class NetworkBuilder:
         self,
         *,
         mux: MuxSchemeInput = None,
+        drq_cap=0,
         **kwargs: Unpack[AppsForwarderArgs],
     ) -> Self:
         """
@@ -476,6 +477,7 @@ class NetworkBuilder:
 
         Args:
             mux: Multiplexing scheme, default is buffer-space.
+            drq_cap: Deferred request queue capacity in the controller.
         """
         self._assert_can_add_apps()
         self._extract_apps_common_args(kwargs)
@@ -487,7 +489,7 @@ class NetworkBuilder:
         )
         self._add_consumer()
         self.controller_apps.append(
-            ProactiveRoutingController(mux=mux),
+            ProactiveRoutingController(mux=mux, drq_cap=drq_cap),
         )
         return self
 

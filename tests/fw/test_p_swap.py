@@ -12,18 +12,17 @@ from mqns.entity.timer import Timer
 from mqns.models.delay import ConstantDelayModel
 from mqns.models.epr import Entanglement
 from mqns.models.error import PerfectErrorModel
-from mqns.network.builder import NetworkBuilder
+from mqns.network.builder import GridTopoGen, NetworkBuilder, TreeTopoGen
 from mqns.network.fw import Fib, FibPath, Forwarder, MemoryEprTuple, RoutingPath
 from mqns.network.proactive import MuxSchemeBufferSpace, MuxSchemeDynamicEpr, MuxSchemeStatistical, ProactiveForwarder
 from mqns.network.protocol.consumer import Consumer, RequestCounters
+from mqns.network.route import YenRouteAlgorithm
 from mqns.simulator import func_to_event
 from mqns.utils import unwrap, unwrap_cast
 
 from .fw_common import (
     LA_ALWAYS,
     QubitReleaseReset,
-    build_grid_network,
-    build_tree_network,
     check_fw_counters,
     collect_cpacket_counts,
     make_network,
@@ -624,7 +623,11 @@ def test_5_decohere(
 )
 def test_rect2_multipath(has_etg: tuple[int, int, int, int], n_swapped: tuple[int, int], n_consumed: int):
     """Test swapping in 2x2 rectangular topology with a multi-path request."""
-    net, simulator = build_grid_network(k_paths=2, fw={"p_swap": 1.0})
+    net, simulator = make_network(
+        NetworkBuilder(route=YenRouteAlgorithm(k_paths=2))
+        .topo_from(GridTopoGen((2, 2)), nodes_naming="A", t_cohere=1, link_arch=LA_ALWAYS)
+        .proactive_centralized(p_swap=1.0),
+    )
     fwA, fwB, fwC, fwD = (node.get_app(ProactiveForwarder) for node in net.nodes)
 
     net.add_request(rp := RoutingPath("A", "D"))
@@ -650,6 +653,10 @@ def test_rect2_multipath(has_etg: tuple[int, int, int, int], n_swapped: tuple[in
 @pytest.mark.parametrize(
     ("t_edge_etg", "selected_path", "n_consumed"),
     [
+        # D--\         /--F
+        #     B---A---C
+        # E--/         \--G
+        #
         # Both B-A and A-C channels select the same path,
         # so that end-to-end entanglements are created on the selected path,
         # regardless of whether edge entanglements arrive before or after center entanglements.
@@ -666,8 +673,8 @@ def test_rect2_multipath(has_etg: tuple[int, int, int, int], n_swapped: tuple[in
         (1.007, (1, 0), (0, 0)),
     ],
 )
-def test_tree2_dynepr(t_edge_etg: float, selected_path: tuple[int, int], n_consumed: tuple[int, int]):
-    """Test MuxSchemeDynamicEpr in tree (height=2) topology."""
+def test_tree3_dynepr(t_edge_etg: float, selected_path: tuple[int, int], n_consumed: tuple[int, int]):
+    """Test MuxSchemeDynamicEpr in 3-level tree topology."""
 
     def select_path(path_ids: list[int], epr: Entanglement, fib: Fib) -> int | FibPath:
         if len(path_ids) != 2:
@@ -680,9 +687,10 @@ def test_tree2_dynepr(t_edge_etg: float, selected_path: tuple[int, int], n_consu
             req_id = (rp0.req_id, rp1.req_id)[selected_path[1]]
         return fib.get_req(req_id).paths[0]
 
-    net, simulator = build_tree_network(
-        fw={"p_swap": 1.0},
-        mux=MuxSchemeDynamicEpr(select_path=select_path),
+    net, simulator = make_network(
+        NetworkBuilder()
+        .topo_from(TreeTopoGen(levels=3), nodes_naming="A", t_cohere=1, link_arch=LA_ALWAYS)
+        .proactive_centralized(p_swap=1.0, mux=MuxSchemeDynamicEpr(select_path=select_path)),
         # If there is a conflict in path selection, there will be two leftover EPRs.
         swap_table_leak_tol=2 if selected_path[0] != selected_path[1] else 0,
     )
@@ -708,6 +716,10 @@ def test_tree2_dynepr(t_edge_etg: float, selected_path: tuple[int, int], n_consu
 @pytest.mark.parametrize(
     ("etg_ms", "selected_qubit", "selected_path", "n_consumed"),
     [
+        # D--\         /--F
+        #     B---A---C
+        # E--/         \--G
+        #
         # EPRs arrive in left-to-right order: D-B & E-B, B-A, A-C, C-F & C-G.
         # C, A, B perform their swaps sequentially.
         ((1, 1, 2, 3, 4, 5), (0, 9), -1, (1, 0)),
@@ -730,14 +742,14 @@ def test_tree2_dynepr(t_edge_etg: float, selected_path: tuple[int, int], n_consu
         ((2, 3, 1, 1, 3, 2), (9, 9), 1, (0, 1)),
     ],
 )
-def test_tree2_statistical(
+def test_tree3_statistical(
     etg_ms: tuple[int, int, int, int, int, int],
     selected_qubit: tuple[int, int],
     selected_path: int,
     n_consumed: tuple[int, int],
 ):
     """
-    Test MuxSchemeStatistical in tree (height=2) topology with two 4-link paths.
+    Test MuxSchemeStatistical in 3-level topology with two 4-link paths.
     """
 
     def select_qubit(candidates: list[MemoryEprTuple], fw: Forwarder, mt0: MemoryEprTuple) -> MemoryEprTuple:
@@ -758,14 +770,15 @@ def test_tree2_statistical(
         assert len(candidates) == 2
         return selected_path
 
-    if selected_path < 0:
-        mux = MuxSchemeStatistical(select_swap_qubit=select_qubit)
-    else:
-        mux = MuxSchemeStatistical(select_swap_qubit=select_qubit, coordinated_decisions=True, select_path=select_path)
-
-    net, simulator = build_tree_network(
-        fw={"p_swap": 1.0},
-        mux=mux,
+    net, simulator = make_network(
+        NetworkBuilder()
+        .topo_from(TreeTopoGen(levels=3), nodes_naming="A", t_cohere=1, link_arch=LA_ALWAYS)
+        .proactive_centralized(
+            p_swap=1.0,
+            mux=MuxSchemeStatistical(select_swap_qubit=select_qubit)
+            if selected_path < 0
+            else MuxSchemeStatistical(select_swap_qubit=select_qubit, coordinated_decisions=True, select_path=select_path),
+        ),
         end_time=2,
     )
     fwA, fwB, fwC, fwD, fwE, fwF, fwG = (node.get_app(ProactiveForwarder) for node in net.nodes)
@@ -826,7 +839,7 @@ def test_tree2_statistical(
         ("HDBACF", "EBACGN", "HD,DB,EB,CF,CG,GN:BA,AC", {"B": "D", "C": "G"}, {"A": 0}, (0, 0)),
     ],
 )
-def test_tree3_statistical(
+def test_tree4_statistical(
     path0: str,
     path1: str,
     etgs: str,
@@ -835,7 +848,7 @@ def test_tree3_statistical(
     n_consumed: tuple[int, int],
 ):
     """
-    Test MuxSchemeStatistical in tree (height=3) topology with uneven paths.
+    Test MuxSchemeStatistical in 4-level tree topology with uneven paths.
     """
 
     def select_qubit(candidates: list[MemoryEprTuple], fw: Forwarder, mt0: MemoryEprTuple) -> MemoryEprTuple:
@@ -850,14 +863,15 @@ def test_tree3_statistical(
         _ = candidates, epr0, epr1
         return selected_path[fw.node.name]
 
-    net, simulator = build_tree_network(
-        height=3,
-        fw={"p_swap": 1.0},
-        mux=MuxSchemeStatistical(select_swap_qubit=select_qubit, select_path=select_path),
-        end_time=2,
+    net, simulator = make_network(
+        NetworkBuilder()
+        .topo_from(TreeTopoGen(levels=4), nodes_naming="A", t_cohere=1, link_arch=LA_ALWAYS)
+        .proactive_centralized(p_swap=1.0, mux=MuxSchemeStatistical(select_swap_qubit=select_qubit, select_path=select_path)),
         swap_table_leak_tol=2,
+        end_time=2,
     )
     fws = {node.name: node.get_app(ProactiveForwarder) for node in net.nodes}
+    assert len(fws) == 15
 
     net.add_request(rp0 := RoutingPath.static(path0))
     net.add_request(rp1 := RoutingPath.static(path1))

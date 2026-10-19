@@ -8,12 +8,13 @@ from typing import NamedTuple
 
 import pytest
 
+from mqns.network.builder import GridTopoGen, NetworkBuilder
 from mqns.network.fw import RoutingController, RoutingPath
 from mqns.network.fw.message import PathInstructions
 from mqns.network.network import QuantumNetwork, Request, RequestState
 from mqns.utils import unwrap
 
-from .fw_common import build_grid_network
+from .fw_common import make_network
 
 
 class _PathInsertRecord(NamedTuple):
@@ -37,8 +38,12 @@ def collect_path_insert(monkeypatch: pytest.MonkeyPatch, net: QuantumNetwork) ->
 
 def test_rect2_ru():
     """Test resource utilization tracking in 2x2 rectangular topology."""
-    net, simulator = build_grid_network(t_cohere=0.005, ch_capacity=3, drq_cap=0)
-    # FIB erase delay is 0.020 seconds.
+    net, simulator = make_network(
+        NetworkBuilder()
+        .topo_from(GridTopoGen((2, 2)), nodes_naming="A", t_cohere=0.005, ch_capacity=3)
+        .proactive_centralized(drq_cap=0),
+    )
+    # FIB erase delay is 4*t_cohere = 0.020 seconds.
 
     # t=0.000, available qubits per link: AB=3, AC=3, BD=3, CD=3.
     net.add_request(req0 := Request(RoutingPath.static("ABD", "ACD", bufferspace_mv=1), active_period=(1.001, 2.001)))
@@ -81,8 +86,12 @@ def test_rect2_ru():
 )
 def test_rect2_drq(monkeypatch: pytest.MonkeyPatch, mv2: int, state3: RequestState):
     """Test deferred request queue in 2x2 rectangular topology."""
-    net, simulator = build_grid_network(t_cohere=0.005, ch_capacity=3, drq_cap=2)
-    # FIB erase delay is 0.020 seconds.
+    net, simulator = make_network(
+        NetworkBuilder()
+        .topo_from(GridTopoGen((2, 2)), nodes_naming="A", t_cohere=0.005, ch_capacity=3)
+        .proactive_centralized(drq_cap=2),
+    )
+    # FIB erase delay is 4*t_cohere = 0.020 seconds.
     inserted_paths = collect_path_insert(monkeypatch, net)
 
     # t=0.000, available qubits per link: AB=3, AC=3, BD=3, CD=3.
@@ -131,7 +140,9 @@ def test_grid12_multipath(monkeypatch: pytest.MonkeyPatch):
         |   |   x   |
         I---J---K---L
     """
-    net, simulator = build_grid_network((3, 4), ch_capacity=1)
+    net, simulator = make_network(
+        NetworkBuilder().topo_from(GridTopoGen((3, 4)), nodes_naming="A", ch_capacity=1).proactive_centralized(),
+    )
     inserted_paths = collect_path_insert(monkeypatch, net)
 
     # Block off CD and GK links, marked "x" in the diagram.
