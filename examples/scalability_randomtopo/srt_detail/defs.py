@@ -9,12 +9,8 @@ from typing import Any, NotRequired, TypedDict, cast, override
 
 from tap import Tap
 
-from mqns.entity.node import Controller
+from mqns.network.builder import NetworkBuilder, RandomTopoGen
 from mqns.network.network import QuantumNetwork, generate_random_requests
-from mqns.network.proactive import ProactiveForwarder, ProactiveRoutingController
-from mqns.network.protocol.consumer import Consumer
-from mqns.network.protocol.link_layer import LinkLayer
-from mqns.network.topology import ClassicTopology, RandomTopology
 from mqns.utils import rng
 
 
@@ -96,27 +92,24 @@ def build_network(args: RunArgs) -> QuantumNetwork:
     """
     rng.reseed(args.seed)
 
-    # Define topology.
-    topo = RandomTopology(
-        nodes_number=args.nodes,
-        lines_number=args.edges,
-        qchannel_args={"length": 30, "alpha": fiber_alpha, "eta_s": eta_s, "eta_d": eta_d, "init_fidelity": init_fidelity},
-        cchannel_args={"length": 30},
-        memory_args={"capacity": nqubits, "t_cohere": t_cohere},
-        nodes_apps=[
-            LinkLayer(frequency=frequency),
-            ProactiveForwarder(p_swap=p_swap, mux="S"),
-            Consumer(),
-        ],
-    )
-    topo.controller = Controller("ctrl", apps=[ProactiveRoutingController(mux="S")])
-
     # Construct network.
-    net = QuantumNetwork(topo, classic_topo=ClassicTopology.Follow)
-    topo.connect_controller(net.nodes)
-
-    for qchannel in net.qchannels:
-        qchannel.assign_memory_qubits(capacity=args.qchannel_capacity)
+    net = (
+        NetworkBuilder()
+        .topo_from(
+            RandomTopoGen(args.nodes, args.edges),
+            mem_capacity=nqubits,
+            t_cohere=t_cohere,
+            frequency=frequency,
+            ch_length=30,
+            ch_capacity=args.qchannel_capacity,
+            fiber_alpha=fiber_alpha,
+            eta_s=eta_s,
+            eta_d=eta_d,
+            init_fidelity=init_fidelity,
+        )
+        .proactive_centralized(mux="S", p_swap=p_swap)
+        .make_network()
+    )
 
     # Generate random requests, proportional to network size.
     num_requests = max(2, int(args.nodes / 10))

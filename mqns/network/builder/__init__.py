@@ -14,7 +14,7 @@ from mqns.network.builder.builder import (
     TopoCommonArgs,
 )
 from mqns.network.builder.tap import tap_configure
-from mqns.network.builder.topogen import GridTopoGen, LinearTopoGen, TopoGen, TreeTopoGen
+from mqns.network.builder.topogen import GridTopoGen, LinearTopoGen, RandomTopoGen, TopoGen, TreeTopoGen
 
 __all__ = [
     "AppsForwarderArgs",
@@ -27,6 +27,7 @@ __all__ = [
     "NetworkBuilder",
     "NodeArgs",
     "NodeDef",
+    "RandomTopoGen",
     "tap_configure",
     "TopoCommonArgs",
     "TopoGen",

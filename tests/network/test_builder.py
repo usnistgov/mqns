@@ -4,7 +4,16 @@ from typing import Any
 
 import pytest
 
-from mqns.network.builder import ChannelDef, ChannelParam, GridTopoGen, NetworkBuilder, NodeDef, TreeTopoGen
+from mqns.network.builder import (
+    ChannelDef,
+    ChannelParam,
+    GridTopoGen,
+    LinearTopoGen,
+    NetworkBuilder,
+    NodeDef,
+    RandomTopoGen,
+    TreeTopoGen,
+)
 from mqns.network.network import TimingMode, TimingModeSync
 from mqns.network.protocol.link_layer import LinkLayer
 from mqns.simulator import Simulator
@@ -61,6 +70,15 @@ def test_errors_topogen():
     with pytest.raises(ValueError, match="size must be positive"):
         TreeTopoGen(size=0, arity=2)
 
+    with pytest.raises(ValueError, match="size must be positive"):
+        RandomTopoGen(0, 1)
+
+    with pytest.raises(ValueError, match="too few edges to ensure connectivity"):
+        RandomTopoGen(4, 1)
+
+    with pytest.raises(ValueError, match="too many edges"):
+        RandomTopoGen(4, 7)
+
 
 def test_topo_manual():
     b = NetworkBuilder()
@@ -100,6 +118,35 @@ def test_topo_grid():
     # D---E---F
     channels = {tuple(node.name for node in ch.node_list) for ch in net.qchannels}
     assert channels == {("A", "B"), ("B", "C"), ("D", "E"), ("E", "F"), ("A", "D"), ("B", "E"), ("C", "F")}
+
+
+def test_topo_linear_gen():
+    b = NetworkBuilder()
+    b.topo_from(LinearTopoGen(4), nodes_naming="A")
+    b.proactive_centralized()
+    net = b.make_network()
+
+    channels = {tuple(node.name for node in ch.node_list) for ch in net.qchannels}
+    assert channels == {("A", "B"), ("B", "C"), ("C", "D")}
+
+
+@pytest.mark.parametrize(
+    ("size", "edges"),
+    [
+        (1, 0),
+        (4, 3),
+        (4, 6),
+    ],
+)
+def test_topo_random(size: int, edges: int):
+    b = NetworkBuilder()
+    b.topo_from(RandomTopoGen(size, edges), mem_capacity=4)
+    b.proactive_centralized()
+    net = b.make_network()
+
+    assert len(net.nodes) == size
+    channels = {tuple(sorted(node.name for node in ch.node_list)) for ch in net.qchannels}
+    assert len(channels) == edges
 
 
 @pytest.mark.parametrize(

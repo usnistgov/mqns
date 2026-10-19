@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable, Sequence
 from typing import overload
 
-from mqns.utils import unwrap
+from mqns.utils import rng, unwrap
 
 
 class TopoGen(ABC):
@@ -118,3 +118,49 @@ class TreeTopoGen(TopoGen):
             first_child = i * self.arity + 1
             for j in range(first_child, min(first_child + self.arity, self.size)):
                 make_link(i, j)
+
+
+class RandomTopoGen(TopoGen):
+    """
+    Random topology generator.
+    """
+
+    def __init__(self, size: int, edges: int):
+        """
+        Args:
+            size: Number of nodes.
+            edges: Number of quantum channels.
+        """
+        if size < 1:
+            raise ValueError("size must be positive")
+        if edges < size - 1:
+            raise ValueError("too few edges to ensure connectivity")
+        if edges > size * (size - 1) // 2:
+            raise ValueError("too many edges")
+        self.size = size
+        self.edges = edges
+
+    def build_topo(self, *, make_nodes, make_link) -> None:
+        make_nodes(self.size)
+
+        edges = set[tuple[int, int]]()
+
+        # Ensure connectivity of every node.
+        for b in range(1, self.size):
+            a = rng.integers(0, b, dtype=int)
+            make_link(a, b)
+            edges.add((a, b))
+
+        # Create additional links.
+        while len(edges) < self.edges:
+            while True:
+                a = rng.integers(0, self.size, dtype=int)
+                b = rng.integers(0, self.size, dtype=int)
+                key = (a, b) if a < b else (b, a)
+                if a != b and key not in edges:
+                    break
+            # The b,a order is intentional, for matching the behavior of RandomTopology as of commit 0f59354f.
+            make_link(b, a)
+            edges.add(key)
+
+        assert len(edges) == self.edges
