@@ -74,16 +74,14 @@ def seed_seq_env(n_runs: int, dflt_base: int) -> Sequence[int]:
     return range(seed_base, seed_base + n_runs)
 
 
-_next_seed_env: list[int] = []
-"""
-This list must contain zero or one integer.
-It is populated by the first ``rng.reseed("env")`` call, and incremented on subsequent calls.
-"""
+_next_seed_env: int | None = None
 
 
 def _reseed_env() -> int | None:
-    if _next_seed_env:
-        seed = _next_seed_env[0]
+    global _next_seed_env
+
+    if _next_seed_env is not None:
+        seed = _next_seed_env
     else:
         seed = seed_env()
         if seed is None:
@@ -92,7 +90,7 @@ def _reseed_env() -> int | None:
     if "pytest" in sys.modules:
         print(f"{_ENV_NAME}={seed}")
 
-    _next_seed_env[0] = seed + 1
+    _next_seed_env = seed + 1
     return seed
 
 
