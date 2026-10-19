@@ -4,7 +4,7 @@ from typing import cast
 import numpy as np
 import pytest
 
-from mqns.entity.node import Application, Controller, Node, NodePair, split_node_pair
+from mqns.entity.node import Application, Controller, Node, NodePair, QNode, split_node_pair
 from mqns.models.core import TrafficMatrixInput
 from mqns.network.network import (
     MatrixTrafficGenerator,
@@ -17,7 +17,6 @@ from mqns.network.network import (
     TrafficMatrixMapping,
     sync_phase_handler,
 )
-from mqns.network.topology import BasicTopology
 from mqns.simulator import Simulator, Time, event_handler, func_to_event
 
 
@@ -48,10 +47,11 @@ class SyncCheckApp(Application[Node]):
 
 
 def test_timing_mode_sync():
-    topo = BasicTopology(2, nodes_apps=[SyncCheckApp()])
-    topo.controller = Controller("ctrl", apps=[SyncCheckApp()])
     timing = TimingModeSync(t_ext=4, t_int=1)
-    net = QuantumNetwork(topo, timing=timing)
+    net = QuantumNetwork(timing=timing)
+    net.add_node(QNode("n1", apps=[SyncCheckApp()]))
+    net.add_node(QNode("n2", apps=[SyncCheckApp()]))
+    net.set_controller(Controller("ctrl", apps=[SyncCheckApp()]))
 
     s = Simulator(0.0, 29.9, accuracy=1000, install_to=(net,))
     assert set(node.name for node in net.all_nodes) == {"ctrl", "n1", "n2"}
@@ -79,8 +79,10 @@ def test_mtg_eager(tm: TrafficMatrixInput | TrafficMatrixMapping, src_dst: NodeP
     Test MatrixTrafficGenerator with sched=eager.
     Also validate each traffic matrix input format; the inputs are one-hot.
     """
-    topo = BasicTopology(3, nodes_naming="A")
-    net = QuantumNetwork(topo)
+    net = QuantumNetwork()
+    net.add_node(QNode("A"))
+    net.add_node(QNode("B"))
+    net.add_node(QNode("C"))
 
     mtg = MatrixTrafficGenerator(net, tm, rate=10, sched="eager")
     Simulator(100, 200, install_to=(net, mtg))
@@ -129,9 +131,11 @@ def test_mtg_lazy():
     Test MatrixTrafficGenerator with sched=lazy.
     Also validate request attributes.
     """
-    topo = BasicTopology(3, nodes_naming="A")
-    topo.controller = Controller("ctrl", apps=[app := RequestCheckApp()])
-    net = QuantumNetwork(topo)
+    net = QuantumNetwork()
+    net.add_node(QNode("A"))
+    net.add_node(QNode("B"))
+    net.add_node(QNode("C"))
+    net.set_controller(Controller("ctrl", apps=[app := RequestCheckApp()]))
     app.net = net
 
     mtg = MatrixTrafficGenerator(

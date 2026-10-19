@@ -3,6 +3,7 @@ from typing import override
 
 import pytest
 
+from mqns.entity.cchannel import ClassicChannel, extract_cchannel_args
 from mqns.entity.memory import MemoryDecohereEvent, MemoryQubit, QuantumMemory, QuantumMemoryInitKwargs, QubitState
 from mqns.entity.node import Application, QNode
 from mqns.entity.qchannel import LinkArchAlways, LinkArchDimBk, LinkArchSr, QuantumChannel, QuantumChannelInitKwargs
@@ -10,7 +11,6 @@ from mqns.models.epr import Entanglement, MixedStateEntanglement, WernerStateEnt
 from mqns.network.network import QuantumNetwork, TimingMode, TimingModeAsync, TimingModeSync
 from mqns.network.protocol.event import PathActivateEvent, PathDeactivateEvent, QubitEntangledEvent, QubitReleasedEvent
 from mqns.network.protocol.link_layer import LinkLayer, LinkLayerCounters, LinkLayerInitKwargs
-from mqns.network.topology import ClassicTopology, LinearTopology
 from mqns.simulator import Simulator, event_handler, func_to_event
 from mqns.utils import log, rng
 
@@ -80,19 +80,24 @@ def make_2nodes(
     timing: TimingMode = TimingModeAsync(),
     epr_type: type[Entanglement] = WernerStateEntanglement,
 ) -> tuple[QuantumNetwork, QuantumChannel, LinkLayer, LinkLayer, NetworkLayer, NetworkLayer]:
-    topo = LinearTopology(
-        nodes_number=2,
-        nodes_apps=[NetworkLayer(), LinkLayer(**ll_args)],
-        qchannel_args=qchannel_args,
-        cchannel_args="from_qchannel_args",
-        memory_args=memory_args,
-    )
-    net = QuantumNetwork(topo, classic_topo=ClassicTopology.Follow, timing=timing, epr_type=epr_type)
+    net = QuantumNetwork(timing=timing, epr_type=epr_type)
+    net.add_node(n1 := QNode("n1", apps=[NetworkLayer(), LinkLayer(**ll_args)]))
+    net.add_node(n2 := QNode("n2", apps=[NetworkLayer(), LinkLayer(**ll_args)]))
+    n1.memory = QuantumMemory("m1", **memory_args)
+    n2.memory = QuantumMemory("m2", **memory_args)
+
+    cc = ClassicChannel("cc", **extract_cchannel_args(qchannel_args))
+    n1.add_cchannel(cc)
+    n2.add_cchannel(cc)
+    net.add_cchannel(cc)
+
+    qc = QuantumChannel("qc", **qchannel_args)
+    n1.add_qchannel(qc)
+    n2.add_qchannel(qc)
+    net.add_qchannel(qc)
     net.build_route()
-    ch = net.get_qchannel("n1", "n2")
-    n1 = net.get_node("n1")
-    n2 = net.get_node("n2")
-    return net, ch, n1.get_app(LinkLayer), n2.get_app(LinkLayer), n1.get_app(NetworkLayer), n2.get_app(NetworkLayer)
+
+    return net, qc, n1.get_app(LinkLayer), n2.get_app(LinkLayer), n1.get_app(NetworkLayer), n2.get_app(NetworkLayer)
 
 
 def activate_path(
