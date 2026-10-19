@@ -1,6 +1,6 @@
 import itertools
 from collections.abc import Callable, Sequence
-from typing import Literal, Self, TypedDict, Unpack, overload
+from typing import Literal, Self, TypedDict, Unpack, cast, overload
 
 from mqns.entity.memory import QuantumMemoryInitKwargs
 from mqns.entity.node import Application, NodePair, QNode, split_node_pair
@@ -8,6 +8,7 @@ from mqns.entity.qchannel import LinkArchInput, QuantumChannel
 from mqns.models.epr import EprTypeInput
 from mqns.models.error import TimeDecayInput
 from mqns.models.error.input import ErrorModelInputBasic, ErrorModelInputLength
+from mqns.network.builder.topogen import TopoGen
 from mqns.network.fw import ForwarderInitKwargs, RoutingPath, RoutingPathInitArgs
 from mqns.network.network import QuantumNetwork, Request, TimingMode, TimingModeAsync, TimingModeSync
 from mqns.network.proactive import MuxSchemeInput, ProactiveForwarder, ProactiveRoutingController
@@ -26,6 +27,19 @@ Delay of the classic channels between the controller and each QNode, in seconds.
 In most examples, the overall simulation duration is increased by this value,
 so that the QNodes can perform entanglement forwarding for the full intended duration.
 """
+
+
+def _name_nodes(n: int, nodes_naming: Literal["n1", "A", "R1", "R"]) -> Sequence[str]:
+    if nodes_naming == "A":
+        if n > 26:
+            raise ValueError("too many nodes for nodes_naming='A'")
+        return [chr(0x41 + i) for i in range(n)]
+    elif nodes_naming == "n1":
+        return [f"n{i}" for i in range(1, 1 + n)]
+    elif nodes_naming == "R" and n == 3:
+        return ["S", "R", "D"]
+    else:
+        return ["S", *(f"R{i}" for i in range(1, n - 1)), "D"]
 
 
 class NodeArgs(TypedDict, total=False):
@@ -97,6 +111,24 @@ class ChannelArgs(TypedDict, total=False):
     Photonic Bell-state analyzer or absorptive memory capture error model, defaults to perfect.
     This determines qualify of entangled state.
     """
+
+
+def _channel_args_from_tuple(input: Sequence) -> ChannelArgs:
+    """
+    Parse a channel args tuple.
+
+    The input could be one of:
+
+    * ``tuple[()]``: none.
+    * ``tuple[float]``: channel length.
+    * ``tuple[float, int | tuple[int,int]]``: channel length and capacity.
+    """
+    a = ChannelArgs()
+    if len(input) >= 1:
+        a["ch_length"] = input[0]
+    if len(input) >= 2:
+        a["ch_capacity"] = input[1]
+    return a
 
 
 class ChannelParam:
@@ -185,11 +217,11 @@ class NetworkBuilder:
     def _save_topo_args(self, d: TopoCommonArgs) -> None:
         self.d = d
 
-    def _add_qnode(self, name: str, d: NodeArgs | None = None) -> TopoQNode:
+    def _add_qnode(self, name: str, d: NodeArgs) -> TopoQNode:
         if old_node := self.qnode_by_name.get(name):
             return old_node
 
-        d = (self.d | d) if d else self.d
+        d = self.d | d
         mem_capacity = d.get("mem_capacity", -1)
         node: TopoQNode = {
             "name": name,
@@ -221,17 +253,14 @@ class NetworkBuilder:
         self,
         node1: str,
         node2: str,
-        d: ChannelArgs | None,
-        length: float | None = None,
-        capacity: int | tuple[int, int] | None = None,
+        d: ChannelArgs,
     ):
-        d = (self.d | d) if d else self.d
-
-        caps: int | tuple[int, int] = capacity or d.get("ch_capacity", 1)
+        d = self.d | d
+        caps: int | tuple[int, int] = d.get("ch_capacity", 1)
         cap1, cap2 = (caps, caps) if isinstance(caps, int) else caps
 
-        self._add_qnode(node1)
-        self._add_qnode(node2)
+        self._add_qnode(node1, {})
+        self._add_qnode(node2, {})
         self._inc_memory(node1, cap1)
         self._inc_memory(node2, cap2)
 
@@ -242,7 +271,7 @@ class NetworkBuilder:
                 "capacity1": cap1,
                 "capacity2": cap2,
                 "parameters": {
-                    "length": d.get("ch_length", 1.0) if length is None else length,
+                    "length": d.get("ch_length", 1.0),
                     "link_arch": d.get("link_arch"),
                     "alpha": d.get("fiber_alpha", 0.2),
                     "eta_s": d.get("eta_s", 0.95),
@@ -285,25 +314,73 @@ class NetworkBuilder:
             self._add_qnode(node.name, node.d)
 
         for ch in channels:
-            capacity = None
             if isinstance(ch, ChannelDef):
-                np = ch.np
-                d = ch.d
-                length = None
+                self._add_qchannel(*split_node_pair(ch.np), ch.d)
             else:
-                np, length, *opt_capacity = ch
-                if opt_capacity:
-                    (capacity,) = opt_capacity
-                d = None
-            self._add_qchannel(*split_node_pair(np), d, length, capacity)
+                np, *length_capacity = ch
+                self._add_qchannel(*split_node_pair(np), _channel_args_from_tuple(length_capacity))
 
+        return self
+
+    def topo_from(
+        self,
+        topo: TopoGen,
+        *,
+        nodes_naming: Literal["n1", "A", "R1", "R"] = "n1",
+        nodes: Sequence[NodeDef] = [],
+        channels: Sequence[ChannelDef | tuple[NodePair, float] | tuple[NodePair, float, int | tuple[int, int]]] = [],
+        **kwargs: Unpack[TopoCommonArgs],
+    ) -> Self:
+        """
+        Build a topology with a topology generator.
+
+        Args:
+            nodes_naming: Node name pattern.
+
+                * *n1*: ``n1 n2 ..``.
+                * *A*: ``A B ..``, limited to 26 nodes.
+                * *R1*: ``S R1 R2 .. Rn D``; only suitable for linear topology.
+                * *R*: ``S R D`` for three nodes, otherwise same as *R1*; only suitable for linear topology.
+
+            nodes: Node parameter overrides (optional).
+                It is unnecessary to list a node unless its parameter differs from ``kwargs``.
+            channels: Channel parameter overrides (optional).
+                It is unnecessary to list a channel unless its parameter differs from ``kwargs``.
+        """
+        self._save_topo_args(kwargs)
+
+        for node in nodes:
+            self._add_qnode(node.name, node.d)
+
+        ch_defs: dict[tuple[str, str], ChannelArgs] = {}
+        for ch in channels:
+            if isinstance(ch, tuple):
+                ch_defs[split_node_pair(ch[0])] = _channel_args_from_tuple(ch[1:])
+            else:
+                ch_defs[split_node_pair(ch.np)] = ch.d
+        node_names: Sequence[str] = []
+
+        def make_nodes(n: int) -> Sequence[str]:
+            nonlocal node_names
+            node_names = _name_nodes(n, nodes_naming)
+            for name in node_names:
+                self._add_qnode(name, {})
+            return node_names
+
+        def make_link(a: int | str, b: int | str) -> None:
+            a = node_names[a] if type(a) is int else cast(str, a)
+            b = node_names[b] if type(b) is int else cast(str, b)
+            d = ch_defs.get((a, b)) or ch_defs.get((b, a), {})
+            self._add_qchannel(a, b, d)
+
+        topo.build_topo(make_nodes=make_nodes, make_link=make_link)
         return self
 
     def topo_linear(
         self,
         *,
         nodes: int | Sequence[NodeDef | str],
-        nodes_naming: Literal["R1", "R", "n1", "A"] = "R",
+        nodes_naming: Literal["n1", "A", "R1", "R"] = "R",
         channels: Sequence[ChannelParam | tuple[()] | float | tuple[float, int | tuple[int, int]]] | None = None,
         **kwargs: Unpack[TopoCommonArgs],
     ) -> Self:
@@ -312,15 +389,10 @@ class NetworkBuilder:
 
         Args:
             nodes: Number of nodes or list of node definitions / names, minimum is 2 nodes.
-                If specified as number, the nodes are named ``S R1 R2 .. Rn D``.
+                If specified as number, the nodes are named according to ``nodes_naming``.
                 If specified as list, each node name must be unique.
             nodes_naming: Node name pattern, used if ``nodes`` is an integer.
-
-                * *R1*: ``S R1 R2 .. Rn D``.
-                * *R*: ``S R D`` for three node, otherwise same as *R1*.
-                * *n1*: ``n1 n2 ..``.
-                * *A*: ``A B ..``, limited to 26 nodes.
-
+                See :py:meth:`topo_from` for naming rules.
             channels: Channel parameter overrides (optional).
                 This is necessary only if some channel's parameter differs from ``kwargs``.
             kwargs: Default node and channel parameters.
@@ -333,16 +405,7 @@ class NetworkBuilder:
             if nodes < 2:
                 raise ValueError("at least two nodes")
             n_nodes = nodes
-            if nodes_naming == "R" and n_nodes == 3:
-                nodes = ["S", "R", "D"]
-            elif nodes_naming in ("R", "R1"):
-                nodes = ["S", *(f"R{i}" for i in range(1, n_nodes - 1)), "D"]
-            elif nodes_naming == "A":
-                if n_nodes > 26:
-                    raise ValueError("too many nodes for nodes_naming='A'")
-                nodes = [chr(0x41 + i) for i in range(n_nodes)]
-            else:
-                nodes = [f"n{i}" for i in range(1, 1 + n_nodes)]
+            nodes = _name_nodes(n_nodes, nodes_naming)
         else:
             n_nodes = len(nodes)
             if n_nodes < 2:
@@ -350,7 +413,7 @@ class NetworkBuilder:
 
         n_links = n_nodes - 1
         if channels is None:
-            chs = [None] * n_links
+            chs = [()] * n_links
         elif len(channels) == n_links:
             chs = channels
         else:
@@ -362,20 +425,16 @@ class NetworkBuilder:
                 self._add_qnode(node.name, node.d)
                 node_names.append(node.name)
             else:
-                self._add_qnode(node)
+                self._add_qnode(node, {})
                 node_names.append(node)
 
         for np, ch in zip(itertools.pairwise(node_names), chs, strict=True):
             if isinstance(ch, ChannelParam):
                 self._add_qchannel(*np, ch.d)
             elif isinstance(ch, tuple):
-                if len(ch) == 2:
-                    length, capacity = ch
-                    self._add_qchannel(*np, None, length, capacity)
-                else:
-                    self._add_qchannel(*np, None)
+                self._add_qchannel(*np, _channel_args_from_tuple(ch))
             else:
-                self._add_qchannel(*np, None, ch)
+                self._add_qchannel(*np, {"ch_length": ch})
 
         return self
 

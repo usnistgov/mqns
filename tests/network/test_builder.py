@@ -1,16 +1,16 @@
 import itertools
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import Any
 
 import pytest
 
-from mqns.network.builder import ChannelDef, ChannelParam, NetworkBuilder, NodeDef
+from mqns.network.builder import ChannelDef, ChannelParam, GridTopoGen, NetworkBuilder, NodeDef, TreeTopoGen
 from mqns.network.network import TimingMode, TimingModeSync
 from mqns.network.protocol.link_layer import LinkLayer
 from mqns.simulator import Simulator
 
 
-def test_errors():
+def test_errors_builder():
     with pytest.raises(TypeError, match="must define topology first"):
         NetworkBuilder().proactive_centralized()
 
@@ -42,6 +42,26 @@ def test_errors():
         NetworkBuilder().topo_linear(nodes=2).reactive_distributed()
 
 
+def test_errors_topogen():
+    with pytest.raises(ValueError, match="every dimension of a grid topology must be positive"):
+        GridTopoGen((0, 1))
+
+    with pytest.raises(ValueError, match="arity must be nonnegative"):
+        TreeTopoGen(size=4, arity=-1)
+
+    with pytest.raises(ValueError, match="a tree with arity 0 can only have size=1 or levels=1"):
+        TreeTopoGen(size=4, arity=0)
+
+    with pytest.raises(ValueError, match="a tree with arity 0 can only have size=1 or levels=1"):
+        TreeTopoGen(levels=2, arity=0)
+
+    with pytest.raises(ValueError, match="levels must be positive"):
+        TreeTopoGen(levels=0, arity=2)
+
+    with pytest.raises(ValueError, match="size must be positive"):
+        TreeTopoGen(size=0, arity=2)
+
+
 def test_topo_manual():
     b = NetworkBuilder()
     b.topo(
@@ -67,6 +87,43 @@ def test_topo_manual():
     channels = sorted(net.qchannels, key=lambda ch: ch.length)
     assert [ch.length for ch in channels] == [10, 20, 30, 80]
     assert [ch.alpha for ch in channels] == pytest.approx([0.1, 0.1, 0.1, 0.4], abs=1e-6)
+
+
+def test_topo_grid():
+    b = NetworkBuilder()
+    b.topo_from(GridTopoGen((2, 3)), nodes_naming="A")
+    b.proactive_centralized()
+    net = b.make_network()
+
+    # A---B---C
+    # |   |   |
+    # D---E---F
+    channels = {tuple(node.name for node in ch.node_list) for ch in net.qchannels}
+    assert channels == {("A", "B"), ("B", "C"), ("D", "E"), ("E", "F"), ("A", "D"), ("B", "E"), ("C", "F")}
+
+
+@pytest.mark.parametrize(
+    ("gen", "size", "links"),
+    [
+        pytest.param(lambda: TreeTopoGen(size=1, arity=0), 1, "", id="single"),
+        pytest.param(lambda: TreeTopoGen(size=4, arity=1), 4, "AB,BC,CD", id="linear-size"),
+        pytest.param(lambda: TreeTopoGen(levels=4, arity=1), 4, "AB,BC,CD", id="linear-levels"),
+        pytest.param(lambda: TreeTopoGen(levels=3, arity=3), 13, "AB,AC,AD,BE,BF,BG,CH,CI,CJ,DK,DL,DM", id="ternary-13"),
+        pytest.param(lambda: TreeTopoGen(size=8, arity=3), 8, "AB,AC,AD,BE,BF,BG,CH", id="ternary-8"),
+    ],
+)
+def test_topo_tree(gen: Callable[[], TreeTopoGen], size: int, links: str):
+    b = NetworkBuilder()
+    b.topo_from(gen(), nodes_naming="A", mem_capacity=4)
+    b.proactive_centralized()
+    net = b.make_network()
+
+    assert len(net.nodes) == size
+    if size == 1:
+        assert len(net.qchannels) == 0
+    else:
+        channels = {tuple(node.name for node in ch.node_list) for ch in net.qchannels}
+        assert channels == set(tuple(np) for np in links.split(","))
 
 
 @pytest.mark.parametrize(
