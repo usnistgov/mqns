@@ -1,5 +1,5 @@
 import math
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from typing import Literal, NamedTuple, override
 
 from tap import Tap
@@ -35,7 +35,7 @@ class Args(Tap):
 class Stats(NamedTuple):
     path1: RequestCounters
     path2: RequestCounters
-    fw: dict[str, ForwarderCounters]
+    fw: Mapping[str, ForwarderCounters]
 
     def _describe(self) -> Iterable[str]:
         yield f"PATH1: {self.path1}"
@@ -79,14 +79,11 @@ def run_simulation(args: Args) -> Stats:
     s = Simulator(0, math.inf, accuracy=args.sim_accuracy, install_to=(log, net))
     s.run()
 
-    stats = Stats(
+    return Stats(
         path1=RequestCounters.of(net, 10, "S1-D1"),
         path2=RequestCounters.of(net, 20, "S2-D2"),
-        fw={},
+        fw={node.name: node.get_app(Forwarder).cnt for node in net.nodes},
     )
-    for node in net.nodes:
-        stats.fw[node.name] = node.get_app(Forwarder).cnt
-    return stats
 
 
 if __name__ == "__main__":

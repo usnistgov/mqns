@@ -26,6 +26,7 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
+    "myst_parser",
 ]
 
 intersphinx_mapping = {
@@ -41,6 +42,8 @@ autodoc_default_options = {
     "ignore-module-all": True
 }
 autodoc_typehints = "description"
+
+autoclass_content = "both"
 
 # -- Options for HTML output
 html_theme = "sphinx_rtd_theme"

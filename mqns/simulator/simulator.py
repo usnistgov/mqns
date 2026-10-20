@@ -221,10 +221,12 @@ class Simulator:
             gate: New gate time.
             direct: If True, update directly without scheduling an event.
                     This option should not be used from a secondary thread.
-            priority: Event priority, defaults to 2^31-1 that represents a low priority.
+            priority: Event priority, defaults to 2^32-1 that represents a low priority.
 
-        Returns: the gate update event.
-        The secondary thread must cancel previously scheduled gate update events.
+        Returns:
+            ``None`` if ``direct=True``.
+            Otherwise, the gate update event.
+            The secondary thread must cancel previously scheduled gate update events.
 
         Calling this function is mandatory when using thread-safe event pool.
         It is no-op when using non-thread-safe event pool.
