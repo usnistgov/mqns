@@ -1,11 +1,11 @@
+import itertools
 from typing import override
 
-from mqns.entity.cchannel import ClassicPacket, RecvClassicPacket
-from mqns.entity.node import Application, Node
+from mqns.entity.cchannel import ClassicChannel, ClassicPacket, RecvClassicPacket
+from mqns.entity.node import Application, Node, QNode
 from mqns.network.network import QuantumNetwork
 from mqns.network.protocol.classicforward import ClassicPacketForwardApp
 from mqns.network.route import DijkstraRouteAlgorithm, RouteAlgorithm
-from mqns.network.topology import ClassicTopology, LinearTopology
 from mqns.simulator import Simulator, event_handler, func_to_event
 
 
@@ -47,31 +47,30 @@ class RecvApp(Application[Node]):
         msg = packet.get()
         output = f"{self.node} recv packet: {msg} from {packet.src}->{packet.dest}"
         print(output)
-        assert output == "<qnode n10> recv packet: Hello,world from <qnode n1> from <qnode n1>-><qnode n10>"
+        assert output == "<qnode n9> recv packet: Hello,world from <qnode n0> from <qnode n0>-><qnode n9>"
 
 
 def test_classic_forward():
-    topo = LinearTopology(nodes_number=10, qchannel_args={"delay": 0.1}, cchannel_args={"delay": 0.1})
-
-    net = QuantumNetwork(topo, classic_topo=ClassicTopology.Follow)
-
-    # build quantum routing table
-    net.build_route()
+    net = QuantumNetwork()
+    for i in range(10):
+        net.add_node(QNode(f"n{i}"))
+    for a, b in itertools.pairwise(net.nodes):
+        ch = ClassicChannel(f"c_{a.name},{b.name}", delay=0.1)
+        a.add_cchannel(ch)
+        b.add_cchannel(ch)
+        net.add_cchannel(ch)
 
     classic_route = DijkstraRouteAlgorithm(name="classic route")
-
-    # build classic routing table
     classic_route.build(list(net.nodes), net.cchannels)
     print(classic_route.route_table)
 
     for n in net.nodes:
-        n.add_apps(ClassicPacketForwardApp(classic_route))
-        n.add_apps(RecvApp())
+        n.add_apps([ClassicPacketForwardApp(classic_route), RecvApp()])
 
-    n1 = net.get_node("n1")
-    n10 = net.get_node("n10")
+    n0 = net.get_node("n0")
+    n9 = net.get_node("n9")
 
-    n1.add_apps(SendApp(n10, classic_route))
+    n0.add_apps(SendApp(n9, classic_route))
 
     s = Simulator(0, 10, accuracy=10000000, install_to=(net,))
     s.run()

@@ -1,79 +1,24 @@
 import itertools
-from collections.abc import Sequence
-from typing import NotRequired, Self, TypedDict, Unpack, overload
-
-from tap import Tap
+from collections.abc import Callable, Sequence
+from typing import Literal, Self, TypedDict, Unpack, cast, overload
 
 from mqns.entity.memory import QuantumMemoryInitKwargs
 from mqns.entity.node import Application, NodePair, QNode, split_node_pair
-from mqns.entity.qchannel import LINK_ARCH_MAP, LinkArchInput, LinkArchLiteral, QuantumChannel
-from mqns.models.epr import EPR_TYPE_MAP, EprTypeInput, EprTypeLiteral
+from mqns.entity.qchannel import LinkArchInput, QuantumChannel
+from mqns.models.epr import EprTypeInput
 from mqns.models.error import TimeDecayInput
-from mqns.models.error.input import ErrorModelInputBasic, ErrorModelInputLength, ErrorModelInputTime
+from mqns.models.error.input import ErrorModelInputBasic, ErrorModelInputLength
+from mqns.network.builder.topogen import TopoGen
 from mqns.network.fw import ForwarderInitKwargs, RoutingPath, RoutingPathInitArgs
 from mqns.network.network import QuantumNetwork, Request, TimingMode, TimingModeAsync, TimingModeSync
-from mqns.network.proactive import (
-    MUX_SCHEME_MAP,
-    MuxSchemeInput,
-    MuxSchemeLiteral,
-    ProactiveForwarder,
-    ProactiveRoutingController,
-)
+from mqns.network.proactive import MuxSchemeInput, ProactiveForwarder, ProactiveRoutingController
 from mqns.network.protocol.classicbridge import ClassicBridge
 from mqns.network.protocol.consumer import Consumer
 from mqns.network.protocol.link_layer import LinkLayer, LinkLayerInitKwargs
 from mqns.network.reactive import ReactiveForwarder, ReactiveRoutingController
 from mqns.network.route import DijkstraRouteAlgorithm, RouteAlgorithm
-from mqns.network.topology import ClassicTopology, Topology
+from mqns.network.topology import ClassicTopology
 from mqns.network.topology.customtopo import CustomTopology, Topo, TopoController, TopoQChannel, TopoQNode
-
-
-def tap_configure(tap: Tap) -> None:
-    """
-    When called from ``Tap.configure()`` function, define command line arguments for supported literal types.
-
-    Recognized keys:
-
-    * ``mode``
-    * ``sync_timing``
-
-    Recognized types:
-
-    * ``EprTypeLiteral``
-    * ``ErrorModelInput*``
-    * ``LinkArchLiteral``
-    * ``MuxSchemeLiteral``
-    * ``TimeDecayInput``
-    """
-    for key, typ in tap._annotations.items():
-        if key == "mode":
-            tap.add_argument(
-                f"--{key}",
-                help=f"(default={getattr(tap, key)}) choose mode: [P]roactive/[R]eactive forwarding, "
-                "[C]entralized/[D]istributed control, [A]sync/[S]ync timing",
-            )
-        elif key == "sync_timing":
-            dflt = getattr(tap, key, [])
-            dflt_desc = f"default={dflt}" if dflt else "default: derive from t_cohere"
-            tap.add_argument(
-                f"--{key}",
-                type=float,
-                nargs=3,
-                default=dflt,
-                metavar=("t_ext", "t_rtg", "t_int"),
-                help=f"(3*float, {dflt_desc}) SYNC timing mode phase durations in seconds",
-            )
-        elif typ is EprTypeLiteral:
-            tap.add_argument(f"--{key}", type=str, default="W", choices=EPR_TYPE_MAP.keys())
-        elif typ is ErrorModelInputBasic:
-            tap.add_argument(f"--{key}", type=str, metavar="ErrorModelType:p_error")
-        elif typ in (ErrorModelInputTime, ErrorModelInputLength, TimeDecayInput):
-            tap.add_argument(f"--{key}", type=str, metavar="ErrorModelType:rate")
-        elif typ is MuxSchemeLiteral:
-            tap.add_argument(f"--{key}", type=str, choices=MUX_SCHEME_MAP.keys())
-        elif typ is LinkArchLiteral:
-            tap.add_argument(f"--{key}", type=str, default="DIM-BK-SeQUeNCe", choices=LINK_ARCH_MAP.keys())
-
 
 CTRL_DELAY = 5e-06
 """
@@ -84,16 +29,31 @@ so that the QNodes can perform entanglement forwarding for the full intended dur
 """
 
 
+def _name_nodes(n: int, nodes_naming: Literal["n1", "A", "R1", "R"]) -> Sequence[str]:
+    if nodes_naming == "A":
+        if n > 26:
+            raise ValueError("too many nodes for nodes_naming='A'")
+        return [chr(0x41 + i) for i in range(n)]
+    elif nodes_naming == "n1":
+        return [f"n{i}" for i in range(1, 1 + n)]
+    elif nodes_naming == "R" and n == 3:
+        return ["S", "R", "D"]
+    else:
+        return ["S", *(f"R{i}" for i in range(1, n - 1)), "D"]
+
+
 class NodeArgs(TypedDict, total=False):
+    """Node parameters."""
+
     mem_capacity: int
     """Memory capacity, defaults to ``-1`` for deriving from channel capacities."""
     t_cohere: float
     """Memory coherence time in seconds, defaults to ``0.02``."""
     memory_decay: TimeDecayInput
     """Memory time decay function, defaults to dephasing in ``t_cohere``."""
-    frequency: NotRequired[float]
+    frequency: float
     """Entanglement source frequency, defaults to ``1_000_000``."""
-    tau_0: NotRequired[float]
+    tau_0: float
     """Local operation delay in seconds for emitting and absorbing photon, defaults to ``0.0``."""
 
 
@@ -106,6 +66,8 @@ class NodeDef:
 
 
 class ChannelArgs(TypedDict, total=False):
+    """Channel parameters."""
+
     ch_length: float
     """
     Channel length in kilometer, defaults to ``1.0``.
@@ -124,12 +86,12 @@ class ChannelArgs(TypedDict, total=False):
     Fiber loss in dB/km, defaults to ``0.2``.
     This determines success probability.
     """
-    eta_s: NotRequired[float]
+    eta_s: float
     """
     Source efficiency between 0 and 1, defaults to ``0.95``.
     This determines success probability.
     """
-    eta_d: NotRequired[float]
+    eta_d: float
     """
     Detector efficiency between 0 and 1, defaults to ``0.95``.
     This determines success probability.
@@ -149,6 +111,24 @@ class ChannelArgs(TypedDict, total=False):
     Photonic Bell-state analyzer or absorptive memory capture error model, defaults to perfect.
     This determines qualify of entangled state.
     """
+
+
+def _channel_args_from_tuple(input: Sequence) -> ChannelArgs:
+    """
+    Parse a channel args tuple.
+
+    The input could be one of:
+
+    * ``tuple[()]``: none.
+    * ``tuple[float]``: channel length.
+    * ``tuple[float, int | tuple[int,int]]``: channel length and capacity.
+    """
+    a = ChannelArgs()
+    if len(input) >= 1:
+        a["ch_length"] = input[0]
+    if len(input) >= 2:
+        a["ch_capacity"] = input[1]
+    return a
 
 
 class ChannelParam:
@@ -187,7 +167,7 @@ class AppsCommonArgs(TypedDict, total=False):
 
 class AppsForwarderArgs(AppsCommonArgs, ForwarderInitKwargs):
     """
-    Combination of AppsCommonArgs and ForwarderInitKwargs.
+    Combination of ``AppsCommonArgs`` and ``ForwarderInitKwargs``.
 
     Args:
         p_swap: Probability of successful entanglement swapping in forwarder, defaults to ``0.5``.
@@ -196,7 +176,8 @@ class AppsForwarderArgs(AppsCommonArgs, ForwarderInitKwargs):
 
 class NetworkBuilder:
     """
-    Orchestrator of quantum network simulation with LinkLayer and forwarder.
+    Orchestrator of quantum network simulation with :py:class:`~mqns.network.protocol.link_layer.LinkLayer`
+    and :py:class:`~mqns.network.fw.Forwarder`.
 
     Usage:
 
@@ -236,11 +217,11 @@ class NetworkBuilder:
     def _save_topo_args(self, d: TopoCommonArgs) -> None:
         self.d = d
 
-    def _add_qnode(self, name: str, d: NodeArgs | None = None) -> TopoQNode:
+    def _add_qnode(self, name: str, d: NodeArgs) -> TopoQNode:
         if old_node := self.qnode_by_name.get(name):
             return old_node
 
-        d = (self.d | d) if d else self.d
+        d = self.d | d
         mem_capacity = d.get("mem_capacity", -1)
         node: TopoQNode = {
             "name": name,
@@ -272,17 +253,14 @@ class NetworkBuilder:
         self,
         node1: str,
         node2: str,
-        d: ChannelArgs | None,
-        length: float | None = None,
-        capacity: int | tuple[int, int] | None = None,
+        d: ChannelArgs,
     ):
-        d = (self.d | d) if d else self.d
-
-        caps: int | tuple[int, int] = capacity or d.get("ch_capacity", 1)
+        d = self.d | d
+        caps: int | tuple[int, int] = d.get("ch_capacity", 1)
         cap1, cap2 = (caps, caps) if isinstance(caps, int) else caps
 
-        self._add_qnode(node1)
-        self._add_qnode(node2)
+        self._add_qnode(node1, {})
+        self._add_qnode(node2, {})
         self._inc_memory(node1, cap1)
         self._inc_memory(node2, cap2)
 
@@ -293,7 +271,7 @@ class NetworkBuilder:
                 "capacity1": cap1,
                 "capacity2": cap2,
                 "parameters": {
-                    "length": d.get("ch_length", 1.0) if length is None else length,
+                    "length": d.get("ch_length", 1.0),
                     "link_arch": d.get("link_arch"),
                     "alpha": d.get("fiber_alpha", 0.2),
                     "eta_s": d.get("eta_s", 0.95),
@@ -317,16 +295,18 @@ class NetworkBuilder:
 
         Args:
             channels: List of channels.
-                Each element is either a ``ChannelDef`` or a tuple.
+                Each element is either a :py:class:`ChannelDef` or a tuple.
                 If specified as tuple:
+
                 * First tuple item is channel end points.
                 * Second tuple item is channel length in kilometer.
                 * Third tuple item is channel capacity, if it differs from ``kwargs.ch_capacity``.
+
             nodes: Node parameter overrides (optional).
                 It is unnecessary to list a node unless its parameter differs from ``kwargs``.
             kwargs: Default node and channel parameters.
-                To override a node's parameters, pass ``NodeDef`` to ``nodes``.
-                To override a channel's parameters, pass ``ChannelDef`` to ``channels``.
+                To override a node's parameters, pass :py:class:`NodeDef` to ``nodes``.
+                To override a channel's parameters, pass :py:class:`ChannelDef` to ``channels``.
         """
         self._save_topo_args(kwargs)
 
@@ -334,25 +314,74 @@ class NetworkBuilder:
             self._add_qnode(node.name, node.d)
 
         for ch in channels:
-            capacity = None
             if isinstance(ch, ChannelDef):
-                np = ch.np
-                d = ch.d
-                length = None
+                self._add_qchannel(*split_node_pair(ch.np), ch.d)
             else:
-                np, length, *opt_capacity = ch
-                if opt_capacity:
-                    (capacity,) = opt_capacity
-                d = None
-            self._add_qchannel(*split_node_pair(np), d, length, capacity)
+                np, *length_capacity = ch
+                self._add_qchannel(*split_node_pair(np), _channel_args_from_tuple(length_capacity))
 
+        return self
+
+    def topo_from(
+        self,
+        topo: TopoGen,
+        *,
+        nodes_naming: Literal["n1", "A", "R1", "R"] = "n1",
+        nodes: Sequence[NodeDef] = [],
+        channels: Sequence[ChannelDef | tuple[NodePair, float] | tuple[NodePair, float, int | tuple[int, int]]] = [],
+        **kwargs: Unpack[TopoCommonArgs],
+    ) -> Self:
+        """
+        Build a topology with a topology generator.
+
+        Args:
+            nodes_naming: Node name pattern.
+
+                * *n1*: ``n1 n2 ..``.
+                * *A*: ``A B ..``, limited to 26 nodes.
+                * *R1*: ``S R1 R2 .. Rn D``; only suitable for linear topology.
+                * *R*: ``S R D`` for three nodes, otherwise same as *R1*; only suitable for linear topology.
+
+            nodes: Node parameter overrides (optional).
+                It is unnecessary to list a node unless its parameter differs from ``kwargs``.
+            channels: Channel parameter overrides (optional).
+                It is unnecessary to list a channel unless its parameter differs from ``kwargs``.
+        """
+        self._save_topo_args(kwargs)
+
+        for node in nodes:
+            self._add_qnode(node.name, node.d)
+
+        ch_defs: dict[tuple[str, str], ChannelArgs] = {}
+        for ch in channels:
+            if isinstance(ch, tuple):
+                ch_defs[split_node_pair(ch[0])] = _channel_args_from_tuple(ch[1:])
+            else:
+                ch_defs[split_node_pair(ch.np)] = ch.d
+        node_names: Sequence[str] = []
+
+        def make_nodes(n: int) -> Sequence[str]:
+            nonlocal node_names
+            node_names = _name_nodes(n, nodes_naming)
+            for name in node_names:
+                self._add_qnode(name, {})
+            return node_names
+
+        def make_link(a: int | str, b: int | str) -> None:
+            a = node_names[a] if type(a) is int else cast(str, a)
+            b = node_names[b] if type(b) is int else cast(str, b)
+            d = ch_defs.get((a, b)) or ch_defs.get((b, a), {})
+            self._add_qchannel(a, b, d)
+
+        topo.build_topo(make_nodes=make_nodes, make_link=make_link)
         return self
 
     def topo_linear(
         self,
         *,
         nodes: int | Sequence[NodeDef | str],
-        channels: Sequence[ChannelParam | float | tuple[float, int | tuple[int, int]]] | None = None,
+        nodes_naming: Literal["n1", "A", "R1", "R"] = "R",
+        channels: Sequence[ChannelParam | tuple[()] | float | tuple[float, int | tuple[int, int]]] | None = None,
         **kwargs: Unpack[TopoCommonArgs],
     ) -> Self:
         """
@@ -360,29 +389,31 @@ class NetworkBuilder:
 
         Args:
             nodes: Number of nodes or list of node definitions / names, minimum is 2 nodes.
-                If specified as number, the nodes are named ``S R1 R2 .. Rn D``.
+                If specified as number, the nodes are named according to ``nodes_naming``.
                 If specified as list, each node name must be unique.
+            nodes_naming: Node name pattern, used if ``nodes`` is an integer.
+                See :py:meth:`topo_from` for naming rules.
             channels: Channel parameter overrides (optional).
                 This is necessary only if some channel's parameter differs from ``kwargs``.
             kwargs: Default node and channel parameters.
-                To override a node's parameters, pass ``NodeDef`` to ``nodes``.
-                To override a channel's parameters, pass ``ChannelDef`` to ``channels``.
+                To override a node's parameters, pass :py:class:`NodeDef` to ``nodes``.
+                To override a channel's parameters, pass :py:class:`ChannelDef` to ``channels``.
         """
         self._save_topo_args(kwargs)
 
         if isinstance(nodes, int):
             if nodes < 2:
                 raise ValueError("at least two nodes")
-            nodes = [f"R{i}" for i in range(nodes)]
-            nodes[0] = "S"
-            nodes[-1] = "D"
+            n_nodes = nodes
+            nodes = _name_nodes(n_nodes, nodes_naming)
+        else:
+            n_nodes = len(nodes)
+            if n_nodes < 2:
+                raise ValueError("at least two nodes")
 
-        n_nodes = len(nodes)
-        if n_nodes < 2:
-            raise ValueError("at least two nodes")
         n_links = n_nodes - 1
         if channels is None:
-            chs = [None] * n_links
+            chs = [()] * n_links
         elif len(channels) == n_links:
             chs = channels
         else:
@@ -394,17 +425,16 @@ class NetworkBuilder:
                 self._add_qnode(node.name, node.d)
                 node_names.append(node.name)
             else:
-                self._add_qnode(node)
+                self._add_qnode(node, {})
                 node_names.append(node)
 
         for np, ch in zip(itertools.pairwise(node_names), chs, strict=True):
             if isinstance(ch, ChannelParam):
                 self._add_qchannel(*np, ch.d)
             elif isinstance(ch, tuple):
-                length, capacity = ch
-                self._add_qchannel(*np, None, length, capacity)
+                self._add_qchannel(*np, _channel_args_from_tuple(ch))
             else:
-                self._add_qchannel(*np, None, ch)
+                self._add_qchannel(*np, {"ch_length": ch})
 
         return self
 
@@ -439,6 +469,7 @@ class NetworkBuilder:
         self,
         *,
         mux: MuxSchemeInput = None,
+        drq_cap=0,
         **kwargs: Unpack[AppsForwarderArgs],
     ) -> Self:
         """
@@ -446,6 +477,7 @@ class NetworkBuilder:
 
         Args:
             mux: Multiplexing scheme, default is buffer-space.
+            drq_cap: Deferred request queue capacity in the controller.
         """
         self._assert_can_add_apps()
         self._extract_apps_common_args(kwargs)
@@ -457,11 +489,16 @@ class NetworkBuilder:
         )
         self._add_consumer()
         self.controller_apps.append(
-            ProactiveRoutingController(mux=mux),
+            ProactiveRoutingController(mux=mux, drq_cap=drq_cap),
         )
         return self
 
     def proactive_distributed(self) -> Self:
+        """
+        Choose proactive forwarding with distributed control.
+
+        This is unimplemented.
+        """
         self._assert_can_add_apps()
         raise NotImplementedError
 
@@ -484,6 +521,11 @@ class NetworkBuilder:
         return self
 
     def reactive_distributed(self) -> Self:
+        """
+        Choose reactive forwarding with distributed control.
+
+        This is unimplemented.
+        """
         self._assert_can_add_apps()
         raise NotImplementedError
 
@@ -493,16 +535,17 @@ class NetworkBuilder:
         nats_prefix=ClassicBridge.DEFAULT_NATS_PREFIX,
     ) -> Self:
         """
-        Replace the controller application with ``ClassicBridge``.
+        Replace the controller application with :py:class:`mqns.network.protocol.classicbridge.ClassicBridge`.
 
         Args:
             nats_prefix: Prefix of NATS subjects.
 
-        This must be called after ``proactive_centralized`` or ``reactive_centralized``.
-        The internal controller application is deleted and replaced with ``ClassicBridge``, which allows
+        This must be called after :py:meth:`proactive_centralized` or :py:meth:`reactive_centralized`.
+        The internal controller application is deleted and replaced with
+        :py:class:`~mqns.network.protocol.classicbridge.ClassicBridge`, which allows
         the controller logic to be implemented in an external program connected over NATS.
 
-        ``.request()`` method cannot be used.
+        :py:meth:`request` method cannot be used.
         Instead, requests or routing paths should be defined in the external controller.
         """
         self.controller_apps.clear()
@@ -528,7 +571,7 @@ class NetworkBuilder:
         **kwargs: Unpack[RoutingPathInitArgs],
     ) -> Self:
         if len(self.controller_apps) == 0:
-            raise TypeError("must install controller application first")
+            raise TypeError("must install controller application")
 
         if isinstance(arg1, RoutingPath):
             self.requests.append(Request(arg1))
@@ -537,37 +580,31 @@ class NetworkBuilder:
 
         return self
 
-    def make_topo(self) -> Topology:
-        """
-        Retrieve topology object.
-
-        This method is only necessary if you need to inspect or modify the topology factory object.
-        Otherwise, use ``.make_network()`` directly.
-        """
-        topo = Topo(qnodes=self.qnodes, qchannels=self.qchannels)
-        if len(self.controller_apps) > 0:
-            topo["controller"] = TopoController(name="ctrl", apps=self.controller_apps)
-        return CustomTopology(
-            topo,
-            nodes_apps=self.qnode_apps,
-        )
-
     def make_network(
         self,
         *,
-        topo: Topology | None = None,
+        modify: Callable[[Self, Topo], None] | None = None,
         connect_controller=True,
     ) -> QuantumNetwork:
         """
         Construct quantum network.
 
         Args:
-            topo: Result of ``.make_topo()`` method with possible modification, defaults to ``self.make_topo()``.
+            modify: Callback function to modify the topology definition if necessary.
             connect_controller: If True and controller exists, create cchannels between controller and each qnode.
 
-        Returns: QuantumNetwork ready for simulation.
+        Returns:
+            QuantumNetwork ready for simulation.
         """
-        topo = topo or self.make_topo()
+        if len(self.qnode_apps) == 0:
+            raise TypeError("must install applications")
+        topo_def = Topo(qnodes=self.qnodes, qchannels=self.qchannels)
+        if len(self.controller_apps) > 0:
+            topo_def["controller"] = TopoController(name="ctrl", apps=self.controller_apps)
+        if modify:
+            modify(self, topo_def)
+
+        topo = CustomTopology(topo_def, nodes_apps=self.qnode_apps)
         net = QuantumNetwork(
             topo,
             classic_topo=ClassicTopology.Follow,

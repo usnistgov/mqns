@@ -4,15 +4,17 @@ Test suite for reactive forwarding focused on swapping.
 
 import pytest
 
-from mqns.network.network import Request, TimingModeSync
+from mqns.network.builder import NetworkBuilder
+from mqns.network.network import Request
 from mqns.network.protocol.consumer import RequestCounters
 from mqns.network.reactive import ReactiveForwarder, ReactiveRoutingController
 from mqns.utils import unwrap
 
 from .fw_common import (
-    build_linear_network,
+    LA_ALWAYS,
     check_fw_counters,
     collect_cpacket_counts,
+    make_network,
     print_node_counters,
     provide_entanglements,
 )
@@ -43,13 +45,11 @@ def test_3_minimal(
     cnt: tuple[int, int, int],
 ):
     """Test 3-node minimal swap, two time slots."""
-    net, simulator = build_linear_network(
-        3,
-        ch_capacity=2,
-        mode="R",
-        fw={"p_swap": 1.0},
+    net, simulator = make_network(
+        NetworkBuilder()
+        .topo_linear(nodes="ABC", t_cohere=1, ch_capacity=2, link_arch=LA_ALWAYS)
+        .reactive_centralized(timing=(0.006, 0.001, 0.003), p_swap=1.0),
         end_time=0.020,
-        timing=TimingModeSync(t_ext=0.006, t_rtg=0.001, t_int=0.003),
     )
     ctrl = unwrap(net.controller).get_app(ReactiveRoutingController)
     fwA, fwB, fwC = (node.get_app(ReactiveForwarder) for node in net.nodes)

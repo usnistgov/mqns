@@ -96,7 +96,7 @@ def run_simulation(seed: int, args: Args, t_cohere: float, t_wait: float):
             epr_type=args.epr_type,
         )
         .topo_linear(
-            nodes="SRD",
+            nodes=3,
             t_cohere=t_cohere,
             memory_decay=args.memory_decay,
             channels=args.L,

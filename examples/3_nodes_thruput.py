@@ -109,7 +109,7 @@ def run_simulation(seed: int, args: Args, t_cohere: float) -> Stats:
     rng.reseed(seed)
 
     b = NetworkBuilder().topo_linear(
-        nodes="SRD",
+        nodes=3,
         t_cohere=t_cohere,
         channels=args.linear_channels(),
         link_arch=args.link_arch,

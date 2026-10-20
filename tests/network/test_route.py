@@ -1,18 +1,26 @@
+import itertools
+
 import pytest
 
+from mqns.entity.node import QNode
+from mqns.entity.qchannel import QuantumChannel
 from mqns.network.network import QuantumNetwork
 from mqns.network.route import DijkstraRouteAlgorithm, YenRouteAlgorithm
-from mqns.network.topology import CustomTopology, LinearTopology
+from mqns.network.topology.customtopo import CustomTopology
 
 
 def test_dijkstra():
-    net = QuantumNetwork(LinearTopology(4), route=DijkstraRouteAlgorithm())
+    net = QuantumNetwork(route=DijkstraRouteAlgorithm())
+    net.add_node(n1 := QNode("n1"))
+    net.add_node(n2 := QNode("n2"))
+    net.add_node(n3 := QNode("n3"))
+    net.add_node(n4 := QNode("n4"))
+    for a, b in itertools.pairwise(net.nodes):
+        ch = QuantumChannel(f"q_{a.name},{b.name}")
+        a.add_qchannel(ch)
+        b.add_qchannel(ch)
+        net.add_qchannel(ch)
     net.build_route()
-
-    n1 = net.get_node("n1")
-    n2 = net.get_node("n2")
-    n3 = net.get_node("n3")
-    n4 = net.get_node("n4")
 
     with pytest.raises(match="no route"):
         net.query_route("n1", "n1")

@@ -7,31 +7,36 @@ import pytest
 from mqns.entity.memory import QuantumMemory
 from mqns.entity.qchannel import LinkArch, LinkArchAlways, LinkArchDimBk, LinkArchSr
 from mqns.entity.timer import Timer
-from mqns.models.epr import Entanglement, MixedStateEntanglement, WernerStateEntanglement
+from mqns.models.epr import EprTypeLiteral
+from mqns.network.builder import GridTopoGen, NetworkBuilder, TreeTopoGen
 from mqns.network.fw import RoutingPath, RoutingPathInitArgs, SwapSequenceInput
 from mqns.network.network import Request, RequestState, TimingMode, TimingModeAsync, TimingModeSync
 from mqns.network.proactive import MuxSchemeInput, MuxSchemeStatistical, ProactiveForwarder
 from mqns.network.protocol.consumer import RequestCounters
 from mqns.network.protocol.link_layer import LinkLayer
+from mqns.network.route import DijkstraRouteAlgorithm, YenRouteAlgorithm
 from mqns.simulator import Time
 
 from .fw_common import (
-    build_grid_network,
-    build_linear_network,
-    build_tree_network,
+    LA_ALWAYS,
     collect_cpacket_counts,
-    dflt_qchannel_args,
+    make_network,
     print_node_counters,
 )
 
 
-@pytest.mark.parametrize("epr_type", [WernerStateEntanglement, MixedStateEntanglement])
+@pytest.mark.parametrize("epr_type", ["W", "M"])
 @pytest.mark.parametrize("timing", [TimingModeAsync(), TimingModeSync(t_ext=0.006, t_int=0.004)], ids=["ASYNC", "SYNC"])
 @pytest.mark.parametrize("swap", ["asap", "l2r", "r2l"])
-def test_4_swap(epr_type: type[Entanglement], timing: TimingMode, swap: SwapSequenceInput):
+def test_4_swap(epr_type: EprTypeLiteral, timing: TimingMode, swap: SwapSequenceInput):
     """Test swapping in 4-node topology."""
-    net, simulator = build_linear_network(
-        4, swap_table_leak_tol=256, end_time=3.0, timing=timing, epr_type=epr_type, has_link_layer=True
+    net, simulator = make_network(
+        NetworkBuilder(epr_type=epr_type)
+        .topo_linear(nodes="ABCD", t_cohere=1, ch_length=100, link_arch=LA_ALWAYS)
+        .proactive_centralized(timing=timing),
+        swap_table_leak_tol=256,
+        has_link_layer=True,
+        end_time=3.0,
     )
     _, fwB, fwC, _ = (node.get_app(ProactiveForwarder) for node in net.nodes)
 
@@ -53,22 +58,23 @@ def test_4_swap(epr_type: type[Entanglement], timing: TimingMode, swap: SwapSequ
         pytest.param("B", "asap", 1, id="BufferSpace-asap"),
         pytest.param("B", "l2r", 1, id="BufferSpace-l2r"),
         pytest.param(MuxSchemeStatistical(select_swap_qubit="random"), "asap", 1, id="Statistical"),
-        pytest.param("D", "asap", 10, id="DynamicEpr"),
+        # https://github.com/usnistgov/mqns/issues/161#issue-5933746537
+        # pytest.param("D", "asap", 10, id="DynamicEpr"),
     ],
 )
 @pytest.mark.parametrize("route_len", [3, 5])
 @pytest.mark.parametrize("LA", [LinkArchDimBk, LinkArchSr])
-def test_tree2_bidir(mux: MuxSchemeInput, swap: SwapSequenceInput, end_time: float, route_len: int, LA: type[LinkArch]):
-    """Test bidirectional paths in tree topology."""
-    net, simulator = build_tree_network(
-        t_cohere=1.0,
-        ch_capacity=2,
-        qchannel_args=dflt_qchannel_args | {"link_arch": LinkArchAlways(LA())},
-        fw={"p_swap": 1},
-        mux=mux,
+def test_tree3_bidir(mux: MuxSchemeInput, swap: SwapSequenceInput, end_time: float, route_len: int, LA: type[LinkArch]):
+    """Test bidirectional paths in 3-level tree topology."""
+    net, simulator = make_network(
+        NetworkBuilder()
+        .topo_from(
+            TreeTopoGen(levels=3), nodes_naming="A", t_cohere=1, ch_length=100, ch_capacity=2, link_arch=LinkArchAlways(LA())
+        )
+        .proactive_centralized(p_swap=1.0, mux=mux),
         swap_table_leak_tol=256,
-        end_time=end_time,
         has_link_layer=True,
+        end_time=end_time,
     )
 
     # Path 0 uses A-C or B-A-C segment in one direction.
@@ -85,19 +91,18 @@ def test_tree2_bidir(mux: MuxSchemeInput, swap: SwapSequenceInput, end_time: flo
 
     consumed0 = RequestCounters.of(net, req0).n_consumed
     consumed1 = RequestCounters.of(net, req1).n_consumed
-
-    if mux == "D" and route_len == 5:
-        assert consumed0 + consumed1 > 0
-        if min(consumed0, consumed1) == 0:
-            pytest.xfail(reason="https://github.com/usnistgov/mqns/issues/60#issuecomment-5180421126")
-
     assert consumed0 > 0
     assert consumed1 > 0
 
 
 def test_rect2_path_delete():
     """Test PATH_DELETE in 2x2 rectangle topology."""
-    net, simulator = build_grid_network(t_cohere=1.0, has_link_layer=True)
+    net, simulator = make_network(
+        NetworkBuilder()
+        .topo_from(GridTopoGen((2, 2)), nodes_naming="A", t_cohere=1, ch_length=100, link_arch=LA_ALWAYS)
+        .proactive_centralized(p_swap=1.0),
+        has_link_layer=True,
+    )
     _, fwB, fwC, _ = (node.get_app(ProactiveForwarder) for node in net.nodes)
     llA, llB, llC, _ = (node.get_app(LinkLayer) for node in net.nodes)
 
@@ -147,12 +152,12 @@ def test_rect2_path_delete():
 @pytest.mark.parametrize("LA", [LinkArchDimBk, LinkArchSr])
 def test_rect3_epr_count(monkeypatch: pytest.MonkeyPatch, k_paths: int, n_requests: int, LA: type[LinkArch]):
     """Test Request.epr_count in 3x3 rectangle topology."""
-    net, simulator = build_grid_network(
-        (3, 3),
-        k_paths=k_paths,
-        qchannel_args=dflt_qchannel_args | {"link_arch": LinkArchAlways(LA())},
-        swap_table_leak_tol=256,
+    net, simulator = make_network(
+        NetworkBuilder(route=DijkstraRouteAlgorithm() if k_paths < 0 else YenRouteAlgorithm(k_paths=k_paths))
+        .topo_from(GridTopoGen((3, 3)), nodes_naming="A", t_cohere=1, ch_length=100, link_arch=LinkArchAlways(LA()))
+        .proactive_centralized(p_swap=1.0),
         has_link_layer=True,
+        swap_table_leak_tol=256,
     )
 
     requests: list[Request] = [

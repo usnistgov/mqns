@@ -50,7 +50,7 @@ def run_simulation(seed: int, ch_capacities: list[tuple[int, int]], link_archite
     net = (
         NetworkBuilder()
         .topo_linear(
-            nodes="SRD",
+            nodes=3,
             channels=[
                 ChannelParam(ch_length=l, ch_capacity=m, link_arch=la)
                 for l, m, la in zip(ch_lengths, ch_capacities, link_architectures, strict=True)
