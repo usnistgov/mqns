@@ -8,9 +8,16 @@ from mqns.entity.memory import MemoryDecohereEvent, MemoryQubit, QuantumMemory, 
 from mqns.entity.node import Application, QNode
 from mqns.entity.qchannel import LinkArchAlways, LinkArchDimBk, LinkArchSr, QuantumChannel, QuantumChannelInitKwargs
 from mqns.models.epr import Entanglement, MixedStateEntanglement, WernerStateEntanglement
+from mqns.network.ll import (
+    LinkLayer,
+    LinkLayerCounters,
+    LinkLayerInitKwargs,
+    PathActivateEvent,
+    PathDeactivateEvent,
+    QubitEntangledEvent,
+    QubitReleasedEvent,
+)
 from mqns.network.network import QuantumNetwork, TimingMode, TimingModeAsync, TimingModeSync
-from mqns.network.protocol.event import PathActivateEvent, PathDeactivateEvent, QubitEntangledEvent, QubitReleasedEvent
-from mqns.network.protocol.link_layer import LinkLayer, LinkLayerCounters, LinkLayerInitKwargs
 from mqns.simulator import Simulator, event_handler, func_to_event
 from mqns.utils import log, rng
 

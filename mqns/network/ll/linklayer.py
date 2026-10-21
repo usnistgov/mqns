@@ -15,22 +15,20 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from collections import deque
-from collections.abc import Iterable
-from typing import Final, Literal, NamedTuple, Self, TypedDict, Unpack, final, override
-
-import numpy as np
+from typing import TypedDict, Unpack, override
 
 from mqns.entity.cchannel import ClassicCommandDispatcherMixin, ClassicPacket, classic_cmd_handler
 from mqns.entity.memory import MemoryQubit, QuantumMemory, QubitState
 from mqns.entity.node import Application, QNode
 from mqns.entity.qchannel import QuantumChannel
 from mqns.models.delay import ConstantDelayModel
-from mqns.models.epr import Entanglement
+from mqns.network.ll.counter import LinkLayerCounters
+from mqns.network.ll.event import PathActivateEvent, PathDeactivateEvent, QubitEntangledEvent, QubitReleasedEvent
+from mqns.network.ll.message import ReserveMsg, ReserveParsedMsg
+from mqns.network.ll.task import ActiveChannel, ActivePath, Entangle2ndEvent, EntanglePriEvent, EntangleTask
 from mqns.network.network import TimingPhase, sync_phase_handler
-from mqns.network.protocol.event import PathActivateEvent, PathDeactivateEvent, QubitEntangledEvent, QubitReleasedEvent
-from mqns.simulator import Event, EventHandleSlot, Time, event_handler, func_to_event
-from mqns.utils import AutoIncrementIdentifier, json_encodable, rng, unwrap, unwrap_cast
+from mqns.simulator import event_handler, func_to_event
+from mqns.utils import AutoIncrementIdentifier, rng, unwrap, unwrap_cast
 
 _AUTOID = AutoIncrementIdentifier("llk_")
 """
@@ -50,309 +48,6 @@ class LinkLayerInitKwargs(TypedDict, total=False):
     """
 
 
-@json_encodable
-class LinkLayerCounters:
-    @staticmethod
-    def aggregate(nodes: Iterable[QNode]) -> "LinkLayerCounters":
-        """
-        Aggregate ``LinkLayerCounters`` from a network.
-
-        Args:
-            nodes: List of nodes, such as ``QuantumNetwork.nodes``.
-
-        These fields cannot be aggregated:
-
-        * ``etg_rate``
-        """
-        r = LinkLayerCounters()
-        for node in nodes:
-            for ll in node.get_apps(LinkLayer):
-                r += ll.cnt
-        return r
-
-    n_etg: int = 0
-    """How many entanglements generated as the primary node."""
-
-    n_attempts: int = 0
-    """How many attempts made for successful entanglements."""
-
-    n_decoh: int = 0
-    """How many qubits decohered."""
-
-    def __init__(self, *, history=0, rtt=Time.SENTINEL):
-        """
-        Args:
-            history: How many recent entanglement to keep in history.
-                This must be positive for ``etg_rate`` calculation.
-            rtt: Round-trip duration for RESERVE_REQ and RESERVE_RES messages.
-                This is considered part of the entanglement generation duration.
-        """
-        # _history is a count-based window that tracks a variable duration of recent entanglements.
-        # If the quantum channel properties could change over time, this may need to be refactored as
-        # a time-based window or a time decay formula.
-        self._history = deque[int](maxlen=history) if history > 0 and rtt is not Time.SENTINEL else None
-        self._rtt = rtt
-
-    def __iadd__(self, cnt: "LinkLayerCounters") -> Self:
-        self._history = None
-        self.n_etg += cnt.n_etg
-        self.n_attempts += cnt.n_attempts
-        self.n_decoh += cnt.n_decoh
-        return self
-
-    def save_etg(self, task: "_EntangleTask") -> None:
-        self.n_etg += 1
-        self.n_attempts += task.k
-        if self._history is not None:
-            self._history.append(task.t_finish.slot - task.t_reserve.slot)
-
-    @property
-    def etg_rate(self) -> float:
-        """
-        Entanglement rate, average number of entanglements per second per memory pair.
-
-        This reflects the uncontested rate, as if the memory pair is always available for the LinkLayer
-        to perform entanglement generations, not locked by the forwarding function.
-
-        This property is available only if constructor received positive ``history`` and ``rtt``.
-        If history is disabled or empty, returns NaN.
-        """
-        if not self._history:
-            return np.nan
-        avg_duration = self._rtt.slot + np.mean(self._history).item()
-        if avg_duration <= 0:
-            return np.nan
-        return self._rtt.accuracy / avg_duration
-
-    @property
-    def decoh_ratio(self) -> float:
-        """Decoherence ratio, ``n_decoh/n_etg``."""
-        return self.n_decoh / self.n_etg if self.n_etg > 0 else 0
-
-    def __repr__(self) -> str:
-        return f"etg={self.n_etg} attempts={self.n_attempts} decoh={self.n_decoh} decoh_ratio={self.decoh_ratio}"
-
-
-class ReserveMsg(TypedDict):
-    """
-    Message between LinkLayers to request and accept qubit reservation for entanglement generation.
-    """
-
-    cmd: Literal["RESERVE_REQ", "RESERVE_ABORT", "RESERVE_RES"]
-    """
-    RESERVE_REQ: pri-to-2nd, request entanglement generation.
-    RESERVE_ABORT: pri-to-2nd, cancel the reservation and abort entanglement generation.
-    RESERVE_RES: 2nd-to-pri, accept entanglement generation.
-    """
-    path_id: int | None
-    """
-    The path identifier assigned to the generated entanglement.
-    """
-    key: str
-    """
-    Reservation key that uniquely identifies this reservation and the resulting entanglement.
-    """
-
-
-class _ReserveParsedMsg(NamedTuple):
-    cmd: str
-    src: str
-    path_id: int | None
-    key: str
-
-    @staticmethod
-    def new(pkt: ClassicPacket, msg: ReserveMsg) -> "_ReserveParsedMsg":
-        return _ReserveParsedMsg(cmd=msg["cmd"], src=pkt.src.name, path_id=msg["path_id"], key=msg["key"])
-
-    def __repr__(self) -> str:
-        return f"{self.cmd}({self.src}:{self.path_id}, {self.key})"
-
-
-class _ActiveChannel:
-    """
-    LinkLayer data structure related to an active quantum channel.
-    """
-
-    qchannel: Final[QuantumChannel]
-    """Quantum channel."""
-
-    partner: Final[QNode]
-    """Partner node."""
-
-    is_primary: Final[bool]
-    """Role of this node."""
-
-    paths: dict[int | None, "_ActivePath"]
-    """
-    Active paths, including those pending deletion.
-    Key is ``path_id``.
-    Value is ActivePath record.
-    """
-
-    live_paths: set[int | None]
-    """
-    ``path_id`` for paths that could initiate entanglements, excluding those pending deletion.
-    """
-
-    cnt: LinkLayerCounters
-    """
-    Counters.
-    This field only exists on the primary node of the channel.
-    """
-
-    def __init__(self, qchannel: QuantumChannel, partner: QNode, is_primary: bool, *, cnt_history: int, rtt: Time):
-        self.qchannel = qchannel
-        self.partner = partner
-        self.is_primary = is_primary
-        self.paths = {}
-        self.live_paths = set()
-        if is_primary:
-            self.cnt = LinkLayerCounters(history=cnt_history, rtt=rtt)
-
-    def __repr__(self) -> str:
-        return f"ActiveChannel({self.partner.name})"
-
-
-class _ActivePath:
-    """
-    LinkLayer data structure related to an active path in an active quantum channel.
-    """
-
-    path_id: Final[int | None]
-    """
-    Path identifier.
-
-    LinkLayer considers ``None`` as a valid path_id (rather than an absent value), because the forwarder's
-    multiplexing scheme may not need to allocate each qubit to an integer path_id.
-    """
-
-    insertion_count: int
-    """
-    How many times this channel+path_id combination has been activated.
-    It would take the same number of deactivation commands to deactivate the channel+path_id combination.
-
-    If this is zero, the path is pending deletion.
-    """
-
-    delete_event: EventHandleSlot
-    """
-    Delayed deletion event, scheduled upon ``insertion_count`` reaches zero.
-    """
-
-    oreq_table: dict[str, "_EntangleTask"]
-    """
-    Table of outgoing RESERVE_REQ sent by this node for which the EPR has not arrived.
-    This field only exists on the primary node of the channel.
-    Key is reservation key.
-    Value is EntangleTask record.
-    """
-
-    ireq_queue: deque[str]
-    """
-    Queue of incoming RESERVE_REQ received by this node that has not been fulfilled.
-    This field only exists on the secondary node of the channel.
-    Element is reservation key.
-    """
-
-    def __init__(self, path_id: int | None, is_primary: bool):
-        self.path_id = path_id
-        self.insertion_count = 0
-        self.delete_event = EventHandleSlot()
-        if is_primary:
-            self.oreq_table = {}
-        else:
-            self.ireq_queue = deque()
-
-    def __repr__(self) -> str:
-        return f"ActivePath({self.path_id})"
-
-
-class _EntangleTask:
-    ac: _ActiveChannel
-    ap: _ActivePath
-    mq: MemoryQubit
-    k: int = -1
-    """
-    Which attempt shall success, starting with 1.
-    """
-    t_reserve: Time = Time.SENTINEL
-    """
-    Time point when the primary node receives the RESERVE_RES message and the first attempt begins.
-    ``Time.SENTINEL`` means the reservation has not been accepted.
-    """
-    t_success: Time = Time.SENTINEL
-    """
-    Time point when the successful attempt begins.
-    ``Time.SENTINEL`` means the reservation has not been accepted.
-    """
-    t_finish: Time = Time.SENTINEL
-    """
-    Time point when the last notify event occurs.
-    ``Time.SENTINEL`` means the reservation has not been accepted.
-    """
-    notify_pri_event: "_EntanglePriEvent|None" = None
-    """
-    Event to notify primary, cancelable before ``t_success``.
-    """
-    notify_2nd_event: "_Entangle2ndEvent|None" = None
-    """
-    Event to notify secondary, cancelable before ``t_success``.
-    """
-
-    def __init__(self, ac: _ActiveChannel, ap: _ActivePath, mq: MemoryQubit):
-        self.ac = ac
-        self.ap = ap
-        self.mq = mq
-
-    @property
-    def key(self) -> str:
-        return unwrap(self.mq.key)
-
-    def __repr__(self) -> str:
-        return f"EntangleTask({self.key}, k={self.k}, t_reserve={self.t_reserve})"
-
-
-class _EntangleEvent(Event):
-    def __init__(self, t: Time, node: QNode, partner: QNode, key: str, epr: Entanglement):
-        super().__init__(t, f"{node.name}, partner={partner.name}, key={key}, epr={epr.name}")
-        self.node = node
-        self.partner = partner
-        self.key = key
-        self.epr = epr
-
-    @override
-    def invoke(self) -> None:
-        self.node.handle(self)
-
-
-@final
-class _EntanglePriEvent(_EntangleEvent):
-    """
-    Event to notify the primary node about successful elementary entanglement.
-    """
-
-    def __init__(
-        self,
-        key: str,
-        epr: Entanglement,
-        task: _EntangleTask,
-        *,
-        t: Time,
-    ):
-        super().__init__(t, unwrap_cast(epr.src), unwrap_cast(epr.dst), key, epr)
-        self.task = task
-
-
-@final
-class _Entangle2ndEvent(_EntangleEvent):
-    """
-    Event to notify the secondary node about successful elementary entanglement.
-    """
-
-    def __init__(self, key: str, epr: Entanglement, *, t: Time):
-        super().__init__(t, unwrap_cast(epr.dst), unwrap_cast(epr.src), key, epr)
-
-
 class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
     """
     Network function for creating elementary entanglements over qchannels.
@@ -364,7 +59,7 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         self.reset_time = 1 / kwargs.get("frequency", 1e6)
         self.tau_0 = kwargs.get("tau_0", 0.0)
 
-        self.channels: dict[str, _ActiveChannel] = {}
+        self.channels: dict[str, ActiveChannel] = {}
         """
         Active channel table.
         Key is partner node name.
@@ -448,7 +143,10 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         ac = self.channels.get(partner.name)
         if not ac:
             rtt = self.simulator.time(sec=ConstantDelayModel.extract(ch.delay) * 2)
-            ac = _ActiveChannel(ch, partner, event.is_primary, cnt_history=self._cnt_history, rtt=rtt)
+            if event.is_primary:
+                ac = ActiveChannel(ch, partner, LinkLayerCounters(history=self._cnt_history, rtt=rtt))
+            else:
+                ac = ActiveChannel(ch, partner, None)
             self.channels[partner.name] = ac
 
             self._activate_channel(ac)
@@ -458,7 +156,7 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         # Find or insert the ActivePath record.
         ap = ac.paths.get(path_id)
         if not ap:
-            ap = _ActivePath(path_id, ac.is_primary)
+            ap = ActivePath(path_id, ac.is_primary)
             ac.paths[path_id] = ap
 
         # Increment the insertion count.
@@ -476,7 +174,7 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         if ac.is_primary and self.node.timing.is_async():
             self.run_channel(ac, ap)
 
-    def _activate_channel(self, ac: _ActiveChannel) -> None:
+    def _activate_channel(self, ac: ActiveChannel) -> None:
         """
         Part of ``PathActivateEvent`` handler: activate a previously idle channel.
         """
@@ -579,7 +277,7 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
             tasks_uncancelable,
         )
 
-    def _deactivate_delete(self, ac: _ActiveChannel, ap: _ActivePath) -> None:
+    def _deactivate_delete(self, ac: ActiveChannel, ap: ActivePath) -> None:
         """
         Part of ``PathDeactivateEvent`` handler: delayed deletion of ActivePath record.
         """
@@ -621,7 +319,7 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         """
         Handle ``RESERVE_ABORT`` message from the primary node.
         """
-        req = _ReserveParsedMsg.new(pkt, msg)
+        req = ReserveParsedMsg.new(pkt, msg)
         if not self.node.timing.is_external():
             self.log_debug("%s ignored reason=not-external-phase", req)
             return None
@@ -640,7 +338,7 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         # It's unnecessary to delete the key from ireq_queue here,
         # because the path deletion logic on the secondary node would clear ireq_queue.
 
-    def run_channel(self, ac: _ActiveChannel, ap: _ActivePath | None = None) -> None:
+    def run_channel(self, ac: ActiveChannel, ap: ActivePath | None = None) -> None:
         """
         Start entanglement generation on qubits assigned to a channel.
 
@@ -659,7 +357,7 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
             assert v is None
             self.start_reservation(ac, None, q)
 
-    def start_reservation(self, ac: _ActiveChannel, ap: _ActivePath | None, mq: MemoryQubit) -> None:
+    def start_reservation(self, ac: ActiveChannel, ap: ActivePath | None, mq: MemoryQubit) -> None:
         """
         Start entanglement generation on a qubit assigned to a channel.
 
@@ -678,7 +376,7 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         mq.state = QubitState.ACTIVE
 
         # Remember the pending reservation in ActivePath record.
-        ap.oreq_table[mq.key] = _EntangleTask(ac, ap, mq)
+        ap.oreq_table[mq.key] = EntangleTask(ac, ap, mq)
         self.log_debug(
             "RESERVE_REQ(%s:%s, %s) sent addr=%s partner=%s", self.node.name, mq.path_id, mq.key, mq.addr, ac.partner.name
         )
@@ -687,7 +385,7 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         msg = ReserveMsg(cmd="RESERVE_REQ", path_id=mq.path_id, key=mq.key)
         self.node.send_cpacket(ac.partner, ClassicPacket(msg, src=self.node, dest=ac.partner))
 
-    def _find_active_channel_path(self, req: _ReserveParsedMsg) -> tuple[_ActiveChannel, _ActivePath] | None:
+    def _find_active_channel_path(self, req: ReserveParsedMsg) -> tuple[ActiveChannel, ActivePath] | None:
         if not self.node.timing.is_external():
             self.log_debug("%s ignored reason=not-external-phase", req)
             return None
@@ -709,7 +407,7 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         """
         Handle ``RESERVE_REQ`` message from the primary node.
         """
-        req = _ReserveParsedMsg.new(pkt, msg)
+        req = ReserveParsedMsg.new(pkt, msg)
         if (ac_ap := self._find_active_channel_path(req)) is None:
             return
         ac, ap = ac_ap
@@ -720,7 +418,7 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
             # If try_accept_reservation() was unsuccessful, enqueue the request.
             ap.ireq_queue.append(req.key)
 
-    def try_accept_reservation(self, ac: _ActiveChannel, ap: _ActivePath, key: str, *, hint: MemoryQubit | None = None) -> bool:
+    def try_accept_reservation(self, ac: ActiveChannel, ap: ActivePath, key: str, *, hint: MemoryQubit | None = None) -> bool:
         """
         Accept a reservation if a qubit is available.
 
@@ -771,7 +469,7 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         """
         Handle ``RESERVE_RES`` message from the secondary node.
         """
-        req = _ReserveParsedMsg.new(pkt, msg)
+        req = ReserveParsedMsg.new(pkt, msg)
         if (ac_ap := self._find_active_channel_path(req)) is None:
             return
         ac, ap = ac_ap
@@ -788,7 +486,7 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         self.log_debug("%s processed addr=%s", req, mq.addr)
         self.generate_entanglement(ac, ap, task)
 
-    def generate_entanglement(self, ac: _ActiveChannel, ap: _ActivePath, task: _EntangleTask) -> None:
+    def generate_entanglement(self, ac: ActiveChannel, ap: ActivePath, task: EntangleTask) -> None:
         """
         Schedule a successful entanglement attempt using skip-ahead sampling.
 
@@ -844,8 +542,8 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
             t_notify_2nd,
         )
 
-        self.simulator.sched(notify_pri := _EntanglePriEvent(key, epr, task, t=t_notify_pri))
-        self.simulator.sched(notify_2nd := _Entangle2ndEvent(key, epr, t=t_notify_2nd))
+        self.simulator.sched(notify_pri := EntanglePriEvent(key, epr, task, t=t_notify_pri))
+        self.simulator.sched(notify_2nd := Entangle2ndEvent(key, epr, t=t_notify_2nd))
         task.notify_pri_event = notify_pri
         task.notify_2nd_event = notify_2nd
 
@@ -853,16 +551,16 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         return rng.geometric(qchannel.link_arch.success_prob)
 
     @event_handler
-    def _notify_pri(self, event: _EntanglePriEvent) -> None:
+    def _notify_pri(self, event: EntanglePriEvent) -> None:
         del event.task.ap.oreq_table[event.key]
         event.task.ac.cnt.save_etg(event.task)
         self._notify_entangle("pri", event)
 
     @event_handler
-    def _notify_2nd(self, event: _Entangle2ndEvent) -> None:
+    def _notify_2nd(self, event: Entangle2ndEvent) -> None:
         self._notify_entangle("2nd", event)
 
-    def _notify_entangle(self, own_role: str, event: _EntanglePriEvent | _Entangle2ndEvent) -> None:
+    def _notify_entangle(self, own_role: str, event: EntanglePriEvent | Entangle2ndEvent) -> None:
         event.cancel()
         assert self.node.timing.is_external()
         partner = event.partner

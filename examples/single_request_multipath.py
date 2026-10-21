@@ -17,8 +17,8 @@ alter the total end-to-end entanglement generation rate and overall qubit decohe
 from tap import Tap
 
 from mqns.network.builder import CTRL_DELAY, NetworkBuilder
+from mqns.network.ll import LinkLayerCounters
 from mqns.network.protocol.consumer import RequestCounters
-from mqns.network.protocol.link_layer import LinkLayerCounters
 from mqns.network.route import YenRouteAlgorithm
 from mqns.simulator import Simulator
 from mqns.utils import log, rng, seed_env

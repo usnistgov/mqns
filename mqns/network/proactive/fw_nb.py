@@ -13,8 +13,8 @@ from mqns.network.fw import (
     PathInstructions,
     fw_control_cmd_handler,
 )
+from mqns.network.ll import PathActivateEvent, PathDeactivateEvent
 from mqns.network.proactive.mux import MuxScheme
-from mqns.network.protocol.event import PathActivateEvent, PathDeactivateEvent
 from mqns.simulator import Time
 
 if TYPE_CHECKING:

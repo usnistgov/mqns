@@ -10,19 +10,14 @@ from mqns.entity.timer import Timer
 from mqns.models.epr import EprTypeLiteral
 from mqns.network.builder import GridTopoGen, NetworkBuilder, TreeTopoGen
 from mqns.network.fw import RoutingPath, RoutingPathInitArgs, SwapSequenceInput
+from mqns.network.ll import LinkLayer
 from mqns.network.network import Request, RequestState, TimingMode, TimingModeAsync, TimingModeSync
 from mqns.network.proactive import MuxSchemeInput, MuxSchemeStatistical, ProactiveForwarder
 from mqns.network.protocol.consumer import RequestCounters
-from mqns.network.protocol.link_layer import LinkLayer
 from mqns.network.route import DijkstraRouteAlgorithm, YenRouteAlgorithm
 from mqns.simulator import Time
 
-from .fw_common import (
-    LA_ALWAYS,
-    collect_cpacket_counts,
-    make_network,
-    print_node_counters,
-)
+from .fw_common import LA_ALWAYS, collect_cpacket_counts, make_network, print_node_counters
 
 
 @pytest.mark.parametrize("epr_type", ["W", "M"])
@@ -51,14 +46,16 @@ def test_4_swap(epr_type: EprTypeLiteral, timing: TimingMode, swap: SwapSequence
     assert RequestCounters.of(net, rp).n_consumed >= 16
 
 
+xfail_161 = pytest.mark.xfail(reason="https://github.com/usnistgov/mqns/issues/161#issue-5933746537")
+
+
 @pytest.mark.parametrize(
     ("mux", "swap", "end_time"),
     [
         pytest.param("B", "asap", 1, id="BufferSpace-asap"),
         pytest.param("B", "l2r", 1, id="BufferSpace-l2r"),
         pytest.param(MuxSchemeStatistical(select_swap_qubit="random"), "asap", 1, id="Statistical"),
-        # https://github.com/usnistgov/mqns/issues/161#issue-5933746537
-        # pytest.param("D", "asap", 10, id="DynamicEpr"),
+        pytest.param("D", "asap", 10, id="DynamicEpr", marks=xfail_161),
     ],
 )
 @pytest.mark.parametrize("route_len", [3, 5])

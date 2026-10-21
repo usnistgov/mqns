@@ -12,11 +12,11 @@ from mqns.models.error import TimeDecayInput
 from mqns.models.error.input import ErrorModelInputBasic, ErrorModelInputLength
 from mqns.network.builder.topogen import TopoGen
 from mqns.network.fw import Forwarder, ForwarderInitKwargs, RoutingPath, RoutingPathInitArgs
+from mqns.network.ll import LinkLayer, LinkLayerInitKwargs
 from mqns.network.network import QuantumNetwork, Request, TimingMode, TimingModeAsync, TimingModeSync
 from mqns.network.proactive import MuxSchemeInput, ProactiveForwarder, ProactiveRoutingController
 from mqns.network.protocol.classicbridge import ClassicBridge
 from mqns.network.protocol.consumer import Consumer
-from mqns.network.protocol.link_layer import LinkLayer, LinkLayerInitKwargs
 from mqns.network.reactive import ReactiveForwarder, ReactiveRoutingController
 from mqns.network.route import DijkstraRouteAlgorithm, RouteAlgorithm
 
