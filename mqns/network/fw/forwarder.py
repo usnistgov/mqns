@@ -32,8 +32,8 @@ from mqns.network.fw.fib import Fib, FibPath, FibRequest
 from mqns.network.fw.fw_purif import ForwarderPurifProc
 from mqns.network.fw.fw_swap import ForwarderSwapProc
 from mqns.network.fw.select import MemoryEprTuple, call_select
+from mqns.network.ll import QubitConsumeEvent, QubitEntangledEvent, QubitReleasedEvent
 from mqns.network.network import TimingPhase, sync_phase_handler
-from mqns.network.protocol.event import QubitConsumeEvent, QubitEntangledEvent, QubitReleasedEvent
 from mqns.simulator import event_handler
 from mqns.utils import json_encodable, unwrap, unwrap_cast
 

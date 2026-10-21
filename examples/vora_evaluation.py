@@ -52,10 +52,10 @@ from tap import Tap
 
 from mqns.network.builder import CTRL_DELAY, NetworkBuilder
 from mqns.network.fw import SwapPolicy, SwapSequence, SwapSequenceInput
+from mqns.network.ll import LinkLayerCounters
 from mqns.network.network import QuantumNetwork
 from mqns.network.proactive import compute_vora_swap_sequence
 from mqns.network.protocol.consumer import RequestCounters
-from mqns.network.protocol.link_layer import LinkLayerCounters
 from mqns.simulator import Simulator
 from mqns.utils import log, rng, seed_seq_env
 

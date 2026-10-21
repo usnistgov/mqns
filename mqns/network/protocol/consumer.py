@@ -5,8 +5,8 @@ import numpy as np
 
 from mqns.entity.memory import QubitState
 from mqns.entity.node import Application, NodePair, QNode, split_node_pair
+from mqns.network.ll import QubitConsumeEvent, QubitReleasedEvent
 from mqns.network.network import QuantumNetwork
-from mqns.network.protocol.event import QubitConsumeEvent, QubitReleasedEvent
 from mqns.simulator import Time, event_handler
 from mqns.utils import json_encodable
 

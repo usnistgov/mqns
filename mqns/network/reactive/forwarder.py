@@ -20,8 +20,8 @@ from typing import Final, Unpack, override
 from mqns.entity.memory import MemoryQubit, QubitState
 from mqns.models.epr import Entanglement
 from mqns.network.fw import FibPath, Forwarder, ForwarderInitKwargs
+from mqns.network.ll import PathActivateEvent, QubitEntangledEvent
 from mqns.network.network import TimingPhase, sync_phase_handler
-from mqns.network.protocol.event import PathActivateEvent, QubitEntangledEvent
 from mqns.network.reactive.fw_nb import ReactiveForwarderNorthbound
 from mqns.network.reactive.fw_plan import ReactivePlanner
 

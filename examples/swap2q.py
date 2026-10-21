@@ -42,10 +42,10 @@ from tap import Tap
 from mqns.entity.qchannel import LinkArchDimDual
 from mqns.models.epr import MixedStateEntanglement
 from mqns.network.builder import CTRL_DELAY, ChannelParam, NetworkBuilder, NodeDef, tap_configure
+from mqns.network.ll import LinkLayer
 from mqns.network.network import QuantumNetwork
 from mqns.network.proactive import MuxSchemeBufferSpace
 from mqns.network.protocol.consumer import RequestCounters
-from mqns.network.protocol.link_layer import LinkLayer
 from mqns.simulator import Simulator
 from mqns.utils import log, rng, seed_seq_env, unwrap
 
