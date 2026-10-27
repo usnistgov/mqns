@@ -20,6 +20,9 @@ from mqns.simulator import Simulator
 
 
 def test_errors_builder():
+    with pytest.raises(TypeError, match="topology already defined"):
+        NetworkBuilder().topo_linear(nodes=2).topo_linear(nodes=2)
+
     with pytest.raises(TypeError, match="must define topology first"):
         NetworkBuilder().proactive_centralized()
 
@@ -31,6 +34,11 @@ def test_errors_builder():
 
     with pytest.raises(TypeError, match="must install applications"):
         NetworkBuilder().topo_linear(nodes=2).make_network()
+
+    b_build_once = NetworkBuilder().topo_linear(nodes=2).proactive_centralized()
+    b_build_once.make_network()
+    with pytest.raises(TypeError, match="can only build network once"):
+        b_build_once.make_network()
 
     with pytest.raises(ValueError, match="at least two nodes"):
         NetworkBuilder().topo_linear(nodes=1)

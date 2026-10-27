@@ -1,15 +1,17 @@
+import copy
 import itertools
-from collections.abc import Callable, Sequence
-from typing import Literal, Self, TypedDict, Unpack, cast, overload
+from collections.abc import Sequence
+from typing import ClassVar, Literal, Self, TypedDict, Unpack, cast, overload
 
-from mqns.entity.memory import QuantumMemoryInitKwargs
-from mqns.entity.node import Application, NodePair, QNode, split_node_pair
+from mqns.entity.cchannel import ClassicChannel
+from mqns.entity.memory import QuantumMemory, QuantumMemoryInitKwargs
+from mqns.entity.node import Application, Controller, NodePair, QNode, split_node_pair
 from mqns.entity.qchannel import LinkArchInput, QuantumChannel
 from mqns.models.epr import EprTypeInput
 from mqns.models.error import TimeDecayInput
 from mqns.models.error.input import ErrorModelInputBasic, ErrorModelInputLength
 from mqns.network.builder.topogen import TopoGen
-from mqns.network.fw import ForwarderInitKwargs, RoutingPath, RoutingPathInitArgs
+from mqns.network.fw import Forwarder, ForwarderInitKwargs, RoutingPath, RoutingPathInitArgs
 from mqns.network.network import QuantumNetwork, Request, TimingMode, TimingModeAsync, TimingModeSync
 from mqns.network.proactive import MuxSchemeInput, ProactiveForwarder, ProactiveRoutingController
 from mqns.network.protocol.classicbridge import ClassicBridge
@@ -17,8 +19,6 @@ from mqns.network.protocol.consumer import Consumer
 from mqns.network.protocol.link_layer import LinkLayer, LinkLayerInitKwargs
 from mqns.network.reactive import ReactiveForwarder, ReactiveRoutingController
 from mqns.network.route import DijkstraRouteAlgorithm, RouteAlgorithm
-from mqns.network.topology import ClassicTopology
-from mqns.network.topology.customtopo import CustomTopology, Topo, TopoController, TopoQChannel, TopoQNode
 
 CTRL_DELAY = 5e-06
 """
@@ -63,6 +63,29 @@ class NodeDef:
     def __init__(self, name: str, **kwargs: Unpack[NodeArgs]):
         self.name = name
         self.d = kwargs
+
+
+class _NodeBuilder:
+    DFLT_T_COHERE: ClassVar = 0.02
+
+    def __init__(self, name: str, d: NodeArgs):
+        self.qnode = QNode(name)
+        mem_capacity = d.get("mem_capacity", -1)
+        self.mem_args = QuantumMemoryInitKwargs(
+            capacity=max(0, mem_capacity),
+            t_cohere=d.get("t_cohere", self.DFLT_T_COHERE),
+            time_decay=d.get("memory_decay"),
+        )
+        self.mem_extensible = mem_capacity < 0
+        self.ll_args = LinkLayerInitKwargs(
+            frequency=d.get("frequency", 1e6),
+            tau_0=d.get("tau_0", 0.0),
+        )
+
+    def inc_memory(self, n: int) -> None:
+        if self.mem_extensible:
+            assert "capacity" in self.mem_args
+            self.mem_args["capacity"] += n
 
 
 class ChannelArgs(TypedDict, total=False):
@@ -159,9 +182,10 @@ class AppsCommonArgs(TypedDict, total=False):
     If specified as three floats, construct ``TimingModeSync`` with these durations.
     """
 
-    ll: LinkLayerInitKwargs
+    ll: LinkLayerInitKwargs | Literal[False]
     """
     LinkLayer parameters.
+    If ``False``, the LinkLayer application is omitted.
     """
 
 
@@ -204,84 +228,55 @@ class NetworkBuilder:
         self.route = route
         self.epr_type = epr_type
 
-        self.qnodes: list[TopoQNode] = []
-        self.qnode_by_name: dict[str, TopoQNode] = {}
-        self.extensible_memory_by_node: dict[str, QuantumMemoryInitKwargs] = {}
-        self.link_layer_by_node: dict[str, LinkLayerInitKwargs] = {}
-        self.qnode_apps: list[Application] = []
-        self.qchannels: list[TopoQChannel] = []
-        self.controller_apps: list[Application] = []
+        self._next_step: Literal["topo", "apps", "net", "finalize"] = "topo"
+        self._qnodes: dict[str, _NodeBuilder] = {}
+        self._qchannels: list[tuple[QuantumChannel, dict[str, int]]] = []
+        self._controller_apps: list[Application] = []
 
         self.requests: list[Request] = []
 
     def _save_topo_args(self, d: TopoCommonArgs) -> None:
+        if self._next_step != "topo":
+            raise TypeError("topology already defined")
+        self._next_step = "apps"
+
         self.d = d
 
-    def _add_qnode(self, name: str, d: NodeArgs) -> TopoQNode:
-        if old_node := self.qnode_by_name.get(name):
-            return old_node
-
-        d = self.d | d
-        mem_capacity = d.get("mem_capacity", -1)
-        node: TopoQNode = {
-            "name": name,
-            "memory": {
-                "capacity": max(0, mem_capacity),
-                "t_cohere": d.get("t_cohere", 0.02),
-                "time_decay": d.get("memory_decay"),
-            },
-        }
-        self.qnodes.append(node)
-        self.qnode_by_name[name] = node
-
-        if mem_capacity < 0:
-            self.extensible_memory_by_node[name] = node["memory"]
-
-        self.link_layer_by_node[name] = LinkLayerInitKwargs(
-            frequency=d.get("frequency", 1e6),
-            tau_0=d.get("tau_0", 0.0),
-        )
-
-        return node
-
-    def _inc_memory(self, name: str, n: int) -> None:
-        if memory := self.extensible_memory_by_node.get(name):
-            assert "capacity" in memory
-            memory["capacity"] += n
+    def _add_qnode(self, name: str, d: NodeArgs) -> _NodeBuilder:
+        nb = self._qnodes.get(name)
+        if not nb:
+            self._qnodes[name] = nb = _NodeBuilder(name, self.d | d)
+        return nb
 
     def _add_qchannel(
         self,
+        node0: str,
         node1: str,
-        node2: str,
         d: ChannelArgs,
-    ):
+    ) -> None:
         d = self.d | d
-        caps: int | tuple[int, int] = d.get("ch_capacity", 1)
-        cap1, cap2 = (caps, caps) if isinstance(caps, int) else caps
-
-        self._add_qnode(node1, {})
-        self._add_qnode(node2, {})
-        self._inc_memory(node1, cap1)
-        self._inc_memory(node2, cap2)
-
-        self.qchannels.append(
-            {
-                "node1": node1,
-                "node2": node2,
-                "capacity1": cap1,
-                "capacity2": cap2,
-                "parameters": {
-                    "length": d.get("ch_length", 1.0),
-                    "link_arch": d.get("link_arch"),
-                    "alpha": d.get("fiber_alpha", 0.2),
-                    "eta_s": d.get("eta_s", 0.95),
-                    "eta_d": d.get("eta_d", 0.95),
-                    "init_fidelity": d.get("init_fidelity", 0.99),
-                    "transfer_error": d.get("fiber_error", "DEPOLAR:0.01"),
-                    "bsa_error": d.get("bsa_error", "PERFECT"),
-                },
-            }
+        qc = QuantumChannel(
+            f"{node0}-{node1}",
+            length=d.get("ch_length", 1.0),
+            link_arch=d.get("link_arch"),
+            alpha=d.get("fiber_alpha", 0.2),
+            eta_s=d.get("eta_s", 0.95),
+            eta_d=d.get("eta_d", 0.95),
+            init_fidelity=d.get("init_fidelity", 0.99),
+            transfer_error=d.get("fiber_error", "DEPOLAR:0.01"),
+            bsa_error=d.get("bsa_error", "PERFECT"),
         )
+        assign_mq: dict[str, int] = {}
+
+        caps: int | tuple[int, int] = d.get("ch_capacity", 1)
+        cap0, cap1 = (caps, caps) if isinstance(caps, int) else caps
+        for node_name, cap in (node0, cap0), (node1, cap1):
+            assign_mq[node_name] = cap
+            nb = self._add_qnode(node_name, {})
+            nb.inc_memory(cap)
+            nb.qnode.add_qchannel(qc)
+
+        self._qchannels.append((qc, assign_mq))
 
     def topo(
         self,
@@ -438,32 +433,36 @@ class NetworkBuilder:
 
         return self
 
-    def _assert_can_add_apps(self) -> None:
-        if len(self.qnodes) == 0:
+    def _save_apps_args(self, d: AppsCommonArgs) -> None:
+        if self._next_step == "topo":
             raise TypeError("must define topology first")
-        if len(self.qnode_apps) + len(self.controller_apps) > 0:
+        if self._next_step != "apps":
             raise TypeError("applications already installed")
+        self._next_step = "net"
 
-    def _extract_apps_common_args(self, d: AppsCommonArgs) -> None:
         timing = d.pop("timing", None)
         if isinstance(timing, TimingMode):
             self.timing = timing
         elif timing is None:
             self.timing = TimingModeAsync()
         else:
-            t_cohere = self.d.get("t_cohere", 0.02)
+            t_cohere = self.d.get("t_cohere", _NodeBuilder.DFLT_T_COHERE)
             if len(timing) == 0:
                 timing = (t_cohere / 2 - 2 * CTRL_DELAY, 4 * CTRL_DELAY, t_cohere / 2 - 2 * CTRL_DELAY)
             self.timing = TimingModeSync(durations=timing)
 
-        self.link_layer_args = d.pop("ll", {})
+        self.ll_args = d.pop("ll", {})
 
-    def _add_link_layer(self):
-        for name, node in self.qnode_by_name.items():
-            node.setdefault("apps", []).append(LinkLayer(**(self.link_layer_by_node[name] | self.link_layer_args)))
+    def _add_qnode_apps(self, *, fw: Forwarder) -> None:
+        for nb in self._qnodes.values():
+            nb.qnode.memory = QuantumMemory(nb.qnode.name, **nb.mem_args)
 
-    def _add_consumer(self):
-        self.qnode_apps.append(Consumer())
+            if self.ll_args is False:
+                ll = []
+            else:
+                ll = [LinkLayer(**(nb.ll_args | cast(LinkLayerInitKwargs, self.ll_args)))]
+
+            nb.qnode.add_apps([*ll, copy.deepcopy(fw), Consumer()])
 
     def proactive_centralized(
         self,
@@ -479,16 +478,12 @@ class NetworkBuilder:
             mux: Multiplexing scheme, default is buffer-space.
             drq_cap: Deferred request queue capacity in the controller.
         """
-        self._assert_can_add_apps()
-        self._extract_apps_common_args(kwargs)
+        self._save_apps_args(kwargs)
         kwargs.setdefault("p_swap", 0.5)
-
-        self._add_link_layer()
-        self.qnode_apps.append(
-            ProactiveForwarder(mux=mux, **kwargs),
+        self._add_qnode_apps(
+            fw=ProactiveForwarder(mux=mux, **kwargs),
         )
-        self._add_consumer()
-        self.controller_apps.append(
+        self._controller_apps.append(
             ProactiveRoutingController(mux=mux, drq_cap=drq_cap),
         )
         return self
@@ -499,23 +494,19 @@ class NetworkBuilder:
 
         This is unimplemented.
         """
-        self._assert_can_add_apps()
         raise NotImplementedError
 
     def reactive_centralized(self, **kwargs: Unpack[AppsForwarderArgs]) -> Self:
         """
         Choose reactive forwarding with centralized control.
         """
-        self._assert_can_add_apps()
-        self._extract_apps_common_args(kwargs)
+        self._save_apps_args(kwargs)
         kwargs.setdefault("p_swap", 0.5)
 
-        self._add_link_layer()
-        self.qnode_apps.append(
-            ReactiveForwarder(**kwargs),
+        self._add_qnode_apps(
+            fw=ReactiveForwarder(**kwargs),
         )
-        self._add_consumer()
-        self.controller_apps.append(
+        self._controller_apps.append(
             ReactiveRoutingController(),
         )
         return self
@@ -526,7 +517,6 @@ class NetworkBuilder:
 
         This is unimplemented.
         """
-        self._assert_can_add_apps()
         raise NotImplementedError
 
     def external_controller(
@@ -548,8 +538,8 @@ class NetworkBuilder:
         :py:meth:`request` method cannot be used.
         Instead, requests or routing paths should be defined in the external controller.
         """
-        self.controller_apps.clear()
-        self.controller_apps.append(ClassicBridge(nats_prefix=nats_prefix))
+        self._controller_apps.clear()
+        self._controller_apps.append(ClassicBridge(nats_prefix=nats_prefix))
         return self
 
     @overload
@@ -570,7 +560,7 @@ class NetworkBuilder:
         /,
         **kwargs: Unpack[RoutingPathInitArgs],
     ) -> Self:
-        if len(self.controller_apps) == 0:
+        if len(self._controller_apps) == 0:
             raise TypeError("must install controller application")
 
         if isinstance(arg1, RoutingPath):
@@ -583,38 +573,38 @@ class NetworkBuilder:
     def make_network(
         self,
         *,
-        modify: Callable[[Self, Topo], None] | None = None,
         connect_controller=True,
     ) -> QuantumNetwork:
         """
-        Construct quantum network.
+        Construct the network.
 
         Args:
-            modify: Callback function to modify the topology definition if necessary.
-            connect_controller: If True and controller exists, create cchannels between controller and each qnode.
+            connect_controller: If True and controller exists, create a classic channel
+                                between the controller and each quantum node.
 
         Returns:
             QuantumNetwork ready for simulation.
         """
-        if len(self.qnode_apps) == 0:
+        if self._next_step == "finalize":
+            raise TypeError("can only build network once")
+        if self._next_step != "net":
             raise TypeError("must install applications")
-        topo_def = Topo(qnodes=self.qnodes, qchannels=self.qchannels)
-        if len(self.controller_apps) > 0:
-            topo_def["controller"] = TopoController(name="ctrl", apps=self.controller_apps)
-        if modify:
-            modify(self, topo_def)
+        self._next_step = "finalize"
 
-        topo = CustomTopology(topo_def, nodes_apps=self.qnode_apps)
-        net = QuantumNetwork(
-            topo,
-            classic_topo=ClassicTopology.Follow,
-            route=self.route,
-            timing=self.timing,
-            epr_type=self.epr_type,
-        )
+        net = QuantumNetwork(route=self.route, timing=self.timing, epr_type=self.epr_type)
+        for nb in self._qnodes.values():
+            net.add_node(nb.qnode)
+        for qc, assign_mq in self._qchannels:
+            net.add_qchannel(qc)
+            qc.assign_memory_qubits(capacity=assign_mq)
+            net.add_cchannel(ClassicChannel(qc.name, length=qc.length), *qc.node_list)
+
+        if self._controller_apps:
+            net.set_controller(ctrl := Controller("ctrl", apps=self._controller_apps))
+            if connect_controller:
+                for node in net.nodes:
+                    net.add_cchannel(ClassicChannel(f"ctrl-{node.name}", delay=CTRL_DELAY), ctrl, node)
+
         net.add_request(*self.requests)
-
-        if connect_controller and topo.controller:
-            topo.connect_controller(net.nodes, delay=CTRL_DELAY)
 
         return net

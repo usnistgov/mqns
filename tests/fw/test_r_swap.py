@@ -48,7 +48,7 @@ def test_3_minimal(
     net, simulator = make_network(
         NetworkBuilder()
         .topo_linear(nodes="ABC", t_cohere=1, ch_capacity=2, link_arch=LA_ALWAYS)
-        .reactive_centralized(timing=(0.006, 0.001, 0.003), p_swap=1.0),
+        .reactive_centralized(timing=(0.006, 0.001, 0.003), ll=False, p_swap=1.0),
         end_time=0.020,
     )
     ctrl = unwrap(net.controller).get_app(ReactiveRoutingController)

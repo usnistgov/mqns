@@ -44,10 +44,10 @@ if TYPE_CHECKING:
 
 
 def _save_channel[C: BaseChannel, N: Node](
-    d: MutableMapping[tuple[str, str], C], ch: C, node_add: Callable[[N, C], None], nodes: Iterable[N]
+    d: MutableMapping[tuple[str, str], C], ch: C, node_add_channel: Callable[[N, C], None], nodes: Iterable[N]
 ) -> None:
     for node in nodes:
-        node_add(node, ch)
+        node_add_channel(node, ch)
 
     if len(ch.node_list) != 2:
         return

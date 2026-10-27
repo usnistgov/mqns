@@ -62,7 +62,7 @@ def test_link_rounds(monkeypatch: pytest.MonkeyPatch, n_rounds: int, purif_succe
     net, simulator = make_network(
         NetworkBuilder()
         .topo_linear(nodes="AB", t_cohere=1, ch_capacity=n_etg, link_arch=LA_ALWAYS)
-        .proactive_centralized(p_swap=0.0),
+        .proactive_centralized(ll=False, p_swap=0.0),
     )
     fwA = net.get_node("A").get_app(ProactiveForwarder)
     fwB = net.get_node("B").get_app(ProactiveForwarder)
@@ -157,7 +157,7 @@ def test_3_path_delete(
     net, simulator = make_network(
         NetworkBuilder()
         .topo_linear(nodes="ABC", t_cohere=5, ch_length=100, ch_capacity=2, link_arch=LA_ALWAYS)
-        .proactive_centralized(p_swap=1.0, swap_delay=0.2),
+        .proactive_centralized(ll=False, p_swap=1.0, swap_delay=0.2),
         end_time=5.0,
     )
     chAB = net.get_qchannel("A", "B")
@@ -206,7 +206,7 @@ def test_4_l2r(monkeypatch: pytest.MonkeyPatch):
     net, simulator = make_network(
         NetworkBuilder()
         .topo_linear(nodes="ABCD", t_cohere=1, ch_capacity=8, link_arch=LA_ALWAYS)
-        .proactive_centralized(p_swap=1.0),
+        .proactive_centralized(ll=False, p_swap=1.0),
         end_time=5.0,
     )
     fwA, fwB, fwC, fwD = (node.get_app(ProactiveForwarder) for node in net.nodes)
