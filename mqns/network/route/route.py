@@ -16,7 +16,8 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Collection, Sequence
+from collections.abc import Callable, Collection, Iterable, Sequence
+from typing import NamedTuple
 
 import numpy as np
 from scipy.sparse import csr_matrix
@@ -62,11 +63,15 @@ def make_csr[N: Node, C: BaseChannel](
     return csr_matrix((data, (rows, cols)), shape=(n, n))
 
 
-class RouteQueryResult[N: Node]:
-    def __init__(self, metric: float, nodes: list[N]):
-        self.metric = metric
-        self.nodes = nodes
-        self.path = [node.name for node in nodes]
+class RouteQueryResult[N: Node](NamedTuple):
+    metric: float
+    nodes: Sequence[N]
+    path: Sequence[str]
+
+    @staticmethod
+    def new(metric: float, nodes: Iterable[N]) -> "RouteQueryResult":
+        nodes = list(nodes)
+        return RouteQueryResult(metric, nodes, [node.name for node in nodes])
 
     @property
     def next_hop(self) -> N:
