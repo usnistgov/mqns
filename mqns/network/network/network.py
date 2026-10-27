@@ -36,7 +36,6 @@ from mqns.models.epr import Entanglement, EprTypeInput, parse_epr_type
 from mqns.network.network.request import Request, RequestActiveEvent, RequestInactiveEvent
 from mqns.network.network.timing import TimingMode, TimingModeAsync
 from mqns.network.route import DijkstraRouteAlgorithm, RouteAlgorithm, RouteQueryResult
-from mqns.network.topology import ClassicTopology, Topology
 from mqns.simulator import Simulator, Time
 
 if TYPE_CHECKING:
@@ -76,9 +75,7 @@ class QuantumNetwork:
 
     def __init__(
         self,
-        topo: Topology | None = None,
         *,
-        classic_topo: ClassicTopology | None = None,
         route: RouteAlgorithm[QNode, QuantumChannel] | None = None,
         timing: TimingMode = TimingModeAsync(),
         epr_type: EprTypeInput = None,
@@ -100,31 +97,11 @@ class QuantumNetwork:
         self._qchannels: dict[tuple[str, str], QuantumChannel] = {}
         self._cchannels: dict[tuple[str, str], ClassicChannel] = {}
 
-        if topo is not None:
-            self._populate_from_topo(topo, classic_topo)
-
         self.route: RouteAlgorithm = route or DijkstraRouteAlgorithm()
         """Routing algorithm."""
 
         self.requests: list[Request] = []
         """Requested end-to-end entanglements."""
-
-    def _populate_from_topo(self, topo: Topology, classic_topo: ClassicTopology | None) -> None:
-        nodes, qchannels = topo.build()
-        if classic_topo is not None:
-            cchannels = topo.add_cchannels(classic_topo=classic_topo, nl=nodes, ll=qchannels)
-        else:
-            cchannels = topo.add_cchannels()
-
-        for node in nodes:
-            self.add_node(node)
-        for ch in qchannels:
-            self.add_qchannel(ch)
-        for ch in cchannels:
-            self.add_cchannel(ch)
-
-        if topo.controller:
-            self.set_controller(topo.controller)
 
     def install(self, simulator: Simulator) -> None:
         """
