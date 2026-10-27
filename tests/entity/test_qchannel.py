@@ -36,8 +36,8 @@ class RecvApp(Application[QNode]):
 
 
 def setup_and_run(l1: QuantumChannel) -> tuple[SendApp, RecvApp]:
-    n1 = QNode(name="n_1")
-    n2 = QNode(name="n_2")
+    n1 = QNode("n_1")
+    n2 = QNode("n_2")
     n1.add_qchannel(l1)
     n2.add_qchannel(l1)
 

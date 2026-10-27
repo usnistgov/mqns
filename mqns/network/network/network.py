@@ -25,7 +25,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from collections.abc import Collection, Iterable, MutableMapping
+from collections.abc import Callable, Collection, Iterable, MutableMapping
 from typing import TYPE_CHECKING, Final, cast
 
 from mqns.entity.base_channel import BaseChannel
@@ -43,7 +43,12 @@ if TYPE_CHECKING:
     from mqns.network.fw.routing import RoutingPath
 
 
-def _save_channel[C: BaseChannel](d: MutableMapping[tuple[str, str], C], ch: C) -> None:
+def _save_channel[C: BaseChannel, N: Node](
+    d: MutableMapping[tuple[str, str], C], ch: C, node_add: Callable[[N, C], None], nodes: Iterable[N]
+) -> None:
+    for node in nodes:
+        node_add(node, ch)
+
     if len(ch.node_list) != 2:
         return
     a, b = sorted(node.name for node in cast(list[Node], ch.node_list))
@@ -198,12 +203,16 @@ class QuantumNetwork:
         """
         return _get_channel(self._qchannels, a, b)
 
-    def add_qchannel(self, qchannel: QuantumChannel) -> None:
+    def add_qchannel(self, ch: QuantumChannel, *nodes: QNode) -> None:
         """
-        Add a quantum channel into this network.
+        Add a quantum channel.
+
+        Args:
+            ch: The quantum channel.
+            nodes: If specified, the channel is added to each node via ``node.add_qchannel(ch)``.
         """
         Simulator.ensure_not_installed_to(self)
-        _save_channel(self._qchannels, qchannel)
+        _save_channel(self._qchannels, ch, QNode.add_qchannel, nodes)
 
     @property
     def cchannels(self) -> Collection[ClassicChannel]:
@@ -219,12 +228,16 @@ class QuantumNetwork:
         """
         return _get_channel(self._cchannels, a, b)
 
-    def add_cchannel(self, cchannel: ClassicChannel) -> None:
+    def add_cchannel(self, ch: ClassicChannel, *nodes: Node) -> None:
         """
-        Add a classic channel into this network.
+        Add a classic channel.
+
+        Args:
+            ch: The classic channel.
+            nodes: If specified, the channel is added to each node via ``node.add_cchannel(ch)``.
         """
         Simulator.ensure_not_installed_to(self)
-        _save_channel(self._cchannels, cchannel)
+        _save_channel(self._cchannels, ch, Node.add_cchannel, nodes)
 
     def build_route(self) -> None:
         """Build static route tables."""

@@ -26,8 +26,8 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from collections import defaultdict
-from collections.abc import Iterable
-from typing import TYPE_CHECKING, cast, override
+from collections.abc import Iterable, Sequence
+from typing import TYPE_CHECKING, Final, cast, override
 
 from mqns.entity.entity import Entity
 from mqns.entity.node.app import Application
@@ -40,27 +40,36 @@ if TYPE_CHECKING:
 
 
 class Node(Entity):
-    """Node is a generic node in the quantum network"""
+    """Node is a generic node in the quantum network."""
 
-    def __init__(self, name: str, *, apps: list[Application] | None = None):
+    apps: Final[Sequence[Application]]
+    """Applications on this node."""
+
+    cchannels: Final[Sequence["ClassicChannel"]]
+    """Classic channels connected to this node."""
+
+    def __init__(self, name: str, *, apps: Iterable[Application] | None = None):
         """
         Args:
             name: Node name.
             apps: Applications on the node.
+                  More applications can be added via :py:meth:`~mqns.entity.node.Node.add_apps`.
+                  The caller is responsible for ``deepcopy`` if needed, so that each node has a separate instance.
         """
         super().__init__(name)
-        self.cchannels: list[ClassicChannel] = []
-        """Classic channels connected to this node."""
-        self._cchannel_by_dst: dict[Node, ClassicChannel] = {}
-        self.apps: list[Application] = [] if apps is None else apps
-        """Applications on this node."""
+        self._apps = list(apps or [])
         self._app_by_type: dict[type, Application] | None = None
+        self._cchannels: list[ClassicChannel] = []
+        self._cchannel_by_dst: dict[Node, ClassicChannel] = {}
+
+        self.apps = self._apps
+        self.cchannels = self._cchannels
 
     @override
     def install(self, simulator: Simulator) -> None:
         """Attach ``Simulator`` to entities within node."""
         super().install(simulator)
-        self._install_channels(self.cchannels, self._cchannel_by_dst)
+        self._install_channels(self._cchannels, self._cchannel_by_dst)
         self._node_install()
 
         apps_by_type = defaultdict[type, list[Application]](list)
@@ -95,15 +104,15 @@ class Node(Entity):
         Insert one or more applications into the app list.
 
         Args:
-            app: an application or a list of applications.
+            app: An application or a list of applications.
                  The caller is responsible for ``deepcopy`` if needed, so that each node has a separate instance.
 
         """
         Simulator.ensure_not_installed_to(self)
         if isinstance(app, Application):
-            self.apps.append(app)
+            self._apps.append(app)
         else:
-            self.apps.extend(app)
+            self._apps.extend(app)
 
     def get_apps[A: Application](self, app_type: type[A]) -> list[A]:
         """
@@ -138,7 +147,7 @@ class Node(Entity):
     def _get_app_from_apps[A: Application](self, app_type: type[A]) -> A:
         apps = self.get_apps(app_type)
         if len(apps) != 1:
-            raise LookupError(f"node does not have exactly one instance of {app_type}")
+            raise LookupError(f"{self} does not have exactly one instance of {app_type}")
         return apps[0]
 
     def _add_channel[C: "BaseChannel"](self, channel: C, channels: list[C]) -> None:
@@ -157,20 +166,21 @@ class Node(Entity):
     def _get_channel[C: "BaseChannel"](dst: "Node", by_neighbor: dict["Node", C]) -> C:
         return by_neighbor[dst]
 
-    def add_cchannel(self, cchannel: "ClassicChannel"):
+    def add_cchannel(self, cchannel: "ClassicChannel") -> None:
         """
-        Add a classic channel in this Node.
-        This function is available prior to calling .install().
+        Add a classic channel in this node.
+
+        This function is available prior to calling :py:meth:`~mqns.entity.node.Node.install`.
         """
         Simulator.ensure_not_installed_to(self)
-        self._add_channel(cchannel, self.cchannels)
+        self._add_channel(cchannel, self._cchannels)
 
     def get_cchannel(self, dst: "Node") -> "ClassicChannel":
         """
         Retrieve the classic channel that connects to ``dst``.
 
         Raises:
-            LookupError: channel does not exist
+            LookupError: Channel does not exist.
         """
         return self._get_channel(dst, self._cchannel_by_dst)
 
@@ -179,8 +189,8 @@ class Node(Entity):
         Send a classic packet to an adjacent node.
 
         Args:
-            next_hop: an adjacent node that shares a classic channel with this node.
-            pkt: the packet.
+            next_hop: An adjacent node that shares a classic channel with this node.
+            pkt: The packet.
         """
         self.get_cchannel(next_hop).send(pkt, next_hop)
 

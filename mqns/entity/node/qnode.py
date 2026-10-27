@@ -15,7 +15,8 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from typing import TYPE_CHECKING, override
+from collections.abc import Iterable, Sequence
+from typing import TYPE_CHECKING, Final, override
 
 from mqns.entity.node.app import Application
 from mqns.entity.node.node import Node
@@ -30,22 +31,38 @@ if TYPE_CHECKING:
 class QNode(Node):
     """QNode is a quantum node in the quantum network. Inherits Node and add quantum elements."""
 
-    def __init__(self, name: str, *, apps: list[Application] | None = None):
+    _memory: "QuantumMemory|None" = None
+
+    operators: Final[Sequence["QuantumOperator"]]
+    """Quantum operators on this node."""
+
+    qchannels: Final[Sequence["QuantumChannel"]]
+    """Quantum channels connected to this node."""
+
+    def __init__(self, name: str, *, apps: Iterable[Application] | None = None, memory: "QuantumMemory|None" = None):
         """
         Args:
-            name: node name
-            apps: applications on the node.
+            name: Node name.
+            apps: Applications on the node.
+                  More applications can be added via :py:meth:`~mqns.entity.node.Node.add_apps`.
+                  The caller is responsible for ``deepcopy`` if needed, so that each node has a separate instance.
+            memory: Quantum memory to assign to this node.
+                    It can also be assigned later via :py:attr:`memory` setter.
         """
         super().__init__(name, apps=apps)
-        self.qchannels: list[QuantumChannel] = []
-        """Quantum channels connected to this node."""
+        self._operators: list[QuantumOperator] = []
+        self._qchannels: list[QuantumChannel] = []
         self._qchannel_by_dst: dict[Node, QuantumChannel] = {}
-        self._memory: QuantumMemory | None = None
-        self.operators: list[QuantumOperator] = []
+
+        self.operators = self._operators
+        self.qchannels = self._qchannels
+
+        if memory is not None:
+            self.memory = memory
 
     @override
     def _node_install(self) -> None:
-        self._install_channels(self.qchannels, self._qchannel_by_dst)
+        self._install_channels(self._qchannels, self._qchannel_by_dst)
 
         if self._memory:
             self._memory.install(self.simulator)
@@ -55,43 +72,40 @@ class QNode(Node):
     @property
     def memory(self) -> "QuantumMemory":
         """
-        Retrieve associated QuantumMemory.
+        Retrieve or assign associated QuantumMemory.
 
         Raises:
             LookupError: Memory does not exist.
+
+        The setter is available prior to calling :py:meth:`~mqns.entity.node.Node.install`.
         """
         if self._memory is None:
-            raise LookupError(f"node {self} does not have memory")
+            raise LookupError(f"{self} does not have memory")
         return self._memory
 
     @memory.setter
     def memory(self, value: "QuantumMemory"):
-        """
-        Assign QuantumMemory to this node.
-        This setter is available prior to calling .install().
-        """
         Simulator.ensure_not_installed_to(self)
         value.node = self
         self._memory = value
 
-    def add_operator(self, operator: "QuantumOperator"):
-        """Add a quantum operator in this node
+    def add_operator(self, operator: "QuantumOperator") -> None:
+        """
+        Add a quantum operator in this node.
 
-        Args:
-            operator: the quantum operator
-
-        This function is available prior to calling .install().
+        This function is available prior to calling :py:meth:`~mqns.entity.node.Node.install`.
         """
         Simulator.ensure_not_installed_to(self)
         operator.set_own(self)
-        self.operators.append(operator)
+        self._operators.append(operator)
 
-    def add_qchannel(self, qchannel: "QuantumChannel"):
+    def add_qchannel(self, qchannel: "QuantumChannel") -> None:
         """
-        Add a quantum channel in this QNode.
-        This function is available prior to calling .install().
+        Add a quantum channel in this node.
+
+        This function is available prior to calling :py:meth:`~mqns.entity.node.Node.install`.
         """
-        self._add_channel(qchannel, self.qchannels)
+        self._add_channel(qchannel, self._qchannels)
 
     def get_qchannel(self, dst: "QNode") -> "QuantumChannel":
         """

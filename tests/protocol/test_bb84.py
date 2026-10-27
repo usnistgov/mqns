@@ -12,8 +12,8 @@ def test_bb84_protocol():
     light_speed = 299792.458  # km/s
     length = 1  # km
 
-    n1 = QNode(name="n1")
-    n2 = QNode(name="n2")
+    n1 = QNode("n1")
+    n2 = QNode("n2")
 
     qlink = QuantumChannel(
         name="l1",
