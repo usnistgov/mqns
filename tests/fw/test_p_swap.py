@@ -34,7 +34,7 @@ from .fw_common import (
 def test_3_disabled():
     """Test swap disabled mode."""
     net, simulator = make_network(
-        NetworkBuilder().topo_linear(nodes="ABC", t_cohere=1, link_arch=LA_ALWAYS).proactive_centralized(p_swap=1.0),
+        NetworkBuilder().topo_linear(nodes="ABC", t_cohere=1, link_arch=LA_ALWAYS).proactive_centralized(ll=False, p_swap=1.0),
     )
     fwA, fwB, fwC = (node.get_app(ProactiveForwarder) for node in net.nodes)
 
@@ -76,7 +76,7 @@ def test_3_ssq(ssq: MuxSchemeBufferSpace.SelectSwapQubit | None, addrs: list[int
     net, simulator = make_network(
         NetworkBuilder()
         .topo_linear(nodes="ABC", t_cohere=0.090, ch_length=100, ch_capacity=8, link_arch=LA_ALWAYS)
-        .proactive_centralized(p_swap=1.0, mux=MuxSchemeBufferSpace(select_swap_qubit=ssq)),
+        .proactive_centralized(ll=False, p_swap=1.0, mux=MuxSchemeBufferSpace(select_swap_qubit=ssq)),
         end_time=1.120,
     )
     fwA, fwB, fwC = (node.get_app(ProactiveForwarder) for node in net.nodes)
@@ -134,7 +134,7 @@ def test_3_decohere(swap_delay: float, n_consumed: int):
     net, simulator = make_network(
         NetworkBuilder()
         .topo_linear(nodes="ABC", t_cohere=0.002, ch_length=100, link_arch=LA_ALWAYS)
-        .proactive_centralized(p_swap=1.0, swap_delay=swap_delay),
+        .proactive_centralized(ll=False, p_swap=1.0, swap_delay=swap_delay),
         end_time=2,
     )
     fwA, fwB, fwC = (node.get_app(ProactiveForwarder) for node in net.nodes)
@@ -187,7 +187,7 @@ def test_3_waittime(etg_sec: tuple[float, float], swap_delay: float, n_consumed:
     net, simulator = make_network(
         NetworkBuilder()
         .topo_linear(nodes="ABC", t_cohere=0.006, ch_length=100, link_arch=LA_ALWAYS)
-        .proactive_centralized(p_swap=1.0, swap_delay=swap_delay),
+        .proactive_centralized(ll=False, p_swap=1.0, swap_delay=swap_delay),
         end_time=1.010,
     )
     fwA, fwB, fwC = (node.get_app(ProactiveForwarder) for node in net.nodes)
@@ -245,7 +245,7 @@ def test_4_sync(t_ext: float, expected: tuple[int, int, int, int]):
     net, simulator = make_network(
         NetworkBuilder()
         .topo_linear(nodes="ABCD", t_cohere=0.015, ch_length=100, link_arch=LA_ALWAYS)
-        .proactive_centralized(timing=(t_ext, 0, 0.010 - t_ext), p_swap=1.0),
+        .proactive_centralized(timing=(t_ext, 0, 0.010 - t_ext), ll=False, p_swap=1.0),
         end_time=0.029999,
     )
     fwA, fwB, fwC, fwD = (node.get_app(ProactiveForwarder) for node in net.nodes)
@@ -270,7 +270,7 @@ def test_4_asap(ps3: int, etg_ms: tuple[int, int, int]):
     net, simulator = make_network(
         NetworkBuilder()
         .topo_linear(nodes="ABCD", t_cohere=1, ch_length=100, link_arch=LA_ALWAYS)
-        .proactive_centralized(p_swap=1.0),
+        .proactive_centralized(ll=False, p_swap=1.0),
         end_time=2,
     )
     fwA, fwB, fwC, fwD = (node.get_app(ProactiveForwarder) for node in net.nodes)
@@ -369,7 +369,7 @@ def test_4_delayed(
     net, simulator = make_network(
         NetworkBuilder(epr_type="M")
         .topo_linear(nodes="ABCD", t_cohere=5, ch_length=100, link_arch=LA_ALWAYS, init_fidelity=1)
-        .proactive_centralized(p_swap=1.0, swap_delay=0.050, swap_error="DEPOLAR:0.3"),
+        .proactive_centralized(ll=False, p_swap=1.0, swap_delay=0.050, swap_error="DEPOLAR:0.3"),
         end_time=2,
     )
     fwA, fwB, fwC, fwD = (node.get_app(ProactiveForwarder) for node in net.nodes)
@@ -444,7 +444,7 @@ def test_4_decohere(swap_delay: float, n_consumed: int):
     net, simulator = make_network(
         NetworkBuilder()
         .topo_linear(nodes="ABCD", t_cohere=0.003, ch_length=100, link_arch=LA_ALWAYS)
-        .proactive_centralized(p_swap=1.0, swap_delay=swap_delay),
+        .proactive_centralized(ll=False, p_swap=1.0, swap_delay=swap_delay),
         end_time=2,
     )
     fwA, fwB, fwC, fwD = (node.get_app(ProactiveForwarder) for node in net.nodes)
@@ -475,7 +475,7 @@ def test_5_asap(
     net, simulator = make_network(
         NetworkBuilder()
         .topo_linear(nodes="ABCDE", t_cohere=1, ch_length=100, link_arch=LA_ALWAYS)
-        .proactive_centralized(p_swap=1.0),
+        .proactive_centralized(ll=False, p_swap=1.0),
         end_time=2,
     )
     fwA, fwB, fwC, fwD, fwE = (node.get_app(ProactiveForwarder) for node in net.nodes)
@@ -513,7 +513,7 @@ def test_5_sequential(swap: Sequence[int], su_lower: Sequence[int], etg_ms: tupl
     net, simulator = make_network(
         NetworkBuilder()
         .topo_linear(nodes="ABCDE", t_cohere=1, ch_length=100, link_arch=LA_ALWAYS)
-        .proactive_centralized(p_swap=1.0),
+        .proactive_centralized(ll=False, p_swap=1.0),
     )
     fwA, fwB, fwC, fwD, fwE = (node.get_app(ProactiveForwarder) for node in net.nodes)
 
@@ -591,7 +591,7 @@ def test_5_decohere(
     net, simulator = make_network(
         NetworkBuilder()
         .topo_linear(nodes="ABCDE", t_cohere=0.010, ch_length=100, link_arch=LA_ALWAYS)
-        .proactive_centralized(p_swap=1.0, swap_delay=swap_delay),
+        .proactive_centralized(ll=False, p_swap=1.0, swap_delay=swap_delay),
         end_time=2,
     )
     fwA, fwB, fwC, fwD, fwE = (node.get_app(ProactiveForwarder) for node in net.nodes)
@@ -626,7 +626,7 @@ def test_rect2_multipath(has_etg: tuple[int, int, int, int], n_swapped: tuple[in
     net, simulator = make_network(
         NetworkBuilder(route=YenRouteAlgorithm(k_paths=2))
         .topo_from(GridTopoGen((2, 2)), nodes_naming="A", t_cohere=1, link_arch=LA_ALWAYS)
-        .proactive_centralized(p_swap=1.0),
+        .proactive_centralized(ll=False, p_swap=1.0),
     )
     fwA, fwB, fwC, fwD = (node.get_app(ProactiveForwarder) for node in net.nodes)
 
@@ -690,7 +690,7 @@ def test_tree3_dynepr(t_edge_etg: float, selected_path: tuple[int, int], n_consu
     net, simulator = make_network(
         NetworkBuilder()
         .topo_from(TreeTopoGen(levels=3), nodes_naming="A", t_cohere=1, link_arch=LA_ALWAYS)
-        .proactive_centralized(p_swap=1.0, mux=MuxSchemeDynamicEpr(select_path=select_path)),
+        .proactive_centralized(ll=False, p_swap=1.0, mux=MuxSchemeDynamicEpr(select_path=select_path)),
         # If there is a conflict in path selection, there will be two leftover EPRs.
         swap_table_leak_tol=2 if selected_path[0] != selected_path[1] else 0,
     )
@@ -774,6 +774,7 @@ def test_tree3_statistical(
         NetworkBuilder()
         .topo_from(TreeTopoGen(levels=3), nodes_naming="A", t_cohere=1, link_arch=LA_ALWAYS)
         .proactive_centralized(
+            ll=False,
             p_swap=1.0,
             mux=MuxSchemeStatistical(select_swap_qubit=select_qubit)
             if selected_path < 0
@@ -866,7 +867,9 @@ def test_tree4_statistical(
     net, simulator = make_network(
         NetworkBuilder()
         .topo_from(TreeTopoGen(levels=4), nodes_naming="A", t_cohere=1, link_arch=LA_ALWAYS)
-        .proactive_centralized(p_swap=1.0, mux=MuxSchemeStatistical(select_swap_qubit=select_qubit, select_path=select_path)),
+        .proactive_centralized(
+            ll=False, p_swap=1.0, mux=MuxSchemeStatistical(select_swap_qubit=select_qubit, select_path=select_path)
+        ),
         swap_table_leak_tol=2,
         end_time=2,
     )

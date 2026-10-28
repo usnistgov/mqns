@@ -1,5 +1,5 @@
 """
-TEMPLATE: CustomTopology + routing + multiplexing, with a fixed coherence-time sweep.
+TEMPLATE: NetworkBuilder + routing + multiplexing, with a fixed coherence-time sweep.
 
 This script runs a small proactive-entanglement simulation on a single, reusable custom topology
 to demonstrate three common tutorial scenarios:
@@ -50,8 +50,7 @@ from tap import Tap
 
 from mqns.network.builder import CTRL_DELAY, NetworkBuilder
 from mqns.network.fw import MultiplexingVector, RoutingPath
-from mqns.network.network import QuantumNetwork
-from mqns.network.network.timing import TimingModeSync
+from mqns.network.network import QuantumNetwork, TimingModeSync
 from mqns.network.proactive import MuxScheme, MuxSchemeBufferSpace, MuxSchemeStatistical
 from mqns.network.protocol.consumer import RequestCounters
 from mqns.network.route import DijkstraRouteAlgorithm, YenRouteAlgorithm

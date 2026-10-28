@@ -25,7 +25,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from collections.abc import Collection, Iterable, MutableMapping
+from collections.abc import Callable, Collection, Iterable, MutableMapping
 from typing import TYPE_CHECKING, Final, cast
 
 from mqns.entity.base_channel import BaseChannel
@@ -36,14 +36,18 @@ from mqns.models.epr import Entanglement, EprTypeInput, parse_epr_type
 from mqns.network.network.request import Request, RequestActiveEvent, RequestInactiveEvent
 from mqns.network.network.timing import TimingMode, TimingModeAsync
 from mqns.network.route import DijkstraRouteAlgorithm, RouteAlgorithm, RouteQueryResult
-from mqns.network.topology import ClassicTopology, Topology
 from mqns.simulator import Simulator, Time
 
 if TYPE_CHECKING:
     from mqns.network.fw.routing import RoutingPath
 
 
-def _save_channel[C: BaseChannel](d: MutableMapping[tuple[str, str], C], ch: C) -> None:
+def _save_channel[C: BaseChannel, N: Node](
+    d: MutableMapping[tuple[str, str], C], ch: C, node_add_channel: Callable[[N, C], None], nodes: Iterable[N]
+) -> None:
+    for node in nodes:
+        node_add_channel(node, ch)
+
     if len(ch.node_list) != 2:
         return
     a, b = sorted(node.name for node in cast(list[Node], ch.node_list))
@@ -71,9 +75,7 @@ class QuantumNetwork:
 
     def __init__(
         self,
-        topo: Topology | None = None,
         *,
-        classic_topo: ClassicTopology | None = None,
         route: RouteAlgorithm[QNode, QuantumChannel] | None = None,
         timing: TimingMode = TimingModeAsync(),
         epr_type: EprTypeInput = None,
@@ -95,31 +97,11 @@ class QuantumNetwork:
         self._qchannels: dict[tuple[str, str], QuantumChannel] = {}
         self._cchannels: dict[tuple[str, str], ClassicChannel] = {}
 
-        if topo is not None:
-            self._populate_from_topo(topo, classic_topo)
-
         self.route: RouteAlgorithm = route or DijkstraRouteAlgorithm()
         """Routing algorithm."""
 
         self.requests: list[Request] = []
         """Requested end-to-end entanglements."""
-
-    def _populate_from_topo(self, topo: Topology, classic_topo: ClassicTopology | None) -> None:
-        nodes, qchannels = topo.build()
-        if classic_topo is not None:
-            cchannels = topo.add_cchannels(classic_topo=classic_topo, nl=nodes, ll=qchannels)
-        else:
-            cchannels = topo.add_cchannels()
-
-        for node in nodes:
-            self.add_node(node)
-        for ch in qchannels:
-            self.add_qchannel(ch)
-        for ch in cchannels:
-            self.add_cchannel(ch)
-
-        if topo.controller:
-            self.set_controller(topo.controller)
 
     def install(self, simulator: Simulator) -> None:
         """
@@ -198,12 +180,16 @@ class QuantumNetwork:
         """
         return _get_channel(self._qchannels, a, b)
 
-    def add_qchannel(self, qchannel: QuantumChannel) -> None:
+    def add_qchannel(self, ch: QuantumChannel, *nodes: QNode) -> None:
         """
-        Add a quantum channel into this network.
+        Add a quantum channel.
+
+        Args:
+            ch: The quantum channel.
+            nodes: If specified, the channel is added to each node via ``node.add_qchannel(ch)``.
         """
         Simulator.ensure_not_installed_to(self)
-        _save_channel(self._qchannels, qchannel)
+        _save_channel(self._qchannels, ch, QNode.add_qchannel, nodes)
 
     @property
     def cchannels(self) -> Collection[ClassicChannel]:
@@ -219,12 +205,16 @@ class QuantumNetwork:
         """
         return _get_channel(self._cchannels, a, b)
 
-    def add_cchannel(self, cchannel: ClassicChannel) -> None:
+    def add_cchannel(self, ch: ClassicChannel, *nodes: Node) -> None:
         """
-        Add a classic channel into this network.
+        Add a classic channel.
+
+        Args:
+            ch: The classic channel.
+            nodes: If specified, the channel is added to each node via ``node.add_cchannel(ch)``.
         """
         Simulator.ensure_not_installed_to(self)
-        _save_channel(self._cchannels, cchannel)
+        _save_channel(self._cchannels, ch, Node.add_cchannel, nodes)
 
     def build_route(self) -> None:
         """Build static route tables."""

@@ -94,4 +94,4 @@ class DijkstraRouteAlgorithm[N: Node, C: BaseChannel](RouteAlgorithm[N, C]):
         metric, path = self.route_table.get(src, {}).get(dst, (np.inf, []))
         if len(path) <= 1 or np.isinf(metric):  # unreachable
             return []
-        return [RouteQueryResult(metric, list(reversed(path)))]
+        return [RouteQueryResult.new(metric, reversed(path))]

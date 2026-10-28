@@ -11,9 +11,8 @@ from mqns.utils import unwrap
 
 class TwoNodes:
     def __init__(self, *, capacity=1):
-        self.n1 = QNode("n1")
-        self.m1 = QuantumMemory("m1", capacity=capacity)
-        self.n1.memory = self.m1
+        self.n1 = QNode("n1", memory=QuantumMemory("m1", capacity=capacity))
+        self.m1 = self.n1.memory
 
         self.n2 = QNode("n2")
         self.qc = QuantumChannel("qc")

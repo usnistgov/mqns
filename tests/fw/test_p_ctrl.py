@@ -41,7 +41,7 @@ def test_rect2_ru():
     net, simulator = make_network(
         NetworkBuilder()
         .topo_from(GridTopoGen((2, 2)), nodes_naming="A", t_cohere=0.005, ch_capacity=3)
-        .proactive_centralized(drq_cap=0),
+        .proactive_centralized(ll=False, drq_cap=0),
     )
     # FIB erase delay is 4*t_cohere = 0.020 seconds.
 
@@ -89,7 +89,7 @@ def test_rect2_drq(monkeypatch: pytest.MonkeyPatch, mv2: int, state3: RequestSta
     net, simulator = make_network(
         NetworkBuilder()
         .topo_from(GridTopoGen((2, 2)), nodes_naming="A", t_cohere=0.005, ch_capacity=3)
-        .proactive_centralized(drq_cap=2),
+        .proactive_centralized(ll=False, drq_cap=2),
     )
     # FIB erase delay is 4*t_cohere = 0.020 seconds.
     inserted_paths = collect_path_insert(monkeypatch, net)
@@ -141,7 +141,7 @@ def test_grid12_multipath(monkeypatch: pytest.MonkeyPatch):
         I---J---K---L
     """
     net, simulator = make_network(
-        NetworkBuilder().topo_from(GridTopoGen((3, 4)), nodes_naming="A", ch_capacity=1).proactive_centralized(),
+        NetworkBuilder().topo_from(GridTopoGen((3, 4)), nodes_naming="A", ch_capacity=1).proactive_centralized(ll=False),
     )
     inserted_paths = collect_path_insert(monkeypatch, net)
 

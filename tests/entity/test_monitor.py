@@ -39,8 +39,8 @@ class RecvApp(Application[QNode]):
 
 
 def build_network(simulator: Simulator) -> tuple[SendApp, RecvApp]:
-    n1 = QNode(name="n_1")
-    n2 = QNode(name="n_2")
+    n1 = QNode("n_1")
+    n2 = QNode("n_2")
 
     l1 = QuantumChannel(name="l1", bandwidth=5, delay=0.5, drop_rate=0.2, max_buffer_size=5)
     n1.add_qchannel(l1)

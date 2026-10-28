@@ -15,9 +15,8 @@ from mqns.network.network import QuantumNetwork, TimingPhase, sync_phase_handler
 from mqns.network.protocol.consumer import Consumer
 from mqns.network.protocol.event import QubitEntangledEvent, QubitReleasedEvent
 from mqns.network.protocol.link_layer import LinkLayer
-from mqns.network.topology.customtopo import Topo
 from mqns.simulator import Simulator, Time, event_handler, func_to_event
-from mqns.utils import AutoIncrementIdentifier, log, rng, unwrap
+from mqns.utils import AutoIncrementIdentifier, log, rng
 
 
 class QubitReleaseReset(Application[QNode]):
@@ -55,7 +54,6 @@ def make_network(
     b: NetworkBuilder,
     *,
     swap_table_leak_tol=0,
-    has_link_layer=False,
     end_time=10.0,
 ) -> tuple[QuantumNetwork, Simulator]:
     """
@@ -64,20 +62,16 @@ def make_network(
     Args:
         b: NetworkBuilder with topology defined and applications installed.
         swap_table_leak_tol: ForwarderSwapProc memory leak tolerance.
-        has_link_layer: Whether to include full LinkLayer application.
         end_time: Simulation end time in seconds.
     """
     rng.reseed("env")
     ForwarderSwapProc.table_leak_tol = swap_table_leak_tol
 
-    def modify_network(_, topo: Topo):
-        if not has_link_layer:
-            for node in topo["qnodes"]:
-                apps = unwrap(node.get("apps"))
-                assert isinstance(apps[0], LinkLayer)
-                apps[0] = QubitReleaseReset()
+    net = b.make_network()
 
-    net = b.make_network(modify=modify_network)
+    for node in net.nodes:
+        if not node.get_apps(LinkLayer):
+            node.add_apps(QubitReleaseReset())
 
     simulator = Simulator(0.0, end_time, install_to=(log, net))
     return net, simulator

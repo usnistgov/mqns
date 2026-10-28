@@ -74,27 +74,17 @@ class NetworkLayer(Application[QNode]):
 
 def make_2nodes(
     *,
-    ll_args: LinkLayerInitKwargs = {},
+    ll_args=LinkLayerInitKwargs(),
     qchannel_args: QuantumChannelInitKwargs,
     memory_args: QuantumMemoryInitKwargs,
     timing: TimingMode = TimingModeAsync(),
     epr_type: type[Entanglement] = WernerStateEntanglement,
 ) -> tuple[QuantumNetwork, QuantumChannel, LinkLayer, LinkLayer, NetworkLayer, NetworkLayer]:
     net = QuantumNetwork(timing=timing, epr_type=epr_type)
-    net.add_node(n1 := QNode("n1", apps=[NetworkLayer(), LinkLayer(**ll_args)]))
-    net.add_node(n2 := QNode("n2", apps=[NetworkLayer(), LinkLayer(**ll_args)]))
-    n1.memory = QuantumMemory("m1", **memory_args)
-    n2.memory = QuantumMemory("m2", **memory_args)
-
-    cc = ClassicChannel("cc", **extract_cchannel_args(qchannel_args))
-    n1.add_cchannel(cc)
-    n2.add_cchannel(cc)
-    net.add_cchannel(cc)
-
-    qc = QuantumChannel("qc", **qchannel_args)
-    n1.add_qchannel(qc)
-    n2.add_qchannel(qc)
-    net.add_qchannel(qc)
+    net.add_node(n1 := QNode("n1", apps=[NetworkLayer(), LinkLayer(**ll_args)], memory=QuantumMemory("m1", **memory_args)))
+    net.add_node(n2 := QNode("n2", apps=[NetworkLayer(), LinkLayer(**ll_args)], memory=QuantumMemory("m2", **memory_args)))
+    net.add_cchannel(ClassicChannel("cc", **extract_cchannel_args(qchannel_args)), n1, n2)
+    net.add_qchannel(qc := QuantumChannel("qc", **qchannel_args), n1, n2)
     net.build_route()
 
     return net, qc, n1.get_app(LinkLayer), n2.get_app(LinkLayer), n1.get_app(NetworkLayer), n2.get_app(NetworkLayer)

@@ -35,7 +35,6 @@ def test_4_swap(epr_type: EprTypeLiteral, timing: TimingMode, swap: SwapSequence
         .topo_linear(nodes="ABCD", t_cohere=1, ch_length=100, link_arch=LA_ALWAYS)
         .proactive_centralized(timing=timing),
         swap_table_leak_tol=256,
-        has_link_layer=True,
         end_time=3.0,
     )
     _, fwB, fwC, _ = (node.get_app(ProactiveForwarder) for node in net.nodes)
@@ -73,7 +72,6 @@ def test_tree3_bidir(mux: MuxSchemeInput, swap: SwapSequenceInput, end_time: flo
         )
         .proactive_centralized(p_swap=1.0, mux=mux),
         swap_table_leak_tol=256,
-        has_link_layer=True,
         end_time=end_time,
     )
 
@@ -101,7 +99,6 @@ def test_rect2_path_delete():
         NetworkBuilder()
         .topo_from(GridTopoGen((2, 2)), nodes_naming="A", t_cohere=1, ch_length=100, link_arch=LA_ALWAYS)
         .proactive_centralized(p_swap=1.0),
-        has_link_layer=True,
     )
     _, fwB, fwC, _ = (node.get_app(ProactiveForwarder) for node in net.nodes)
     llA, llB, llC, _ = (node.get_app(LinkLayer) for node in net.nodes)
@@ -156,7 +153,6 @@ def test_rect3_epr_count(monkeypatch: pytest.MonkeyPatch, k_paths: int, n_reques
         NetworkBuilder(route=DijkstraRouteAlgorithm() if k_paths < 0 else YenRouteAlgorithm(k_paths=k_paths))
         .topo_from(GridTopoGen((3, 3)), nodes_naming="A", t_cohere=1, ch_length=100, link_arch=LinkArchAlways(LA()))
         .proactive_centralized(p_swap=1.0),
-        has_link_layer=True,
         swap_table_leak_tol=256,
     )
 
