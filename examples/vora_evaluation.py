@@ -206,7 +206,7 @@ def run_row(p: ParameterSet, num_routers: int, dist_prop: str, swap_conf: str) -
 
     entanglements: list[float] = []
     expired: list[float] = []
-    for seed in seed_seq_env(args.runs, 100):
+    for seed in seed_seq_env(p.n_runs, 100):
         print(f"Simulation: {num_routers} routers | {dist_prop} distances | {swap_conf} | seed {seed}")
         e2e_count, expired_count = run_simulation(seed, p)
         entanglements.append(e2e_count)
