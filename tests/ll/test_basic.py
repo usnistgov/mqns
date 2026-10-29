@@ -231,8 +231,8 @@ def test_path_delete(
     simulator.run()
 
     if t_delete < simulator.te.sec:
-        assert len(ll1.channels) == 0
-        assert len(ll2.channels) == 0
+        assert len(ll1.entangle) == 0
+        assert len(ll2.entangle) == 0
     assert nl1.entangle == pytest.approx(expect_t_entangle1[:n_entangle], abs=1e-6)
     assert nl2.entangle == pytest.approx(expect_t_entangle2[:n_entangle], abs=1e-6)
 
