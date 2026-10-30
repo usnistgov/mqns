@@ -145,8 +145,7 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
 
         # Increment the insertion count.
         ap.insertion_count += 1
-        if ap.insertion_count > 1:
-            return
+        assert ap.insertion_count == 1
 
         # If the path is new, mark it as live.
         ac.live_paths.add(path_id)

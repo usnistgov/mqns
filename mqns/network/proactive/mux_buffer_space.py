@@ -13,6 +13,7 @@ from mqns.network.fw.select import (
     select_swap_qubit_newest,
     select_swap_qubit_oldest,
 )
+from mqns.network.ll import PathActivateEvent, PathDeactivateEvent
 from mqns.network.proactive.mux import MuxScheme
 from mqns.utils import unwrap, unwrap_cast
 
@@ -94,10 +95,21 @@ class MuxSchemeBufferSpace(MuxSchemeFibBase):
     @override
     def install_path_adj(self, inst: PathInstructions, fp: FibPath, dir: PathDirection, ch: QuantumChannel) -> None:
         assert "bufferspace_mv" in inst
-        idx = 2 * fp.own_idx + (-1 if dir is PathDirection.L else 0)
-        n = inst["bufferspace_mv"][idx]
-        addrs = self.memory.allocate(ch, fp.path_id, dir, n=n)
+        n_qubits = inst["bufferspace_mv"][2 * fp.own_idx + (dir.value - 1)]
+        addrs = self.memory.allocate(ch, fp.path_id, dir, n=n_qubits)
         self.fw.log_debug("allocating path %s-%s qubits: %s", fp.path_id, dir.name, addrs)
+
+        ll_dir = inst.get("ll_dir")
+        primary_dir = PathDirection[ll_dir[fp.own_idx + (dir.value - 1)]] if ll_dir else PathDirection.R
+        self.simulator.sched(
+            PathActivateEvent(
+                self.node,
+                ch,
+                fp.path_id,
+                t=self.simulator.tc,
+                is_primary=dir is primary_dir,
+            )
+        )
 
     @override
     def uninstall_path_adj(self, fp: FibPath, dir: PathDirection, ch: QuantumChannel) -> None:
@@ -108,9 +120,14 @@ class MuxSchemeBufferSpace(MuxSchemeFibBase):
         # when they next reach RAW state.
         self.memory.deallocate(*addrs)
 
-    @override
-    def qubit_has_path_id(self) -> bool:
-        return True
+        self.simulator.sched(
+            PathDeactivateEvent(
+                self.node,
+                ch,
+                fp.path_id,
+                t=self.simulator.tc,
+            )
+        )
 
     @override
     def list_qubit_epr_path_ids(self, mq: MemoryQubit) -> list[int]:
