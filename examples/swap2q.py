@@ -42,10 +42,10 @@ from tap import Tap
 from mqns.entity.qchannel import LinkArchDimDual
 from mqns.models.epr import MixedStateEntanglement
 from mqns.network.builder import CTRL_DELAY, ChannelParam, NetworkBuilder, NodeDef, tap_configure
+from mqns.network.ll import LinkLayer
 from mqns.network.network import QuantumNetwork
 from mqns.network.proactive import MuxSchemeBufferSpace
 from mqns.network.protocol.consumer import RequestCounters
-from mqns.network.protocol.link_layer import LinkLayer
 from mqns.simulator import Simulator
 from mqns.utils import log, rng, seed_seq_env, unwrap
 
@@ -104,7 +104,7 @@ F_REQ_VALUES: Sequence[float] = [0.75, 0.7823, 0.8146, 0.8469, 0.8791, 0.8904, 0
 
 class Stats(TypedDict):
     lam: list[float]
-    """LinkLayer arrival rate for each link -- collected via ActiveChannel counters."""
+    """LinkLayer arrival rate for each link -- collected via per-channel LinkLayerCounters."""
     rate: float
     """Rate -- number of entanglements consumed per second."""
     fid_mean: float

@@ -115,11 +115,11 @@ Allowed state transitions, mapped from old state to allowed new states.
 
 
 class PathDirection(Enum):
-    L = auto()
+    L = 0
     """
     Path direction LEFT: qubit is assigned to a channel that connects to the left side neighbor.
     """
-    R = auto()
+    R = 1
     """
     Path direction RIGHT: qubit is assigned to a channel that connects to the right side neighbor.
     """

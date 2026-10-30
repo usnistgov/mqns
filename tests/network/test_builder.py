@@ -14,8 +14,8 @@ from mqns.network.builder import (
     RandomTopoGen,
     TreeTopoGen,
 )
+from mqns.network.ll import LinkLayer
 from mqns.network.network import TimingMode, TimingModeSync
-from mqns.network.protocol.link_layer import LinkLayer
 from mqns.simulator import Simulator
 
 

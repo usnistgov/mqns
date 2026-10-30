@@ -1,5 +1,4 @@
-from collections import defaultdict
-from collections.abc import Callable
+from collections.abc import Callable, MutableMapping
 from typing import TYPE_CHECKING, Literal, override
 
 from mqns.entity.memory import MemoryQubit, PathDirection, QubitState
@@ -14,6 +13,7 @@ from mqns.network.fw.select import (
     select_swap_qubit_newest,
     select_swap_qubit_oldest,
 )
+from mqns.network.ll import PathActivateEvent, PathDeactivateEvent
 from mqns.network.proactive.mux import MuxScheme
 from mqns.utils import unwrap, unwrap_cast
 
@@ -24,8 +24,12 @@ if TYPE_CHECKING:
 class MuxSchemeDynamicBase(MuxScheme):
     def __init__(self):
         super().__init__()
-        self.qchannel_paths_map = defaultdict[str, list[int]](list)
-        """stores path-qchannel relationship"""
+        self.qchannel_paths_map: MutableMapping[QuantumChannel, list[int]] = {}
+        """
+        Mapping from QuantumChannel to path_ids activated on the channel.
+
+        Note: the mapped type is a ``list`` instead of a ``set``, to ensure deterministic simulation.
+        """
 
     @override
     def validate_path_instructions(self, inst: PathInstructions):
@@ -33,24 +37,44 @@ class MuxSchemeDynamicBase(MuxScheme):
 
     @override
     def install_path_adj(self, inst: PathInstructions, fp: FibPath, dir: PathDirection, ch: QuantumChannel) -> None:
-        _ = inst, dir
-        self.qchannel_paths_map[ch.name].append(fp.path_id)
+        _ = inst
+        paths = self.qchannel_paths_map.setdefault(ch, [])
+        assert fp.path_id not in paths
+        paths.append(fp.path_id)
+        if len(paths) > 1:
+            return
+
+        self.simulator.sched(
+            PathActivateEvent(
+                self.node,
+                ch,
+                path_id=None,
+                t=self.simulator.tc,
+                is_primary=dir is PathDirection.R,
+            )
+        )
 
     @override
     def uninstall_path_adj(self, fp: FibPath, dir: PathDirection, ch: QuantumChannel) -> None:
         _ = dir
-        paths = self.qchannel_paths_map[ch.name]
+        paths = self.qchannel_paths_map[ch]
         paths.remove(fp.path_id)
-        if len(paths) == 0:
-            del self.qchannel_paths_map[ch.name]
+        if len(paths) > 0:
+            return
 
-    @override
-    def qubit_has_path_id(self) -> bool:
-        return False
+        del self.qchannel_paths_map[ch]
+        self.simulator.sched(
+            PathDeactivateEvent(
+                self.node,
+                ch,
+                path_id=None,
+                t=self.simulator.tc,
+            )
+        )
 
     @override
     def list_qubit_epr_path_ids(self, mq: MemoryQubit) -> list[int]:
-        return self.qchannel_paths_map.get(unwrap(mq.qchannel).name, [])
+        return self.qchannel_paths_map.get(unwrap(mq.qchannel), [])
 
 
 class MuxSchemeStatistical(MuxSchemeDynamicBase):
