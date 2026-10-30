@@ -3,6 +3,12 @@ Examples
 
 MQNS codebase includes a number of examples in the ``examples`` directory.
 
+.. toctree::
+   :maxdepth: 3
+
+   extctrl
+   scalability_randomtopo
+
 3_nodes_thruput example
 -----------------------
 
