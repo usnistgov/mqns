@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableMapping
 from typing import TYPE_CHECKING, Final, final, override
 
 from mqns.entity.cchannel import ClassicPacket
@@ -10,9 +10,9 @@ from mqns.models.delay import ConstantDelayModel
 from mqns.network.ll.counter import LinkLayerCounters
 from mqns.network.ll.event import QubitReleasedEvent
 from mqns.network.ll.message import ReserveMsg, ReserveParsedMsg
-from mqns.network.ll.task import ActiveChannel, ActivePath, Entangle2ndEvent, EntanglePriEvent, EntangleTask
+from mqns.network.ll.task import ActivePath, Entangle2ndEvent, EntanglePriEvent, EntangleTask
 from mqns.simulator import Simulator
-from mqns.utils import AutoIncrementIdentifier, LogSelfMixin, unwrap_cast
+from mqns.utils import AutoIncrementIdentifier, LogSelfMixin
 
 if TYPE_CHECKING:
     from mqns.network.ll.linklayer import LinkLayer
@@ -34,16 +34,29 @@ class LinkLayerEntangle(LogSelfMixin):
     memory: Final[QuantumMemory]
     ch: Final[QuantumChannel]
     peer: Final[QNode]
-    ac: Final[ActiveChannel]
 
-    def __init__(self, ll: "LinkLayer", ch: QuantumChannel, primary_cnt: LinkLayerCounters | None):
+    all_paths: MutableMapping[int | None, ActivePath]
+    """
+    Active paths, including those pending deletion.
+    Key is ``path_id``.
+    Value is ActivePath record.
+    """
+
+    live_paths: MutableMapping[int | None, ActivePath]
+    """
+    Active paths that could initiate entanglements, excluding those pending deletion.
+    """
+
+    def __init__(self, ll: "LinkLayer", ch: QuantumChannel):
         self.simulator = ll.simulator
         self.ll = ll
         self.node = ll.node
         self.memory = ll.memory
         self.ch = ch
         self.peer = ch.find_peer(ll.node)
-        self.ac = ActiveChannel(ch, self.peer, primary_cnt)
+
+        self.all_paths = {}
+        self.live_paths = {}
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__} {self.node.name}-{self.peer.name}>"
@@ -60,8 +73,8 @@ class LinkLayerEntangle(LogSelfMixin):
 
     def handle_release(self, event: QubitReleasedEvent) -> None:
         mq = event.qubit
-        ap = self.ac.paths.get(mq.path_id)
-        if ap is None or ap.insertion_count == 0:
+        ap = self.live_paths.get(mq.path_id)
+        if ap is None:
             self.log_debug("%s ignored reason=no-active-path", event)
             return
 
@@ -77,9 +90,13 @@ class LinkLayerEntanglePri(LinkLayerEntangle):
     Entanglement generation procedure of one quantum channel on the primary node.
     """
 
+    cnt: Final[LinkLayerCounters]
+
     def __init__(self, ll: "LinkLayer", ch: QuantumChannel):
-        cnt = LinkLayerCounters(history=ll._cnt_history, rtt=ll.simulator.time(sec=ConstantDelayModel.extract(ch.delay) * 2))
-        super().__init__(ll, ch, cnt)
+        super().__init__(ll, ch)
+        self.cnt = LinkLayerCounters(
+            history=ll._cnt_history, rtt=ll.simulator.time(sec=ConstantDelayModel.extract(ch.delay) * 2)
+        )
 
         la = ch.link_arch
 
@@ -100,19 +117,13 @@ class LinkLayerEntanglePri(LinkLayerEntangle):
         epr_tpl = la.make_epr(self.simulator.ts, self.node, self.peer, key=None)
 
         self.log_debug(
-            "CHANNEL_ACTIVATE %s ch=%s link_arch=%s attempt_interval=%s t_notify=%s,%s | template %s",
-            self.ac,
-            ch.name,
+            "CHANNEL_ACTIVATE link_arch=%s attempt_interval=%s t_notify=%s,%s | template %s",
             la.name,
             la.attempt_interval,
             la.d_notify_pri,
             la.d_notify_2nd,
             epr_tpl,
         )
-
-    @property
-    def cnt(self) -> "LinkLayerCounters":
-        return unwrap_cast(self.ac.cnt)
 
     @override
     def sync_external_enter(self) -> None:
@@ -122,7 +133,7 @@ class LinkLayerEntanglePri(LinkLayerEntangle):
     @override
     def sync_external_exit(self) -> None:
         # Clear incomplete reservations.
-        for ap in self.ac.paths.values():
+        for ap in self.all_paths.values():
             ap.oreq_table.clear()
 
     def run_channel(self, ap: ActivePath | None = None) -> None:
@@ -130,11 +141,10 @@ class LinkLayerEntanglePri(LinkLayerEntangle):
         Start entanglement generation on qubits assigned to a channel.
 
         Args:
-            ac: ActiveChannel record of the quantum channel, where this node is primary.
             ap: If set, only consider qubits allocated to a specified path.
         """
         qubits = self.memory.find(
-            (lambda q, _: q.state is QubitState.RAW and q.path_id in self.ac.live_paths)
+            (lambda q, _: q.state is QubitState.RAW and q.path_id in self.live_paths)
             if ap is None
             else (lambda q, _: q.state is QubitState.RAW and q.path_id == ap.path_id),
             qchannel=self.ch,
@@ -152,8 +162,7 @@ class LinkLayerEntanglePri(LinkLayerEntangle):
             ap: ActivePath record, if known.
             mq: The qubit, which must be in RAW state.
         """
-        ap = ap or self.ac.paths[mq.path_id]
-        assert ap.insertion_count > 0
+        ap = ap or self.live_paths[mq.path_id]
 
         # Generate a unique reservation key to represent this entanglement generation protocol execution
         # and the entanglement, which is valid until the entanglement is released.
@@ -161,7 +170,7 @@ class LinkLayerEntanglePri(LinkLayerEntangle):
         mq.state = QubitState.ACTIVE
 
         # Remember the pending reservation in ActivePath record.
-        ap.oreq_table[mq.key] = EntangleTask(self.ac, ap, mq)
+        ap.oreq_table[mq.key] = EntangleTask(self, ap, mq)
         self.log_debug(
             "RESERVE_REQ(%s:%s, %s) sent addr=%s peer=%s", self.node.name, mq.path_id, mq.key, mq.addr, self.peer.name
         )
@@ -170,8 +179,8 @@ class LinkLayerEntanglePri(LinkLayerEntangle):
         self.send_msg(ReserveMsg(cmd="RESERVE_REQ", path_id=mq.path_id, key=mq.key))
 
     def handle_reserve_res(self, req: ReserveParsedMsg) -> None:
-        ap = self.ac.paths.get(req.path_id)
-        if ap is None or ap.insertion_count == 0:
+        ap = self.live_paths.get(req.path_id)
+        if ap is None:
             self.log_debug("%s ignored reason=no-active-path", req)
             return None
 
@@ -191,11 +200,10 @@ class LinkLayerEntanglePri(LinkLayerEntangle):
         Schedule a successful entanglement attempt using skip-ahead sampling.
 
         Args:
-            ac: ActiveChannel record of the quantum channel, where this node is primary.
             ap: ActivePath record of the path to which the qubit is allocated.
             mq: The memory qubit used for this attempt.
         """
-        assert ap.insertion_count > 0
+        assert not ap.deleting
         assert task.k == -1
         la = self.ch.link_arch
         key = task.key
@@ -249,7 +257,7 @@ class LinkLayerEntanglePri(LinkLayerEntangle):
     def _release_reuse_qubit(self, event: QubitReleasedEvent, ap: ActivePath) -> None:
         self.log_debug("%s processed", event)
         if event.is_decoh:
-            self.ac.cnt.n_decoh += 1
+            self.cnt.n_decoh += 1
         if self.node.timing.is_async():
             self.start_reservation(ap, event.qubit)
 
@@ -261,8 +269,8 @@ class LinkLayerEntangle2nd(LinkLayerEntangle):
     """
 
     def __init__(self, ll: "LinkLayer", ch: QuantumChannel):
-        super().__init__(ll, ch, None)
-        self.log_debug("CHANNEL_ACTIVATE %s ch=%s", self.ac, ch.name)
+        super().__init__(ll, ch)
+        self.log_debug("CHANNEL_ACTIVATE")
 
     @override
     def sync_external_enter(self) -> None:
@@ -271,12 +279,12 @@ class LinkLayerEntangle2nd(LinkLayerEntangle):
     @override
     def sync_external_exit(self) -> None:
         # Clear unsatisfied reservation requests.
-        for ap in self.ac.paths.values():
+        for ap in self.all_paths.values():
             ap.ireq_queue.clear()
 
     def handle_reserve_req(self, req: ReserveParsedMsg) -> None:
-        ap = self.ac.paths.get(req.path_id)
-        if ap is None or ap.insertion_count == 0:
+        ap = self.live_paths.get(req.path_id)
+        if ap is None:
             self.log_debug("%s ignored reason=no-active-path", req)
             return None
 
@@ -290,7 +298,6 @@ class LinkLayerEntangle2nd(LinkLayerEntangle):
         Accept a reservation if a qubit is available.
 
         Args:
-            ac: ActiveChannel record of the quantum channel, where this node is secondary.
             ap: ActivePath record of the path to which the qubit is allocated.
             key: Reservation key from a received RESERVE_RES message.
             hint: If provided, it will be used, bypassing the search; it must be in RAW state.
@@ -302,7 +309,7 @@ class LinkLayerEntangle2nd(LinkLayerEntangle):
             * False if the request is not accepted.
               Caller is responsible for enqueuing the request.
         """
-        assert ap.insertion_count > 0
+        assert not ap.deleting
 
         if hint:
             mq = hint

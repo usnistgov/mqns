@@ -104,7 +104,7 @@ F_REQ_VALUES: Sequence[float] = [0.75, 0.7823, 0.8146, 0.8469, 0.8791, 0.8904, 0
 
 class Stats(TypedDict):
     lam: list[float]
-    """LinkLayer arrival rate for each link -- collected via ActiveChannel counters."""
+    """LinkLayer arrival rate for each link -- collected via per-channel LinkLayerCounters."""
     rate: float
     """Rate -- number of entanglements consumed per second."""
     fid_mean: float

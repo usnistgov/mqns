@@ -16,7 +16,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from collections.abc import Iterable, MutableMapping
-from typing import Final, TypedDict, Unpack, override
+from typing import Final, TypedDict, Unpack, cast, override
 
 from mqns.entity.cchannel import ClassicCommandDispatcherMixin, ClassicPacket, classic_cmd_handler
 from mqns.entity.memory import QuantumMemory, QubitState
@@ -137,19 +137,15 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
             raise RuntimeError(f"{event}: channel already activated with opposite role in {proc}")
 
         # Find or insert the ActivePath record.
-        ac = proc.ac
-        ap = ac.paths.get(path_id)
+        ap = proc.all_paths.get(path_id)
         if not ap:
             ap = ActivePath(path_id, is_primary)
-            ac.paths[path_id] = ap
+            proc.all_paths[path_id] = ap
 
-        # Increment the insertion count.
-        ap.insertion_count += 1
-        assert ap.insertion_count == 1
-
-        # If the path is new, mark it as live.
-        ac.live_paths.add(path_id)
+        # Mark the path as live.
+        ap.deleting = False
         ap.delete_event.cancel()
+        proc.live_paths[path_id] = ap
         addrs = [q.addr for q, _ in self.memory.find(QuantumMemory.predicate_all, qchannel=ch)]
         proc.log_debug("PATH_ACTIVATE %s has-addrs=%s", ap, addrs)
 
@@ -168,24 +164,19 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
 
         # Find the channel entangle procedure.
         proc = self.entangle_by_ch[event.qchannel]
-        ac = proc.ac
 
-        # Find the ActivePath record and decrement its insertion count.
-        ap = ac.paths[path_id]
-        ap.insertion_count -= 1
-        if ap.insertion_count > 0:
-            return
-
-        # When a path reaches insertion_count==0, it is marked as pending deletion.
-        ac.live_paths.remove(path_id)
+        # Find the ActivePath record and mark as pending deletion.
+        ap = proc.all_paths[path_id]
+        ap.deleting = True
+        del proc.live_paths[path_id]
         t_delete = now + self.memory.t_cohere
         self.simulator.sched(delete_event := func_to_event(t_delete, self._deactivate_delete, proc, ap))
         ap.delete_event.set(delete_event)
 
-        if not ac.is_primary:
+        if type(proc) is LinkLayerEntangle2nd:
             # On the secondary node, no more reservations would be accepted.
             ap.ireq_queue.clear()
-            self.log_debug("PATH_DEACTIVATE_2nd %s.%s t_delete=%s", ac, ap, t_delete)
+            self.log_debug("PATH_DEACTIVATE_2nd %s.%s t_delete=%s", proc, ap, t_delete)
             return
 
         # On the primary node, no more attempts may start.
@@ -209,11 +200,11 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
             task = ap.oreq_table.pop(key)
             task.mq.state = QubitState.RAW
             msg = ReserveMsg(cmd="RESERVE_ABORT", key=key, path_id=path_id)
-            self.node.send_cpacket(ac.partner, ClassicPacket(msg, src=self.node, dest=ac.partner))
+            self.node.send_cpacket(proc.peer, ClassicPacket(msg, src=self.node, dest=proc.peer))
 
         self.log_debug(
             "PATH_DEACTIVATE_pri %s.%s t_delete=%s abort-tasks=%s uncancelable-tasks=%s",
-            ac,
+            proc,
             ap,
             t_delete,
             tasks_aborted,
@@ -224,17 +215,16 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         """
         Part of ``PathDeactivateEvent`` handler: delayed deletion of ActivePath record.
         """
-        ac = proc.ac
         path_id = ap.path_id
 
         # If the path has been re-inserted, the delete_event should have been canceled.
-        assert ap.insertion_count == 0, f"{self}: {ac}.{ap}.insertion_count={ap.insertion_count}"
+        assert ap.deleting, f"{self}: {proc}.{ap}.deleting is False"
 
         # There should be nothing pending on the ActivePath record.
-        if ac.is_primary:
-            assert len(ap.oreq_table) == 0, f"{self}: {ac}.{ap}.oreq_table = {ap.oreq_table}"
+        if is_primary := type(proc) is LinkLayerEntanglePri:
+            assert len(ap.oreq_table) == 0, f"{self}: {proc}.{ap}.oreq_table = {ap.oreq_table}"
         else:
-            assert len(ap.ireq_queue) == 0, f"{self}: {ac}.{ap}.ireq_queue = {ap.ireq_queue}"
+            assert len(ap.ireq_queue) == 0, f"{self}: {proc}.{ap}.ireq_queue = {ap.ireq_queue}"
 
         # There should be no qubits owned by LinkLayer.
         locked_qubits = list(
@@ -242,22 +232,20 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
                 lambda q, _: q.state in (QubitState.ACTIVE, QubitState.RESERVED) and q.path_id == path_id, qchannel=proc.ch
             )
         )
-        assert not locked_qubits, f"{self}: {ac}.{ap} has locked qubits: {locked_qubits}"
+        assert not locked_qubits, f"{self}: {proc}.{ap} has locked qubits: {locked_qubits}"
 
         # Delete the path from the channel.
-        del ac.paths[path_id]
-        self.log_debug("PATH_DEACTIVATE_%s %s.%s deleted", PathActivateEvent.ROLE_STR[ac.is_primary], ac, ap)
-        if len(ac.paths) > 0:
+        del proc.all_paths[path_id]
+        self.log_debug("PATH_DEACTIVATE %s.%s deleted", proc, ap)
+        if len(proc.all_paths) > 0:
             return
 
         # If the channel has no more active paths, delete the channel.
         del self.entangle_by_ch[proc.ch]
         del self.entangle_by_peer[proc.peer.name]
-        if ac.is_primary:
-            self._cnt_deleted_channels += ac.cnt
-        self.log_debug(
-            "CHANNEL_DEACTIVATE_%s %s partner=%s", PathActivateEvent.ROLE_STR[ac.is_primary], proc.ch.name, proc.peer.name
-        )
+        if is_primary:
+            self._cnt_deleted_channels += proc.cnt
+        self.log_debug("CHANNEL_DEACTIVATE %s", proc)
 
     @classic_cmd_handler("RESERVE_ABORT")
     def handle_reserve_abort(self, pkt: ClassicPacket, msg: ReserveMsg) -> None:
@@ -319,7 +307,7 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
     @event_handler
     def _notify_pri(self, event: EntanglePriEvent) -> None:
         del event.task.ap.oreq_table[event.key]
-        event.task.ac.cnt.save_etg(event.task)
+        cast(LinkLayerEntanglePri, event.task.ac).cnt.save_etg(event.task)
         self._notify_entangle("pri", event)
 
     @event_handler
