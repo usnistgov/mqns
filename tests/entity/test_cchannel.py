@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import Any, Final, TypedDict, Unpack
 
 import pytest
@@ -177,10 +177,18 @@ class CommandModuleF(CommandModuleE):
 
 class CommandAppF(CommandAppA):
     module_f: Final[CommandModuleF]
+    not_module_int: int
+    not_module_final_int: Final[int]
+    not_module_sequence: Sequence[str]
+    not_module_final_sequence: Final[Sequence[str]]
 
     def __init__(self):
         super().__init__()
         self.module_f = CommandModuleF(self)
+        self.not_module_int = 0
+        self.not_module_final_int = 0
+        self.not_module_sequence = []
+        self.not_module_final_sequence = []
 
 
 @pytest.mark.parametrize(
