@@ -1,60 +1,14 @@
 from collections import deque
-from typing import Final, final, override
+from typing import TYPE_CHECKING, Final, final, override
 
 from mqns.entity.memory import MemoryQubit
 from mqns.entity.node import QNode
-from mqns.entity.qchannel import QuantumChannel
 from mqns.models.epr import Entanglement
-from mqns.network.ll.counter import LinkLayerCounters
 from mqns.simulator import Event, EventHandleSlot, Time
 from mqns.utils import unwrap, unwrap_cast
 
-
-class ActiveChannel:
-    """
-    LinkLayer data structure related to an active quantum channel.
-    """
-
-    qchannel: Final[QuantumChannel]
-    """Quantum channel."""
-
-    partner: Final[QNode]
-    """Partner node."""
-
-    is_primary: Final[bool]
-    """Role of this node."""
-
-    paths: dict[int | None, "ActivePath"]
-    """
-    Active paths, including those pending deletion.
-    Key is ``path_id``.
-    Value is ActivePath record.
-    """
-
-    live_paths: set[int | None]
-    """
-    ``path_id`` for paths that could initiate entanglements, excluding those pending deletion.
-    """
-
-    cnt: LinkLayerCounters
-    """
-    Counters.
-    This field only exists on the primary node of the channel.
-    """
-
-    def __init__(self, qchannel: QuantumChannel, partner: QNode, primary_cnt: LinkLayerCounters | None):
-        self.qchannel = qchannel
-        self.partner = partner
-        if primary_cnt:
-            self.is_primary = True
-            self.cnt = primary_cnt
-        else:
-            self.is_primary = False
-        self.paths = {}
-        self.live_paths = set()
-
-    def __repr__(self) -> str:
-        return f"ActiveChannel({self.partner.name})"
+if TYPE_CHECKING:
+    from mqns.network.ll.entangle import LinkLayerEntangle
 
 
 class ActivePath:
@@ -70,12 +24,9 @@ class ActivePath:
     multiplexing scheme may not need to allocate each qubit to an integer path_id.
     """
 
-    insertion_count: int
+    deleting = False
     """
-    How many times this channel+path_id combination has been activated.
-    It would take the same number of deactivation commands to deactivate the channel+path_id combination.
-
-    If this is zero, the path is pending deletion.
+    Whether the path is pending deletion.
     """
 
     delete_event: EventHandleSlot
@@ -100,7 +51,6 @@ class ActivePath:
 
     def __init__(self, path_id: int | None, is_primary: bool):
         self.path_id = path_id
-        self.insertion_count = 0
         self.delete_event = EventHandleSlot()
         if is_primary:
             self.oreq_table = {}
@@ -112,7 +62,7 @@ class ActivePath:
 
 
 class EntangleTask:
-    ac: ActiveChannel
+    ac: "LinkLayerEntangle"
     ap: ActivePath
     mq: MemoryQubit
     k: int = -1
@@ -143,7 +93,7 @@ class EntangleTask:
     Event to notify secondary, cancelable before ``t_success``.
     """
 
-    def __init__(self, ac: ActiveChannel, ap: ActivePath, mq: MemoryQubit):
+    def __init__(self, ac: "LinkLayerEntangle", ap: ActivePath, mq: MemoryQubit):
         self.ac = ac
         self.ap = ap
         self.mq = mq

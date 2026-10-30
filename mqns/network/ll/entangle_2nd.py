@@ -18,8 +18,8 @@ class LLEntangleProc2nd(LLEntangleProc):
     """
 
     def __init__(self, ll: "LinkLayer", ch: QuantumChannel):
-        super().__init__(ll, ch, None)
-        self.log_debug("CHANNEL_ACTIVATE %s ch=%s", self.ac, ch.name)
+        super().__init__(ll, ch)
+        self.log_debug("CHANNEL_ACTIVATE")
 
     @override
     def sync_external_enter(self) -> None:
@@ -28,12 +28,12 @@ class LLEntangleProc2nd(LLEntangleProc):
     @override
     def sync_external_exit(self) -> None:
         # Clear unsatisfied reservation requests.
-        for ap in self.ac.paths.values():
+        for ap in self.all_paths.values():
             ap.ireq_queue.clear()
 
     def handle_reserve_req(self, req: ReserveParsedMsg) -> None:
-        ap = self.ac.paths.get(req.path_id)
-        if ap is None or ap.insertion_count == 0:
+        ap = self.live_paths.get(req.path_id)
+        if ap is None:
             self.log_debug("%s ignored reason=no-active-path", req)
             return None
 
@@ -47,7 +47,6 @@ class LLEntangleProc2nd(LLEntangleProc):
         Accept a reservation if a qubit is available.
 
         Args:
-            ac: ActiveChannel record of the quantum channel, where this node is secondary.
             ap: ActivePath record of the path to which the qubit is allocated.
             key: Reservation key from a received RESERVE_RES message.
             hint: If provided, it will be used, bypassing the search; it must be in RAW state.
@@ -59,7 +58,7 @@ class LLEntangleProc2nd(LLEntangleProc):
             * False if the request is not accepted.
               Caller is responsible for enqueuing the request.
         """
-        assert ap.insertion_count > 0
+        assert not ap.deleting
 
         if hint:
             mq = hint
