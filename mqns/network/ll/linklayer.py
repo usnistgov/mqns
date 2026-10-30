@@ -15,7 +15,8 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from typing import TypedDict, Unpack, override
+from collections.abc import Iterable, MutableMapping
+from typing import Final, TypedDict, Unpack, override
 
 from mqns.entity.cchannel import ClassicCommandDispatcherMixin, ClassicPacket, classic_cmd_handler
 from mqns.entity.memory import QuantumMemory, QubitState
@@ -51,12 +52,18 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
     It equips a QNode and is activated from the forwarding function (e.g., ProactiveForwarder).
     """
 
+    entangle_by_ch: Final[MutableMapping[QuantumChannel, LLEntangleProc]]
+    entangle_by_peer: Final[MutableMapping[str, LLEntangleProc]]
+    entangle_procs: Final[Iterable[LLEntangleProc]]
+
     def __init__(self, **kwargs: Unpack[LinkLayerInitKwargs]):
         super().__init__()
         self.reset_time = 1 / kwargs.get("frequency", 1e6)
         self.tau_0 = kwargs.get("tau_0", 0.0)
 
-        self.entangle: dict[str, LLEntangleProc] = {}
+        self.entangle_by_ch = {}
+        self.entangle_by_peer = {}
+        self.entangle_procs = self.entangle_by_peer.values()
 
         self._cnt_deleted_channels = LinkLayerCounters()
         self._cnt_history = kwargs.get("cnt_history", 0)
@@ -72,7 +79,7 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         """Retrieve total counters."""
         r = LinkLayerCounters()
         r += self._cnt_deleted_channels
-        for proc in self.entangle.values():
+        for proc in self.entangle_procs:
             if type(proc) is LLEntangleProcPri:
                 r += proc.cnt
         return r
@@ -92,20 +99,19 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
             If a channel is recently deactivated but not yet deleted, its counters would still be returned.
             If the same channel is reactivated, the counters would continue accumulating without reset.
         """
-        partner = ch.find_peer(self.node)
-        proc = self.entangle.get(partner.name)
+        proc = self.entangle_by_ch.get(ch)
         if type(proc) is LLEntangleProcPri:
             return proc.cnt
         return None
 
     @sync_phase_handler(TimingPhase.EXTERNAL, True)
     def sync_external_enter(self) -> None:
-        for proc in self.entangle.values():
+        for proc in self.entangle_procs:
             proc.sync_external_enter()
 
     @sync_phase_handler(TimingPhase.EXTERNAL, False)
     def sync_external_exit(self) -> None:
-        for proc in self.entangle.values():
+        for proc in self.entangle_procs:
             proc.sync_external_exit()
 
     @sync_phase_handler(TimingPhase.INTERNAL, False)
@@ -120,15 +126,15 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         """
         event.cancel()
         ch = event.qchannel
-        peer = ch.find_peer(self.node).name
         is_primary = event.is_primary
         path_id = event.path_id
 
         # Find or create the channel entangle procedure.
         LLEntangleProcTyp = LLEntangleProcPri if is_primary else LLEntangleProc2nd
-        proc = self.entangle.get(peer)
+        proc = self.entangle_by_ch.get(ch)
         if not proc:
-            self.entangle[peer] = proc = LLEntangleProcTyp(self, ch)
+            proc = LLEntangleProcTyp(self, ch)
+            self.entangle_by_ch[ch] = self.entangle_by_peer[ch.find_peer(self.node).name] = proc
         elif type(proc) is not LLEntangleProcTyp:
             raise RuntimeError(f"{event}: channel already activated with opposite role in {proc}")
 
@@ -161,12 +167,10 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         """
         now = event.t
         event.cancel()
-        ch = event.qchannel
-        peer = ch.find_peer(self.node).name
         path_id = event.path_id
 
         # Find the channel entangle procedure.
-        proc = self.entangle[peer]
+        proc = self.entangle_by_ch[event.qchannel]
         ac = proc.ac
 
         # Find the ActivePath record and decrement its insertion count.
@@ -250,7 +254,8 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
             return
 
         # If the channel has no more active paths, delete the channel.
-        del self.entangle[proc.peer.name]
+        del self.entangle_by_ch[proc.ch]
+        del self.entangle_by_peer[proc.peer.name]
         if ac.is_primary:
             self._cnt_deleted_channels += ac.cnt
         self.log_debug(
@@ -286,7 +291,7 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
             self.log_debug("%s ignored reason=not-external-phase", req)
             return None
 
-        proc = self.entangle.get(req.src)
+        proc = self.entangle_by_peer.get(req.src)
         if type(proc) is not typ:
             self.log_debug("%s ignored reason=no-active-channel", req)
             return None
@@ -351,7 +356,7 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         mq = event.qubit
         mq.state = QubitState.RAW
 
-        proc = self.entangle.get(unwrap(mq.qchannel).find_peer(self.node).name)
+        proc = self.entangle_by_ch.get(unwrap(mq.qchannel))
         if not proc:
             self.log_debug("%s ignored reason=no-active-channel", event)
             return
