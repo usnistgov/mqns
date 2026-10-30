@@ -407,9 +407,7 @@ def test_timing_mode_sync(qchannel_delay: float, t_entangle: list[float]):
     )
     simulator = Simulator(0.0, 6.1, install_to=(log, net))
 
-    activate_path(0.1, 5.9, nl1, nl2, path_id=None)  # insertion_count=1
-    activate_path(1.1, 4.1, nl1, nl2, path_id=None, n=0)  # insertion_count=2
-
+    activate_path(0.1, 5.9, nl1, nl2, path_id=None)
     simulator.run()
 
     for nl in nl1, nl2:

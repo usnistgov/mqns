@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from typing import Literal
 
 from mqns.network.fw.message import SwapSequence
@@ -37,7 +38,7 @@ def _baln(n: int) -> list[int]:
     return [terminal_rank] + so[1:] + [terminal_rank]
 
 
-def parse_swap_sequence(input: SwapSequenceInput, route: list[str]) -> SwapSequence:
+def parse_swap_sequence(input: SwapSequenceInput, route: Sequence[str]) -> SwapSequence:
     """
     Parse swap sequence input.
 

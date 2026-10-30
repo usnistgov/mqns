@@ -194,13 +194,13 @@ class RoutingPath:
 
         insts: list[PathInstructions] = []
         for path in paths:
-            inst: PathInstructions = {
-                "path_id": -1,
-                "route": path,
-                "ll_dir": "".join(ctx.choose_ll_dir(a, b) for a, b in itertools.pairwise(path)),
-                "swap": parse_swap_sequence(self.swap, path),
-                "purif": self.purif,
-            }
+            inst = PathInstructions(
+                path_id=-1,
+                route=list(path),
+                ll_dir="".join(ctx.choose_ll_dir(a, b) for a, b in itertools.pairwise(path)),
+                swap=parse_swap_sequence(self.swap, path),
+                purif=self.purif,
+            )
 
             if self.swap_cutoff:
                 inst["swap_cutoff"] = [-1 if t < 0 else Time.sec_to_slot(t, ctx.time_accuracy) for t in self.swap_cutoff]

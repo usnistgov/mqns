@@ -16,30 +16,36 @@ class MuxScheme(ForwarderModule, ABC):
     @abstractmethod
     def install_path_adj(self, inst: PathInstructions, fp: FibPath, dir: PathDirection, ch: QuantumChannel) -> None:
         """
-        Store information about adjacent quantum channel and allocate resources.
+        Store information about adjacent quantum channel, allocate resources, activate LinkLayer.
 
         Args:
             instructions: Path instructions.
             fp: FIB path entry.
-            direction: Direction of adjacency.
-            qchannel: Quantum channel to the neighbor.
+            dir: Direction of adjacency.
+            ch: Quantum channel to the neighbor.
         """
+
+    @staticmethod
+    def _path_adj_is_primary(inst: PathInstructions, fp: FibPath, dir: PathDirection) -> bool:
+        """
+        Determine whether this node is the primary node for an adjacent quantum channel.
+        """
+        ll_dir = inst.get("ll_dir")
+        if ll_dir is None:
+            return dir is PathDirection.R
+
+        primary_dir = PathDirection[ll_dir[fp.own_idx + (dir.value - 1)]]
+        return dir is primary_dir
 
     @abstractmethod
     def uninstall_path_adj(self, fp: FibPath, dir: PathDirection, ch: QuantumChannel) -> None:
         """
-        Erase information about adjacent quantum channel and deallocate resources.
+        Erase information about adjacent quantum channel, deallocate resources, deactivate LinkLayer.
 
         Args:
             fp: FIB path entry.
-            direction: Direction of adjacency.
-            qchannel: Quantum channel to the neighbor.
-        """
-
-    @abstractmethod
-    def qubit_has_path_id(self) -> bool:
-        """
-        Indicate whether each memory qubit shall be assigned to specific path_id during LinkLayer entanglement.
+            dir: Direction of adjacency.
+            ch: Quantum channel to the neighbor.
         """
 
     @abstractmethod
