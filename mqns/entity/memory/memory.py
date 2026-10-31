@@ -405,7 +405,7 @@ class QuantumMemory(EventDispatcherMixin, Entity):
         if has and type(data) is not has:
             raise ValueError(f"{self}: data at {qubit.addr} is not {has}")
 
-        if remove in (True, data):
+        if data is not None and remove in (True, data):
             qubit.events.discard(MemoryDecohereEvent)
             self._usage -= 1
             self._storage[qubit.addr] = qubit, None
