@@ -193,3 +193,27 @@ def test_sync_qubit_limited():
     mq.key = q.name
     assert mem.count == 5
     assert mem.read("q6", must=True)[0].addr == 3
+
+
+def test_remove_empty_qubit_keeps_count():
+    scenario = TwoNodes(capacity=2)
+    mem = scenario.m1
+    mem.assign(scenario.qc, n=2)
+
+    epr = scenario.make_epr("epr1")
+    mq = mem.write(0, epr)
+    mq.key = "n1_n2_0_0"
+    assert mem.count == 1
+
+    _, data = mem.read(mq.key, remove=True)
+    assert data is epr
+    assert mem.count == 0
+
+    # A duplicate release or a late CUTOFF_DISCARD reaches the same qubit again.
+    _, data = mem.read(mq.key, remove=True)
+    assert data is None
+    assert mem.count == 0
+
+    _, data = mem.read(mq.addr, remove=True)
+    assert data is None
+    assert mem.count == 0
