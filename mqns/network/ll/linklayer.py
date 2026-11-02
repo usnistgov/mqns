@@ -23,12 +23,10 @@ from mqns.entity.memory import QubitState
 from mqns.entity.node import Application, QNode
 from mqns.entity.qchannel import QuantumChannel
 from mqns.network.ll.counter import LinkLayerCounters
-from mqns.network.ll.entangle import LLEntangleProc
-from mqns.network.ll.entangle_2nd import LLEntangleProc2nd
-from mqns.network.ll.entangle_pri import LLEntangleProcPri
+from mqns.network.ll.entangle import LLEntangleProc, ReserveMsg, ReserveParsedMsg
+from mqns.network.ll.entangle_2nd import LLEntangle2ndEvent, LLEntangleProc2nd
+from mqns.network.ll.entangle_pri import LLEntanglePriEvent, LLEntangleProcPri
 from mqns.network.ll.event import PathActivateEvent, PathDeactivateEvent, QubitEntangledEvent, QubitReleasedEvent
-from mqns.network.ll.message import ReserveMsg, ReserveParsedMsg
-from mqns.network.ll.task import Entangle2ndEvent, EntanglePriEvent
 from mqns.network.network import TimingPhase, sync_phase_handler
 from mqns.simulator import event_handler
 from mqns.utils import rng, unwrap
@@ -136,7 +134,7 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
             proc = LLEntangleProcTyp(self, ch)
             self.entangle_by_ch[ch] = self.entangle_by_peer[ch.find_peer(self.node).name] = proc
         elif type(proc) is not LLEntangleProcTyp:
-            raise RuntimeError(f"{event}: channel already activated with opposite role in {proc}")
+            raise ValueError(f"{event}: channel already activated with opposite role in {proc}")
 
         # Activate the path within the channel.
         proc.path_activate(path_id)
@@ -147,7 +145,10 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         Handle path deactivation command.
         """
         event.cancel()
-        proc = self.entangle_by_ch[event.qchannel]
+        try:
+            proc = self.entangle_by_ch[event.qchannel]
+        except LookupError:
+            raise ValueError(f"{event}: channel not activated") from None
         proc.path_deactivate(event.path_id)
 
     def channel_deactivate(self, proc: LLEntangleProc) -> None:
@@ -203,29 +204,27 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         return rng.geometric(qchannel.link_arch.success_prob)
 
     @event_handler
-    def _notify_pri(self, event: EntanglePriEvent) -> None:
-        task = event.task
-        del task.ap.oreq_table[event.key]
-        task.add_to_channel_counter()
+    def _notify_pri(self, event: LLEntanglePriEvent) -> None:
+        event.proc.before_deliver(event.task)
         self._notify_entangle("pri", event)
 
     @event_handler
-    def _notify_2nd(self, event: Entangle2ndEvent) -> None:
+    def _notify_2nd(self, event: LLEntangle2ndEvent) -> None:
         self._notify_entangle("2nd", event)
 
-    def _notify_entangle(self, own_role: str, event: EntanglePriEvent | Entangle2ndEvent) -> None:
+    def _notify_entangle(self, own_role: str, event: LLEntanglePriEvent | LLEntangle2ndEvent) -> None:
         event.cancel()
         assert self.node.timing.is_external()
-        partner = event.partner
+        peer = event.peer
         key = event.key
         epr = event.epr
         mq = self.memory.write(key, epr)
 
         self.log_debug(
-            "EPR_DELIVER_%s %s partner=%s key=%s addr=%s path=%s",
+            "EPR_DELIVER_%s %s peer=%s key=%s addr=%s path=%s",
             own_role,
             epr.name,
-            partner.name,
+            peer.name,
             key,
             mq.addr,
             mq.path_id,
@@ -233,7 +232,7 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         assert epr.decohere_time > self.simulator.tc
 
         mq.state = QubitState.ENTANGLED0
-        self.simulator.sched(QubitEntangledEvent(self.node, partner, mq, t=self.simulator.tc))
+        self.simulator.sched(QubitEntangledEvent(self.node, peer, mq, t=self.simulator.tc))
 
     @event_handler
     def handle_release(self, event: QubitReleasedEvent) -> None:
