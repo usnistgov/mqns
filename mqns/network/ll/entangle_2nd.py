@@ -2,10 +2,11 @@ from typing import TYPE_CHECKING, final, override
 
 from mqns.entity.memory import MemoryQubit, QubitState
 from mqns.entity.qchannel import QuantumChannel
-from mqns.network.ll.entangle import LLEntangleProc
+from mqns.network.ll.entangle import LLEntangleProc, LLPathID
 from mqns.network.ll.event import QubitReleasedEvent
 from mqns.network.ll.message import ReserveMsg, ReserveParsedMsg
 from mqns.network.ll.task import ActivePath
+from mqns.simulator import Time
 
 if TYPE_CHECKING:
     from mqns.network.ll.linklayer import LinkLayer
@@ -22,17 +23,33 @@ class LLEntangleProc2nd(LLEntangleProc):
         self.log_debug("CHANNEL_ACTIVATE")
 
     @override
+    def _path_activate_create(self, path_id: LLPathID) -> ActivePath:
+        return ActivePath(path_id, False)
+
+    @override
+    def _path_deactivate_start_draining(self, ap: ActivePath) -> Time:
+        # No more reservations would be accepted.
+        # Memory qubits for accepted reservations are reset via RESERVE_ABORT handler.
+        ap.ireq_queue.clear()
+        self.log_debug("PATH_DEACTIVATE %s t_delete=%s", ap, t_delete := self.simulator.tc + self.memory.t_cohere)
+        return t_delete
+
+    @override
+    def _path_deactivate_verify_empty(self, ap: ActivePath) -> None:
+        assert len(ap.ireq_queue) == 0, f"{self}: {ap}.ireq_queue = {ap.ireq_queue}"
+
+    @override
     def sync_external_enter(self) -> None:
         pass
 
     @override
     def sync_external_exit(self) -> None:
         # Clear unsatisfied reservation requests.
-        for ap in self.all_paths.values():
+        for ap in self.paths_active.values():
             ap.ireq_queue.clear()
 
     def handle_reserve_req(self, req: ReserveParsedMsg) -> None:
-        ap = self.live_paths.get(req.path_id)
+        ap = self.paths_active.get(req.path_id)
         if ap is None:
             self.log_debug("%s ignored reason=no-active-path", req)
             return None
@@ -41,6 +58,22 @@ class LLEntangleProc2nd(LLEntangleProc):
             # If the queue is non-empty, try_accept_reservation() would not have succeeded.
             # If try_accept_reservation() was unsuccessful, enqueue the request.
             ap.ireq_queue.append(req.key)
+
+    def handle_reserve_abort(self, req: ReserveParsedMsg) -> None:
+        # Reset the memory, if present.
+        if (mq_tuple := self.memory.read(req.key)) is None:
+            # Qubit would not be found if the reservation wasn't accepted prior to path deactivation.
+            self.log_debug("%s ignored reason=qubit-not-found", req)
+            return
+        mq, qm = mq_tuple
+
+        self.log_debug("%s canceling addr=%s", req, mq.addr)
+        assert qm is None
+        assert mq.state in (QubitState.ACTIVE, QubitState.RESERVED)
+        mq.state = QubitState.RAW
+
+        # The key may or may not exist in ireq_queue.
+        # The path deactivation logic is responsible for clearing ireq_queue.
 
     def try_accept_reservation(self, ap: ActivePath, key: str, *, hint: MemoryQubit | None = None) -> bool:
         """
@@ -58,8 +91,6 @@ class LLEntangleProc2nd(LLEntangleProc):
             * False if the request is not accepted.
               Caller is responsible for enqueuing the request.
         """
-        assert not ap.deleting
-
         if hint:
             mq = hint
             assert mq.state is QubitState.RAW

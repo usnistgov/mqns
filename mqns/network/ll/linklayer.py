@@ -15,11 +15,11 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from collections.abc import Iterable, MutableMapping
-from typing import Final, TypedDict, Unpack, cast, override
+from collections.abc import Callable, Iterable, MutableMapping
+from typing import Final, TypedDict, Unpack, override
 
 from mqns.entity.cchannel import ClassicCommandDispatcherMixin, ClassicPacket, classic_cmd_handler
-from mqns.entity.memory import QuantumMemory, QubitState
+from mqns.entity.memory import QubitState
 from mqns.entity.node import Application, QNode
 from mqns.entity.qchannel import QuantumChannel
 from mqns.network.ll.counter import LinkLayerCounters
@@ -28,10 +28,10 @@ from mqns.network.ll.entangle_2nd import LLEntangleProc2nd
 from mqns.network.ll.entangle_pri import LLEntangleProcPri
 from mqns.network.ll.event import PathActivateEvent, PathDeactivateEvent, QubitEntangledEvent, QubitReleasedEvent
 from mqns.network.ll.message import ReserveMsg, ReserveParsedMsg
-from mqns.network.ll.task import ActivePath, Entangle2ndEvent, EntanglePriEvent
+from mqns.network.ll.task import Entangle2ndEvent, EntanglePriEvent
 from mqns.network.network import TimingPhase, sync_phase_handler
-from mqns.simulator import event_handler, func_to_event
-from mqns.utils import rng, unwrap, unwrap_cast
+from mqns.simulator import event_handler
+from mqns.utils import rng, unwrap
 
 
 class LinkLayerInitKwargs(TypedDict, total=False):
@@ -120,7 +120,7 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         self.memory.clear()
 
     @event_handler
-    def activate(self, event: PathActivateEvent) -> None:
+    def path_activate(self, event: PathActivateEvent) -> None:
         """
         Handle path activation command.
         """
@@ -138,178 +138,75 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         elif type(proc) is not LLEntangleProcTyp:
             raise RuntimeError(f"{event}: channel already activated with opposite role in {proc}")
 
-        # Find or insert the ActivePath record.
-        ap = proc.all_paths.get(path_id)
-        if not ap:
-            ap = ActivePath(path_id, is_primary)
-            proc.all_paths[path_id] = ap
-
-        # Mark the path as live.
-        ap.deleting = False
-        ap.delete_event.cancel()
-        proc.live_paths[path_id] = ap
-        addrs = [q.addr for q, _ in self.memory.find(QuantumMemory.predicate_all, qchannel=ch)]
-        proc.log_debug("PATH_ACTIVATE %s has-addrs=%s", ap, addrs)
-
-        # Start the reservations if the network is in ASYNC timing mode.
-        if type(proc) is LLEntangleProcPri and self.node.timing.is_async():
-            proc.run_channel(ap)
+        # Activate the path within the channel.
+        proc.path_activate(path_id)
 
     @event_handler
-    def deactivate(self, event: PathDeactivateEvent) -> None:
+    def path_deactivate(self, event: PathDeactivateEvent) -> None:
         """
         Handle path deactivation command.
         """
-        now = event.t
         event.cancel()
-        path_id = event.path_id
-
-        # Find the channel entangle procedure.
         proc = self.entangle_by_ch[event.qchannel]
+        proc.path_deactivate(event.path_id)
 
-        # Find the ActivePath record and mark as pending deletion.
-        ap = proc.all_paths[path_id]
-        ap.deleting = True
-        del proc.live_paths[path_id]
-        t_delete = now + self.memory.t_cohere
-        self.simulator.sched(delete_event := func_to_event(t_delete, self._deactivate_delete, proc, ap))
-        ap.delete_event.set(delete_event)
-
-        if type(proc) is LLEntangleProc2nd:
-            # On the secondary node, no more reservations would be accepted.
-            ap.ireq_queue.clear()
-            self.log_debug("PATH_DEACTIVATE_2nd %s.%s t_delete=%s", proc, ap, t_delete)
-            return
-
-        # On the primary node, no more attempts may start.
-        # Since the skip-ahead sampling method only cares about the successful attempt,
-        # this logic allows the entanglement to continue if the successful attempt has started
-        # or is starting in the current time slot, otherwise it is aborted.
-        tasks_aborted: list[str] = []
-        tasks_uncancelable: list[str] = []
-        for key, task in ap.oreq_table.items():
-            if task.k == -1:  # reservation has not completed
-                tasks_aborted.append(key)
-                continue
-            if task.t_success <= now:  # successful attempt has already started
-                tasks_uncancelable.append(key)
-                continue
-            tasks_aborted.append(key)
-            unwrap_cast(task.notify_pri_event).cancel()
-            unwrap_cast(task.notify_2nd_event).cancel()
-
-        for key in tasks_aborted:
-            task = ap.oreq_table.pop(key)
-            task.mq.state = QubitState.RAW
-            msg = ReserveMsg(cmd="RESERVE_ABORT", key=key, path_id=path_id)
-            self.node.send_cpacket(proc.peer, ClassicPacket(msg, src=self.node, dest=proc.peer))
-
-        self.log_debug(
-            "PATH_DEACTIVATE_pri %s.%s t_delete=%s abort-tasks=%s uncancelable-tasks=%s",
-            proc,
-            ap,
-            t_delete,
-            tasks_aborted,
-            tasks_uncancelable,
-        )
-
-    def _deactivate_delete(self, proc: LLEntangleProc, ap: ActivePath) -> None:
+    def channel_deactivate(self, proc: LLEntangleProc) -> None:
         """
-        Part of ``PathDeactivateEvent`` handler: delayed deletion of ActivePath record.
+        Deactivate a channel, invoked by ``LLEntangleProc._path_deactivate_delete()``.
         """
-        path_id = ap.path_id
-
-        # If the path has been re-inserted, the delete_event should have been canceled.
-        assert ap.deleting, f"{self}: {proc}.{ap}.deleting is False"
-
-        # There should be nothing pending on the ActivePath record.
-        if is_primary := type(proc) is LLEntangleProcPri:
-            assert len(ap.oreq_table) == 0, f"{self}: {proc}.{ap}.oreq_table = {ap.oreq_table}"
-        else:
-            assert len(ap.ireq_queue) == 0, f"{self}: {proc}.{ap}.ireq_queue = {ap.ireq_queue}"
-
-        # There should be no qubits owned by LinkLayer.
-        locked_qubits = list(
-            self.memory.find(
-                lambda q, _: q.state in (QubitState.ACTIVE, QubitState.RESERVED) and q.path_id == path_id, qchannel=proc.ch
-            )
-        )
-        assert not locked_qubits, f"{self}: {proc}.{ap} has locked qubits: {locked_qubits}"
-
-        # Delete the path from the channel.
-        del proc.all_paths[path_id]
-        self.log_debug("PATH_DEACTIVATE %s.%s deleted", proc, ap)
-        if len(proc.all_paths) > 0:
-            return
-
-        # If the channel has no more active paths, delete the channel.
         del self.entangle_by_ch[proc.ch]
         del self.entangle_by_peer[proc.peer.name]
-        if is_primary:
+        if type(proc) is LLEntangleProcPri:
+            proc.log_debug("CHANNEL_DEACTIVATE | %s", proc.cnt)
             self._cnt_deleted_channels += proc.cnt
-        self.log_debug("CHANNEL_DEACTIVATE %s", proc)
+        else:
+            proc.log_debug("CHANNEL_DEACTIVATE")
 
-    @classic_cmd_handler("RESERVE_ABORT")
-    def handle_reserve_abort(self, pkt: ClassicPacket, msg: ReserveMsg) -> None:
-        """
-        Handle ``RESERVE_ABORT`` message from the primary node.
-        """
+    def _dispatch_reserve_msg[P: LLEntangleProc](
+        self, pkt: ClassicPacket, msg: ReserveMsg, typ: type[P], meth: Callable[[P, ReserveParsedMsg], None]
+    ) -> None:
         req = ReserveParsedMsg.new(pkt, msg)
-        if not self.node.timing.is_external():
-            self.log_debug("%s ignored reason=not-external-phase", req)
-            return None
 
-        # Reset the memory, if present.
-        if (mq_tuple := self.memory.read(req.key)) is None:
-            self.log_debug("%s ignored reason=qubit-not-found", req)
+        if not self.node.timing.is_external():
+            self.log_debug("%s from=%s ignored reason=not-external-phase", req, pkt.src.name)
             return
-        mq, qm = mq_tuple
 
-        self.log_debug("%s canceling addr=%s", req, mq.addr)
-        assert qm is None
-        assert mq.state in (QubitState.ACTIVE, QubitState.RESERVED)
-        mq.state = QubitState.RAW
-
-        # It's unnecessary to delete the key from ireq_queue here,
-        # because the path deletion logic on the secondary node would clear ireq_queue.
-
-    def _handle_reserve_msg[P: LLEntangleProc](self, req: ReserveParsedMsg, typ: type[P]) -> P | None:
-        if not self.node.timing.is_external():
-            self.log_debug("%s ignored reason=not-external-phase", req)
-            return None
-
-        proc = self.entangle_by_peer.get(req.src)
+        proc = self.entangle_by_peer.get(pkt.src.name)
         if type(proc) is not typ:
-            self.log_debug("%s ignored reason=no-active-channel", req)
-            return None
+            self.log_debug("%s from=%s ignored reason=no-channel", req, pkt.src.name)
+            return
 
-        return proc
+        meth(proc, req)
 
     @classic_cmd_handler("RESERVE_REQ")
     def handle_reserve_req(self, pkt: ClassicPacket, msg: ReserveMsg) -> None:
         """
-        Handle ``RESERVE_REQ`` message from the primary node.
+        Secondary node handle ``RESERVE_REQ`` message from the primary node.
         """
-        proc = self._handle_reserve_msg(req := ReserveParsedMsg.new(pkt, msg), LLEntangleProc2nd)
-        if proc:
-            proc.handle_reserve_req(req)
+        self._dispatch_reserve_msg(pkt, msg, LLEntangleProc2nd, LLEntangleProc2nd.handle_reserve_req)
+
+    @classic_cmd_handler("RESERVE_ABORT")
+    def handle_reserve_abort(self, pkt: ClassicPacket, msg: ReserveMsg) -> None:
+        """
+        Secondary node handles ``RESERVE_ABORT`` message from the primary node.
+        """
+        self._dispatch_reserve_msg(pkt, msg, LLEntangleProc2nd, LLEntangleProc2nd.handle_reserve_abort)
 
     @classic_cmd_handler("RESERVE_RES")
     def handle_reserve_res(self, pkt: ClassicPacket, msg: ReserveMsg) -> None:
         """
-        Handle ``RESERVE_RES`` message from the secondary node.
+        Primary node handle ``RESERVE_RES`` message from the secondary node.
         """
-        proc = self._handle_reserve_msg(req := ReserveParsedMsg.new(pkt, msg), LLEntangleProcPri)
-        if proc:
-            proc.handle_reserve_res(req)
+        self._dispatch_reserve_msg(pkt, msg, LLEntangleProcPri, LLEntangleProcPri.handle_reserve_res)
 
     def _calc_attempt(self, qchannel: QuantumChannel) -> int:
         return rng.geometric(qchannel.link_arch.success_prob)
 
     @event_handler
     def _notify_pri(self, event: EntanglePriEvent) -> None:
-        del event.task.ap.oreq_table[event.key]
-        cast(LLEntangleProcPri, event.task.ac).cnt.save_etg(event.task)
+        task = event.task
+        del task.ap.oreq_table[event.key]
+        task.add_to_channel_counter()
         self._notify_entangle("pri", event)
 
     @event_handler

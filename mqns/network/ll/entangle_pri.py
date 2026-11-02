@@ -1,14 +1,15 @@
-from typing import TYPE_CHECKING, Final, final, override
+from typing import TYPE_CHECKING, Final, Literal, final, override
 
 from mqns.entity.memory import MemoryQubit, QubitState
 from mqns.entity.qchannel import QuantumChannel
 from mqns.models.delay import ConstantDelayModel
 from mqns.network.ll.counter import LinkLayerCounters
-from mqns.network.ll.entangle import LLEntangleProc
+from mqns.network.ll.entangle import LLEntangleProc, LLPathID
 from mqns.network.ll.event import QubitReleasedEvent
 from mqns.network.ll.message import ReserveMsg, ReserveParsedMsg
 from mqns.network.ll.task import ActivePath, Entangle2ndEvent, EntanglePriEvent, EntangleTask
-from mqns.utils import AutoIncrementIdentifier
+from mqns.simulator import Time
+from mqns.utils import AutoIncrementIdentifier, unwrap_cast
 
 if TYPE_CHECKING:
     from mqns.network.ll.linklayer import LinkLayer
@@ -30,7 +31,8 @@ class LLEntangleProcPri(LLEntangleProc):
     def __init__(self, ll: "LinkLayer", ch: QuantumChannel):
         super().__init__(ll, ch)
         self.cnt = LinkLayerCounters(
-            history=ll._cnt_history, rtt=ll.simulator.time(sec=ConstantDelayModel.extract(ch.delay) * 2)
+            history=ll._cnt_history,
+            rtt=ll.simulator.time(sec=ConstantDelayModel.extract(ch.delay) * 2),
         )
 
         la = ch.link_arch
@@ -61,6 +63,56 @@ class LLEntangleProcPri(LLEntangleProc):
         )
 
     @override
+    def path_activate(self, path_id: LLPathID) -> None:
+        super().path_activate(path_id)
+
+        # Start reservations for this path_id if the network is in ASYNC timing mode.
+        if self.node.timing.is_async():
+            self.run_channel(path_id)
+
+    @override
+    def _path_activate_create(self, path_id: LLPathID) -> ActivePath:
+        return ActivePath(path_id, True)
+
+    @override
+    def _path_deactivate_start_draining(self, ap: ActivePath) -> Time:
+        now = self.simulator.tc
+
+        # No more attempts may start.
+        # If the successful attempt has started or is starting in the same time slot, the task is allowed to continue.
+        # Otherwise, the task is aborted and the secondary node is informed to release the reserved qubit.
+        tasks_aborted: list[str] = []
+        tasks_uncancelable: list[str] = []
+        for key, task in ap.oreq_table.items():
+            if task.k == -1:  # reservation has not completed
+                tasks_aborted.append(key)
+                continue
+            if task.t_success <= now:  # successful attempt has already started
+                tasks_uncancelable.append(key)
+                continue
+            tasks_aborted.append(key)
+            unwrap_cast(task.notify_pri_event).cancel()
+            unwrap_cast(task.notify_2nd_event).cancel()
+
+        for key in tasks_aborted:
+            task = ap.oreq_table.pop(key)
+            task.mq.state = QubitState.RAW
+            self.send_msg(ReserveMsg(cmd="RESERVE_ABORT", path_id=ap.path_id, key=key))
+
+        self.log_debug(
+            "PATH_DEACTIVATE %s t_delete=%s abort-tasks=%s uncancelable-tasks=%s",
+            ap,
+            t_delete := now + self.memory.t_cohere,
+            tasks_aborted,
+            tasks_uncancelable,
+        )
+        return t_delete
+
+    @override
+    def _path_deactivate_verify_empty(self, ap: ActivePath) -> None:
+        assert len(ap.oreq_table) == 0, f"{self}: {ap}.oreq_table = {ap.oreq_table}"
+
+    @override
     def sync_external_enter(self) -> None:
         # Start reservations.
         self.run_channel()
@@ -68,10 +120,10 @@ class LLEntangleProcPri(LLEntangleProc):
     @override
     def sync_external_exit(self) -> None:
         # Clear incomplete reservations.
-        for ap in self.all_paths.values():
+        for ap in self.paths_active.values():
             ap.oreq_table.clear()
 
-    def run_channel(self, ap: ActivePath | None = None) -> None:
+    def run_channel(self, only_path_id: LLPathID | Literal[False] = False) -> None:
         """
         Start entanglement generation on qubits assigned to a channel.
 
@@ -79,9 +131,9 @@ class LLEntangleProcPri(LLEntangleProc):
             ap: If set, only consider qubits allocated to a specified path.
         """
         qubits = self.memory.find(
-            (lambda q, _: q.state is QubitState.RAW and q.path_id in self.live_paths)
-            if ap is None
-            else (lambda q, _: q.state is QubitState.RAW and q.path_id == ap.path_id),
+            (lambda q, _: q.state is QubitState.RAW and q.path_id in self.paths_active)
+            if only_path_id is False
+            else (lambda q, _: q.state is QubitState.RAW and q.path_id == only_path_id),
             qchannel=self.ch,
         )
         for q, v in qubits:
@@ -97,7 +149,7 @@ class LLEntangleProcPri(LLEntangleProc):
             ap: ActivePath record, if known.
             mq: The qubit, which must be in RAW state.
         """
-        ap = ap or self.live_paths[mq.path_id]
+        ap = ap or self.paths_active[mq.path_id]
 
         # Generate a unique reservation key to represent this entanglement generation protocol execution
         # and the entanglement, which is valid until the entanglement is released.
@@ -114,7 +166,7 @@ class LLEntangleProcPri(LLEntangleProc):
         self.send_msg(ReserveMsg(cmd="RESERVE_REQ", path_id=mq.path_id, key=mq.key))
 
     def handle_reserve_res(self, req: ReserveParsedMsg) -> None:
-        ap = self.live_paths.get(req.path_id)
+        ap = self.paths_active.get(req.path_id)
         if ap is None:
             self.log_debug("%s ignored reason=no-active-path", req)
             return None
@@ -138,7 +190,6 @@ class LLEntangleProcPri(LLEntangleProc):
             ap: ActivePath record of the path to which the qubit is allocated.
             mq: The memory qubit used for this attempt.
         """
-        assert not ap.deleting
         assert task.k == -1
         la = self.ch.link_arch
         key = task.key

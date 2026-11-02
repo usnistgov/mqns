@@ -1,15 +1,12 @@
 from collections import deque
 from collections.abc import Iterable
-from typing import TYPE_CHECKING, Self
+from typing import Self
 
 import numpy as np
 
 from mqns.entity.node import QNode
 from mqns.simulator import Time
 from mqns.utils import json_encodable
-
-if TYPE_CHECKING:
-    from mqns.network.ll.task import EntangleTask
 
 
 @json_encodable
@@ -63,12 +60,6 @@ class LinkLayerCounters:
         self.n_attempts += cnt.n_attempts
         self.n_decoh += cnt.n_decoh
         return self
-
-    def save_etg(self, task: "EntangleTask") -> None:
-        self.n_etg += 1
-        self.n_attempts += task.k
-        if self._history is not None:
-            self._history.append(task.t_finish.slot - task.t_reserve.slot)
 
     @property
     def etg_rate(self) -> float:

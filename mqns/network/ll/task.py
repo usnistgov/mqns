@@ -1,5 +1,5 @@
 from collections import deque
-from typing import TYPE_CHECKING, Final, final, override
+from typing import TYPE_CHECKING, Final, cast, final, override
 
 from mqns.entity.memory import MemoryQubit
 from mqns.entity.node import QNode
@@ -8,7 +8,7 @@ from mqns.simulator import Event, EventHandleSlot, Time
 from mqns.utils import unwrap, unwrap_cast
 
 if TYPE_CHECKING:
-    from mqns.network.ll.entangle import LinkLayerEntangle
+    from mqns.network.ll.entangle import LinkLayerEntangle, LinkLayerEntanglePri
 
 
 class ActivePath:
@@ -22,11 +22,6 @@ class ActivePath:
 
     LinkLayer considers ``None`` as a valid path_id (rather than an absent value), because the forwarder's
     multiplexing scheme may not need to allocate each qubit to an integer path_id.
-    """
-
-    deleting = False
-    """
-    Whether the path is pending deletion.
     """
 
     delete_event: EventHandleSlot
@@ -101,6 +96,17 @@ class EntangleTask:
     @property
     def key(self) -> str:
         return unwrap(self.mq.key)
+
+    def add_to_channel_counter(self) -> None:
+        """
+        Save information about successful entanglement in the channel counters.
+        """
+        assert self.k >= 1
+        cnt = cast("LinkLayerEntanglePri", self.ac).cnt
+        cnt.n_etg += 1
+        cnt.n_attempts += self.k
+        if cnt._history is not None:
+            cnt._history.append(self.t_finish.slot - self.t_reserve.slot)
 
     def __repr__(self) -> str:
         return f"EntangleTask({self.key}, k={self.k}, t_reserve={self.t_reserve})"

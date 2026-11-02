@@ -26,13 +26,12 @@ class ReserveMsg(TypedDict):
 
 class ReserveParsedMsg(NamedTuple):
     cmd: str
-    src: str
     path_id: int | None
     key: str
 
     @staticmethod
     def new(pkt: ClassicPacket, msg: ReserveMsg) -> "ReserveParsedMsg":
-        return ReserveParsedMsg(cmd=msg["cmd"], src=pkt.src.name, path_id=msg["path_id"], key=msg["key"])
+        return ReserveParsedMsg(cmd=msg["cmd"], path_id=msg["path_id"], key=msg["key"])
 
     def __repr__(self) -> str:
-        return f"{self.cmd}({self.src}:{self.path_id}, {self.key})"
+        return f"{self.cmd}({self.path_id}, {self.key})"
