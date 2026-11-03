@@ -34,8 +34,8 @@ from tap import Tap
 from mqns.entity.qchannel import LinkArchLiteral
 from mqns.models.epr import EprTypeLiteral
 from mqns.network.builder import CTRL_DELAY, ChannelParam, NetworkBuilder, tap_configure
+from mqns.network.ll import LinkLayerCounters
 from mqns.network.protocol.consumer import RequestCounters
-from mqns.network.protocol.link_layer import LinkLayerCounters
 from mqns.simulator import Simulator
 from mqns.utils import log, rng, seed_seq_env
 

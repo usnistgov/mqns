@@ -2,10 +2,10 @@ import json
 import os.path
 
 from mqns.entity.node import QNode
+from mqns.network.ll import LinkLayer
 from mqns.network.network import Request
 from mqns.network.proactive import ProactiveForwarder
 from mqns.network.protocol.consumer import RequestCounters
-from mqns.network.protocol.link_layer import LinkLayer
 from mqns.simulator import Simulator
 from mqns.utils import WallClockTimeout, json_default, log
 

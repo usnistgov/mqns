@@ -70,15 +70,10 @@ class DecoratorDispatchBuilder[K, F: Callable]:
 
     @staticmethod
     def _want_field(attr_type: Any, nested_base: type) -> type | None:
-        if isinstance(attr_type, type):
-            if issubclass(attr_type, nested_base):
-                return attr_type
-            return None
         if get_origin(attr_type) is Final:
-            (inner_type,) = get_args(attr_type)
-            if issubclass(inner_type, nested_base):
-                return inner_type
-            return None
+            (attr_type,) = get_args(attr_type)
+        if isinstance(attr_type, type) and issubclass(attr_type, nested_base):
+            return attr_type
         return None
 
     def _gather_nested(self, d: defaultdict[K, list[F]], cls: type, nested_base: type) -> None:

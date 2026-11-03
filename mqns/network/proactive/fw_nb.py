@@ -14,7 +14,6 @@ from mqns.network.fw import (
     fw_control_cmd_handler,
 )
 from mqns.network.proactive.mux import MuxScheme
-from mqns.network.protocol.event import PathActivateEvent, PathDeactivateEvent
 from mqns.simulator import Time
 
 if TYPE_CHECKING:
@@ -48,17 +47,8 @@ class ProactiveForwarderNorthbound(ForwarderNorthbound):
 
         # Identify left/right channels, allocate qubits and process LinkLayer changes.
         for fp, inst in paths:
-            for dir, ch, primary_dir in self._iter_adjacency(fp, inst.get("ll_dir")):
+            for dir, ch in self._iter_adjacency(fp):
                 self.mux.install_path_adj(inst, fp, dir, ch)
-                self.simulator.sched(
-                    PathActivateEvent(
-                        self.node,
-                        ch,
-                        self._ll_path_id(fp),
-                        t=self.simulator.tc,
-                        is_primary=dir is primary_dir,
-                    )
-                )
 
     def _path_convert(self, inst: PathInstructions) -> tuple[FibPath, PathInstructions]:
         self.mux.validate_path_instructions(inst)
@@ -85,27 +75,15 @@ class ProactiveForwarderNorthbound(ForwarderNorthbound):
 
         # Identify left/right channels, deallocate qubits and process LinkLayer changes.
         for fp in fr.paths:
-            for dir, ch, _ in self._iter_adjacency(fp, None):
+            for dir, ch in self._iter_adjacency(fp):
                 self.mux.uninstall_path_adj(fp, dir, ch)
-                self.simulator.sched(
-                    PathDeactivateEvent(
-                        self.node,
-                        ch,
-                        self._ll_path_id(fp),
-                        t=self.simulator.tc,
-                    )
-                )
 
-    def _iter_adjacency(self, fp: FibPath, ll_dir: str | None) -> Iterable[tuple[PathDirection, QuantumChannel, PathDirection]]:
+    def _iter_adjacency(self, fp: FibPath) -> Iterable[tuple[PathDirection, QuantumChannel]]:
         """Iterate over quantum channels connected to adjacent nodes."""
-        for ch_dir, route_off, lldir_off in (PathDirection.L, -1, -1), (PathDirection.R, 1, 0):
+        for ch_dir, route_off in (PathDirection.L, -1), (PathDirection.R, 1):
             neigh_idx = fp.own_idx + route_off
             if neigh_idx in (-1, len(fp.route)):
                 continue
             neigh = self.network.get_node(fp.route[neigh_idx])
             ch = self.node.get_qchannel(neigh)
-            primary_dir = PathDirection[ll_dir[fp.own_idx + lldir_off]] if ll_dir else PathDirection.R
-            yield ch_dir, ch, primary_dir
-
-    def _ll_path_id(self, fp: FibPath) -> int | None:
-        return fp.path_id if self.mux.qubit_has_path_id() else None
+            yield ch_dir, ch

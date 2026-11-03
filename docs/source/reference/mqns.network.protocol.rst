@@ -9,22 +9,6 @@ mqns.network.protocol.classicbridge module
    :show-inheritance:
    :undoc-members:
 
-mqns.network.protocol.event module
-----------------------------------
-
-.. automodule:: mqns.network.protocol.event
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-mqns.network.protocol.link_layer module
----------------------------------------
-
-.. automodule:: mqns.network.protocol.link_layer
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
 mqns.network.protocol.classicforward module
 -------------------------------------------
 

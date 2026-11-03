@@ -11,10 +11,9 @@ from mqns.entity.qchannel import LinkArchAlways, LinkArchDimBk
 from mqns.network.builder import NetworkBuilder
 from mqns.network.fw import Forwarder
 from mqns.network.fw.fw_swap import ForwarderSwapProc
+from mqns.network.ll import LinkLayer, QubitEntangledEvent, QubitReleasedEvent
 from mqns.network.network import QuantumNetwork, TimingPhase, sync_phase_handler
 from mqns.network.protocol.consumer import Consumer
-from mqns.network.protocol.event import QubitEntangledEvent, QubitReleasedEvent
-from mqns.network.protocol.link_layer import LinkLayer
 from mqns.simulator import Simulator, Time, event_handler, func_to_event
 from mqns.utils import AutoIncrementIdentifier, log, rng
 

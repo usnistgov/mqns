@@ -52,10 +52,10 @@ from tap import Tap
 
 from mqns.network.builder import CTRL_DELAY, NetworkBuilder
 from mqns.network.fw import SwapPolicy, SwapSequence, SwapSequenceInput
+from mqns.network.ll import LinkLayerCounters
 from mqns.network.network import QuantumNetwork
 from mqns.network.proactive import compute_vora_swap_sequence
 from mqns.network.protocol.consumer import RequestCounters
-from mqns.network.protocol.link_layer import LinkLayerCounters
 from mqns.simulator import Simulator
 from mqns.utils import log, rng, seed_seq_env
 
@@ -206,7 +206,7 @@ def run_row(p: ParameterSet, num_routers: int, dist_prop: str, swap_conf: str) -
 
     entanglements: list[float] = []
     expired: list[float] = []
-    for seed in seed_seq_env(args.runs, 100):
+    for seed in seed_seq_env(p.n_runs, 100):
         print(f"Simulation: {num_routers} routers | {dist_prop} distances | {swap_conf} | seed {seed}")
         e2e_count, expired_count = run_simulation(seed, p)
         entanglements.append(e2e_count)
