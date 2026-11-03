@@ -23,9 +23,9 @@ from mqns.entity.memory import QubitState
 from mqns.entity.node import Application, QNode
 from mqns.entity.qchannel import QuantumChannel
 from mqns.network.ll.counter import LinkLayerCounters
-from mqns.network.ll.entangle import LLEntangleProc, ReserveMsg, ReserveParsedMsg
-from mqns.network.ll.entangle_2nd import LLEntangle2ndEvent, LLEntangleProc2nd
-from mqns.network.ll.entangle_pri import LLEntanglePriEvent, LLEntangleProcPri
+from mqns.network.ll.entangle import LLEntangleProc, LLNotifyEvent, ReserveMsg, ReserveParsedMsg
+from mqns.network.ll.entangle_2nd import LLEntangleProc2nd, LLNotify2ndEvent
+from mqns.network.ll.entangle_pri import LLEntangleProcPri, LLNotifyPriEvent
 from mqns.network.ll.event import PathActivateEvent, PathDeactivateEvent, QubitEntangledEvent, QubitReleasedEvent
 from mqns.network.network import TimingPhase, sync_phase_handler
 from mqns.simulator import event_handler
@@ -164,17 +164,22 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
             proc.log_debug("CHANNEL_DEACTIVATE")
 
     def _dispatch_reserve_msg[P: LLEntangleProc](
-        self, pkt: ClassicPacket, msg: ReserveMsg, typ: type[P], meth: Callable[[P, ReserveParsedMsg], None]
+        self,
+        pkt: ClassicPacket,
+        msg: ReserveMsg,
+        typ: type[P],
+        meth: Callable[[P, ReserveParsedMsg], None],
     ) -> None:
-        req = ReserveParsedMsg.new(pkt, msg)
+        req = ReserveParsedMsg.new(msg)
+        pkt_from = pkt.src.name
 
         if not self.node.timing.is_external():
-            self.log_debug("%s from=%s ignored reason=not-external-phase", req, pkt.src.name)
+            self.log_debug("%s from=%s ignored reason=not-external-phase", req, pkt_from)
             return
 
-        proc = self.entangle_by_peer.get(pkt.src.name)
+        proc = self.entangle_by_peer.get(pkt_from)
         if type(proc) is not typ:
-            self.log_debug("%s from=%s ignored reason=no-channel", req, pkt.src.name)
+            self.log_debug("%s from=%s ignored reason=no-channel", req, pkt_from)
             return
 
         meth(proc, req)
@@ -204,35 +209,22 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         return rng.geometric(qchannel.link_arch.success_prob)
 
     @event_handler
-    def _notify_pri(self, event: LLEntanglePriEvent) -> None:
-        event.proc.before_deliver(event.task)
-        self._notify_entangle("pri", event)
+    def _notify_pri(self, event: LLNotifyPriEvent) -> None:
+        self._notify_entangle(event)
 
     @event_handler
-    def _notify_2nd(self, event: LLEntangle2ndEvent) -> None:
-        self._notify_entangle("2nd", event)
+    def _notify_2nd(self, event: LLNotify2ndEvent) -> None:
+        self._notify_entangle(event)
 
-    def _notify_entangle(self, own_role: str, event: LLEntanglePriEvent | LLEntangle2ndEvent) -> None:
+    def _notify_entangle(self, event: LLNotifyEvent) -> None:
         event.cancel()
         assert self.node.timing.is_external()
-        peer = event.peer
-        key = event.key
-        epr = event.epr
-        mq = self.memory.write(key, epr)
+        mq = self.memory.write(event.key, event.epr)
 
-        self.log_debug(
-            "EPR_DELIVER_%s %s peer=%s key=%s addr=%s path=%s",
-            own_role,
-            epr.name,
-            peer.name,
-            key,
-            mq.addr,
-            mq.path_id,
-        )
-        assert epr.decohere_time > self.simulator.tc
+        self.log_debug("%s EPR_DELIVER mq-addr=%s path=%s", event, mq.addr, mq.path_id)
 
         mq.state = QubitState.ENTANGLED0
-        self.simulator.sched(QubitEntangledEvent(self.node, peer, mq, t=self.simulator.tc))
+        self.simulator.sched(QubitEntangledEvent(self.node, event.peer, mq, t=event.t))
 
     @event_handler
     def handle_release(self, event: QubitReleasedEvent) -> None:
@@ -241,7 +233,7 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
 
         proc = self.entangle_by_ch.get(unwrap(mq.qchannel))
         if not proc:
-            self.log_debug("%s ignored reason=no-active-channel", event)
+            self.log_debug("%s ignored reason=no-channel", event)
             return
 
         proc.handle_release(event)

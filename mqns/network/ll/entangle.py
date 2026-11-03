@@ -9,7 +9,7 @@ from mqns.entity.qchannel import QuantumChannel
 from mqns.models.epr import Entanglement
 from mqns.network.ll.event import QubitReleasedEvent
 from mqns.simulator import Event, EventHandleSlot, Simulator, Time, func_to_event
-from mqns.utils import LogSelfMixin
+from mqns.utils import LogSelfMixin, unwrap_cast
 
 if TYPE_CHECKING:
     from mqns.network.ll.linklayer import LinkLayer
@@ -51,7 +51,7 @@ class ReserveParsedMsg(NamedTuple):
     key: str
 
     @staticmethod
-    def new(pkt: ClassicPacket, msg: ReserveMsg) -> "ReserveParsedMsg":
+    def new(msg: ReserveMsg) -> "ReserveParsedMsg":
         return ReserveParsedMsg(cmd=msg["cmd"], path_id=msg["path_id"], key=msg["key"])
 
     def __repr__(self) -> str:
@@ -99,6 +99,9 @@ class LLEntangleProc[LP: LLPath](LogSelfMixin):
     Paths that are pending deletion.
     """
 
+    _repr = ""
+    """``__repr__`` return value, should be assigned by subclass constructor."""
+
     def __init__(self, ll: "LinkLayer", ch: QuantumChannel):
         self.simulator = ll.simulator
         self.ll = ll
@@ -110,7 +113,7 @@ class LLEntangleProc[LP: LLPath](LogSelfMixin):
         self.paths_draining = {}
 
     def __repr__(self) -> str:
-        return f"<{type(self).__name__} {self.node.name}-{self.peer.name}>"
+        return self._repr
 
     def send_msg(self, msg: Mapping) -> None:
         """Send a message to the peer node."""
@@ -184,9 +187,10 @@ class LLEntangleProc[LP: LLPath](LogSelfMixin):
     def _release_reuse_qubit(self, event: QubitReleasedEvent, lp: LP) -> None: ...
 
 
-class LLEntangleEvent(Event):
+class LLNotifyEvent(Event):
     def __init__(self, t: Time, node: QNode, peer: QNode, key: str, epr: Entanglement):
-        super().__init__(t, f"{node.name}-{peer.name}, key={key}, epr={epr.name}")
+        assert epr.decohere_time > t
+        super().__init__(t, f"{unwrap_cast(epr.src).name}-{unwrap_cast(epr.dst).name}, key={key}, epr={epr.name}")
         self.node = node
         self.peer = peer
         self.key = key

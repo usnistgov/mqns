@@ -6,10 +6,10 @@ from mqns.entity.qchannel import QuantumChannel
 from mqns.models.delay import ConstantDelayModel
 from mqns.models.epr import Entanglement
 from mqns.network.ll.counter import LinkLayerCounters
-from mqns.network.ll.entangle import LLEntangleEvent, LLEntangleProc, LLPath, LLPathID, ReserveMsg, ReserveParsedMsg
-from mqns.network.ll.entangle_2nd import LLEntangle2ndEvent
+from mqns.network.ll.entangle import LLEntangleProc, LLNotifyEvent, LLPath, LLPathID, ReserveMsg, ReserveParsedMsg
+from mqns.network.ll.entangle_2nd import LLNotify2ndEvent
 from mqns.network.ll.event import QubitReleasedEvent
-from mqns.simulator import Time
+from mqns.simulator import Event, Time
 from mqns.utils import AutoIncrementIdentifier, unwrap, unwrap_cast
 
 if TYPE_CHECKING:
@@ -48,6 +48,7 @@ class LLEntangleProcPri(LLEntangleProc[LLPathPri]):
 
     def __init__(self, ll: "LinkLayer", ch: QuantumChannel):
         super().__init__(ll, ch)
+        self._repr = f"<LLEntangleProcPri {self.node.name}-{self.peer.name}>"
         self.cnt = LinkLayerCounters(
             history=ll._cnt_history,
             rtt=ll.simulator.time(sec=ConstantDelayModel.extract(ch.delay) * 2),
@@ -102,15 +103,15 @@ class LLEntangleProcPri(LLEntangleProc[LLPathPri]):
         tasks_aborted: list[str] = []
         tasks_uncancelable: list[str] = []
         for key, task in lp.oreq_table.items():
-            if task.k == -1:  # reservation has not completed
+            success_event = task.success_event
+            if success_event is None:  # reservation has not completed
                 tasks_aborted.append(key)
                 continue
-            if task.t_success <= now:  # successful attempt has started or is starting in the same time slot
+            if success_event.t <= now:  # successful attempt has started or is starting in the same time slot
                 tasks_uncancelable.append(key)
                 continue
             tasks_aborted.append(key)
-            unwrap_cast(task.notify_pri_event).cancel()
-            unwrap_cast(task.notify_2nd_event).cancel()
+            success_event.cancel()
 
         for key in tasks_aborted:
             task = lp.oreq_table.pop(key)
@@ -193,44 +194,54 @@ class LLEntangleProcPri(LLEntangleProc[LLPathPri]):
         la = self.ch.link_arch
         task.k = self.ll._calc_attempt(self.ch)
         task.t_reserve = self.simulator.tc
-        task.t_success = task.t_reserve + la.attempt_interval * (task.k - 1)
-        t_notify_pri = task.t_success + la.d_notify_pri
-        t_notify_2nd = task.t_success + la.d_notify_2nd
-        task.t_finish = max(t_notify_pri, t_notify_2nd)
+        t_success = task.t_reserve + la.attempt_interval * (task.k - 1)
+        task.t_notify_pri = t_success + la.d_notify_pri
+        task.t_notify_2nd = t_success + la.d_notify_2nd
+        t_finish = max(task.t_notify_pri, task.t_notify_2nd)
 
         # When using SYNC timing, if the successful attempt cannot finish within the current EXTERNAL phase,
         # the EPR is not scheduled because it cannot arrive in time.
         # Memory reset and table cleanups are performed by EXTERNAL phase exit trigger.
-        if not self.node.timing.is_external(task.t_finish):
+        if not self.node.timing.is_external(t_finish):
             self.log_debug(
                 "%s EPR_SKIP mq-addr=%s t_success=%s t_notify=%s,%s reason=beyond-external-phase",
                 task,
                 mq.addr,
-                task.t_success,
-                t_notify_pri,
-                t_notify_2nd,
+                t_success,
+                task.t_notify_pri,
+                task.t_notify_2nd,
             )
             return
 
-        # Schedule EPR delivery events on both nodes.
-        epr = la.make_epr(task.t_success, self.node, self.peer, key=task.key)
-        task.notify_pri_event = LLEntanglePriEvent(self, task, epr, t=t_notify_pri)
-        task.notify_2nd_event = LLEntangle2ndEvent(task.key, epr, t=t_notify_2nd)
-        self.simulator.sched(task.notify_pri_event)
-        self.simulator.sched(task.notify_2nd_event)
+        # Create EPR and schedule success event.
+        epr = la.make_epr(t_success, self.node, self.peer, key=task.key)
+        task.success_event = LLEntangleSuccessEvent(self, task, epr, t=t_success)
+        self.simulator.sched(task.success_event)
         self.log_debug(
             "%s EPR_PREPARE mq-addr=%s epr=%s t_success=%s t_notify=%s,%s",
             task,
             mq.addr,
             epr.name,
-            task.t_success,
-            t_notify_pri,
-            t_notify_2nd,
+            t_success,
+            task.t_notify_pri,
+            task.t_notify_2nd,
         )
 
-    def before_deliver(self, task: "_EntangleTask") -> None:
+    def attempt_success(self, task: "_EntangleTask", epr: Entanglement) -> None:
         """
-        Record a task prior to EPR delivery.
+        Start the successful attempt.
+
+        Invoked by :py:class:`LLEntangleSuccessEvent`.
+        """
+        # Schedule EPR delivery events on both nodes.
+        self.simulator.sched(LLNotifyPriEvent(self, task, epr, t=task.t_notify_pri))
+        self.simulator.sched(LLNotify2ndEvent(task.key, epr, t=task.t_notify_2nd))
+
+    def before_notify(self, task: "_EntangleTask") -> None:
+        """
+        Record a task before notifying primary node.
+
+        Invoked by :py:class:`LLNotifyPriEvent`.
         """
         assert task.k >= 1, f"{task} reservation not accepted"
         del task.lp.oreq_table[task.key]
@@ -238,7 +249,7 @@ class LLEntangleProcPri(LLEntangleProc[LLPathPri]):
         self.cnt.n_etg += 1
         self.cnt.n_attempts += task.k
         if self.cnt._history is not None:
-            self.cnt._history.append(task.t_finish.slot - task.t_reserve.slot)
+            self.cnt._history.append(max(task.t_notify_pri.slot, task.t_notify_2nd.slot) - task.t_reserve.slot)
 
     @override
     def _release_reuse_qubit(self, event: QubitReleasedEvent, lp: LLPathPri) -> None:
@@ -250,7 +261,31 @@ class LLEntangleProcPri(LLEntangleProc[LLPathPri]):
 
 
 @final
-class LLEntanglePriEvent(LLEntangleEvent):
+class LLEntangleSuccessEvent(Event):
+    """
+    Event to signal the start of the successful attempt.
+    """
+
+    def __init__(
+        self,
+        proc: LLEntangleProcPri,
+        task: "_EntangleTask",
+        epr: Entanglement,
+        *,
+        t: Time,
+    ):
+        super().__init__(t, f"{proc.node.name}-{proc.peer.name}, key={task.key}")
+        self.proc = proc
+        self.task = task
+        self.epr = epr
+
+    @override
+    def invoke(self) -> None:
+        self.proc.attempt_success(self.task, self.epr)
+
+
+@final
+class LLNotifyPriEvent(LLNotifyEvent):
     """
     Event to notify the primary node about successful elementary entanglement.
     """
@@ -267,8 +302,17 @@ class LLEntanglePriEvent(LLEntangleEvent):
         self.proc = proc
         self.task = task
 
+    @override
+    def invoke(self) -> None:
+        self.proc.before_notify(self.task)
+        return super().invoke()
+
 
 class _EntangleTask:
+    """
+    Contextual information for creating one EPR pair.
+    """
+
     lp: Final[LLPathPri]
     mq: Final[MemoryQubit]
     k: int = -1
@@ -281,23 +325,20 @@ class _EntangleTask:
     Time point when the primary node receives the RESERVE_RES message and the first attempt begins.
     ``Time.SENTINEL`` means the reservation has not been accepted.
     """
-    t_success: Time = Time.SENTINEL
+    t_notify_pri: Time = Time.SENTINEL
     """
-    Time point when the successful attempt begins.
+    Time point to notify the primary node of successful entanglement.
     ``Time.SENTINEL`` means the reservation has not been accepted.
     """
-    t_finish: Time = Time.SENTINEL
+    t_notify_2nd: Time = Time.SENTINEL
     """
-    Time point when the last notify event occurs.
+    Time point to notify the secondary node of successful entanglement.
     ``Time.SENTINEL`` means the reservation has not been accepted.
     """
-    notify_pri_event: LLEntanglePriEvent | None = None
+    success_event: LLEntangleSuccessEvent | None = None
     """
-    Event to notify primary, cancelable before ``t_success``.
-    """
-    notify_2nd_event: LLEntangle2ndEvent | None = None
-    """
-    Event to notify secondary, cancelable before ``t_success``.
+    Event to start successful attempt.
+    ``None`` means the reservation has not been accepted or the notifications would exceed beyond EXTERNAL phase.
     """
 
     def __init__(self, lp: LLPathPri, mq: MemoryQubit):

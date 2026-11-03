@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Final, final, override
 from mqns.entity.memory import MemoryQubit, QubitState
 from mqns.entity.qchannel import QuantumChannel
 from mqns.models.epr import Entanglement
-from mqns.network.ll.entangle import LLEntangleEvent, LLEntangleProc, LLPath, LLPathID, ReserveMsg, ReserveParsedMsg
+from mqns.network.ll.entangle import LLEntangleProc, LLNotifyEvent, LLPath, LLPathID, ReserveMsg, ReserveParsedMsg
 from mqns.network.ll.event import QubitReleasedEvent
 from mqns.simulator import Time
 from mqns.utils import unwrap_cast
@@ -37,6 +37,7 @@ class LLEntangleProc2nd(LLEntangleProc[LLPath2nd]):
 
     def __init__(self, ll: "LinkLayer", ch: QuantumChannel):
         super().__init__(ll, ch)
+        self._repr = f"<LLEntangleProc2nd {self.peer.name}-{self.node.name}>"
         self.log_debug("CHANNEL_ACTIVATE")
 
     @override
@@ -137,7 +138,7 @@ class LLEntangleProc2nd(LLEntangleProc[LLPath2nd]):
 
 
 @final
-class LLEntangle2ndEvent(LLEntangleEvent):
+class LLNotify2ndEvent(LLNotifyEvent):
     """
     Event to notify the secondary node about successful elementary entanglement.
     """
