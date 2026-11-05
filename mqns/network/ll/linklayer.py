@@ -15,21 +15,21 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from collections.abc import Callable, Iterable, MutableMapping
-from typing import Final, TypedDict, Unpack, override
+from collections.abc import Callable, Iterable, Mapping, MutableMapping
+from typing import Any, Final, TypedDict, Unpack, override
 
 from mqns.entity.cchannel import ClassicCommandDispatcherMixin, ClassicPacket, classic_cmd_handler
 from mqns.entity.memory import QubitState
 from mqns.entity.node import Application, QNode
 from mqns.entity.qchannel import QuantumChannel
 from mqns.network.ll.counter import LinkLayerCounters
-from mqns.network.ll.entangle import LLEntangleProc, LLNotifyEvent, ReserveMsg, ReserveParsedMsg
-from mqns.network.ll.entangle_2nd import LLEntangleProc2nd, LLNotify2ndEvent
-from mqns.network.ll.entangle_pri import LLEntangleProcPri, LLNotifyPriEvent
+from mqns.network.ll.entangle import LLEntangleProc, LLGroup, LLNotifyEvent, ReserveMsg
+from mqns.network.ll.entangle_2nd import LLEntangleProc2nd, LLGroup2nd, LLNotify2ndEvent
+from mqns.network.ll.entangle_pri import LLEntangleProcPri, LLGroupPri, LLNotifyPriEvent
 from mqns.network.ll.event import PathActivateEvent, PathDeactivateEvent, QubitEntangledEvent, QubitReleasedEvent
 from mqns.network.network import TimingPhase, sync_phase_handler
 from mqns.simulator import event_handler
-from mqns.utils import rng, unwrap
+from mqns.utils import rng, unwrap_cast
 
 
 class LinkLayerInitKwargs(TypedDict, total=False):
@@ -52,7 +52,8 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
 
     entangle_by_ch: Final[MutableMapping[QuantumChannel, LLEntangleProc]]
     entangle_by_peer: Final[MutableMapping[str, LLEntangleProc]]
-    entangle_procs: Final[Iterable[LLEntangleProc]]
+    entangle_procs: Final[Iterable[LLEntangleProc[LLGroup[Any]]]]
+    group_by_mq: Final[MutableMapping[int, LLGroup]]
 
     def __init__(self, **kwargs: Unpack[LinkLayerInitKwargs]):
         super().__init__()
@@ -62,6 +63,7 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         self.entangle_by_ch = {}
         self.entangle_by_peer = {}
         self.entangle_procs = self.entangle_by_peer.values()
+        self.group_by_mq = {}
 
         self._cnt_deleted_channels = LinkLayerCounters()
         self._cnt_history = kwargs.get("cnt_history", 0)
@@ -105,17 +107,25 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
     @sync_phase_handler(TimingPhase.EXTERNAL, True)
     def sync_external_enter(self) -> None:
         for proc in self.entangle_procs:
-            proc.sync_external_enter()
+            for grp in proc.groups_active.values():
+                grp.sync_external_enter()
 
     @sync_phase_handler(TimingPhase.EXTERNAL, False)
     def sync_external_exit(self) -> None:
         for proc in self.entangle_procs:
-            proc.sync_external_exit()
+            for grp in proc.groups_active.values():
+                grp.sync_external_exit()
 
     @sync_phase_handler(TimingPhase.INTERNAL, False)
     def sync_internal_exit(self) -> None:
         # Clear existing memory qubits.
         self.memory.clear()
+
+    @staticmethod
+    def _gid_from_path_id(path_id: int | None) -> int:
+        if path_id is None:
+            return -9
+        return path_id
 
     @event_handler
     def path_activate(self, event: PathActivateEvent) -> None:
@@ -124,11 +134,10 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         """
         event.cancel()
         ch = event.qchannel
-        is_primary = event.is_primary
         path_id = event.path_id
 
         # Find or create the channel entangle procedure.
-        LLEntangleProcTyp = LLEntangleProcPri if is_primary else LLEntangleProc2nd
+        LLEntangleProcTyp = LLEntangleProcPri if event.is_primary else LLEntangleProc2nd
         proc = self.entangle_by_ch.get(ch)
         if not proc:
             proc = LLEntangleProcTyp(self, ch)
@@ -136,8 +145,9 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         elif type(proc) is not LLEntangleProcTyp:
             raise ValueError(f"{event}: channel already activated with opposite role in {proc}")
 
-        # Activate the path within the channel.
-        proc.path_activate(path_id)
+        # Activate the group within the channel.
+        gid = self._gid_from_path_id(path_id)
+        proc.group_activate(gid, [q for q, _ in self.memory.find(lambda q, _: q.path_id == path_id, qchannel=ch)])
 
     @event_handler
     def path_deactivate(self, event: PathDeactivateEvent) -> None:
@@ -145,15 +155,20 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         Handle path deactivation command.
         """
         event.cancel()
+
+        # Find the channel entangle procedure.
         try:
             proc = self.entangle_by_ch[event.qchannel]
         except LookupError:
             raise ValueError(f"{event}: channel not activated") from None
-        proc.path_deactivate(event.path_id)
+
+        # Deactivate the group within the channel.
+        gid = self._gid_from_path_id(event.path_id)
+        proc.group_deactivate(gid)
 
     def channel_deactivate(self, proc: LLEntangleProc) -> None:
         """
-        Deactivate a channel, invoked by ``LLEntangleProc._path_deactivate_delete()``.
+        Delete a channel, invoked by ``LLEntangleProc._group_delete()``.
         """
         del self.entangle_by_ch[proc.ch]
         del self.entangle_by_peer[proc.peer.name]
@@ -163,14 +178,15 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         else:
             proc.log_debug("CHANNEL_DEACTIVATE")
 
-    def _dispatch_reserve_msg[P: LLEntangleProc](
+    def _dispatch_reserve_msg[P: LLEntangleProc, G: LLGroup](
         self,
         pkt: ClassicPacket,
-        msg: ReserveMsg,
+        msg: Mapping,
         typ: type[P],
-        meth: Callable[[P, ReserveParsedMsg], None],
+        meth: Callable[[G, ReserveMsg], None],
+        allow_draining=False,
     ) -> None:
-        req = ReserveParsedMsg.new(msg)
+        req = ReserveMsg(**msg)
         pkt_from = pkt.src.name
 
         if not self.node.timing.is_external():
@@ -181,29 +197,37 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         if type(proc) is not typ:
             self.log_debug("%s from=%s ignored reason=no-channel", req, pkt_from)
             return
+        proc = unwrap_cast(proc)
 
-        meth(proc, req)
+        grp = proc.groups_active.get(req.gid)
+        if grp is None and allow_draining:
+            grp = proc.groups_draining.get(req.gid)
+        if grp is None:
+            self.log_debug("%s from=%s ignored reason=no-group", req, pkt_from)
+            return
+
+        meth(grp, req)
 
     @classic_cmd_handler("RESERVE_REQ")
-    def handle_reserve_req(self, pkt: ClassicPacket, msg: ReserveMsg) -> None:
+    def handle_reserve_req(self, pkt: ClassicPacket, msg: Mapping) -> None:
         """
-        Secondary node handle ``RESERVE_REQ`` message from the primary node.
+        Secondary node handles ``RESERVE_REQ`` message from the primary node.
         """
-        self._dispatch_reserve_msg(pkt, msg, LLEntangleProc2nd, LLEntangleProc2nd.handle_reserve_req)
+        self._dispatch_reserve_msg(pkt, msg, LLEntangleProc2nd, LLGroup2nd.handle_reserve_req)
 
     @classic_cmd_handler("RESERVE_ABORT")
-    def handle_reserve_abort(self, pkt: ClassicPacket, msg: ReserveMsg) -> None:
+    def handle_reserve_abort(self, pkt: ClassicPacket, msg: Mapping) -> None:
         """
         Secondary node handles ``RESERVE_ABORT`` message from the primary node.
         """
-        self._dispatch_reserve_msg(pkt, msg, LLEntangleProc2nd, LLEntangleProc2nd.handle_reserve_abort)
+        self._dispatch_reserve_msg(pkt, msg, LLEntangleProc2nd, LLGroup2nd.handle_reserve_abort, allow_draining=True)
 
     @classic_cmd_handler("RESERVE_RES")
-    def handle_reserve_res(self, pkt: ClassicPacket, msg: ReserveMsg) -> None:
+    def handle_reserve_res(self, pkt: ClassicPacket, msg: Mapping) -> None:
         """
-        Primary node handle ``RESERVE_RES`` message from the secondary node.
+        Primary node handles ``RESERVE_RES`` message from the secondary node.
         """
-        self._dispatch_reserve_msg(pkt, msg, LLEntangleProcPri, LLEntangleProcPri.handle_reserve_res)
+        self._dispatch_reserve_msg(pkt, msg, LLEntangleProcPri, LLGroupPri.handle_reserve_res)
 
     def _calc_attempt(self, qchannel: QuantumChannel) -> int:
         return rng.geometric(qchannel.link_arch.success_prob)
@@ -231,9 +255,9 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         mq = event.qubit
         mq.state = QubitState.RAW
 
-        proc = self.entangle_by_ch.get(unwrap(mq.qchannel))
-        if not proc:
-            self.log_debug("%s ignored reason=no-channel", event)
+        grp = self.group_by_mq.get(mq.addr)
+        if not grp:
+            self.log_debug("%s ignored reason=no-group", event)
             return
 
-        proc.handle_release(event)
+        grp.handle_release(event)

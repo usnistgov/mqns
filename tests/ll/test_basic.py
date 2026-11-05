@@ -63,13 +63,11 @@ def test_basic(monkeypatch: pytest.MonkeyPatch, epr_type: type[Entanglement], pa
 
     ll_cnt_agg = LinkLayerCounters.aggregate(net.nodes)
     print("ll_cnt_agg", ll_cnt_agg)
-    assert ll_cnt_agg.n_etg == 3
-    assert ll_cnt_agg.n_attempts == 4
-    # n_decoh is only incremented on the primary node.
-    # Although there are two decoherence events in the simulation, n1.n_decoh is incremented only at t=8.3.
-    # For the t=12.6 event, the path is deleted, so that n1 cannot recognize itself as primary.
-    assert ll_cnt_agg.n_decoh == 1
-    assert ll_cnt_agg.decoh_ratio == pytest.approx(1 / 3, abs=1e-6)
+    for cnt in ll_cnt_agg, ll1.cnt:  # counters are only incremented on primary node
+        assert cnt.n_etg == 3
+        assert cnt.n_attempts == 4
+        assert cnt.n_decoh == 2
+        assert cnt.decoh_ratio == pytest.approx(2 / 3, abs=1e-6)
 
     QuantumMemory.check_leaks(net.nodes)
 

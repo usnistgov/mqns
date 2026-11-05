@@ -82,14 +82,14 @@ Internal Architecture
 
 :py:class:`~mqns.network.ll.entangle_pri.LLEntangleProcPri` implements the entanglement generation steps
 on a specific channel as the primary node.
-It uses :py:class:`~mqns.network.ll.entangle_pri.LLPathPri` data structure to keep track of activations,
-in which :py:attr:`~mqns.network.ll.entangle_pri.LLPathPri.oreq_table` records all ongoing reservations
+It uses :py:class:`~mqns.network.ll.entangle_pri.LLGroupPri` data structure to keep track of activations,
+in which :py:attr:`~mqns.network.ll.entangle_pri.LLGroupPri.oreq_table` records all ongoing reservations
 since RESERVE_REQ until success notification.
 
 :py:class:`~mqns.network.ll.entangle_2nd.LLEntangleProc2nd` implements the entanglement generation steps
 on a specific channel as the secondary node.
-It uses :py:class:`~mqns.network.ll.entangle_2nd.LLPath2nd` data structure to keep track of activations,
-in which :py:attr:`~mqns.network.ll.entangle_2nd.LLPath2nd.ireq_queue` records reservations that are
+It uses :py:class:`~mqns.network.ll.entangle_2nd.LLGroup2nd` data structure to keep track of activations,
+in which :py:attr:`~mqns.network.ll.entangle_2nd.LLGroup2nd.ireq_queue` records reservations that are
 not yet accepted due to lack of qubits.
 
 The :py:class:`LinkLayer` class is responsible for creating and destroying the above per-channel objects,
