@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from collections.abc import Iterable, MutableMapping
+from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, Any, Final, Literal, NamedTuple, override
 
 from mqns.entity.cchannel import ClassicPacket
@@ -7,7 +7,7 @@ from mqns.entity.memory import MemoryQubit
 from mqns.entity.node import QNode
 from mqns.entity.qchannel import QuantumChannel
 from mqns.models.epr import Entanglement
-from mqns.network.ll.event import QubitReleasedEvent
+from mqns.network.ll.event import LLActivateEvent, QubitReleasedEvent
 from mqns.simulator import Event, EventHandleSlot, Simulator, Time, func_to_event
 from mqns.utils import LogSelfMixin, unwrap_cast
 
@@ -61,12 +61,12 @@ class LLEntangleProc[G: LLGroup[Any]](LogSelfMixin):
     Groups that are pending deletion.
     """
 
-    def __init__(self, ll: "LinkLayer", ch: QuantumChannel, *, ch_repr_attrs: tuple[Literal["node", "peer"], ...]):
+    def __init__(self, ll: "LinkLayer", event: LLActivateEvent, *, ch_repr_attrs: tuple[Literal["node", "peer"], ...]):
         self.simulator = ll.simulator
         self.ll = ll
-        self.ch = ch
+        self.ch = event.ch
         self.node = ll.node
-        self.peer = ch.find_peer(ll.node)
+        self.peer = event.peer
         self._ch_repr = "-".join(getattr(self, attr).name for attr in ch_repr_attrs)
         self.groups_active = {}
         self.groups_draining = {}
@@ -78,14 +78,15 @@ class LLEntangleProc[G: LLGroup[Any]](LogSelfMixin):
         """Send a message to the peer node."""
         self.node.send_cpacket(self.peer, ClassicPacket(msg._asdict(), src=self.node, dest=self.peer))
 
-    def group_activate(self, gid: int, qubits: Iterable[MemoryQubit]) -> None:
+    def group_activate(self, event: LLActivateEvent) -> None:
         """Activate a group within the channel."""
+        gid = event.gid
         grp = self.groups_draining.pop(gid, None)
         if grp:
             grp.delete_event.cancel()
         else:
-            grp = self._group_create(gid)
-            for mq in qubits:
+            grp = self._group_create(event)
+            for mq in event.qubits:
                 grp.qubits[mq.addr] = mq
                 self.ll.group_by_mq[mq.addr] = grp
 
@@ -97,7 +98,7 @@ class LLEntangleProc[G: LLGroup[Any]](LogSelfMixin):
             grp.sync_external_enter()
 
     @abstractmethod
-    def _group_create(self, gid: int) -> G: ...
+    def _group_create(self, event: LLActivateEvent) -> G: ...
 
     def group_deactivate(self, gid: int) -> None:
         """Deactivate a group within the channel."""

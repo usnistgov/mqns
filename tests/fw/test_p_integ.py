@@ -46,16 +46,13 @@ def test_4_swap(epr_type: EprTypeLiteral, timing: TimingMode, swap: SwapSequence
     assert RequestCounters.of(net, rp).n_consumed >= 16
 
 
-xfail_161 = pytest.mark.xfail(reason="https://github.com/usnistgov/mqns/issues/161#issue-5933746537")
-
-
 @pytest.mark.parametrize(
     ("mux", "swap", "end_time"),
     [
         pytest.param("B", "asap", 1, id="BufferSpace-asap"),
         pytest.param("B", "l2r", 1, id="BufferSpace-l2r"),
         pytest.param(MuxSchemeStatistical(select_swap_qubit="random"), "asap", 1, id="Statistical"),
-        pytest.param("D", "asap", 10, id="DynamicEpr", marks=xfail_161),
+        pytest.param("D", "asap", 10, id="DynamicEpr"),
     ],
 )
 @pytest.mark.parametrize("route_len", [3, 5])
@@ -86,6 +83,12 @@ def test_tree3_bidir(mux: MuxSchemeInput, swap: SwapSequenceInput, end_time: flo
 
     consumed0 = RequestCounters.of(net, req0).n_consumed
     consumed1 = RequestCounters.of(net, req1).n_consumed
+
+    if mux == "D" and route_len == 5:
+        assert consumed0 + consumed1 > 0
+        if min(consumed0, consumed1) == 0:
+            pytest.xfail(reason="https://github.com/usnistgov/mqns/issues/60#issuecomment-5180421126")
+
     assert consumed0 > 0
     assert consumed1 > 0
 

@@ -2,10 +2,9 @@ from collections import deque
 from typing import TYPE_CHECKING, Final, final, override
 
 from mqns.entity.memory import MemoryQubit, QubitState
-from mqns.entity.qchannel import QuantumChannel
 from mqns.models.epr import Entanglement
 from mqns.network.ll.entangle import LLEntangleProc, LLGroup, LLNotifyEvent, ReserveMsg
-from mqns.network.ll.event import QubitReleasedEvent
+from mqns.network.ll.event import LLActivateEvent, QubitReleasedEvent
 from mqns.simulator import Time
 from mqns.utils import unwrap_cast
 
@@ -19,13 +18,13 @@ class LLEntangleProc2nd(LLEntangleProc["LLGroup2nd"]):
     Entanglement generation procedure of one quantum channel on the secondary node.
     """
 
-    def __init__(self, ll: "LinkLayer", ch: QuantumChannel):
-        super().__init__(ll, ch, ch_repr_attrs=("peer", "node"))
+    def __init__(self, ll: "LinkLayer", event: LLActivateEvent):
+        super().__init__(ll, event, ch_repr_attrs=("peer", "node"))
         self.log_debug("CHANNEL_ACTIVATE")
 
     @override
-    def _group_create(self, gid: int) -> "LLGroup2nd":
-        return LLGroup2nd(self, gid)
+    def _group_create(self, event: LLActivateEvent) -> "LLGroup2nd":
+        return LLGroup2nd(self, event.gid)
 
 
 class LLGroup2nd(LLGroup[LLEntangleProc2nd]):

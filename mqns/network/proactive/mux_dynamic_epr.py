@@ -4,6 +4,7 @@ from typing import Literal, override
 import numpy as np
 
 from mqns.entity.memory import MemoryQubit, QubitState
+from mqns.entity.qchannel.qchannel import QuantumChannel
 from mqns.models.epr import Entanglement
 from mqns.network.fw import Fib, FibPath
 from mqns.network.fw.select import call_select, parse_select, select_random
@@ -12,13 +13,12 @@ from mqns.network.proactive.mux_statistical import MuxSchemeDynamicBase
 from mqns.utils import rng, unwrap, unwrap_cast
 
 
-def _select_path_swap_weighted(path_ids: list[int], epr: Entanglement, fib: Fib) -> FibPath:
+def _select_path_swap_weighted(path_ids: list[int], epr: Entanglement, fib: Fib) -> int:
     _ = epr
-    entries = [fib.get_path(pid) for pid in path_ids]
     # fewer swaps (shorter route) means higher weight
-    weights = np.array([1.0 / (1 + len(e.swap)) for e in entries])
+    weights = np.array([1.0 / (1 + len(fib.get_path(p).swap)) for p in path_ids])
     weights /= np.sum(weights)
-    return entries[rng.choice(len(entries), p=weights)]
+    return path_ids[rng.choice(len(path_ids), p=weights)]
 
 
 class MuxSchemeDynamicEpr(MuxSchemeFibBase, MuxSchemeDynamicBase):
@@ -26,7 +26,7 @@ class MuxSchemeDynamicEpr(MuxSchemeFibBase, MuxSchemeDynamicBase):
     Dynamic EPR Allocation multiplexing scheme.
     """
 
-    type SelectPath = Callable[[list[int], Entanglement, Fib], int | FibPath]
+    type SelectPath = Callable[[list[int], Entanglement, Fib], int]
     """
     Path selection strategy.
     Function to select a path for an elementary entanglement.
@@ -63,6 +63,14 @@ class MuxSchemeDynamicEpr(MuxSchemeFibBase, MuxSchemeDynamicBase):
         """
         super().__init__(select_swap_qubit)
         self._select_path = parse_select(type(self), "SelectPath_", select_path)
+
+    @override
+    def on_ll_attempt_success(self, ch: QuantumChannel, gid: int, epr: Entanglement) -> None:
+        _ = gid
+        paths = self.qchannel_paths_map.get(ch, [])
+        chosen = call_select(paths, self._select_path, epr, self.fib)
+        if chosen is not None:
+            epr.affectionated_path_id = chosen
 
     @override
     def qubit_is_entangled(self, mq: MemoryQubit, epr: Entanglement) -> FibPath | None:

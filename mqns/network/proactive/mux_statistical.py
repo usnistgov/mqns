@@ -1,5 +1,5 @@
 from collections.abc import Callable, MutableMapping
-from typing import TYPE_CHECKING, Literal, override
+from typing import TYPE_CHECKING, Final, Literal, override
 
 from mqns.entity.memory import MemoryQubit, PathDirection, QuantumMemory, QubitState
 from mqns.entity.qchannel import QuantumChannel
@@ -27,14 +27,16 @@ LinkLayer group identifier for all paths on a channel.
 
 
 class MuxSchemeDynamicBase(MuxScheme):
+    qchannel_paths_map: Final[MutableMapping[QuantumChannel, list[int]]]
+    """
+    Mapping from QuantumChannel to path_ids activated on the channel.
+
+    Note: the mapped type is a ``list`` instead of a ``set``, to ensure deterministic simulation.
+    """
+
     def __init__(self):
         super().__init__()
-        self.qchannel_paths_map: MutableMapping[QuantumChannel, list[int]] = {}
-        """
-        Mapping from QuantumChannel to path_ids activated on the channel.
-
-        Note: the mapped type is a ``list`` instead of a ``set``, to ensure deterministic simulation.
-        """
+        self.qchannel_paths_map = {}
 
     @override
     def validate_path_instructions(self, inst: PathInstructions):
@@ -54,8 +56,9 @@ class MuxSchemeDynamicBase(MuxScheme):
                 ch,
                 t=self.simulator.tc,
                 gid=_LL_GID_ALL_PATHS,
-                is_primary=self._path_adj_is_primary(inst, fp, dir),
                 qubits=(q for q, _ in self.memory.find(QuantumMemory.predicate_all, qchannel=ch)),
+                is_primary=self._path_adj_is_primary(inst, fp, dir),
+                on_attempt_success=self.on_ll_attempt_success,
             )
         )
 
@@ -76,6 +79,9 @@ class MuxSchemeDynamicBase(MuxScheme):
                 gid=_LL_GID_ALL_PATHS,
             )
         )
+
+    def on_ll_attempt_success(self, ch: QuantumChannel, gid: int, epr: Entanglement) -> None:
+        pass
 
     @override
     def list_qubit_epr_path_ids(self, mq: MemoryQubit) -> list[int]:

@@ -131,13 +131,13 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         LLEntangleProcTyp = LLEntangleProcPri if event.is_primary else LLEntangleProc2nd
         proc = self.entangle_by_peer.get(peer)
         if not proc:
-            proc = LLEntangleProcTyp(self, event.ch)
+            proc = LLEntangleProcTyp(self, event)
             self.entangle_by_peer[peer] = proc
         elif type(proc) is not LLEntangleProcTyp:
             raise ValueError(f"{event}: channel already activated with opposite role in {proc}")
 
         # Activate the group within the channel.
-        proc.group_activate(event.gid, event.qubits)
+        proc.group_activate(event)
 
     @event_handler
     def group_deactivate(self, event: LLDeactivateEvent) -> None:

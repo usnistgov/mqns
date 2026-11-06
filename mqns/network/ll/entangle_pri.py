@@ -2,13 +2,12 @@ from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, Final, final, override
 
 from mqns.entity.memory import MemoryQubit, QubitState
-from mqns.entity.qchannel import QuantumChannel
 from mqns.models.delay import ConstantDelayModel
 from mqns.models.epr import Entanglement
 from mqns.network.ll.counter import LinkLayerCounters
 from mqns.network.ll.entangle import LLEntangleProc, LLGroup, LLNotifyEvent, ReserveMsg
 from mqns.network.ll.entangle_2nd import LLNotify2ndEvent
-from mqns.network.ll.event import QubitReleasedEvent
+from mqns.network.ll.event import LLActivateEvent, OnAttemptSuccess, QubitReleasedEvent
 from mqns.simulator import Event, Time
 from mqns.utils import AutoIncrementIdentifier, unwrap, unwrap_cast
 
@@ -29,14 +28,14 @@ class LLEntangleProcPri(LLEntangleProc["LLGroupPri"]):
 
     cnt: Final[LinkLayerCounters]
 
-    def __init__(self, ll: "LinkLayer", ch: QuantumChannel):
-        super().__init__(ll, ch, ch_repr_attrs=("node", "peer"))
+    def __init__(self, ll: "LinkLayer", event: LLActivateEvent):
+        super().__init__(ll, event, ch_repr_attrs=("node", "peer"))
         self.cnt = LinkLayerCounters(
             history=ll._cnt_history,
-            rtt=ll.simulator.time(sec=ConstantDelayModel.extract(ch.delay) * 2),
+            rtt=ll.simulator.time(sec=ConstantDelayModel.extract(self.ch.delay) * 2),
         )
 
-        la = ch.link_arch
+        la = self.ch.link_arch
 
         # link_arch.set() may be called multiple times in several situations:
         # - qchannel is activated, deactivated, and re-activated.
@@ -45,7 +44,7 @@ class LLEntangleProcPri(LLEntangleProc["LLGroupPri"]):
         # so that the parameters saved into LinkArch are the same every time.
         la.set(
             time_accuracy=self.simulator.accuracy,
-            ch=ch,
+            ch=self.ch,
             reset_time=self.ll.reset_time,
             tau_0=self.ll.tau_0,
             epr_type=self.node.network.epr_type,
@@ -64,8 +63,8 @@ class LLEntangleProcPri(LLEntangleProc["LLGroupPri"]):
         )
 
     @override
-    def _group_create(self, gid: int) -> "LLGroupPri":
-        return LLGroupPri(self, gid)
+    def _group_create(self, event: LLActivateEvent) -> "LLGroupPri":
+        return LLGroupPri(self, event.gid, event.on_attempt_success)
 
 
 class LLGroupPri(LLGroup[LLEntangleProcPri]):
@@ -76,9 +75,16 @@ class LLGroupPri(LLGroup[LLEntangleProcPri]):
     Value is EntangleTask record.
     """
 
-    def __init__(self, proc: LLEntangleProcPri, gid: int):
+    on_attempt_success: Final[OnAttemptSuccess]
+    """
+    Multiplexing policy callback supplied by forwarding.
+    Invoked upon starting each successful attempt.
+    """
+
+    def __init__(self, proc: LLEntangleProcPri, gid: int, on_attempt_success: OnAttemptSuccess):
         super().__init__(proc, gid)
         self.oreq_table = {}
+        self.on_attempt_success = on_attempt_success
 
     @override
     def drain(self) -> Time:
@@ -196,6 +202,8 @@ class LLGroupPri(LLGroup[LLEntangleProcPri]):
 
         Invoked by :py:class:`LLEntangleSuccessEvent`.
         """
+        self.on_attempt_success(self.proc.ch, self.gid, epr)
+
         # Schedule EPR delivery events on both nodes.
         simulator = self.proc.simulator
         simulator.sched(LLNotifyPriEvent(self, task, epr, t=task.t_notify_pri))

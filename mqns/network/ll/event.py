@@ -15,7 +15,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from typing import ClassVar, final, override
 
 from mqns.entity.memory import MemoryQubit, QubitState
@@ -23,6 +23,12 @@ from mqns.entity.node import QNode
 from mqns.entity.qchannel import QuantumChannel
 from mqns.models.epr import Entanglement
 from mqns.simulator import Event, Time
+
+type OnAttemptSuccess = Callable[[QuantumChannel, int, Entanglement], None]
+"""
+Callback upon starting a successful attempt.
+Arguments are channel, gid, EPR pair.
+"""
 
 
 @final
@@ -38,26 +44,30 @@ class LLActivateEvent(Event):
         *,
         t: Time,
         gid: int,
-        is_primary: bool,
         qubits: Iterable[MemoryQubit],
+        is_primary: bool,
+        on_attempt_success: OnAttemptSuccess = lambda *_: None,
     ):
         """
         Args:
             node: Node with :py:class:`~mqns.network.ll.LinkLayer` application.
             ch: Quantum channel for entanglement generation.
             gid: Group identifier, must be unique per channel and same on both sides.
+            qubits: Qubits allocated for the group.
             is_primary: True for primary role, False for secondary role.
                 Two nodes on the same channel must take opposite roles.
                 The choice must be consistent for all groups on the same channel.
-            qubits: Qubits allocated for the group.
+            on_attempt_success: Callback upon starting a successful attempt.
+                This is only called on the primary node side.
         """
         self.node = node
         self.peer = ch.find_peer(node)
         super().__init__(t, f"node={node.name}, role={'pri' if is_primary else '2nd'}, peer={self.peer.name}, gid={gid}")
         self.ch = ch
         self.gid = gid
-        self.is_primary = is_primary
         self.qubits = list(qubits)
+        self.is_primary = is_primary
+        self.on_attempt_success = on_attempt_success
 
     @override
     def invoke(self) -> None:
