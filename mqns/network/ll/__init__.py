@@ -101,6 +101,7 @@ from mqns.network.ll.counter import LinkLayerCounters
 from mqns.network.ll.event import (
     LLActivateEvent,
     LLDeactivateEvent,
+    OnAttemptSuccess,
     QubitConsumeEvent,
     QubitEntangledEvent,
     QubitReleasedEvent,
@@ -113,10 +114,13 @@ __all__ = [
     "LinkLayerInitKwargs",
     "LLActivateEvent",
     "LLDeactivateEvent",
+    "OnAttemptSuccess",
     "QubitConsumeEvent",
     "QubitEntangledEvent",
     "QubitReleasedEvent",
 ]
 
 for name in __all__:
+    if name in ("OnAttemptSuccess",):
+        continue
     globals()[name].__module__ = __name__

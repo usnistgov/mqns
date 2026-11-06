@@ -74,23 +74,11 @@ class MuxSchemeDynamicEpr(MuxSchemeFibBase, MuxSchemeDynamicBase):
 
     @override
     def qubit_is_entangled(self, mq: MemoryQubit, epr: Entanglement) -> FibPath | None:
-        # TODO: if paths have different swap policies
-        #       -> consider only paths for which this qubit may be eligible ??
-
-        if epr.affectionated_path_id < 0:
-            # In principle, a random path_id is chosen for each elementary EPR during EPR generation.
-            # The necessary information could be carried in the reservation message.
-            # For ease of implementation, this choice is made at either primary or secondary node,
-            # whichever receives the EPR notification earlier.
-            selected_path = call_select(unwrap_cast(mq.epr_path_ids), self._select_path, epr, self.fib)
-            fp = selected_path if type(selected_path) is FibPath else self.fib.get_path(unwrap_cast(selected_path))
-            epr.affectionated_path_id = fp.path_id
-        else:
-            fp = self.fib.get_path(epr.affectionated_path_id)
-
-        mq.epr_path_ids = [fp.path_id]
+        if epr.affectionated_path_id == -1:
+            return None
+        mq.epr_path_ids = [epr.affectionated_path_id]
         mq.state = QubitState.PURIF
-        return fp
+        return self.fib.get_path(epr.affectionated_path_id)
 
     @override
     def find_swap_with(self, mq0: MemoryQubit, epr0: Entanglement, fp: FibPath | None) -> tuple[MemoryQubit, FibPath] | None:

@@ -49,12 +49,6 @@ class MuxScheme(ForwarderModule, ABC):
         """
 
     @abstractmethod
-    def list_qubit_epr_path_ids(self, mq: MemoryQubit) -> list[int]:
-        """
-        Compute ``mq.epr_path_ids`` on a qubit entering ENTANGLED1 state.
-        """
-
-    @abstractmethod
     def qubit_is_entangled(self, mq: MemoryQubit, epr: Entanglement) -> FibPath | None:
         """
         Handle a qubit entering ENTANGLED state, i.e. having an elementary entanglement.
@@ -63,13 +57,10 @@ class MuxScheme(ForwarderModule, ABC):
 
         * The network is in ASYNC timing mode or INTERNAL phase.
         * ``mq.partner`` is assigned.
-        * ``mq.epr_path_ids`` is populated and non-empty.
         * ``epr`` is an elementary entanglement.
 
-        Post-condition and return value:
-
-        * ``mq.state is PURIF``: forwarder starts purification; FIB entry is required.
-        * ``mq.state is ELIGIBLE``: forwarder starts swapping; FIB entry is optional.
+        Post-condition and return value: same as
+        :py:meth:`Forwarder.qubit_is_entangled_next <mqns.network.fw.Forwarder.qubit_is_entangled_next>`.
         """
 
     @abstractmethod

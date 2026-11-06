@@ -1,3 +1,4 @@
+import functools
 import itertools
 from collections import defaultdict
 from collections.abc import Callable, Iterable, Mapping
@@ -8,24 +9,31 @@ from mqns.entity.cchannel import ClassicPacket
 from mqns.entity.memory import QubitState
 from mqns.entity.node import Application, Controller, Node, QNode
 from mqns.entity.qchannel import LinkArchAlways, LinkArchDimBk
+from mqns.models.epr import Entanglement
 from mqns.network.builder import NetworkBuilder
 from mqns.network.fw import Forwarder
 from mqns.network.fw.fw_swap import ForwarderSwapProc
-from mqns.network.ll import LinkLayer, QubitEntangledEvent, QubitReleasedEvent
+from mqns.network.ll import LinkLayer, LLActivateEvent, QubitEntangledEvent, QubitReleasedEvent
 from mqns.network.network import QuantumNetwork, TimingPhase, sync_phase_handler
 from mqns.network.protocol.consumer import Consumer
 from mqns.simulator import Simulator, Time, event_handler, func_to_event
 from mqns.utils import AutoIncrementIdentifier, log, rng
 
 
-class QubitReleaseReset(Application[QNode]):
+class MinLinkLayer(Application[QNode]):
     """
-    Reset released qubits to RAW state.
+    Minimal LinkLayer application with these features:
+
+    * Save ``ll.OnAttemptSuccess`` callback for use in ``provide_entanglements``.
+    * In SYNC timing, clear memory upon exiting INTERNAL phase.
+    * When a qubit is released, it is reset to RAW state.
     """
 
     def __init__(self):
         super().__init__()
-        self.history: list[tuple[int, Time]] = []
+        self.on_attempt_success_by_peer: dict[str, Callable[[Entanglement], None]] = {}
+        """LinkLayer OnAttemptSuccess callback keyed by peer node name."""
+        self.release_history: list[tuple[int, Time]] = []
         """Qubit address and release time."""
 
     @sync_phase_handler(TimingPhase.INTERNAL, False)
@@ -33,17 +41,26 @@ class QubitReleaseReset(Application[QNode]):
         self.node.memory.clear()
 
     @event_handler
-    def handle_qubit_released(self, event: QubitReleasedEvent):
-        self.history.append((event.qubit.addr, event.t))
+    def handle_ll_activate(self, event: LLActivateEvent) -> None:
+        if event.is_primary:
+            self.on_attempt_success_by_peer[event.peer.name] = functools.partial(
+                event.on_attempt_success,
+                event.ch,
+                event.gid,
+            )
+
+    @event_handler
+    def handle_qubit_released(self, event: QubitReleasedEvent) -> None:
+        self.release_history.append((event.qubit.addr, event.t))
         log.debug(f"{self}: RELEASE {event.qubit}")
         event.qubit.state = QubitState.RAW
 
     @property
-    def last_t(self) -> Time:
+    def last_release_t(self) -> Time:
         """Retrieve the timestamp of last release event."""
-        if not self.history:
+        if not self.release_history:
             return Time.SENTINEL
-        return self.history[-1][1]
+        return self.release_history[-1][1]
 
 
 LA_ALWAYS = LinkArchAlways(LinkArchDimBk())
@@ -70,7 +87,7 @@ def make_network(
 
     for node in net.nodes:
         if not node.get_apps(LinkLayer):
-            node.add_apps(QubitReleaseReset())
+            node.add_apps(MinLinkLayer())
 
     simulator = Simulator(0.0, end_time, install_to=(log, net))
     return net, simulator
@@ -139,7 +156,7 @@ def provide_entanglements(
     *etgs: tuple[float | Iterable[float], Forwarder, Forwarder] | tuple[Iterable[float], Iterable[Forwarder]],
     transform_t: Callable[[float], float] = lambda t: t,
     fidelity=0.99,
-):
+) -> None:
     """
     Provide elementary entanglement(s) to the forwarders.
 
@@ -150,7 +167,7 @@ def provide_entanglements(
         fidelity: Initial fidelity.
     """
 
-    def make_entangle(src: Forwarder, dst: Forwarder):
+    def make_entangle(src: Forwarder, dst: Forwarder) -> None:
         simulator = src.simulator
         t_creation = simulator.tc
         ch = src.node.get_qchannel(dst.node)
@@ -175,6 +192,11 @@ def provide_entanglements(
         )
         epr.fidelity = fidelity
 
+        if src_mll := src.node.get_apps(MinLinkLayer):
+            on_attempt_success = src_mll[0].on_attempt_success_by_peer.get(dst.node.name)
+            if on_attempt_success:
+                on_attempt_success(epr)
+
         for node, neighbor, d_notify in (src, dst, la.d_notify_pri), (dst, src, la.d_notify_2nd):
             q, _ = next(node.memory.find(lambda _, v: v is None, qchannel=ch), (None, None))
             assert q is not None, f"insufficient qubits assigned to {ch}"
@@ -183,7 +205,7 @@ def provide_entanglements(
             node.memory.write(q.addr, epr)
             simulator.sched(QubitEntangledEvent(node.node, neighbor.node, q, t=t_creation + d_notify))
 
-    def sched_entangle(t: float, src: Forwarder, dst: Forwarder):
+    def sched_entangle(t: float, src: Forwarder, dst: Forwarder) -> None:
         if t < 0:
             return
         simulator = src.simulator

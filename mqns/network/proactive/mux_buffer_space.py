@@ -129,14 +129,11 @@ class MuxSchemeBufferSpace(MuxSchemeFibBase):
         )
 
     @override
-    def list_qubit_epr_path_ids(self, mq: MemoryQubit) -> list[int]:
-        if mq.path_id is None:  # path has been uninstalled
-            return []
-        return [mq.path_id]
-
-    @override
     def qubit_is_entangled(self, mq: MemoryQubit, epr: Entanglement) -> FibPath | None:
         _ = epr
+        if mq.path_id is None:  # path has been uninstalled
+            return None
+        mq.epr_path_ids = [mq.path_id]
         mq.state = QubitState.PURIF
         return self.fib.get_path(unwrap_cast(mq.path_id))
 

@@ -168,7 +168,7 @@ class Forwarder(ClassicCommandDispatcherMixin, Application[QNode]):
         self.cnt = ForwarderCounters()
 
     @override
-    def install(self, node):
+    def install(self, node) -> None:
         self._application_install(node, QNode)
         self.memory = self.node.memory
         """Quantum memory of the node."""
@@ -199,17 +199,8 @@ class Forwarder(ClassicCommandDispatcherMixin, Application[QNode]):
         Handle a qubit entering ENTANGLED state, i.e. having an elementary entanglement.
 
         In ASYNC timing mode, events are processed immediately.
-        In SYNC timing mode, events arrive in EXTERNAL phase and is queued in ``self.waiting_etg``.
-        Queued events are released upon entering INTERNAL phase and then processed.
-
-        The actual processing is handled by the multiplexing scheme.
-
-        If a SwapUpdate was received before processing this event and buffered in ``self.swap.waiting_su``,
-        it is re-processed at this time.
-
-        Args:
-            event: Event containing the entangled qubit and its associated metadata (e.g., neighbor).
-
+        In SYNC timing mode, events arrive in EXTERNAL phase and is queued in ``self.entangled_in_external``.
+        Queued events are processed upon entering INTERNAL phase.
         """
         event.cancel()
         if self.node.timing.is_internal():
@@ -244,34 +235,66 @@ class Forwarder(ClassicCommandDispatcherMixin, Application[QNode]):
             self.release_qubit(mq, need_remove=True)
             return
 
-        match mq.state:
+        # qubit_is_entangled_next has side effect that changes mq.state
+        state1: QubitState = mq.state
+        match state1:
             case QubitState.PURIF:
                 self.qubit_is_purif(mq, unwrap(fp), event.neighbor)
             case QubitState.ELIGIBLE:
                 self.qubit_is_eligible(mq, fp)
+            case QubitState.ENTANGLED1:
+                pass
             case _:
-                # MuxSchemeStatistical may leave the qubit in ENTANGLED1 state
-                assert mq.state is QubitState.ENTANGLED1, f"unexpected state {mq.state}"
+                raise RuntimeError(f"{self}: {mq} has unexpected state {state1}")
 
-        if mq.state is not QubitState.RELEASE:
+        # qubit_is_* has side effect that changes mq.state
+        state2: QubitState = mq.state
+        if state2 is not QubitState.RELEASE:
             self.swap.pop_waiting_su(mq)
 
     @abstractmethod
     def qubit_is_entangled_next(self, mq: MemoryQubit, epr: Entanglement) -> FibPath | None:
         """
-        Part of ``qubit_is_entangled_in_internal`` logic, overridden by subclass.
+        Decide next step for entangled qubit in INTERNAL phase.
+        This is part of ``qubit_is_entangled_in_internal`` logic, overridden by subclass.
+        It must return one of these decisions.
 
-        If the entanglement is unwanted, keep ``mq.epr_path_ids`` unset or empty.
+        A. Unwanted Entanglement
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+
+        1. Keep :py:attr:`mq.epr_path_ids <mqns.entity.memory.MemoryQubit.epr_path_ids>` unset or empty.
+
+        This indicates the entanglement is unwanted / unusable.
         The qubit would then be released.
 
-        Otherwise, populate ``mq.epr_path_ids`` with potential paths, then either:
+        B. Start Purification
+        ^^^^^^^^^^^^^^^^^^^^^
 
-        * Change qubit state to PURIF, return a FIB path entry to guide purification.
-        * Change qubit state to ELIGIBLE, to start swapping.
-          If a FIB entry is returned, it is supplied to swap candidate selection function.
+        1. Populate :py:attr:`mq.epr_path_ids <mqns.entity.memory.MemoryQubit.epr_path_ids>`
+           with potential paths.
+        2. Set :py:attr:`mq.state <mqns.entity.memory.MemoryQubit.state>`
+           to :py:attr:`~mqns.entity.memory.QubitState.PURIF`.
+        3. Return a FIB path entry (required) to guide purification.
+
+        C. Start Swapping
+        ^^^^^^^^^^^^^^^^^
+
+        1. Populate :py:attr:`mq.epr_path_ids <mqns.entity.memory.MemoryQubit.epr_path_ids>`
+           with potential paths.
+        2. Set :py:attr:`mq.state <mqns.entity.memory.MemoryQubit.state>`
+           to :py:attr:`~mqns.entity.memory.QubitState.ELIGIBLE`.
+        3. Return a FIB path entry (optional) to pass to swap candidate selection function.
+
+        D. Save for Later Use
+        ^^^^^^^^^^^^^^^^^^^^^
+
+        1. Populate :py:attr:`mq.epr_path_ids <mqns.entity.memory.MemoryQubit.epr_path_ids>`
+           with potential paths.
+        2. Keep :py:attr:`mq.state <mqns.entity.memory.MemoryQubit.state>`
+           as :py:attr:`~mqns.entity.memory.QubitState.ENTANGLED1`.
         """
 
-    def qubit_is_purif(self, qubit: MemoryQubit, fp: FibPath, partner: QNode):
+    def qubit_is_purif(self, qubit: MemoryQubit, fp: FibPath, partner: QNode) -> None:
         """
         Handle a qubit entering PURIF state or have completed a previous purification round.
 
@@ -328,7 +351,7 @@ class Forwarder(ClassicCommandDispatcherMixin, Application[QNode]):
 
         self.purif.start(qubit, found[0], fp, partner)
 
-    def qubit_is_eligible(self, mq0: MemoryQubit, fp: FibPath | None):
+    def qubit_is_eligible(self, mq0: MemoryQubit, fp: FibPath | None) -> None:
         """
         Handle a qubit entering ELIGIBLE state.
 
@@ -424,7 +447,7 @@ class Forwarder(ClassicCommandDispatcherMixin, Application[QNode]):
         Args:
             mq0: The qubit entering ELIGIBLE state.
             epr0: The entanglement stored in the qubit.
-            fp: FIB path entry found by ``qubit_is_entangled_next`` or used in last round of purification.
+            fp: FIB path entry found by :py:meth:`qubit_is_entangled_next` or used in last round of purification.
 
         Returns:
             None: Do not swap.
@@ -444,7 +467,7 @@ class Forwarder(ClassicCommandDispatcherMixin, Application[QNode]):
         assert self.node.timing.is_async(), f"unexpected {event} in SYNC timing mode, (t_ext+t_int) too high"
         self.release_qubit(event.qubit, is_decoh=True)
 
-    def release_qubit(self, qubit: MemoryQubit, *, need_remove=False, is_decoh=False):
+    def release_qubit(self, qubit: MemoryQubit, *, need_remove=False, is_decoh=False) -> None:
         """
         Release a qubit.
 
