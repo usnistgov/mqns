@@ -26,7 +26,7 @@ from mqns.network.ll.counter import LinkLayerCounters
 from mqns.network.ll.entangle import LLEntangleProc, LLGroup, LLNotifyEvent, ReserveMsg
 from mqns.network.ll.entangle_2nd import LLEntangleProc2nd, LLGroup2nd, LLNotify2ndEvent
 from mqns.network.ll.entangle_pri import LLEntangleProcPri, LLGroupPri, LLNotifyPriEvent
-from mqns.network.ll.event import PathActivateEvent, PathDeactivateEvent, QubitEntangledEvent, QubitReleasedEvent
+from mqns.network.ll.event import LLActivateEvent, LLDeactivateEvent, QubitEntangledEvent, QubitReleasedEvent
 from mqns.network.network import TimingPhase, sync_phase_handler
 from mqns.simulator import event_handler
 from mqns.utils import rng, unwrap_cast
@@ -50,7 +50,6 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
     It equips a QNode and is activated from the forwarding function (e.g., ProactiveForwarder).
     """
 
-    entangle_by_ch: Final[MutableMapping[QuantumChannel, LLEntangleProc]]
     entangle_by_peer: Final[MutableMapping[str, LLEntangleProc]]
     entangle_procs: Final[Iterable[LLEntangleProc[LLGroup[Any]]]]
     group_by_mq: Final[MutableMapping[int, LLGroup]]
@@ -60,7 +59,6 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         self.reset_time = 1 / kwargs.get("frequency", 1e6)
         self.tau_0 = kwargs.get("tau_0", 0.0)
 
-        self.entangle_by_ch = {}
         self.entangle_by_peer = {}
         self.entangle_procs = self.entangle_by_peer.values()
         self.group_by_mq = {}
@@ -84,12 +82,12 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
                 r += proc.cnt
         return r
 
-    def cnt_channel(self, ch: QuantumChannel) -> LinkLayerCounters | None:
+    def cnt_channel(self, peer: str) -> LinkLayerCounters | None:
         """
         Retrieve per-channel counters.
 
         Args:
-            ch: A quantum channel.
+            peer: Peer node name.
 
         Returns:
             Counters of an active channel where this node is primary.
@@ -99,7 +97,7 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
             If a channel is recently deactivated but not yet deleted, its counters would still be returned.
             If the same channel is reactivated, the counters would continue accumulating without reset.
         """
-        proc = self.entangle_by_ch.get(ch)
+        proc = self.entangle_by_peer.get(peer)
         if type(proc) is LLEntangleProcPri:
             return proc.cnt
         return None
@@ -121,56 +119,47 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         # Clear existing memory qubits.
         self.memory.clear()
 
-    @staticmethod
-    def _gid_from_path_id(path_id: int | None) -> int:
-        if path_id is None:
-            return -9
-        return path_id
-
     @event_handler
-    def path_activate(self, event: PathActivateEvent) -> None:
+    def group_activate(self, event: LLActivateEvent) -> None:
         """
         Handle path activation command.
         """
         event.cancel()
-        ch = event.qchannel
-        path_id = event.path_id
+        peer = event.peer.name
 
         # Find or create the channel entangle procedure.
         LLEntangleProcTyp = LLEntangleProcPri if event.is_primary else LLEntangleProc2nd
-        proc = self.entangle_by_ch.get(ch)
+        proc = self.entangle_by_peer.get(peer)
         if not proc:
-            proc = LLEntangleProcTyp(self, ch)
-            self.entangle_by_ch[ch] = self.entangle_by_peer[ch.find_peer(self.node).name] = proc
+            proc = LLEntangleProcTyp(self, event.ch)
+            self.entangle_by_peer[peer] = proc
         elif type(proc) is not LLEntangleProcTyp:
             raise ValueError(f"{event}: channel already activated with opposite role in {proc}")
 
         # Activate the group within the channel.
-        gid = self._gid_from_path_id(path_id)
-        proc.group_activate(gid, [q for q, _ in self.memory.find(lambda q, _: q.path_id == path_id, qchannel=ch)])
+        proc.group_activate(event.gid, event.qubits)
 
     @event_handler
-    def path_deactivate(self, event: PathDeactivateEvent) -> None:
+    def group_deactivate(self, event: LLDeactivateEvent) -> None:
         """
         Handle path deactivation command.
         """
         event.cancel()
+        peer = event.peer.name
 
         # Find the channel entangle procedure.
         try:
-            proc = self.entangle_by_ch[event.qchannel]
+            proc = self.entangle_by_peer[peer]
         except LookupError:
             raise ValueError(f"{event}: channel not activated") from None
 
         # Deactivate the group within the channel.
-        gid = self._gid_from_path_id(event.path_id)
-        proc.group_deactivate(gid)
+        proc.group_deactivate(event.gid)
 
-    def channel_deactivate(self, proc: LLEntangleProc) -> None:
+    def channel_delete(self, proc: LLEntangleProc) -> None:
         """
         Delete a channel, invoked by ``LLEntangleProc._group_delete()``.
         """
-        del self.entangle_by_ch[proc.ch]
         del self.entangle_by_peer[proc.peer.name]
         if type(proc) is LLEntangleProcPri:
             proc.log_debug("CHANNEL_DEACTIVATE | %s", proc.cnt)

@@ -113,11 +113,11 @@ class LLEntangleProc[G: LLGroup[Any]](LogSelfMixin):
         grp.log_debug("GROUP_DEACTIVATE t_delete=%s", t_delete)
 
     def _group_delete(self, gid: int) -> None:
-        """Delete a path, scheduled when its draining is complete."""
+        """Delete a group, scheduled when its draining is complete."""
         try:
             grp = self.groups_draining.pop(gid)
         except LookupError:
-            raise LookupError(f"{self} does not have draining path {gid}") from None
+            raise LookupError(f"{self} does not have draining group {gid}") from None
 
         grp.delete_event.cancel()
         for mq in grp.qubits.values():
@@ -126,7 +126,7 @@ class LLEntangleProc[G: LLGroup[Any]](LogSelfMixin):
 
         grp.assert_is_drained()
         if len(self.groups_active) + len(self.groups_draining) == 0:
-            self.ll.channel_deactivate(self)
+            self.ll.channel_delete(self)
 
 
 class LLGroup[P: LLEntangleProc[Any]](LogSelfMixin):

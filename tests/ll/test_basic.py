@@ -12,8 +12,7 @@ from .ll_common import activate_path, check_link_arch_delays, force_attempts, ma
 
 
 @pytest.mark.parametrize("epr_type", [WernerStateEntanglement, MixedStateEntanglement])
-@pytest.mark.parametrize("path_id", [None, 7])
-def test_basic(monkeypatch: pytest.MonkeyPatch, epr_type: type[Entanglement], path_id: int | None):
+def test_basic(monkeypatch: pytest.MonkeyPatch, epr_type: type[Entanglement]):
     net, ch, ll1, ll2, nl1, nl2 = make_2nodes(
         qchannel_args={"delay": 0.1, "link_arch": LinkArchDimBk()},
         memory_args={"t_cohere": 4.1},
@@ -21,7 +20,7 @@ def test_basic(monkeypatch: pytest.MonkeyPatch, epr_type: type[Entanglement], pa
     )
     simulator = Simulator(0.0, 20.0, install_to=(log, net))
 
-    activate_path(0.5, 9.4, nl1, nl2, path_id=path_id)
+    activate_path(0.5, 9.4, nl1, nl2, gid=7)
     check_link_arch_delays(0.5, ch, attempt_interval=0.2, d_notify_pri=0.2, d_notify_2nd=0.2)
     force_attempts(monkeypatch, ll1, n2=[1, 2, 1])
 
@@ -82,10 +81,10 @@ def test_multiple_paths():
     )
     simulator = Simulator(0.0, 10.0, install_to=(log, net))
 
-    activate_path(0.1, 9.9, nl1, nl2, path_id=1, n=1)
-    activate_path(0.1, 9.9, nl1, nl2, path_id=2, n=2)
-    activate_path(0.1, 9.9, nl1, nl2, path_id=3, n=3)
-    activate_path(0.1, 9.9, nl1, nl2, path_id=4, n=4)
+    activate_path(0.1, 9.9, nl1, nl2, gid=1, n=1)
+    activate_path(0.1, 9.9, nl1, nl2, gid=2, n=2)
+    activate_path(0.1, 9.9, nl1, nl2, gid=3, n=3)
+    activate_path(0.1, 9.9, nl1, nl2, gid=4, n=4)
 
     simulator.run()
 
@@ -144,7 +143,7 @@ def test_path_delete(
 
     nl1.check_epr_creation_prior = 0.3
     nl2.check_epr_creation_prior = 0.6
-    activate_path(0.1, t_delete, nl1, nl2, path_id=7)
+    activate_path(0.1, t_delete, nl1, nl2, gid=7)
     check_link_arch_delays(0.1, ch, attempt_interval=0.6, d_notify_pri=0.3, d_notify_2nd=0.6)
     force_attempts(monkeypatch, ll1, n2=[1, 4, 1, 10000])
 
@@ -229,8 +228,8 @@ def test_path_delete(
     simulator.run()
 
     if t_delete < simulator.te.sec:
-        assert len(ll1.entangle_by_ch) == 0
-        assert len(ll2.entangle_by_ch) == 0
+        assert len(ll1.entangle_by_peer) == 0
+        assert len(ll2.entangle_by_peer) == 0
     assert nl1.entangle == pytest.approx(expect_t_entangle1[:n_entangle], abs=1e-6)
     assert nl2.entangle == pytest.approx(expect_t_entangle2[:n_entangle], abs=1e-6)
 
@@ -334,8 +333,8 @@ def test_path_reinsert(
     )
     simulator = Simulator(0.0, 6.0, install_to=(log, net))
 
-    activate_path(0.1, t_delete, nl1, nl2, path_id=7)
-    activate_path(t_insert, None, nl1, nl2, path_id=path_id, n=0 if same_path else 1)
+    activate_path(0.1, t_delete, nl1, nl2, gid=7)
+    activate_path(t_insert, None, nl1, nl2, gid=path_id, n=0 if same_path else 1)
     check_link_arch_delays(0.1, ch, attempt_interval=0.6, d_notify_pri=0.3, d_notify_2nd=0.6)
     force_attempts(monkeypatch, ll1, n2=[2, 2, 10000])
     force_attempts(monkeypatch, ll2, n1=[2, 2, 10000])
@@ -348,7 +347,7 @@ def test_path_reinsert(
     assert nl1.entangle == pytest.approx(t_entangle1, abs=1e-6)
     assert nl2.entangle == pytest.approx(t_entangle2, abs=1e-6)
 
-    assert (cnt1 := ll1.cnt_channel(ch)) is not None
+    assert (cnt1 := ll1.cnt_channel(ll2.node.name)) is not None
     # Given t_delete and t_insert are less than t_cohere apart, the per-channel counters would not
     # be deleted, so that they should include the entanglements from both activations.
     assert cnt1.n_etg == len(t_entangle1)
@@ -356,7 +355,7 @@ def test_path_reinsert(
     # .etg_rate is rate per memory pair, so that it does not change even when there are two pairs.
     assert cnt1.etg_rate == pytest.approx(1 / 1.8, abs=1e-6)
     # Secondary node does not keep per-channel counters.
-    assert ll2.cnt_channel(ch) is None
+    assert ll2.cnt_channel(ll1.node.name) is None
 
 
 def test_skip_ahead():
@@ -366,7 +365,7 @@ def test_skip_ahead():
     )
     simulator = Simulator(0.0, 10.0, install_to=(log, net))
 
-    activate_path(0.5, None, nl1, nl2, path_id=None)
+    activate_path(0.5, None, nl1, nl2, gid=7)
 
     simulator.run()
 
@@ -405,7 +404,7 @@ def test_timing_mode_sync(qchannel_delay: float, t_entangle: list[float]):
     )
     simulator = Simulator(0.0, 6.1, install_to=(log, net))
 
-    activate_path(0.1, 5.9, nl1, nl2, path_id=None)
+    activate_path(0.1, 5.9, nl1, nl2, gid=7)
     simulator.run()
 
     for nl in nl1, nl2:

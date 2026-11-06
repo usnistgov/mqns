@@ -1,7 +1,7 @@
 from collections.abc import Callable, MutableMapping
 from typing import TYPE_CHECKING, Literal, override
 
-from mqns.entity.memory import MemoryQubit, PathDirection, QubitState
+from mqns.entity.memory import MemoryQubit, PathDirection, QuantumMemory, QubitState
 from mqns.entity.qchannel import QuantumChannel
 from mqns.models.epr import Entanglement
 from mqns.network.fw import FibPath, PathInstructions, validate_path_instructions
@@ -13,12 +13,17 @@ from mqns.network.fw.select import (
     select_swap_qubit_newest,
     select_swap_qubit_oldest,
 )
-from mqns.network.ll import PathActivateEvent, PathDeactivateEvent
+from mqns.network.ll import LLActivateEvent, LLDeactivateEvent
 from mqns.network.proactive.mux import MuxScheme
 from mqns.utils import unwrap, unwrap_cast
 
 if TYPE_CHECKING:
     from mqns.network.fw.forwarder import Forwarder
+
+_LL_GID_ALL_PATHS = -1
+"""
+LinkLayer group identifier for all paths on a channel.
+"""
 
 
 class MuxSchemeDynamicBase(MuxScheme):
@@ -44,12 +49,13 @@ class MuxSchemeDynamicBase(MuxScheme):
             return
 
         self.simulator.sched(
-            PathActivateEvent(
+            LLActivateEvent(
                 self.node,
                 ch,
-                path_id=None,
                 t=self.simulator.tc,
+                gid=_LL_GID_ALL_PATHS,
                 is_primary=self._path_adj_is_primary(inst, fp, dir),
+                qubits=(q for q, _ in self.memory.find(QuantumMemory.predicate_all, qchannel=ch)),
             )
         )
 
@@ -63,11 +69,11 @@ class MuxSchemeDynamicBase(MuxScheme):
 
         del self.qchannel_paths_map[ch]
         self.simulator.sched(
-            PathDeactivateEvent(
+            LLDeactivateEvent(
                 self.node,
                 ch,
-                path_id=None,
                 t=self.simulator.tc,
+                gid=_LL_GID_ALL_PATHS,
             )
         )
 

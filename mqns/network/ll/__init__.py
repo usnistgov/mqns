@@ -7,16 +7,17 @@ This package provides the :py:class:`LinkLayer` application, which implements el
 Interacting with the LinkLayer
 ------------------------------
 
-LinkLayer is activated via :py:class:`PathActivateEvent` and deactivated via :py:class:`PathDeactivateEvent`.
+LinkLayer is activated via :py:class:`LLActivateEvent` and deactivated via :py:class:`LLDeactivateEvent`.
 Typically, these events are sent by a component of :py:class:`~mqns.network.fw.Forwarder`.
 
 The activation is scoped for a quantum channel connected to a peer node that also runs the LinkLayer application.
 Both LinkLayer applications must be activated at the same time, with one designated as the primary node
-and the other designates the secondary node.
+and the other designated the secondary node.
 Moreover, there must be a classical channel with the same peer node, which must have the exactly same one-way latency.
 
-The LinkLayer application works with the peer LinkLayer to continuously generate elementary entanglements,
-on a set of memory qubits assigned to the quantum channel and optionally allocated to the path_id specified in the activation.
+Each activation is for a *group* within the quantum channel.
+Each group is allocated a certain quantity of memory qubits.
+The LinkLayer application works with the peer LinkLayer to generate elementary entanglements into these qubits.
 Upon successful generation, the elementary entanglement is delivered via :py:class:`QubitEntangledEvent`,
 which is typically received by the forwarder.
 When a delivered memory qubit is no longer needed, it must be returned to LinkLayer via :py:class:`QubitReleasedEvent`,
@@ -80,26 +81,26 @@ The secondary node releases its qubit upon receiving this message.
 Internal Architecture
 ---------------------
 
-:py:class:`~mqns.network.ll.entangle_pri.LLEntangleProcPri` implements the entanglement generation steps
-on a specific channel as the primary node.
-It uses :py:class:`~mqns.network.ll.entangle_pri.LLGroupPri` data structure to keep track of activations,
-in which :py:attr:`~mqns.network.ll.entangle_pri.LLGroupPri.oreq_table` records all ongoing reservations
+:py:class:`~mqns.network.ll.entangle_pri.LLGroupPri` implements the entanglement generation steps
+on a specific channel in a specific group as the primary node.
+It maintains :py:attr:`~mqns.network.ll.entangle_pri.LLGroupPri.oreq_table` to record all ongoing reservations
 since RESERVE_REQ until success notification.
+It is created and owned by :py:class:`~mqns.network.ll.entangle_pri.LLEntangleProcPri` per channel.
 
-:py:class:`~mqns.network.ll.entangle_2nd.LLEntangleProc2nd` implements the entanglement generation steps
-on a specific channel as the secondary node.
-It uses :py:class:`~mqns.network.ll.entangle_2nd.LLGroup2nd` data structure to keep track of activations,
-in which :py:attr:`~mqns.network.ll.entangle_2nd.LLGroup2nd.ireq_queue` records reservations that are
+:py:class:`~mqns.network.ll.entangle_2nd.LLGroup2nd` implements the entanglement generation steps
+on a specific channel in a specific group as the secondary node.
+It maintains :py:attr:`~mqns.network.ll.entangle_2nd.LLGroup2nd.ireq_queue` to record reservations that are
 not yet accepted due to lack of qubits.
+It is created and owned by :py:class:`~mqns.network.ll.entangle_2nd.LLEntangleProc2nd` per channel.
 
-The :py:class:`LinkLayer` class is responsible for creating and destroying the above per-channel objects,
-and dispatching messages and events to the correct channel.
+The :py:class:`LinkLayer` class creates and owns the above per-channel objects,
+and dispatches messages and events to the correct channel or group.
 """
 
 from mqns.network.ll.counter import LinkLayerCounters
 from mqns.network.ll.event import (
-    PathActivateEvent,
-    PathDeactivateEvent,
+    LLActivateEvent,
+    LLDeactivateEvent,
     QubitConsumeEvent,
     QubitEntangledEvent,
     QubitReleasedEvent,
@@ -110,8 +111,8 @@ __all__ = [
     "LinkLayer",
     "LinkLayerCounters",
     "LinkLayerInitKwargs",
-    "PathActivateEvent",
-    "PathDeactivateEvent",
+    "LLActivateEvent",
+    "LLDeactivateEvent",
     "QubitConsumeEvent",
     "QubitEntangledEvent",
     "QubitReleasedEvent",

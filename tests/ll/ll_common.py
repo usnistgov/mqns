@@ -11,8 +11,8 @@ from mqns.models.epr import Entanglement, WernerStateEntanglement
 from mqns.network.ll import (
     LinkLayer,
     LinkLayerInitKwargs,
-    PathActivateEvent,
-    PathDeactivateEvent,
+    LLActivateEvent,
+    LLDeactivateEvent,
     QubitEntangledEvent,
     QubitReleasedEvent,
 )
@@ -92,25 +92,32 @@ def make_2nodes(
     return net, qc, n1.get_app(LinkLayer), n2.get_app(LinkLayer), n1.get_app(NetworkLayer), n2.get_app(NetworkLayer)
 
 
-def activate_path(
-    t0: float | None, t1: float | None, src: Application[QNode], dst: Application[QNode], *, path_id: int | None, n=1
-):
+def activate_path(t0: float | None, t1: float | None, src: Application[QNode], dst: Application[QNode], *, gid: int, n=1):
     """
-    Schedule ``PathActivateEvent`` and ``PathDeactivateEvent``.
+    Schedule ``LLActivateEvent`` and ``LLDeactivateEvent``.
     """
     simulator = src.simulator
     ch = src.node.get_qchannel(dst.node)
-    ch.assign_memory_qubits(capacity=n, path_id=path_id)
+    ch.assign_memory_qubits(capacity=n, path_id=gid)
 
     if t0 is not None:
         t = simulator.time(sec=t0)
-        simulator.sched(PathActivateEvent(src.node, ch, path_id, t=t, is_primary=True))
-        simulator.sched(PathActivateEvent(dst.node, ch, path_id, t=t, is_primary=False))
+        for node, is_primary in (src.node, True), (dst.node, False):
+            simulator.sched(
+                LLActivateEvent(
+                    node,
+                    ch,
+                    t=t,
+                    gid=gid,
+                    is_primary=is_primary,
+                    qubits=(q for q, _ in node.memory.find(lambda q, _: q.path_id == gid, qchannel=ch)),
+                )
+            )
 
     if t1 is not None:
         t = simulator.time(sec=t1)
-        simulator.sched(PathDeactivateEvent(src.node, ch, path_id, t=t))
-        simulator.sched(PathDeactivateEvent(dst.node, ch, path_id, t=t))
+        for node in src.node, dst.node:
+            simulator.sched(LLDeactivateEvent(node, ch, t=t, gid=gid))
 
 
 def check_link_arch_delays(
