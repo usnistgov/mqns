@@ -59,6 +59,13 @@ In this step, the LinkLayer application computes how many attempts are needed un
 as well as when the successful attempt would start and finish.
 It then schedules events for the next step.
 
+If ``max_attempt_rate`` is set, the aggregate attempt rate on each channel is throttled.
+When n reservations are making attempts concurrently, each reservation's attempts are spaced by
+``max(attempt_interval, n / max_attempt_rate)``.
+Whenever a reservation starts attempting, reaches its successful attempt, or is aborted,
+the progress of every other attempting reservation is accumulated and its successful attempt is rescheduled
+under the new spacing.
+
 3. Success Notification
 ^^^^^^^^^^^^^^^^^^^^^^^
 

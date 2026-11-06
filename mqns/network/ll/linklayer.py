@@ -15,6 +15,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import math
 from collections.abc import Callable, Iterable, MutableMapping
 from typing import Final, TypedDict, Unpack, override
 
@@ -37,6 +38,15 @@ class LinkLayerInitKwargs(TypedDict, total=False):
     """Entanglement source frequency, defaults to ``1_000_000``."""
     tau_0: float
     """Local operation delay in seconds for emitting and absorbing photon, defaults to ``0.0``."""
+    max_attempt_rate: float
+    """
+    Maximum entanglement attempts per second on each quantum channel, defaults to unlimited.
+
+    This models a per-channel limitation such as the minimum spacing between time-bin encoded photons.
+    When multiple memory pairs are attempting entanglement on the same channel concurrently,
+    their attempts are spread out so that the aggregate attempt rate does not exceed this limit.
+    The spacing is recomputed whenever a memory pair starts or stops attempting.
+    """
     cnt_history: int
     """
     How many recent entanglement to keep in per-channel history, default is ``0``.
@@ -58,6 +68,9 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         super().__init__()
         self.reset_time = 1 / kwargs.get("frequency", 1e6)
         self.tau_0 = kwargs.get("tau_0", 0.0)
+        self.max_attempt_rate = kwargs.get("max_attempt_rate", math.inf)
+        if not self.max_attempt_rate > 0:
+            raise ValueError("max_attempt_rate must be positive")
 
         self.entangle_by_ch = {}
         self.entangle_by_peer = {}
