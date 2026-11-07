@@ -13,7 +13,7 @@ from mqns.models.delay import ConstantDelayModel
 from mqns.models.epr import Entanglement
 from mqns.models.error import PerfectErrorModel
 from mqns.network.builder import GridTopoGen, NetworkBuilder, TreeTopoGen
-from mqns.network.fw import Fib, FibPath, Forwarder, MemoryEprTuple, RoutingPath
+from mqns.network.fw import Fib, Forwarder, MemoryEprTuple, RoutingPath
 from mqns.network.proactive import MuxSchemeBufferSpace, MuxSchemeDynamicEpr, MuxSchemeStatistical, ProactiveForwarder
 from mqns.network.protocol.consumer import Consumer, RequestCounters
 from mqns.network.route import YenRouteAlgorithm
@@ -22,7 +22,7 @@ from mqns.utils import unwrap, unwrap_cast
 
 from .fw_common import (
     LA_ALWAYS,
-    QubitReleaseReset,
+    MinLinkLayer,
     check_fw_counters,
     collect_cpacket_counts,
     make_network,
@@ -101,7 +101,7 @@ def test_3_ssq(ssq: MuxSchemeBufferSpace.SelectSwapQubit | None, addrs: list[int
     simulator.run()
     print_node_counters(net)
 
-    selected_qubits = [a for a, t in fwB.node.get_app(QubitReleaseReset).history if a < 8 and t.sec >= 1.100]
+    selected_qubits = [a for a, t in fwB.node.get_app(MinLinkLayer).release_history if a < 8 and t.sec >= 1.100]
     if addrs is None:
         assert len(selected_qubits) == 4 == len(set(selected_qubits))
         assert {0, 1, 4, 5, 6, 7}.issuperset(selected_qubits)
@@ -404,7 +404,7 @@ def test_4_delayed(
     if n_consumed > 0:
         assert 0.750 < req_cnt.consumed_avg_fidelity <= 0.875
 
-    assert list(fw.node.get_app(QubitReleaseReset).last_t for fw in (fwA, fwB, fwC, fwD)) == [
+    assert list(fw.node.get_app(MinLinkLayer).last_release_t for fw in (fwA, fwB, fwC, fwD)) == [
         simulator.time(sec=t) for t in t_release
     ]
     assert (cpacket_cnt["*-A"], cpacket_cnt["*-B"], cpacket_cnt["*-C"], cpacket_cnt["*-D"]) == n_cpacket
@@ -606,7 +606,7 @@ def test_5_decohere(
     print_node_counters(net)
     assert RequestCounters.of(net, rp).n_consumed == n_consumed
     QuantumMemory.check_leaks(net.nodes)
-    assert [node.get_app(QubitReleaseReset).last_t for node in itertools.islice(net.nodes, len(t_release))] == [
+    assert [node.get_app(MinLinkLayer).last_release_t for node in itertools.islice(net.nodes, len(t_release))] == [
         simulator.time(sec=t) for t in t_release
     ]
 
@@ -676,7 +676,7 @@ def test_rect2_multipath(has_etg: tuple[int, int, int, int], n_swapped: tuple[in
 def test_tree3_dynepr(t_edge_etg: float, selected_path: tuple[int, int], n_consumed: tuple[int, int]):
     """Test MuxSchemeDynamicEpr in 3-level tree topology."""
 
-    def select_path(path_ids: list[int], epr: Entanglement, fib: Fib) -> int | FibPath:
+    def select_path(path_ids: list[int], epr: Entanglement, fib: Fib) -> int:
         if len(path_ids) != 2:
             return path_ids[0]
 
@@ -685,7 +685,7 @@ def test_tree3_dynepr(t_edge_etg: float, selected_path: tuple[int, int], n_consu
         else:  # A-C
             assert epr.src is fwA.node
             req_id = (rp0.req_id, rp1.req_id)[selected_path[1]]
-        return fib.get_req(req_id).paths[0]
+        return fib.get_req(req_id).paths[0].path_id
 
     net, simulator = make_network(
         NetworkBuilder()

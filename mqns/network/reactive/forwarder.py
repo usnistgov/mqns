@@ -17,13 +17,18 @@
 
 from typing import Final, Unpack, override
 
-from mqns.entity.memory import MemoryQubit, QubitState
+from mqns.entity.memory import MemoryQubit, QuantumMemory, QubitState
 from mqns.models.epr import Entanglement
 from mqns.network.fw import FibPath, Forwarder, ForwarderInitKwargs
-from mqns.network.ll import PathActivateEvent, QubitEntangledEvent
+from mqns.network.ll import LLActivateEvent, QubitEntangledEvent
 from mqns.network.network import TimingPhase, sync_phase_handler
 from mqns.network.reactive.fw_nb import ReactiveForwarderNorthbound
 from mqns.network.reactive.fw_plan import ReactivePlanner
+
+_LL_GID_ALL_PATHS = -1
+"""
+LinkLayer group identifier for all paths on a channel.
+"""
 
 
 class ReactiveForwarder(Forwarder):
@@ -54,10 +59,19 @@ class ReactiveForwarder(Forwarder):
         # Qchannel activation is called before simulation starts, but EPR generation starts at t=0
         self.activate_qchannels()
 
-    def activate_qchannels(self):
+    def activate_qchannels(self) -> None:
+        now = self.simulator.tc
         for ch in self.node.qchannels:
-            is_primary = ch.node_list[0] is self.node
-            self.simulator.sched(PathActivateEvent(self.node, ch, None, t=self.simulator.tc, is_primary=is_primary))
+            self.simulator.sched(
+                LLActivateEvent(
+                    self.node,
+                    ch,
+                    t=now,
+                    gid=_LL_GID_ALL_PATHS,
+                    is_primary=ch.node_list[0] is self.node,
+                    qubits=(q for q, _ in self.memory.find(QuantumMemory.predicate_all, qchannel=ch)),
+                )
+            )
 
     @sync_phase_handler(TimingPhase.ROUTING, True)
     def sync_routing_enter(self):

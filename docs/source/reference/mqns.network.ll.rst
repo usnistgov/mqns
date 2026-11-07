@@ -6,6 +6,9 @@ mqns.network.ll package
    :show-inheritance:
    :undoc-members:
 
+LinkLayer Internals
+-------------------
+
 .. automodule:: mqns.network.ll.entangle
    :members:
    :show-inheritance:

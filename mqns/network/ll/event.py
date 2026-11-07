@@ -15,6 +15,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from collections.abc import Callable, Iterable
 from typing import ClassVar, final, override
 
 from mqns.entity.memory import MemoryQubit, QubitState
@@ -23,38 +24,50 @@ from mqns.entity.qchannel import QuantumChannel
 from mqns.models.epr import Entanglement
 from mqns.simulator import Event, Time
 
+type OnAttemptSuccess = Callable[[QuantumChannel, int, Entanglement], None]
+"""
+Callback upon starting a successful attempt.
+Arguments are channel, gid, EPR pair.
+"""
+
 
 @final
-class PathActivateEvent(Event):
+class LLActivateEvent(Event):
     """
-    Instruct LinkLayer to start entanglement generation on a channel for a path.
+    Instruct LinkLayer to start entanglement generation.
     """
-
-    ROLE_STR: ClassVar = {True: "pri", False: "2nd"}
 
     def __init__(
         self,
         node: QNode,
-        qchannel: QuantumChannel,
-        path_id: int | None,
+        ch: QuantumChannel,
         *,
         t: Time,
+        gid: int,
+        qubits: Iterable[MemoryQubit],
         is_primary: bool,
+        on_attempt_success: OnAttemptSuccess = lambda *_: None,
     ):
         """
         Args:
-            node: Node where LinkLayer is installed.
-            qchannel: Quantum channel for entanglement generation.
-            path_id: Only consider qubits allocated to this path_id.
-                If ``None``, only consider unallocated qubits.
-            is_primary: Role of this LinkLayer instance.
-                This is ignored if the same channel is already activated.
+            node: Node with :py:class:`~mqns.network.ll.LinkLayer` application.
+            ch: Quantum channel for entanglement generation.
+            gid: Group identifier, must be unique per channel and same on both sides.
+            qubits: Qubits allocated for the group.
+            is_primary: True for primary role, False for secondary role.
+                Two nodes on the same channel must take opposite roles.
+                The choice must be consistent for all groups on the same channel.
+            on_attempt_success: Callback upon starting a successful attempt.
+                This is only called on the primary node side.
         """
-        super().__init__(t, f"ch={qchannel.name}, path={path_id}, node={node.name}, role={self.ROLE_STR[is_primary]}")
         self.node = node
-        self.qchannel = qchannel
-        self.path_id = path_id
+        self.peer = ch.find_peer(node)
+        super().__init__(t, f"node={node.name}, role={'pri' if is_primary else '2nd'}, peer={self.peer.name}, gid={gid}")
+        self.ch = ch
+        self.gid = gid
+        self.qubits = list(qubits)
         self.is_primary = is_primary
+        self.on_attempt_success = on_attempt_success
 
     @override
     def invoke(self) -> None:
@@ -62,30 +75,30 @@ class PathActivateEvent(Event):
 
 
 @final
-class PathDeactivateEvent(Event):
+class LLDeactivateEvent(Event):
     """
-    Instruct LinkLayer to stop entanglement generation on a channel for a path.
+    Instruct LinkLayer to stop entanglement generation.
     """
 
     def __init__(
         self,
         node: QNode,
-        qchannel: QuantumChannel,
-        path_id: int | None,
+        ch: QuantumChannel,
         *,
         t: Time,
+        gid: int,
     ):
         """
         Args:
-            node: Node where LinkLayer is installed.
-            qchannel: Quantum channel for entanglement generation.
-            path_id: Only consider qubits allocated to this path_id.
-                If ``None``, only consider unallocated qubits.
+            node: Node with :py:class:`~mqns.network.ll.LinkLayer` application.
+            ch: Quantum channel for entanglement generation.
+            gid: Group identifier, must be unique per channel and same on both sides.
         """
-        super().__init__(t, f"ch={qchannel.name}, path={path_id}, node={node.name}")
         self.node = node
-        self.qchannel = qchannel
-        self.path_id = path_id
+        self.peer = ch.find_peer(node)
+        super().__init__(t, f"node={node.name}, peer={self.peer.name}, gid={gid}")
+        self.ch = ch
+        self.gid = gid
 
     @override
     def invoke(self) -> None:

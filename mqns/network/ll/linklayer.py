@@ -15,21 +15,21 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from collections.abc import Callable, Iterable, MutableMapping
-from typing import Final, TypedDict, Unpack, override
+from collections.abc import Callable, Iterable, Mapping, MutableMapping
+from typing import Any, Final, TypedDict, Unpack, override
 
 from mqns.entity.cchannel import ClassicCommandDispatcherMixin, ClassicPacket, classic_cmd_handler
 from mqns.entity.memory import QubitState
 from mqns.entity.node import Application, QNode
 from mqns.entity.qchannel import QuantumChannel
 from mqns.network.ll.counter import LinkLayerCounters
-from mqns.network.ll.entangle import LLEntangleProc, ReserveMsg, ReserveParsedMsg
-from mqns.network.ll.entangle_2nd import LLEntangle2ndEvent, LLEntangleProc2nd
-from mqns.network.ll.entangle_pri import LLEntanglePriEvent, LLEntangleProcPri
-from mqns.network.ll.event import PathActivateEvent, PathDeactivateEvent, QubitEntangledEvent, QubitReleasedEvent
+from mqns.network.ll.entangle import LLEntangleProc, LLGroup, LLNotifyEvent, ReserveMsg
+from mqns.network.ll.entangle_2nd import LLEntangleProc2nd, LLGroup2nd, LLNotify2ndEvent
+from mqns.network.ll.entangle_pri import LLEntangleProcPri, LLGroupPri, LLNotifyPriEvent
+from mqns.network.ll.event import LLActivateEvent, LLDeactivateEvent, QubitEntangledEvent, QubitReleasedEvent
 from mqns.network.network import TimingPhase, sync_phase_handler
 from mqns.simulator import event_handler
-from mqns.utils import rng, unwrap
+from mqns.utils import rng, unwrap_cast
 
 
 class LinkLayerInitKwargs(TypedDict, total=False):
@@ -50,18 +50,18 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
     It equips a QNode and is activated from the forwarding function (e.g., ProactiveForwarder).
     """
 
-    entangle_by_ch: Final[MutableMapping[QuantumChannel, LLEntangleProc]]
     entangle_by_peer: Final[MutableMapping[str, LLEntangleProc]]
-    entangle_procs: Final[Iterable[LLEntangleProc]]
+    entangle_procs: Final[Iterable[LLEntangleProc[LLGroup[Any]]]]
+    group_by_mq: Final[MutableMapping[int, LLGroup]]
 
     def __init__(self, **kwargs: Unpack[LinkLayerInitKwargs]):
         super().__init__()
         self.reset_time = 1 / kwargs.get("frequency", 1e6)
         self.tau_0 = kwargs.get("tau_0", 0.0)
 
-        self.entangle_by_ch = {}
         self.entangle_by_peer = {}
         self.entangle_procs = self.entangle_by_peer.values()
+        self.group_by_mq = {}
 
         self._cnt_deleted_channels = LinkLayerCounters()
         self._cnt_history = kwargs.get("cnt_history", 0)
@@ -82,12 +82,12 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
                 r += proc.cnt
         return r
 
-    def cnt_channel(self, ch: QuantumChannel) -> LinkLayerCounters | None:
+    def cnt_channel(self, peer: str) -> LinkLayerCounters | None:
         """
         Retrieve per-channel counters.
 
         Args:
-            ch: A quantum channel.
+            peer: Peer node name.
 
         Returns:
             Counters of an active channel where this node is primary.
@@ -97,7 +97,7 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
             If a channel is recently deactivated but not yet deleted, its counters would still be returned.
             If the same channel is reactivated, the counters would continue accumulating without reset.
         """
-        proc = self.entangle_by_ch.get(ch)
+        proc = self.entangle_by_peer.get(peer)
         if type(proc) is LLEntangleProcPri:
             return proc.cnt
         return None
@@ -105,12 +105,14 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
     @sync_phase_handler(TimingPhase.EXTERNAL, True)
     def sync_external_enter(self) -> None:
         for proc in self.entangle_procs:
-            proc.sync_external_enter()
+            for grp in proc.groups_active.values():
+                grp.sync_external_enter()
 
     @sync_phase_handler(TimingPhase.EXTERNAL, False)
     def sync_external_exit(self) -> None:
         for proc in self.entangle_procs:
-            proc.sync_external_exit()
+            for grp in proc.groups_active.values():
+                grp.sync_external_exit()
 
     @sync_phase_handler(TimingPhase.INTERNAL, False)
     def sync_internal_exit(self) -> None:
@@ -118,44 +120,46 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         self.memory.clear()
 
     @event_handler
-    def path_activate(self, event: PathActivateEvent) -> None:
+    def group_activate(self, event: LLActivateEvent) -> None:
         """
         Handle path activation command.
         """
         event.cancel()
-        ch = event.qchannel
-        is_primary = event.is_primary
-        path_id = event.path_id
+        peer = event.peer.name
 
         # Find or create the channel entangle procedure.
-        LLEntangleProcTyp = LLEntangleProcPri if is_primary else LLEntangleProc2nd
-        proc = self.entangle_by_ch.get(ch)
+        LLEntangleProcTyp = LLEntangleProcPri if event.is_primary else LLEntangleProc2nd
+        proc = self.entangle_by_peer.get(peer)
         if not proc:
-            proc = LLEntangleProcTyp(self, ch)
-            self.entangle_by_ch[ch] = self.entangle_by_peer[ch.find_peer(self.node).name] = proc
+            proc = LLEntangleProcTyp(self, event)
+            self.entangle_by_peer[peer] = proc
         elif type(proc) is not LLEntangleProcTyp:
             raise ValueError(f"{event}: channel already activated with opposite role in {proc}")
 
-        # Activate the path within the channel.
-        proc.path_activate(path_id)
+        # Activate the group within the channel.
+        proc.group_activate(event)
 
     @event_handler
-    def path_deactivate(self, event: PathDeactivateEvent) -> None:
+    def group_deactivate(self, event: LLDeactivateEvent) -> None:
         """
         Handle path deactivation command.
         """
         event.cancel()
+        peer = event.peer.name
+
+        # Find the channel entangle procedure.
         try:
-            proc = self.entangle_by_ch[event.qchannel]
+            proc = self.entangle_by_peer[peer]
         except LookupError:
             raise ValueError(f"{event}: channel not activated") from None
-        proc.path_deactivate(event.path_id)
 
-    def channel_deactivate(self, proc: LLEntangleProc) -> None:
+        # Deactivate the group within the channel.
+        proc.group_deactivate(event.gid)
+
+    def channel_delete(self, proc: LLEntangleProc) -> None:
         """
-        Deactivate a channel, invoked by ``LLEntangleProc._path_deactivate_delete()``.
+        Delete a channel, invoked by ``LLEntangleProc._group_delete()``.
         """
-        del self.entangle_by_ch[proc.ch]
         del self.entangle_by_peer[proc.peer.name]
         if type(proc) is LLEntangleProcPri:
             proc.log_debug("CHANNEL_DEACTIVATE | %s", proc.cnt)
@@ -163,85 +167,86 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         else:
             proc.log_debug("CHANNEL_DEACTIVATE")
 
-    def _dispatch_reserve_msg[P: LLEntangleProc](
-        self, pkt: ClassicPacket, msg: ReserveMsg, typ: type[P], meth: Callable[[P, ReserveParsedMsg], None]
+    def _dispatch_reserve_msg[P: LLEntangleProc, G: LLGroup](
+        self,
+        pkt: ClassicPacket,
+        msg: Mapping,
+        typ: type[P],
+        meth: Callable[[G, ReserveMsg], None],
+        allow_draining=False,
     ) -> None:
-        req = ReserveParsedMsg.new(pkt, msg)
+        req = ReserveMsg(**msg)
+        pkt_from = pkt.src.name
 
         if not self.node.timing.is_external():
-            self.log_debug("%s from=%s ignored reason=not-external-phase", req, pkt.src.name)
+            self.log_debug("%s from=%s ignored reason=not-external-phase", req, pkt_from)
             return
 
-        proc = self.entangle_by_peer.get(pkt.src.name)
+        proc = self.entangle_by_peer.get(pkt_from)
         if type(proc) is not typ:
-            self.log_debug("%s from=%s ignored reason=no-channel", req, pkt.src.name)
+            self.log_debug("%s from=%s ignored reason=no-channel", req, pkt_from)
+            return
+        proc = unwrap_cast(proc)
+
+        grp = proc.groups_active.get(req.gid)
+        if grp is None and allow_draining:
+            grp = proc.groups_draining.get(req.gid)
+        if grp is None:
+            self.log_debug("%s from=%s ignored reason=no-group", req, pkt_from)
             return
 
-        meth(proc, req)
+        meth(grp, req)
 
     @classic_cmd_handler("RESERVE_REQ")
-    def handle_reserve_req(self, pkt: ClassicPacket, msg: ReserveMsg) -> None:
+    def handle_reserve_req(self, pkt: ClassicPacket, msg: Mapping) -> None:
         """
-        Secondary node handle ``RESERVE_REQ`` message from the primary node.
+        Secondary node handles ``RESERVE_REQ`` message from the primary node.
         """
-        self._dispatch_reserve_msg(pkt, msg, LLEntangleProc2nd, LLEntangleProc2nd.handle_reserve_req)
+        self._dispatch_reserve_msg(pkt, msg, LLEntangleProc2nd, LLGroup2nd.handle_reserve_req)
 
     @classic_cmd_handler("RESERVE_ABORT")
-    def handle_reserve_abort(self, pkt: ClassicPacket, msg: ReserveMsg) -> None:
+    def handle_reserve_abort(self, pkt: ClassicPacket, msg: Mapping) -> None:
         """
         Secondary node handles ``RESERVE_ABORT`` message from the primary node.
         """
-        self._dispatch_reserve_msg(pkt, msg, LLEntangleProc2nd, LLEntangleProc2nd.handle_reserve_abort)
+        self._dispatch_reserve_msg(pkt, msg, LLEntangleProc2nd, LLGroup2nd.handle_reserve_abort, allow_draining=True)
 
     @classic_cmd_handler("RESERVE_RES")
-    def handle_reserve_res(self, pkt: ClassicPacket, msg: ReserveMsg) -> None:
+    def handle_reserve_res(self, pkt: ClassicPacket, msg: Mapping) -> None:
         """
-        Primary node handle ``RESERVE_RES`` message from the secondary node.
+        Primary node handles ``RESERVE_RES`` message from the secondary node.
         """
-        self._dispatch_reserve_msg(pkt, msg, LLEntangleProcPri, LLEntangleProcPri.handle_reserve_res)
+        self._dispatch_reserve_msg(pkt, msg, LLEntangleProcPri, LLGroupPri.handle_reserve_res)
 
     def _calc_attempt(self, qchannel: QuantumChannel) -> int:
         return rng.geometric(qchannel.link_arch.success_prob)
 
     @event_handler
-    def _notify_pri(self, event: LLEntanglePriEvent) -> None:
-        event.proc.before_deliver(event.task)
-        self._notify_entangle("pri", event)
+    def _notify_pri(self, event: LLNotifyPriEvent) -> None:
+        self._notify_entangle(event)
 
     @event_handler
-    def _notify_2nd(self, event: LLEntangle2ndEvent) -> None:
-        self._notify_entangle("2nd", event)
+    def _notify_2nd(self, event: LLNotify2ndEvent) -> None:
+        self._notify_entangle(event)
 
-    def _notify_entangle(self, own_role: str, event: LLEntanglePriEvent | LLEntangle2ndEvent) -> None:
+    def _notify_entangle(self, event: LLNotifyEvent) -> None:
         event.cancel()
         assert self.node.timing.is_external()
-        peer = event.peer
-        key = event.key
-        epr = event.epr
-        mq = self.memory.write(key, epr)
+        mq = self.memory.write(event.key, event.epr)
 
-        self.log_debug(
-            "EPR_DELIVER_%s %s peer=%s key=%s addr=%s path=%s",
-            own_role,
-            epr.name,
-            peer.name,
-            key,
-            mq.addr,
-            mq.path_id,
-        )
-        assert epr.decohere_time > self.simulator.tc
+        self.log_debug("%s EPR_DELIVER mq-addr=%s path=%s", event, mq.addr, mq.path_id)
 
         mq.state = QubitState.ENTANGLED0
-        self.simulator.sched(QubitEntangledEvent(self.node, peer, mq, t=self.simulator.tc))
+        self.simulator.sched(QubitEntangledEvent(self.node, event.peer, mq, t=event.t))
 
     @event_handler
     def handle_release(self, event: QubitReleasedEvent) -> None:
         mq = event.qubit
         mq.state = QubitState.RAW
 
-        proc = self.entangle_by_ch.get(unwrap(mq.qchannel))
-        if not proc:
-            self.log_debug("%s ignored reason=no-active-channel", event)
+        grp = self.group_by_mq.get(mq.addr)
+        if not grp:
+            self.log_debug("%s ignored reason=no-group", event)
             return
 
-        proc.handle_release(event)
+        grp.handle_release(event)

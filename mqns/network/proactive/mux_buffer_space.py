@@ -13,7 +13,7 @@ from mqns.network.fw.select import (
     select_swap_qubit_newest,
     select_swap_qubit_oldest,
 )
-from mqns.network.ll import PathActivateEvent, PathDeactivateEvent
+from mqns.network.ll import LLActivateEvent, LLDeactivateEvent
 from mqns.network.proactive.mux import MuxScheme
 from mqns.utils import unwrap, unwrap_cast
 
@@ -100,12 +100,13 @@ class MuxSchemeBufferSpace(MuxSchemeFibBase):
         self.fw.log_debug("allocating path %s-%s qubits: %s", fp.path_id, dir.name, addrs)
 
         self.simulator.sched(
-            PathActivateEvent(
+            LLActivateEvent(
                 self.node,
                 ch,
-                fp.path_id,
                 t=self.simulator.tc,
+                gid=fp.path_id,
                 is_primary=self._path_adj_is_primary(inst, fp, dir),
+                qubits=(q for q, _ in self.memory.find(lambda q, _: q.path_id == fp.path_id, qchannel=ch)),
             )
         )
 
@@ -119,23 +120,20 @@ class MuxSchemeBufferSpace(MuxSchemeFibBase):
         self.memory.deallocate(*addrs)
 
         self.simulator.sched(
-            PathDeactivateEvent(
+            LLDeactivateEvent(
                 self.node,
                 ch,
-                fp.path_id,
                 t=self.simulator.tc,
+                gid=fp.path_id,
             )
         )
 
     @override
-    def list_qubit_epr_path_ids(self, mq: MemoryQubit) -> list[int]:
-        if mq.path_id is None:  # path has been uninstalled
-            return []
-        return [mq.path_id]
-
-    @override
     def qubit_is_entangled(self, mq: MemoryQubit, epr: Entanglement) -> FibPath | None:
         _ = epr
+        if mq.path_id is None:  # path has been uninstalled
+            return None
+        mq.epr_path_ids = [mq.path_id]
         mq.state = QubitState.PURIF
         return self.fib.get_path(unwrap_cast(mq.path_id))
 
