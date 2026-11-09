@@ -134,7 +134,7 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
             proc = LLEntangleProcTyp(self, event)
             self.entangle_by_peer[peer] = proc
         elif type(proc) is not LLEntangleProcTyp:
-            raise ValueError(f"{event}: channel already activated with opposite role in {proc}")
+            raise ValueError(f"channel already activated with opposite role in {proc}")
 
         # Activate the group within the channel.
         proc.group_activate(event)
@@ -151,7 +151,7 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         try:
             proc = self.entangle_by_peer[peer]
         except LookupError:
-            raise ValueError(f"{event}: channel not activated") from None
+            raise ValueError("channel not activated") from None
 
         # Deactivate the group within the channel.
         proc.group_deactivate(event.gid)
@@ -184,6 +184,8 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
 
         proc = self.entangle_by_peer.get(pkt_from)
         if type(proc) is not typ:
+            if proc is not None:
+                raise ValueError(f"channel has same role on both ends in {proc}")
             self.log_debug("%s from=%s ignored reason=no-channel", req, pkt_from)
             return
         proc = unwrap_cast(proc)

@@ -13,7 +13,8 @@ Typically, these events are sent by a component of :py:class:`~mqns.network.fw.F
 The activation is scoped for a quantum channel connected to a peer node that also runs the LinkLayer application.
 Both LinkLayer applications must be activated at the same time, with one designated as the primary node
 and the other designated the secondary node.
-Moreover, there must be a classical channel with the same peer node, which must have the exactly same one-way latency.
+Moreover, there must be a classical channel with the same peer node, which must have
+the exactly same one-way latency and zero loss rate.
 
 Each activation is for a *group* within the quantum channel.
 Each group is allocated a certain quantity of memory qubits.
@@ -93,7 +94,7 @@ It maintains :py:attr:`~mqns.network.ll.entangle_2nd.LLGroup2nd.ireq_queue` to r
 not yet accepted due to lack of qubits.
 It is created and owned by :py:class:`~mqns.network.ll.entangle_2nd.LLEntangleProc2nd` per channel.
 
-The :py:class:`LinkLayer` class creates and owns the above per-channel objects,
+The :py:class:`LinkLayer` class creates and owns the channel entangle procedure objects described above,
 and dispatches messages and events to the correct channel or group.
 """
 

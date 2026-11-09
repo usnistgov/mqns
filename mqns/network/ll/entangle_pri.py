@@ -184,6 +184,7 @@ class LLGroupPri(LLGroup[LLEntangleProcPri]):
             return
 
         # Create EPR and schedule success event.
+        # EPR is created here instead of in .attempt_success() so that epr.name can be logged together.
         epr = la.make_epr(t_success, proc.node, proc.peer, key=task.key)
         task.success_event = LLEntangleSuccessEvent(self, task, epr, t=t_success)
         proc.simulator.sched(task.success_event)

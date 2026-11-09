@@ -1,3 +1,4 @@
+import itertools
 from collections import defaultdict, deque
 from typing import override
 
@@ -73,28 +74,65 @@ class NetworkLayer(Application[QNode]):
         self.simulator.sched(QubitReleasedEvent(self.node, event.qubit, is_decoh=True, t=event.t))
 
 
-def make_2nodes(
+def make_linear(
+    n=2,
     *,
     ll_args=LinkLayerInitKwargs(),
     qchannel_args: QuantumChannelInitKwargs,
     memory_args: QuantumMemoryInitKwargs,
     timing: TimingMode = TimingModeAsync(),
     epr_type: type[Entanglement] = WernerStateEntanglement,
-) -> tuple[QuantumNetwork, QuantumChannel, LinkLayer, LinkLayer, NetworkLayer, NetworkLayer]:
+) -> tuple[QuantumNetwork, tuple[QuantumChannel, ...], tuple[LinkLayer, ...], tuple[NetworkLayer, ...]]:
     rng.reseed("env")
     net = QuantumNetwork(timing=timing, epr_type=epr_type)
-    net.add_node(n1 := QNode("n1", apps=[NetworkLayer(), LinkLayer(**ll_args)], memory=QuantumMemory("m1", **memory_args)))
-    net.add_node(n2 := QNode("n2", apps=[NetworkLayer(), LinkLayer(**ll_args)], memory=QuantumMemory("m2", **memory_args)))
-    net.add_cchannel(ClassicChannel("cc", **extract_cchannel_args(qchannel_args)), n1, n2)
-    net.add_qchannel(qc := QuantumChannel("qc", **qchannel_args), n1, n2)
+
+    nodes: list[QNode] = []
+    for i in range(1, n + 1):
+        node = QNode(
+            f"n{i}",
+            apps=[NetworkLayer(), LinkLayer(**ll_args)],
+            memory=QuantumMemory("m1", **memory_args),
+        )
+        net.add_node(node)
+        nodes.append(node)
+
+    channels: list[QuantumChannel] = []
+    for i, (a, b) in enumerate(itertools.pairwise(nodes), start=1):
+        net.add_cchannel(ClassicChannel(f"c{i}", **extract_cchannel_args(qchannel_args)), a, b)
+        qc = QuantumChannel(f"q{i}", **qchannel_args)
+        net.add_qchannel(qc, a, b)
+        channels.append(qc)
+
     net.build_route()
+    return (
+        net,
+        tuple(channels),
+        tuple(node.get_app(LinkLayer) for node in nodes),
+        tuple(node.get_app(NetworkLayer) for node in nodes),
+    )
 
-    return net, qc, n1.get_app(LinkLayer), n2.get_app(LinkLayer), n1.get_app(NetworkLayer), n2.get_app(NetworkLayer)
 
-
-def activate_path(t0: float | None, t1: float | None, src: Application[QNode], dst: Application[QNode], *, gid: int, n=1):
+def activate_group(
+    t0: float | None,
+    t1: float | None,
+    src: Application[QNode],
+    dst: Application[QNode],
+    *,
+    gid: int,
+    n=1,
+    roles: tuple[bool, bool] = (True, False),
+):
     """
     Schedule ``LLActivateEvent`` and ``LLDeactivateEvent``.
+
+    Args:
+        t0: When to activate.
+        t0: When to deactivate.
+        src: Any application on the first node, typically the primary node.
+        dst: Any application on the second node, typically the secondary node.
+        gid: Group identifier.
+        n: How many qubits to allocate.
+        roles: Role (pri/2nd) of the src and dst nodes.
     """
     simulator = src.simulator
     ch = src.node.get_qchannel(dst.node)
@@ -102,7 +140,7 @@ def activate_path(t0: float | None, t1: float | None, src: Application[QNode], d
 
     if t0 is not None:
         t = simulator.time(sec=t0)
-        for node, is_primary in (src.node, True), (dst.node, False):
+        for node, is_primary in zip((src.node, dst.node), roles, strict=True):
             simulator.sched(
                 LLActivateEvent(
                     node,

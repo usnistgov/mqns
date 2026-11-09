@@ -118,7 +118,7 @@ class LLEntangleProc[G: LLGroup[Any]](LogSelfMixin):
         try:
             grp = self.groups_draining.pop(gid)
         except LookupError:
-            raise LookupError(f"{self} does not have draining group {gid}") from None
+            raise ValueError(f"{self} does not have draining group {gid}") from None
 
         grp.delete_event.cancel()
         for mq in grp.qubits.values():
