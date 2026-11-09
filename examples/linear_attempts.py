@@ -95,7 +95,7 @@ def run_simulation(seed: int, sim_duration: float, L: list[float], M: int, link_
 
     res: list[ChannelResult] = []
     for length, (src, dst) in zip(L, itertools.pairwise(net.nodes), strict=True):
-        cnt = unwrap(src.get_app(LinkLayer).cnt_channel(src.get_qchannel(dst)))
+        cnt = unwrap(src.get_app(LinkLayer).cnt_channel(dst.name))
         res.append(
             ChannelResult(
                 L=length,

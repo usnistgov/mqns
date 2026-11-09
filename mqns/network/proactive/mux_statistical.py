@@ -1,7 +1,7 @@
 from collections.abc import Callable, MutableMapping
-from typing import TYPE_CHECKING, Literal, override
+from typing import TYPE_CHECKING, Final, Literal, override
 
-from mqns.entity.memory import MemoryQubit, PathDirection, QubitState
+from mqns.entity.memory import MemoryQubit, PathDirection, QuantumMemory, QubitState
 from mqns.entity.qchannel import QuantumChannel
 from mqns.models.epr import Entanglement
 from mqns.network.fw import FibPath, PathInstructions, validate_path_instructions
@@ -13,23 +13,30 @@ from mqns.network.fw.select import (
     select_swap_qubit_newest,
     select_swap_qubit_oldest,
 )
-from mqns.network.ll import PathActivateEvent, PathDeactivateEvent
+from mqns.network.ll import LLActivateEvent, LLDeactivateEvent
 from mqns.network.proactive.mux import MuxScheme
 from mqns.utils import unwrap, unwrap_cast
 
 if TYPE_CHECKING:
     from mqns.network.fw.forwarder import Forwarder
 
+_LL_GID_ALL_PATHS = -1
+"""
+LinkLayer group identifier for all paths on a channel.
+"""
+
 
 class MuxSchemeDynamicBase(MuxScheme):
+    qchannel_paths_map: Final[MutableMapping[QuantumChannel, list[int]]]
+    """
+    Mapping from QuantumChannel to path_ids activated on the channel.
+
+    Note: the mapped type is a ``list`` instead of a ``set``, to ensure deterministic simulation.
+    """
+
     def __init__(self):
         super().__init__()
-        self.qchannel_paths_map: MutableMapping[QuantumChannel, list[int]] = {}
-        """
-        Mapping from QuantumChannel to path_ids activated on the channel.
-
-        Note: the mapped type is a ``list`` instead of a ``set``, to ensure deterministic simulation.
-        """
+        self.qchannel_paths_map = {}
 
     @override
     def validate_path_instructions(self, inst: PathInstructions):
@@ -44,12 +51,14 @@ class MuxSchemeDynamicBase(MuxScheme):
             return
 
         self.simulator.sched(
-            PathActivateEvent(
+            LLActivateEvent(
                 self.node,
                 ch,
-                path_id=None,
                 t=self.simulator.tc,
+                gid=_LL_GID_ALL_PATHS,
+                qubits=(q for q, _ in self.memory.find(QuantumMemory.predicate_all, qchannel=ch)),
                 is_primary=self._path_adj_is_primary(inst, fp, dir),
+                on_attempt_success=self.on_ll_attempt_success,
             )
         )
 
@@ -63,17 +72,16 @@ class MuxSchemeDynamicBase(MuxScheme):
 
         del self.qchannel_paths_map[ch]
         self.simulator.sched(
-            PathDeactivateEvent(
+            LLDeactivateEvent(
                 self.node,
                 ch,
-                path_id=None,
                 t=self.simulator.tc,
+                gid=_LL_GID_ALL_PATHS,
             )
         )
 
-    @override
-    def list_qubit_epr_path_ids(self, mq: MemoryQubit) -> list[int]:
-        return self.qchannel_paths_map.get(unwrap(mq.qchannel), [])
+    def on_ll_attempt_success(self, ch: QuantumChannel, gid: int, epr: Entanglement) -> None:
+        pass
 
 
 class MuxSchemeStatistical(MuxSchemeDynamicBase):
@@ -131,18 +139,23 @@ class MuxSchemeStatistical(MuxSchemeDynamicBase):
 
     @override
     def qubit_is_entangled(self, mq: MemoryQubit, epr: Entanglement) -> FibPath | None:
+        epr_path_ids = self.qchannel_paths_map.get(unwrap(mq.qchannel), [])
         if self.coordinated_decisions and epr.affectionated_path_id >= 0:
-            assert epr.affectionated_path_id in unwrap_cast(mq.epr_path_ids)
+            assert epr.affectionated_path_id in epr_path_ids
             mq.epr_path_ids = [epr.affectionated_path_id]
+        elif not epr_path_ids:
+            return None
+        else:
+            mq.epr_path_ids = epr_path_ids
 
-        neighbor, _ = unwrap_cast(mq.partner)
+        peer, _ = unwrap_cast(mq.partner)
 
-        def calc_rank_diff(path_id: int):
+        def calc_rank_diff(path_id: int) -> int:
             fp = self.fib.get_path(path_id)
-            _, p_rank = fp.find_index_and_swap_rank(neighbor.name)
+            _, p_rank = fp.find_index_and_swap_rank(peer.name)
             return fp.own_swap_rank - p_rank
 
-        rank_diff = [calc_rank_diff(path_id) for path_id in unwrap_cast(mq.epr_path_ids)]
+        rank_diff = [calc_rank_diff(path_id) for path_id in mq.epr_path_ids]
         assert min(rank_diff) == max(rank_diff)  # failure means one node is both repeater and end node, unsupported
         if rank_diff[0] > 0:
             # Own node has higher rank and cannot initiate swap; qubit stays in ENTANGLED1 state.

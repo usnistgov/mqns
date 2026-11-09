@@ -238,10 +238,7 @@ def run_evaluation(seed: int, args: Args, modeled: s2q_model.ComputedWaitTimeBud
     duration = args.sim_duration[1]
     net = _run_simulation(seed, args, duration, modeled)
 
-    lam = [
-        unwrap(net.get_node(ch[0]).get_app(LinkLayer).cnt_channel(net.get_qchannel(ch[0], ch[1]))).etg_rate
-        for ch in ("SR", "RD")
-    ]
+    lam = [unwrap(net.get_node(ch[0]).get_app(LinkLayer).cnt_channel(ch[1])).etg_rate for ch in ("SR", "RD")]
 
     req_cnt = RequestCounters.of(net, 0, "S-D")
     rate = req_cnt.get_rate(duration)

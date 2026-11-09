@@ -1,9 +1,6 @@
 mqns.network package
 ====================
 
-Subpackages
------------
-
 .. toctree::
    :maxdepth: 3
 

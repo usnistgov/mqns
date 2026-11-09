@@ -57,10 +57,6 @@ class ProactiveForwarder(Forwarder):
 
     @override
     def qubit_is_entangled_next(self, mq: MemoryQubit, epr: Entanglement) -> FibPath | None:
-        mq.epr_path_ids = self.mux.list_qubit_epr_path_ids(mq)
-        if not mq.epr_path_ids:
-            return
-
         return self.mux.qubit_is_entangled(mq, epr)
 
     @override

@@ -4,6 +4,7 @@ from typing import Literal, override
 import numpy as np
 
 from mqns.entity.memory import MemoryQubit, QubitState
+from mqns.entity.qchannel.qchannel import QuantumChannel
 from mqns.models.epr import Entanglement
 from mqns.network.fw import Fib, FibPath
 from mqns.network.fw.select import call_select, parse_select, select_random
@@ -12,13 +13,12 @@ from mqns.network.proactive.mux_statistical import MuxSchemeDynamicBase
 from mqns.utils import rng, unwrap, unwrap_cast
 
 
-def _select_path_swap_weighted(path_ids: list[int], epr: Entanglement, fib: Fib) -> FibPath:
+def _select_path_swap_weighted(path_ids: list[int], epr: Entanglement, fib: Fib) -> int:
     _ = epr
-    entries = [fib.get_path(pid) for pid in path_ids]
     # fewer swaps (shorter route) means higher weight
-    weights = np.array([1.0 / (1 + len(e.swap)) for e in entries])
+    weights = np.array([1.0 / (1 + len(fib.get_path(p).swap)) for p in path_ids])
     weights /= np.sum(weights)
-    return entries[rng.choice(len(entries), p=weights)]
+    return path_ids[rng.choice(len(path_ids), p=weights)]
 
 
 class MuxSchemeDynamicEpr(MuxSchemeFibBase, MuxSchemeDynamicBase):
@@ -26,7 +26,7 @@ class MuxSchemeDynamicEpr(MuxSchemeFibBase, MuxSchemeDynamicBase):
     Dynamic EPR Allocation multiplexing scheme.
     """
 
-    type SelectPath = Callable[[list[int], Entanglement, Fib], int | FibPath]
+    type SelectPath = Callable[[list[int], Entanglement, Fib], int]
     """
     Path selection strategy.
     Function to select a path for an elementary entanglement.
@@ -65,24 +65,20 @@ class MuxSchemeDynamicEpr(MuxSchemeFibBase, MuxSchemeDynamicBase):
         self._select_path = parse_select(type(self), "SelectPath_", select_path)
 
     @override
+    def on_ll_attempt_success(self, ch: QuantumChannel, gid: int, epr: Entanglement) -> None:
+        _ = gid
+        paths = self.qchannel_paths_map.get(ch, [])
+        chosen = call_select(paths, self._select_path, epr, self.fib)
+        if chosen is not None:
+            epr.affectionated_path_id = chosen
+
+    @override
     def qubit_is_entangled(self, mq: MemoryQubit, epr: Entanglement) -> FibPath | None:
-        # TODO: if paths have different swap policies
-        #       -> consider only paths for which this qubit may be eligible ??
-
-        if epr.affectionated_path_id < 0:
-            # In principle, a random path_id is chosen for each elementary EPR during EPR generation.
-            # The necessary information could be carried in the reservation message.
-            # For ease of implementation, this choice is made at either primary or secondary node,
-            # whichever receives the EPR notification earlier.
-            selected_path = call_select(unwrap_cast(mq.epr_path_ids), self._select_path, epr, self.fib)
-            fp = selected_path if type(selected_path) is FibPath else self.fib.get_path(unwrap_cast(selected_path))
-            epr.affectionated_path_id = fp.path_id
-        else:
-            fp = self.fib.get_path(epr.affectionated_path_id)
-
-        mq.epr_path_ids = [fp.path_id]
+        if epr.affectionated_path_id == -1:
+            return None
+        mq.epr_path_ids = [epr.affectionated_path_id]
         mq.state = QubitState.PURIF
-        return fp
+        return self.fib.get_path(epr.affectionated_path_id)
 
     @override
     def find_swap_with(self, mq0: MemoryQubit, epr0: Entanglement, fp: FibPath | None) -> tuple[MemoryQubit, FibPath] | None:
