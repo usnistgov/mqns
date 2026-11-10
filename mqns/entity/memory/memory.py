@@ -426,7 +426,7 @@ class QuantumMemory(EventDispatcherMixin, Entity):
             Qubit where the data is stored.
 
         Raises:
-            LookupError: qubit not found by ``key`` or no qubit available.
+            LookupError: Qubit not found.
             ValueError: ``replace=False`` but qubit has existing data.
         """
         if type(key) is int:

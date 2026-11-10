@@ -1,9 +1,11 @@
 from abc import ABC, abstractmethod
 
 from mqns.entity.memory import MemoryQubit, PathDirection, QubitState
+from mqns.entity.node import QNode
 from mqns.entity.qchannel import QuantumChannel
 from mqns.models.epr import Entanglement
 from mqns.network.fw import FibPath, ForwarderModule, PathInstructions
+from mqns.utils import unwrap_cast
 
 
 class MuxScheme(ForwarderModule, ABC):
@@ -14,7 +16,9 @@ class MuxScheme(ForwarderModule, ABC):
         """Validate path instructions are compatible."""
 
     @abstractmethod
-    def install_path_adj(self, inst: PathInstructions, fp: FibPath, dir: PathDirection, ch: QuantumChannel) -> None:
+    def install_path_adj(
+        self, inst: PathInstructions, fp: FibPath, dir: PathDirection, ch: QuantumChannel, peer: QNode
+    ) -> None:
         """
         Store information about adjacent quantum channel, allocate resources, activate LinkLayer.
 
@@ -23,6 +27,7 @@ class MuxScheme(ForwarderModule, ABC):
             fp: FIB path entry.
             dir: Direction of adjacency.
             ch: Quantum channel to the neighbor.
+            peer: Neighbor node.
         """
 
     @staticmethod
@@ -38,7 +43,7 @@ class MuxScheme(ForwarderModule, ABC):
         return dir is primary_dir
 
     @abstractmethod
-    def uninstall_path_adj(self, fp: FibPath, dir: PathDirection, ch: QuantumChannel) -> None:
+    def uninstall_path_adj(self, fp: FibPath, dir: PathDirection, ch: QuantumChannel, peer: QNode) -> None:
         """
         Erase information about adjacent quantum channel, deallocate resources, deactivate LinkLayer.
 
@@ -46,6 +51,7 @@ class MuxScheme(ForwarderModule, ABC):
             fp: FIB path entry.
             dir: Direction of adjacency.
             ch: Quantum channel to the neighbor.
+            peer: Neighbor node.
         """
 
     @abstractmethod
@@ -84,4 +90,4 @@ class MuxScheme(ForwarderModule, ABC):
         """
         Determine whether ``mq1`` in memory can swap with ``mq0``.
         """
-        return mq1.state is QubitState.ELIGIBLE and mq1.qchannel is not mq0.qchannel
+        return mq1.state is QubitState.ELIGIBLE and unwrap_cast(mq0.partner).ch_peer != unwrap_cast(mq1.partner).ch_peer

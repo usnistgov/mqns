@@ -18,7 +18,7 @@
 
 from collections.abc import Callable, Iterable
 from enum import Enum, auto
-from typing import Any
+from typing import Any, Final, NamedTuple
 
 from mqns.entity.node import QNode
 from mqns.entity.qchannel import QuantumChannel
@@ -117,18 +117,42 @@ Allowed state transitions, mapped from old state to allowed new states.
 class PathDirection(Enum):
     L = 0
     """
-    Path direction LEFT: qubit is assigned to a channel that connects to the left side neighbor.
+    Path direction LEFT -- qubit is assigned to a channel that connects to the left side neighbor.
     """
     R = 1
     """
-    Path direction RIGHT: qubit is assigned to a channel that connects to the right side neighbor.
+    Path direction RIGHT -- qubit is assigned to a channel that connects to the right side neighbor.
     """
+
+
+class EntangledPartner(NamedTuple):
+    """
+    Information about the partner node of an entanglement stored in memory.
+    """
+
+    ch_peer: str
+    """
+    Peer node name of the near-side channel where the initial entanglement was generated.
+    """
+
+    node: QNode
+    """
+    Far endpoint of the current entanglement, per heralded knowledge.
+    """
+
+    key: str
+    """
+    Qubit key at the partner node.
+    """
+
+    def __repr__(self) -> str:
+        return f"{self.node.name}:{self.key}"
 
 
 class MemoryQubit:
     """An addressable qubit in memory, with a lifecycle."""
 
-    addr: int
+    addr: Final[int]
     """Address index in QuantumMemory."""
 
     qchannel: QuantumChannel | None = None
@@ -147,7 +171,7 @@ class MemoryQubit:
     This is set by ``LinkLayer`` and remains unchanged until the qubit is released.
     It is a consistent identifier for a qubit that contains a particular qstate and its swapped/purified forms.
     """
-    partner: tuple[QNode, str] | None = None
+    partner: EntangledPartner | None = None
     """
     Partner node and partner qubit reservation key, if the qubit contains an entanglement.
 
@@ -251,7 +275,7 @@ def _describe(mq: MemoryQubit) -> Iterable[str]:
     if mq.key:
         yield f"key={mq.key}"
     if mq.partner:
-        yield f"partner={mq.partner[0].name}:{mq.partner[1]}"
+        yield f"partner={mq.partner}"
 
     if mq.epr_path_ids:
         yield f"epr-path-ids={mq.epr_path_ids}"

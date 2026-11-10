@@ -4,7 +4,8 @@ from typing import Literal, override
 import numpy as np
 
 from mqns.entity.memory import MemoryQubit, QubitState
-from mqns.entity.qchannel.qchannel import QuantumChannel
+from mqns.entity.node import QNode
+from mqns.entity.qchannel import QuantumChannel
 from mqns.models.epr import Entanglement
 from mqns.network.fw import Fib, FibPath
 from mqns.network.fw.select import call_select, parse_select, select_random
@@ -65,9 +66,9 @@ class MuxSchemeDynamicEpr(MuxSchemeFibBase, MuxSchemeDynamicBase):
         self._select_path = parse_select(type(self), "SelectPath_", select_path)
 
     @override
-    def on_ll_attempt_success(self, ch: QuantumChannel, gid: int, epr: Entanglement) -> None:
-        _ = gid
-        paths = self.qchannel_paths_map.get(ch, [])
+    def on_ll_attempt_success(self, ch: QuantumChannel, peer: QNode, gid: int, epr: Entanglement) -> None:
+        _ = ch, gid
+        paths = self.qchannel_paths_map.get(peer.name, [])
         chosen = call_select(paths, self._select_path, epr, self.fib)
         if chosen is not None:
             epr.affectionated_path_id = chosen

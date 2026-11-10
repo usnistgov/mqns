@@ -37,13 +37,8 @@ class CutoffScheme(ForwarderModule, ABC):
             round: -1 for swap_cutoff; nonnegative number for purif round.
         """
         o_key = unwrap_cast(qubit.key)
-
-        # Find EPR partner.
-        assert qubit.partner
-        partner, p_key = qubit.partner
-        self.log_debug(
-            "local cutoff discard key=%s addr=%s round=%s partner=%s:%s", o_key, qubit.addr, round, partner.name, p_key
-        )
+        partner = unwrap_cast(qubit.partner)
+        self.log_debug("local cutoff discard key=%s addr=%s round=%s partner=%s", o_key, qubit.addr, round, partner)
 
         # Inform SwapProc.
         if round == -1:
@@ -57,10 +52,10 @@ class CutoffScheme(ForwarderModule, ABC):
         msg: CutoffDiscardMsg = {
             "cmd": "CUTOFF_DISCARD",
             "path_id": fp.path_id,
-            "key": p_key,
+            "key": partner.key,
             "round": round,
         }
-        self.send_msg(partner, msg, fp)
+        self.send_msg(partner.node, msg, fp)
 
     @fw_signaling_cmd_handler("CUTOFF_DISCARD")
     def handle_discard(self, msg: CutoffDiscardMsg, fp: FibPath):

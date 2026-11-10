@@ -46,13 +46,14 @@ class MinLinkLayer(Application[QNode]):
             self.on_attempt_success_by_peer[event.peer.name] = functools.partial(
                 event.on_attempt_success,
                 event.ch,
+                event.peer,
                 event.gid,
             )
 
     @event_handler
     def handle_qubit_released(self, event: QubitReleasedEvent) -> None:
         self.release_history.append((event.qubit.addr, event.t))
-        log.debug(f"{self}: RELEASE {event.qubit}")
+        self.log_debug("RELEASE %s", event.qubit)
         event.qubit.state = QubitState.RAW
 
     @property

@@ -24,10 +24,10 @@ from mqns.entity.qchannel import QuantumChannel
 from mqns.models.epr import Entanglement
 from mqns.simulator import Event, Time
 
-type OnAttemptSuccess = Callable[[QuantumChannel, int, Entanglement], None]
+type OnAttemptSuccess = Callable[[QuantumChannel, QNode, int, Entanglement], None]
 """
 Callback upon starting a successful attempt.
-Arguments are channel, gid, EPR pair.
+Arguments are channel, peer, gid, EPR pair.
 """
 
 

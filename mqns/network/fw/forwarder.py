@@ -21,7 +21,7 @@ from collections.abc import Callable
 from typing import Final, Literal, TypedDict, Unpack, override
 
 from mqns.entity.cchannel import ClassicCommandDispatcherMixin
-from mqns.entity.memory import MemoryDecohereEvent, MemoryQubit, PathDirection, QubitState
+from mqns.entity.memory import EntangledPartner, MemoryDecohereEvent, MemoryQubit, PathDirection, QubitState
 from mqns.entity.node import Application, QNode
 from mqns.models.delay import DelayInput, parse_delay
 from mqns.models.epr import Entanglement
@@ -222,8 +222,7 @@ class Forwarder(ClassicCommandDispatcherMixin, Application[QNode]):
 
         mq = event.qubit
         assert mq.state is QubitState.ENTANGLED1, f"unexpected state {mq.state}"
-        assert mq.key
-        mq.partner = event.neighbor, mq.key
+        mq.partner = EntangledPartner(event.neighbor.name, event.neighbor, unwrap(mq.key))
 
         _, epr = self.memory.read(mq.addr, has=self.epr_type)
         assert not epr.orig_eprs, f"{mq} is not elementary entanglement"
@@ -384,7 +383,7 @@ class Forwarder(ClassicCommandDispatcherMixin, Application[QNode]):
         if swap_decision:
             mq1, fp = swap_decision
             self.cutoff.before_swap(mq0, mq1, fp)
-            if fp.route.index(unwrap_cast(mq0.partner)[0].name) < fp.route.index(unwrap_cast(mq1.partner)[0].name):
+            if fp.route.index(unwrap_cast(mq0.partner).node.name) < fp.route.index(unwrap_cast(mq1.partner).node.name):
                 self.swap.start(mq0, mq1, fp)
             else:
                 self.swap.start(mq1, mq0, fp)
@@ -400,7 +399,7 @@ class Forwarder(ClassicCommandDispatcherMixin, Application[QNode]):
             # This branch is taken only when using MuxSchemeStatistical.
             # It searches for active requests spanning src,dst in either direction.
             # If none is found, the EPR cannot be consumed.
-            frs = self.fib.list_end_reqs(unwrap_cast(qubit.partner)[0].name)
+            frs = self.fib.list_end_reqs(unwrap_cast(qubit.partner).node.name)
             if (fr := next((fr for fr in frs if fr.is_active(now)), None)) is None:
                 return False
         elif not fp.own_is_end_node:
@@ -411,7 +410,7 @@ class Forwarder(ClassicCommandDispatcherMixin, Application[QNode]):
                 "CONSUME_SKIP addr=%s key=%s partner=%s epr-count-remain=%s reason=req-inactive",
                 qubit.addr,
                 qubit.key,
-                unwrap_cast(qubit.partner)[0].name,
+                unwrap_cast(qubit.partner).node.name,
                 fr.epr_count_remain,
             )
             # If the FIB request entry is no longer active, consumption is disallowed.

@@ -2,6 +2,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING, Literal, Protocol, override
 
 from mqns.entity.memory import MemoryQubit, PathDirection, QubitState
+from mqns.entity.node import QNode
 from mqns.entity.qchannel import QuantumChannel
 from mqns.models.epr import Entanglement
 from mqns.network.fw import FibPath, PathInstructions, validate_path_instructions
@@ -93,7 +94,10 @@ class MuxSchemeBufferSpace(MuxSchemeFibBase):
         validate_path_instructions(inst, bufferspace=True)
 
     @override
-    def install_path_adj(self, inst: PathInstructions, fp: FibPath, dir: PathDirection, ch: QuantumChannel) -> None:
+    def install_path_adj(
+        self, inst: PathInstructions, fp: FibPath, dir: PathDirection, ch: QuantumChannel, peer: QNode
+    ) -> None:
+        _ = peer
         assert "bufferspace_mv" in inst
         n_qubits = inst["bufferspace_mv"][2 * fp.own_idx + (dir.value - 1)]
         addrs = self.memory.allocate(ch, fp.path_id, dir, n=n_qubits)
@@ -111,7 +115,7 @@ class MuxSchemeBufferSpace(MuxSchemeFibBase):
         )
 
     @override
-    def uninstall_path_adj(self, fp: FibPath, dir: PathDirection, ch: QuantumChannel) -> None:
+    def uninstall_path_adj(self, fp: FibPath, dir: PathDirection, ch: QuantumChannel, peer: QNode) -> None:
         qubits = self.memory.find(lambda q, _: q.path_id == fp.path_id, qchannel=ch)
         addrs = [q.addr for q, _ in qubits]
         self.fw.log_debug("deallocating path %s-%s qubits: %s", fp.path_id, dir.name, addrs)

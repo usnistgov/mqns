@@ -203,7 +203,7 @@ class LLGroupPri(LLGroup[LLEntangleProcPri]):
 
         Invoked by :py:class:`LLEntangleSuccessEvent`.
         """
-        self.on_attempt_success(self.proc.ch, self.gid, epr)
+        self.on_attempt_success(self.proc.ch, self.proc.peer, self.gid, epr)
 
         # Schedule EPR delivery events on both nodes.
         simulator = self.proc.simulator
