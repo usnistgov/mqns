@@ -114,17 +114,6 @@ Allowed state transitions, mapped from old state to allowed new states.
 """
 
 
-class PathDirection(Enum):
-    L = 0
-    """
-    Path direction LEFT -- qubit is assigned to a channel that connects to the left side neighbor.
-    """
-    R = 1
-    """
-    Path direction RIGHT -- qubit is assigned to a channel that connects to the right side neighbor.
-    """
-
-
 class EntangledPartner(NamedTuple):
     """
     Information about the partner node of an entanglement stored in memory.

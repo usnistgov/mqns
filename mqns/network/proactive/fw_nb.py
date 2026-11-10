@@ -1,7 +1,6 @@
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, cast, override
 
-from mqns.entity.memory import PathDirection
 from mqns.entity.node import QNode
 from mqns.entity.qchannel import QuantumChannel
 from mqns.network.fw import (
@@ -10,6 +9,7 @@ from mqns.network.fw import (
     Forwarder,
     ForwarderNorthbound,
     PathDeleteMsg,
+    PathDirection,
     PathInsertMsg,
     PathInstructions,
     fw_control_cmd_handler,

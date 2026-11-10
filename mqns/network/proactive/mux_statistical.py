@@ -1,11 +1,11 @@
 from collections.abc import Callable, MutableMapping
 from typing import TYPE_CHECKING, Final, Literal, override
 
-from mqns.entity.memory import MemoryQubit, PathDirection, QuantumMemory, QubitState
+from mqns.entity.memory import MemoryQubit, QuantumMemory, QubitState
 from mqns.entity.node import QNode
 from mqns.entity.qchannel import QuantumChannel
 from mqns.models.epr import Entanglement
-from mqns.network.fw import FibPath, PathInstructions, validate_path_instructions
+from mqns.network.fw import FibPath, PathDirection, PathInstructions, validate_path_instructions
 from mqns.network.fw.select import (
     MemoryEprTuple,
     call_select,
@@ -155,7 +155,7 @@ class MuxSchemeStatistical(MuxSchemeDynamicBase):
 
         def calc_rank_diff(path_id: int) -> int:
             fp = self.fib.get_path(path_id)
-            _, p_rank = fp.find_index_and_swap_rank(peer.name)
+            p_rank = fp.swap[fp.route.index(peer.name)]
             return fp.own_swap_rank - p_rank
 
         rank_diff = [calc_rank_diff(path_id) for path_id in mq.epr_path_ids]

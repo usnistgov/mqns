@@ -1,11 +1,11 @@
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Literal, Protocol, override
 
-from mqns.entity.memory import MemoryQubit, PathDirection, QubitState
+from mqns.entity.memory import MemoryQubit, QubitState
 from mqns.entity.node import QNode
 from mqns.entity.qchannel import QuantumChannel
 from mqns.models.epr import Entanglement
-from mqns.network.fw import FibPath, PathInstructions, validate_path_instructions
+from mqns.network.fw import FibPath, PathDirection, PathInstructions, validate_path_instructions
 from mqns.network.fw.select import (
     MemoryEprTuple,
     call_select,

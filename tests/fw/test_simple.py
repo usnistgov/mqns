@@ -156,6 +156,4 @@ def test_fib_swap_group(purif: str | None, own: str, expected: tuple[str, str, s
     assert sg.nodes == list(expected[1])
     assert sg.own_idx == sg.nodes.index(own)
     assert (sg.l_neigh, "".join(sg.nodes), sg.r_neigh, sg.dir) == expected
-
-    _, rank = fp.find_index_and_swap_rank(sg.nodes[0])
-    assert sg.rank == rank
+    assert sg.rank == fp.swap[fp.route.index(sg.nodes[0])]

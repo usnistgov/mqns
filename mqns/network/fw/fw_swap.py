@@ -636,7 +636,7 @@ class ForwarderSwapProc(ForwarderModule):
                 if swapper in fe.route and partner in fe.route:
                     fp = fe
                     break
-        _, swapper_rank = fp.find_index_and_swap_rank(swapper)
+        swapper_rank = fp.swap[fp.route.index(swapper)]
 
         self.handle_update(
             _SwapParsedUpdate(

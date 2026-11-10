@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, ClassVar, final, override
 
-from mqns.entity.memory import MemoryQubit, PathDirection
-from mqns.network.fw.fib import FibPath
+from mqns.entity.memory import MemoryQubit
+from mqns.network.fw.fib import FibPath, PathDirection
 from mqns.network.fw.fw_module import ForwarderModule, fw_signaling_cmd_handler
 from mqns.network.fw.message import CutoffDiscardMsg
 from mqns.simulator import Event, Time

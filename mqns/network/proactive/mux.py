@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
 
-from mqns.entity.memory import MemoryQubit, PathDirection, QubitState
+from mqns.entity.memory import MemoryQubit, QubitState
 from mqns.entity.node import QNode
 from mqns.entity.qchannel import QuantumChannel
 from mqns.models.epr import Entanglement
-from mqns.network.fw import FibPath, ForwarderModule, PathInstructions
+from mqns.network.fw import FibPath, ForwarderModule, PathDirection, PathInstructions
 from mqns.utils import unwrap_cast
 
 

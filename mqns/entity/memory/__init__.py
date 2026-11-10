@@ -28,13 +28,12 @@
 
 from mqns.entity.memory.event import MemoryDecohereEvent
 from mqns.entity.memory.memory import QuantumMemory, QuantumMemoryInitKwargs
-from mqns.entity.memory.memory_qubit import EntangledPartner, MemoryQubit, PathDirection, QubitState
+from mqns.entity.memory.memory_qubit import EntangledPartner, MemoryQubit, QubitState
 
 __all__ = [
     "EntangledPartner",
     "MemoryDecohereEvent",
     "MemoryQubit",
-    "PathDirection",
     "QuantumMemory",
     "QuantumMemoryInitKwargs",
     "QubitState",

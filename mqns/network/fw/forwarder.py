@@ -21,14 +21,14 @@ from collections.abc import Callable
 from typing import Final, Literal, TypedDict, Unpack, override
 
 from mqns.entity.cchannel import ClassicCommandDispatcherMixin
-from mqns.entity.memory import EntangledPartner, MemoryDecohereEvent, MemoryQubit, PathDirection, QubitState
+from mqns.entity.memory import EntangledPartner, MemoryDecohereEvent, MemoryQubit, QubitState
 from mqns.entity.node import Application, QNode
 from mqns.models.delay import DelayInput, parse_delay
 from mqns.models.epr import Entanglement
 from mqns.models.error import PerfectErrorModel
 from mqns.models.error.input import ErrorModelInputBasic, parse_error
 from mqns.network.fw.cutoff import CutoffScheme, CutoffSchemeWaitTime
-from mqns.network.fw.fib import Fib, FibPath, FibRequest
+from mqns.network.fw.fib import Fib, FibPath, FibRequest, PathDirection
 from mqns.network.fw.fw_purif import ForwarderPurifProc
 from mqns.network.fw.fw_swap import ForwarderSwapProc
 from mqns.network.fw.select import MemoryEprTuple, call_select
@@ -311,7 +311,7 @@ class Forwarder(ClassicCommandDispatcherMixin, Application[QNode]):
         assert qubit.state is QubitState.PURIF, f"unexpected state {qubit.state}"
 
         own_idx, own_rank = fp.own_idx, fp.own_swap_rank
-        partner_idx, partner_rank = fp.find_index_and_swap_rank(partner.name)
+        partner_rank = fp.swap[partner_idx := fp.route.index(partner.name)]
         if own_rank > partner_rank:
             # swapping order disallows initiating purif / swap / consumption
             return
