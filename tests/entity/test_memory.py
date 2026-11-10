@@ -1,6 +1,6 @@
 import pytest
 
-from mqns.entity.memory import PathDirection, QuantumMemory, QubitState
+from mqns.entity.memory import QuantumMemory, QubitState
 from mqns.entity.node import QNode
 from mqns.entity.qchannel import QuantumChannel
 from mqns.models.epr import WernerStateEntanglement
@@ -40,7 +40,7 @@ def test_write_and_read_with_path_and_key():
     key = "n1_peer_0_0"
 
     # First allocate memory with path ID
-    addrs = mem.allocate(scenario.qc, 0, PathDirection.L)
+    addrs = mem.allocate(scenario.qc, 0)
     assert len(addrs) == 1
     addr = addrs[0]
     mem._storage[addr][0].key = key
@@ -70,11 +70,11 @@ def test_channel_qubit_assignment_and_search():
     assigned = mem.assign(scenario.qc, n=2)
     assert len(assigned) == 2
 
-    allocated = mem.allocate(scenario.qc, 7, PathDirection.R, n=2)
+    allocated = mem.allocate(scenario.qc, 7, n=2)
     assert len(allocated) == 2
 
     with pytest.raises(OverflowError, match="insufficient qubits"):
-        mem.allocate(scenario.qc, 9, PathDirection.L)
+        mem.allocate(scenario.qc, 9)
 
     # Assigned qubit should now be returned by find()
     qubits = list(mem.find(QuantumMemory.predicate_all, qchannel=scenario.qc))
@@ -82,7 +82,6 @@ def test_channel_qubit_assignment_and_search():
     for qubit, data in qubits:
         assert qubit.qchannel == scenario.qc
         assert qubit.path_id == 7
-        assert qubit.path_direction == PathDirection.R
         assert data is None
 
 
@@ -119,7 +118,7 @@ def test_clear_and_deallocate():
     assert mem.count == 0
 
     # Test deallocate
-    addrs = mem.allocate(scenario.qc, 7, PathDirection.L, n=2)
+    addrs = mem.allocate(scenario.qc, 7, n=2)
     assert len(addrs) == 2
 
     q0, _ = mem.read(addrs[0])
@@ -145,7 +144,7 @@ def test_qubit_reservation_behavior():
     mem = scenario.m1
     mem.assign(scenario.qc, n=2)
 
-    addrs = mem.allocate(scenario.qc, 42, PathDirection.L)
+    addrs = mem.allocate(scenario.qc, 42)
     assert len(addrs) == 1
     addr1 = addrs[0]
     q1 = mem._storage[addr1][0]

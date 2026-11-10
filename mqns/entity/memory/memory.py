@@ -32,7 +32,7 @@ from typing import TYPE_CHECKING, Any, Final, Literal, TypedDict, Unpack, overlo
 
 from mqns.entity.entity import Entity
 from mqns.entity.memory.event import MemoryDecohereEvent
-from mqns.entity.memory.memory_qubit import MemoryQubit, PathDirection, QubitState
+from mqns.entity.memory.memory_qubit import MemoryQubit, QubitState
 from mqns.entity.node import QNode
 from mqns.entity.qchannel import QuantumChannel
 from mqns.models.core import QuantumModel
@@ -263,7 +263,6 @@ class QuantumMemory(EventDispatcherMixin, Entity):
         self,
         ch: QuantumChannel,
         path_id: int,
-        path_direction: PathDirection,
         *,
         n: int = 1,
     ) -> list[int]:
@@ -273,7 +272,6 @@ class QuantumMemory(EventDispatcherMixin, Entity):
         Args:
             ch: Only consider qubits assigned to this quantum channel.
             path_id: Allocate qubits to this path identifier, retrievable via ``MemoryQubit.path_id``.
-            path_direction: Allocate qubits to this path direction, retrievable via ``MemoryQubit.path_direction``.
             n: Desired quantity.
 
         Returns:
@@ -289,7 +287,6 @@ class QuantumMemory(EventDispatcherMixin, Entity):
         addrs: list[int] = []
         for mq, _ in qubits:
             mq.path_id = path_id
-            mq.path_direction = path_direction
             addrs.append(mq.addr)
         return addrs
 
@@ -306,7 +303,6 @@ class QuantumMemory(EventDispatcherMixin, Entity):
     @staticmethod
     def _deallocate_qubit(mq: MemoryQubit) -> None:
         mq.path_id = None
-        mq.path_direction = None
 
     @overload
     def read(

@@ -100,7 +100,7 @@ class MuxSchemeBufferSpace(MuxSchemeFibBase):
         _ = peer
         assert "bufferspace_mv" in inst
         n_qubits = inst["bufferspace_mv"][2 * fp.own_idx + (dir.value - 1)]
-        addrs = self.memory.allocate(ch, fp.path_id, dir, n=n_qubits)
+        addrs = self.memory.allocate(ch, fp.path_id, n=n_qubits)
         self.fw.log_debug("allocating path %s-%s qubits: %s", fp.path_id, dir.name, addrs)
 
         self.simulator.sched(
@@ -148,7 +148,6 @@ class MuxSchemeBufferSpace(MuxSchemeFibBase):
             unwrap(fp),
             lambda q, _: (
                 self.qubits_swappable(mq0, q)  # basic condition met
-                and q.path_id == mq0.path_id  # allocated to the same path_id
-                and q.path_direction is not mq0.path_direction  # in the opposite path direction
+                and unwrap_cast(q.epr_path_ids)[0] == unwrap_cast(mq0.epr_path_ids)[0]  # on the same path
             ),
         )

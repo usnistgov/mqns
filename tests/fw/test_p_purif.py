@@ -6,14 +6,15 @@ from collections.abc import Iterable, Mapping, Sequence
 
 import pytest
 
-from mqns.entity.memory import MemoryQubit, PathDirection, QuantumMemory, QubitState
+from mqns.entity.memory import MemoryQubit, QuantumMemory, QubitState
+from mqns.models.epr import Entanglement
 from mqns.network.builder import NetworkBuilder
 from mqns.network.fw import RoutingPath
 from mqns.network.network import Request
 from mqns.network.proactive import ProactiveForwarder
 from mqns.network.protocol.consumer import RequestCounters
 from mqns.simulator import Time
-from mqns.utils import rng
+from mqns.utils import rng, unwrap
 
 from .fw_common import LA_ALWAYS, check_fw_counters, make_network, print_node_counters, provide_entanglements
 
@@ -160,8 +161,6 @@ def test_3_path_delete(
         .proactive_centralized(ll=False, p_swap=1.0, swap_delay=0.2),
         end_time=5.0,
     )
-    chAB = net.get_qchannel("A", "B")
-    chBC = net.get_qchannel("B", "C")
     fwA, fwB, fwC = (node.get_app(ProactiveForwarder) for node in net.nodes)
 
     net.add_request(
@@ -175,23 +174,32 @@ def test_3_path_delete(
         (etg_sec[1], fwB, fwC),
     )
 
+    memory_write_old = QuantumMemory.write
     mq_reset_state_old = MemoryQubit.reset_state
     reset_times = [list[Time]() for _ in range(4)]
+    mq_append_reset_time: dict[MemoryQubit, int] = {}
+
+    def memory_write_new(self: QuantumMemory, *args, **kwargs) -> MemoryQubit:
+        mq = memory_write_old(self, *args, **kwargs)
+        if isinstance(epr := args[1], Entanglement):
+            match "".join(unwrap(node).name for node in (self.node, epr.src, epr.dst)):
+                case "AAB":
+                    mq_append_reset_time[mq] = 0
+                case "BAB":
+                    mq_append_reset_time[mq] = 1
+                case "BBC":
+                    mq_append_reset_time[mq] = 2
+                case "CBC":
+                    mq_append_reset_time[mq] = 3
+        return mq
 
     def mq_reset_state_new(self: MemoryQubit, state: QubitState) -> None:
-        nonlocal chAB, chBC
-        if self.path_id == 0 and state is QubitState.RAW:
-            match self.path_direction:
-                case PathDirection.R if self.qchannel is chAB:
-                    reset_times[0].append(simulator.tc)
-                case PathDirection.L if self.qchannel is chAB:
-                    reset_times[1].append(simulator.tc)
-                case PathDirection.R if self.qchannel is chBC:
-                    reset_times[2].append(simulator.tc)
-                case PathDirection.L if self.qchannel is chBC:
-                    reset_times[3].append(simulator.tc)
+        append_to = mq_append_reset_time.pop(self, None)
+        if append_to is not None:
+            reset_times[append_to].append(simulator.tc)
         mq_reset_state_old(self, state)
 
+    monkeypatch.setattr(QuantumMemory, "write", memory_write_new)
     monkeypatch.setattr(MemoryQubit, "reset_state", mq_reset_state_new)
     force_purify_outcome(monkeypatch, True)
 

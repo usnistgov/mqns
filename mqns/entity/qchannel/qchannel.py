@@ -125,13 +125,11 @@ class QuantumChannel(BaseChannel[QNode]):
         Raises:
             OverflowError: insufficient qubits.
         """
-        from mqns.entity.memory import PathDirection  # noqa: PLC0415
-
-        for node, dir in zip(self.node_list, (PathDirection.R, PathDirection.L), strict=True):
+        for node in self.node_list:
             cap = capacity if isinstance(capacity, int) else capacity[node.name]
             node.memory.assign(self, n=cap)
             if path_id is not None:
-                node.memory.allocate(self, path_id, dir, n=cap)
+                node.memory.allocate(self, path_id, n=cap)
 
     def send(self, qubit: QuantumModel, next_hop: QNode):
         """
