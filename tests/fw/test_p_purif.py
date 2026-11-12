@@ -205,7 +205,7 @@ def test_3_path_delete(
 
     simulator.run()
     print_node_counters(net)
-    QuantumMemory.check_leaks(net.nodes, deallocated=True)
+    QuantumMemory.check_leaks(net.nodes)
     assert reset_times == list(list(simulator.time(sec=t) for t in mqt) for mqt in t_raw)
 
 

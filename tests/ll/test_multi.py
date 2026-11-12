@@ -222,7 +222,7 @@ def test_reactivate(
     simulator = Simulator(0.0, 6.0, install_to=(log, net))
 
     activate_group(0.1, t_delete, nl1, nl2, gid=7)
-    activate_group(t_insert, None, nl1, nl2, gid=gid, n=0 if same_path else 1)
+    activate_group(t_insert, None, nl1, nl2, gid=gid, assign_to_channel=not same_path)
     check_link_arch_delays(0.1, ch, attempt_interval=0.6, d_notify_pri=0.3, d_notify_2nd=0.6)
     force_attempts(monkeypatch, ll1, n2=[2, 2, 10000])
     force_attempts(monkeypatch, ll2, n1=[2, 2, 10000])

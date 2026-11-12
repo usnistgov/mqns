@@ -84,6 +84,7 @@ class LLEntangleProc[G: LLGroup[Any]](LogSelfMixin):
         grp = self.groups_draining.pop(gid, None)
         if grp:
             grp.delete_event.cancel()
+            assert event.q_target in (-1, len(grp.qubits)), "changing q_target is not supported"
         else:
             grp = self._group_create(event)
             self._group_alloc_qubits(grp, event.q_target)
@@ -131,8 +132,8 @@ class LLEntangleProc[G: LLGroup[Any]](LogSelfMixin):
 
         grp.delete_event.cancel()
         for mq in grp.qubits.values():
-            if self.ll.group_by_mq[mq.addr] is grp:
-                del self.ll.group_by_mq[mq.addr]
+            mq_grp = self.ll.group_by_mq.pop(mq.addr)
+            assert mq_grp is grp, f"qubit {mq.addr} is prematurely reallocated to {mq_grp}"
 
         grp.assert_is_drained()
         if len(self.groups_active) + len(self.groups_draining) == 0:

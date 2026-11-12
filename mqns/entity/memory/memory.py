@@ -73,7 +73,6 @@ class QuantumMemory(EventDispatcherMixin, Entity):
         nodes: Iterable["QNode"],
         *,
         states: Container[QubitState] = (QubitState.RAW, QubitState.RELEASE),
-        deallocated=False,
         unassigned=False,
     ) -> None:
         """
@@ -82,7 +81,6 @@ class QuantumMemory(EventDispatcherMixin, Entity):
         Args:
             nodes: List of quantum nodes, such as ``QuantumNetwork.nodes``.
             states: Acceptable states.
-            deallocated: If True, qubit must not be allocated to a path.
             unassigned: If True, qubit must not be assigned to a channel.
 
         Raises:
@@ -94,8 +92,6 @@ class QuantumMemory(EventDispatcherMixin, Entity):
             for mq, data in node.memory.find(QuantumMemory.predicate_all):
                 if mq.state not in states:
                     errors.append(f"{node.name} {mq} has unexpected state {mq.state} | {data}")
-                if deallocated and mq.path_id is not None:
-                    errors.append(f"{node.name} {mq} is allocated to path {mq.path_id}")
                 if unassigned and mq.qchannel:
                     errors.append(f"{node.name} {mq} is assigned to {mq.qchannel}")
         if n := len(errors):

@@ -157,8 +157,6 @@ class MemoryQubit:
 
     qchannel: QuantumChannel | None = None
     """QuantumChannel to which qubit is assigned to."""
-    path_id: int | None = None
-    """Optional path ID to which qubit is allocated."""
 
     _state = QubitState.RAW
 
@@ -247,8 +245,6 @@ def _describe(mq: MemoryQubit) -> Iterable[str]:
 
     if mq.qchannel:
         yield f"ch={mq.qchannel.name}"
-        if mq.path_id is not None:
-            yield f"path={mq.path_id}"
 
     if mq.key:
         yield f"key={mq.key}"
