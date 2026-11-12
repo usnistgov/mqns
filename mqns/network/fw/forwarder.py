@@ -220,9 +220,9 @@ class Forwarder(ClassicCommandDispatcherMixin, Application[QNode]):
         """
         self.cnt.n_entg += 1
 
-        mq = event.qubit
+        mq = event.mq
         assert mq.state is QubitState.ENTANGLED1, f"unexpected state {mq.state}"
-        mq.partner = EntangledPartner(event.neighbor.name, event.neighbor, unwrap(mq.key))
+        mq.partner = EntangledPartner(event.peer.name, event.gid, event.peer, unwrap(mq.key))
 
         _, epr = self.memory.read(mq.addr, has=self.epr_type)
         assert not epr.orig_eprs, f"{mq} is not elementary entanglement"
@@ -238,7 +238,7 @@ class Forwarder(ClassicCommandDispatcherMixin, Application[QNode]):
         state1: QubitState = mq.state
         match state1:
             case QubitState.PURIF:
-                self.qubit_is_purif(mq, unwrap(fp), event.neighbor)
+                self.qubit_is_purif(mq, unwrap(fp), event.peer)
             case QubitState.ELIGIBLE:
                 self.qubit_is_eligible(mq, fp)
             case QubitState.ENTANGLED1:
@@ -339,7 +339,7 @@ class Forwarder(ClassicCommandDispatcherMixin, Application[QNode]):
                 and q.state is QubitState.PURIF  # in PURIF state
                 and q.purif_rounds == qubit.purif_rounds  # with same number of purif rounds
                 and partner in (v.src, v.dst)  # with the same partner
-                and q.path_id == fp.path_id  # on the same path_id
+                and fp.path_id in unwrap(q.epr_path_ids)  # on the same path_id
             ),
             has=self.epr_type,
         )

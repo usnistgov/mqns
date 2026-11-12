@@ -121,7 +121,12 @@ class EntangledPartner(NamedTuple):
 
     ch_peer: str
     """
-    Peer node name of the near-side channel where the initial entanglement was generated.
+    Peer node name of the near-side channel for initial entanglement generation.
+    """
+
+    ll_gid: int
+    """
+    LinkLayer group identifier on the near-side channel for initial entanglement generation.
     """
 
     node: QNode
@@ -136,6 +141,12 @@ class EntangledPartner(NamedTuple):
 
     def __repr__(self) -> str:
         return f"{self.node.name}:{self.key}"
+
+    def with_far_side(self, node: QNode, key: str) -> "EntangledPartner":
+        """
+        Update far-side information.
+        """
+        return EntangledPartner(*self[:2], node, key)
 
 
 class MemoryQubit:

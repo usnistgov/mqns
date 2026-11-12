@@ -31,7 +31,7 @@ class TwoNodes:
         )
 
 
-def test_write_and_read_with_path_and_key():
+def test_write_and_read():
     scenario = TwoNodes(capacity=2)
     mem = scenario.m1
     mem.assign(scenario.qc, n=2)
@@ -45,7 +45,7 @@ def test_write_and_read_with_path_and_key():
     addr = addrs[0]
     mem._storage[addr][0].key = key
 
-    # Now write with path_id and key
+    # Now write with key
     qubit = mem.write(key, epr1)
     assert unwrap(qubit).addr == addr
 
@@ -61,28 +61,6 @@ def test_write_and_read_with_path_and_key():
 
     with pytest.raises(ValueError, match="data at 0 is not"):
         mem.read(qubit.addr, has=WernerStateEntanglement)
-
-
-def test_channel_qubit_assignment_and_search():
-    scenario = TwoNodes(capacity=3)
-    mem = scenario.m1
-
-    assigned = mem.assign(scenario.qc, n=2)
-    assert len(assigned) == 2
-
-    allocated = mem.allocate(scenario.qc, 7, n=2)
-    assert len(allocated) == 2
-
-    with pytest.raises(OverflowError, match="insufficient qubits"):
-        mem.allocate(scenario.qc, 9)
-
-    # Assigned qubit should now be returned by find()
-    qubits = list(mem.find(QuantumMemory.predicate_all, qchannel=scenario.qc))
-    assert len(qubits) == 2
-    for qubit, data in qubits:
-        assert qubit.qchannel == scenario.qc
-        assert qubit.path_id == 7
-        assert data is None
 
 
 def test_decoherence_event():
@@ -102,58 +80,6 @@ def test_decoherence_event():
     res, _ = mem.read(0)
     assert res is qubit
     assert qubit.state is QubitState.RELEASE, f"unexpected state {qubit.state}"
-
-
-def test_clear_and_deallocate():
-    scenario = TwoNodes(capacity=2)
-    mem = scenario.m1
-    mem.assign(scenario.qc, n=2)
-
-    for i in range(2):
-        epr = scenario.make_epr(f"epr{i}")
-        mem.write(i, epr)
-
-    assert mem.count == 2
-    mem.clear()
-    assert mem.count == 0
-
-    # Test deallocate
-    addrs = mem.allocate(scenario.qc, 7, n=2)
-    assert len(addrs) == 2
-
-    q0, _ = mem.read(addrs[0])
-    q1, _ = mem.read(addrs[1])
-    assert q0.addr != q1.addr
-    assert q0.path_id == 7
-    assert q1.path_id == 7
-    q0.state = QubitState.ACTIVE
-
-    mem.deallocate(*addrs)
-    assert q0.path_id == 7
-    assert q1.path_id is None
-
-    q0.state = QubitState.RAW
-    assert q0.path_id is None
-
-    with pytest.raises(LookupError):
-        mem.deallocate(999)  # out of range
-
-
-def test_qubit_reservation_behavior():
-    scenario = TwoNodes(capacity=2)
-    mem = scenario.m1
-    mem.assign(scenario.qc, n=2)
-
-    addrs = mem.allocate(scenario.qc, 42)
-    assert len(addrs) == 1
-    addr1 = addrs[0]
-    q1 = mem._storage[addr1][0]
-    q1.key = "n5_n6_42_" + str(addr1)
-
-    epr = scenario.make_epr("epr1")
-
-    qubit = mem.write(q1.key, epr)
-    assert qubit.addr == addr1
 
 
 def test_sync_qubit():

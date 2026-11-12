@@ -86,8 +86,8 @@ def test_multi_channel():
     simulator.run()
 
     for ll, nl in (ll1, nl1), (ll2, nl2), (ll3, nl3):
-        print(ll.node.name, ll.cnt, f"path_entangle_cnt={nl.path_entangle[1]}")
-        assert len(nl.path_entangle[1]) > 0
+        print(ll.node.name, ll.cnt, f"path_entangle_cnt={nl.group_entangle[1]}")
+        assert len(nl.group_entangle[1]) > 0
 
     # All attempts should be initiated by ll1.
     assert ll1.cnt.n_attempts > 0
@@ -113,7 +113,7 @@ def test_multi_group():
     simulator.run()
 
     for ll, nl in (ll1, nl1), (ll2, nl2):
-        path_entangle_cnts = [len(nl.path_entangle[path_id]) for path_id in range(1, 5)]
+        path_entangle_cnts = [len(nl.group_entangle[path_id]) for path_id in range(1, 5)]
         print(ll.node.name, ll.cnt, f"path_entangle_cnts={path_entangle_cnts}")
         assert all(c > 0 for c in path_entangle_cnts)
 

@@ -637,7 +637,7 @@ def test_rect2_multipath(has_etg: tuple[int, int, int, int], n_swapped: tuple[in
         routes = {"-".join(fp.route) for fp in fr.paths}
         assert routes == {"A-B-D", "A-C-D"}
 
-    simulator.sched(func_to_event(simulator.time(sec=2.0), check_fib_entries))
+    simulator.sched(func_to_event(simulator.time(sec=0.1), check_fib_entries))
     provide_entanglements(
         (1.001 if has_etg[0] else -1, fwA, fwB),
         (1.002 if has_etg[1] else -1, fwB, fwD),

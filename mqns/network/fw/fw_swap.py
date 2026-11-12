@@ -1,7 +1,7 @@
 from collections.abc import Iterable, Sequence
 from typing import TYPE_CHECKING, ClassVar, NamedTuple, override
 
-from mqns.entity.memory import EntangledPartner, MemoryQubit, QubitState
+from mqns.entity.memory import MemoryQubit, QubitState
 from mqns.models.core import QuantumModel
 from mqns.models.delay import DelayModel
 from mqns.models.epr import Entanglement
@@ -727,7 +727,7 @@ class ForwarderSwapProc(ForwarderModule):
         assert su.partner in su.fp.route
 
         # Store new EPR.
-        mq.partner = EntangledPartner(unwrap_cast(mq.partner).ch_peer, partner, su.p_key)
+        mq.partner = unwrap_cast(mq.partner).with_far_side(partner, su.p_key)
         self.memory.write(mq.addr, new_phy, replace=True)
 
         self.fw_cnt.n_su_lower[0] += 1

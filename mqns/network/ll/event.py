@@ -114,20 +114,22 @@ class QubitEntangledEvent(Event):
     def __init__(
         self,
         node: QNode,
-        neighbor: QNode,
-        qubit: MemoryQubit,
+        peer: QNode,
+        gid: int,
+        mq: MemoryQubit,
         *,
         t: Time,
     ):
-        super().__init__(t, f"{node.name}-{neighbor.name}, key={qubit.key}, addr={qubit.addr}")
+        assert mq.state is QubitState.ENTANGLED0, f"unexpected state {mq.state}"
+        super().__init__(t, f"{node.name}-{peer.name}, gid={gid}, key={mq.key}, mq-addr={mq.addr}")
         self.node = node
-        self.neighbor = neighbor
-        self.qubit = qubit
-        assert self.qubit.state is QubitState.ENTANGLED0, f"unexpected state {qubit.state}"
+        self.peer = peer
+        self.gid = gid
+        self.mq = mq
 
     @override
     def invoke(self) -> None:
-        self.qubit.state = QubitState.ENTANGLED1
+        self.mq.state = QubitState.ENTANGLED1
         self.node.handle(self)
 
 

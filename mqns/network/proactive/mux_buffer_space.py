@@ -135,11 +135,10 @@ class MuxSchemeBufferSpace(MuxSchemeFibBase):
     @override
     def qubit_is_entangled(self, mq: MemoryQubit, epr: Entanglement) -> FibPath | None:
         _ = epr
-        if mq.path_id is None:  # path has been uninstalled
-            return None
-        mq.epr_path_ids = [mq.path_id]
+        path_id = unwrap_cast(mq.partner).ll_gid
+        mq.epr_path_ids = [path_id]
         mq.state = QubitState.PURIF
-        return self.fib.get_path(unwrap_cast(mq.path_id))
+        return self.fib.get_path(path_id)
 
     @override
     def find_swap_with(self, mq0: MemoryQubit, epr0: Entanglement, fp: FibPath | None) -> tuple[MemoryQubit, FibPath] | None:

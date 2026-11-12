@@ -90,7 +90,7 @@ class ReactiveForwarder(Forwarder):
         Handle a qubit entering ENTANGLED state when in EXTERNAL phase of SYNC timing mode.
         """
         super().qubit_is_entangled_in_external(event)
-        self.nb.append_link_state(event.neighbor, event.qubit)
+        self.nb.append_link_state(event.peer, event.mq)
 
     @override
     def qubit_is_entangled_next(self, mq: MemoryQubit, epr: Entanglement) -> FibPath | None:

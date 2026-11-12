@@ -191,11 +191,12 @@ class LLGroup[P: LLEntangleProc[Any]](LogSelfMixin):
 
 
 class LLNotifyEvent(Event):
-    def __init__(self, t: Time, node: QNode, peer: QNode, key: str, epr: Entanglement):
+    def __init__(self, t: Time, node: QNode, peer: QNode, gid: int, key: str, epr: Entanglement):
         assert epr.decohere_time > t
-        super().__init__(t, f"{unwrap_cast(epr.src).name}-{unwrap_cast(epr.dst).name}, key={key}, epr={epr.name}")
+        super().__init__(t, f"{unwrap_cast(epr.src).name}-{unwrap_cast(epr.dst).name}, gid={gid}, key={key}, epr={epr.name}")
         self.node = node
         self.peer = peer
+        self.gid = gid
         self.key = key
         self.epr = epr
 

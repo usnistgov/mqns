@@ -236,10 +236,10 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
         assert self.node.timing.is_external()
         mq = self.memory.write(event.key, event.epr)
 
-        self.log_debug("%s EPR_DELIVER mq-addr=%s path=%s", event, mq.addr, mq.path_id)
+        self.log_debug("%s EPR_DELIVER mq-addr=%s", event, mq.addr)
 
         mq.state = QubitState.ENTANGLED0
-        self.simulator.sched(QubitEntangledEvent(self.node, event.peer, mq, t=event.t))
+        self.simulator.sched(QubitEntangledEvent(self.node, event.peer, event.gid, mq, t=event.t))
 
     @event_handler
     def handle_release(self, event: QubitReleasedEvent) -> None:
