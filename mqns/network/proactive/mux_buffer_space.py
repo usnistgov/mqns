@@ -99,30 +99,20 @@ class MuxSchemeBufferSpace(MuxSchemeFibBase):
     ) -> None:
         _ = peer
         assert "bufferspace_mv" in inst
-        n_qubits = inst["bufferspace_mv"][2 * fp.own_idx + (dir.value - 1)]
-        addrs = self.memory.allocate(ch, fp.path_id, n=n_qubits)
-        self.fw.log_debug("allocating path %s-%s qubits: %s", fp.path_id, dir.name, addrs)
-
         self.simulator.sched(
             LLActivateEvent(
                 self.node,
                 ch,
                 t=self.simulator.tc,
                 gid=fp.path_id,
+                q_target=inst["bufferspace_mv"][2 * fp.own_idx + (dir.value - 1)],
                 is_primary=self._path_adj_is_primary(inst, fp, dir),
-                qubits=(q for q, _ in self.memory.find(lambda q, _: q.path_id == fp.path_id, qchannel=ch)),
             )
         )
 
     @override
     def uninstall_path_adj(self, fp: FibPath, dir: PathDirection, ch: QuantumChannel, peer: QNode) -> None:
-        qubits = self.memory.find(lambda q, _: q.path_id == fp.path_id, qchannel=ch)
-        addrs = [q.addr for q, _ in qubits]
-        self.fw.log_debug("deallocating path %s-%s qubits: %s", fp.path_id, dir.name, addrs)
-        # If some qubits are currently ACTIVE or RESERVED in LinkLayer, deallocation would occur
-        # when they next reach RAW state.
-        self.memory.deallocate(*addrs)
-
+        _ = dir, peer
         self.simulator.sched(
             LLDeactivateEvent(
                 self.node,

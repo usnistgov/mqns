@@ -86,9 +86,7 @@ class LLEntangleProc[G: LLGroup[Any]](LogSelfMixin):
             grp.delete_event.cancel()
         else:
             grp = self._group_create(event)
-            for mq in event.qubits:
-                grp.qubits[mq.addr] = mq
-                self.ll.group_by_mq[mq.addr] = grp
+            self._group_alloc_qubits(grp, event.q_target)
 
         if gid in self.groups_active:
             raise ValueError(f"{self} already has active group {gid}")
@@ -99,6 +97,17 @@ class LLEntangleProc[G: LLGroup[Any]](LogSelfMixin):
 
     @abstractmethod
     def _group_create(self, event: LLActivateEvent) -> G: ...
+
+    def _group_alloc_qubits(self, grp: "LLGroup", q_target: int) -> None:
+        qubits = list(self.node.memory.find(lambda q, _: q.addr not in self.ll.group_by_mq, qchannel=self.ch))
+        if q_target >= 0:
+            if len(qubits) < q_target:
+                raise RuntimeError(f"{grp} has insufficient qubit allocation")
+            qubits = qubits[:q_target]
+
+        for mq, _ in qubits:
+            grp.qubits[mq.addr] = mq
+            self.ll.group_by_mq[mq.addr] = grp
 
     def group_deactivate(self, gid: int) -> None:
         """Deactivate a group within the channel."""

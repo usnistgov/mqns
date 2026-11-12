@@ -15,7 +15,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from collections.abc import Callable, Iterable
+from collections.abc import Callable
 from typing import ClassVar, final, override
 
 from mqns.entity.memory import MemoryQubit, QubitState
@@ -44,7 +44,7 @@ class LLActivateEvent(Event):
         *,
         t: Time,
         gid: int,
-        qubits: Iterable[MemoryQubit],
+        q_target: int,
         is_primary: bool,
         on_attempt_success: OnAttemptSuccess = lambda *_: None,
     ):
@@ -53,6 +53,9 @@ class LLActivateEvent(Event):
             node: Node with :py:class:`~mqns.network.ll.LinkLayer` application.
             ch: Quantum channel for entanglement generation.
             gid: Group identifier, must be unique per channel and same on both sides.
+            q_target: Desired quantity of qubits.
+                Temporarily during #125 refactoring, (1) the qubits must have been assigned to the channel,
+                (2) ``-1`` indicates all qubits assigned to the channel.
             qubits: Qubits allocated for the group.
             is_primary: True for primary role, False for secondary role.
                 Two nodes on the same channel must take opposite roles.
@@ -65,7 +68,7 @@ class LLActivateEvent(Event):
         super().__init__(t, f"node={node.name}, role={'pri' if is_primary else '2nd'}, peer={self.peer.name}, gid={gid}")
         self.ch = ch
         self.gid = gid
-        self.qubits = list(qubits)
+        self.q_target = q_target
         self.is_primary = is_primary
         self.on_attempt_success = on_attempt_success
 

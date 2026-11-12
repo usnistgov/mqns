@@ -259,51 +259,6 @@ class QuantumMemory(EventDispatcherMixin, Entity):
 
             qubit.qchannel = None
 
-    def allocate(
-        self,
-        ch: QuantumChannel,
-        path_id: int,
-        *,
-        n: int = 1,
-    ) -> list[int]:
-        """
-        Allocate n qubits to a given path ID.
-
-        Args:
-            ch: Only consider qubits assigned to this quantum channel.
-            path_id: Allocate qubits to this path identifier, retrievable via ``MemoryQubit.path_id``.
-            n: Desired quantity.
-
-        Returns:
-            List of qubit addresses.
-
-        Raises:
-            OverflowError: insufficient unallocated qubits.
-        """
-        qubits = list(itertools.islice(self.find(lambda q, _: q.path_id is None, qchannel=ch), n))
-        if len(qubits) != n:
-            raise OverflowError(f"{self}: insufficient qubits for allocate({ch},n={n})")
-
-        addrs: list[int] = []
-        for mq, _ in qubits:
-            mq.path_id = path_id
-            addrs.append(mq.addr)
-        return addrs
-
-    def deallocate(self, *addrs: int) -> None:
-        """
-        Deallocate one or more qubits from any assigned path.
-
-        If a qubit is currently occupied, the deallocation takes effect when it next reaches RAW state.
-        """
-        for addr in addrs:
-            mq, _ = self._storage[addr]
-            mq.on_raw(QuantumMemory._deallocate_qubit)
-
-    @staticmethod
-    def _deallocate_qubit(mq: MemoryQubit) -> None:
-        mq.path_id = None
-
     @overload
     def read(
         self, key: int, *, must: Literal[True] = True, remove: bool | QuantumModel = False

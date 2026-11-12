@@ -17,7 +17,7 @@
 
 from typing import Final, Unpack, override
 
-from mqns.entity.memory import MemoryQubit, QuantumMemory, QubitState
+from mqns.entity.memory import MemoryQubit, QubitState
 from mqns.models.epr import Entanglement
 from mqns.network.fw import FibPath, Forwarder, ForwarderInitKwargs
 from mqns.network.ll import LLActivateEvent, QubitEntangledEvent
@@ -68,8 +68,8 @@ class ReactiveForwarder(Forwarder):
                     ch,
                     t=now,
                     gid=_LL_GID_ALL_PATHS,
+                    q_target=-1,
                     is_primary=ch.node_list[0] is self.node,
-                    qubits=(q for q, _ in self.memory.find(QuantumMemory.predicate_all, qchannel=ch)),
                 )
             )
 

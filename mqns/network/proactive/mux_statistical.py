@@ -1,7 +1,7 @@
 from collections.abc import Callable, MutableMapping
 from typing import TYPE_CHECKING, Final, Literal, override
 
-from mqns.entity.memory import MemoryQubit, QuantumMemory, QubitState
+from mqns.entity.memory import MemoryQubit, QubitState
 from mqns.entity.node import QNode
 from mqns.entity.qchannel import QuantumChannel
 from mqns.models.epr import Entanglement
@@ -59,7 +59,7 @@ class MuxSchemeDynamicBase(MuxScheme):
                 ch,
                 t=self.simulator.tc,
                 gid=_LL_GID_ALL_PATHS,
-                qubits=(q for q, _ in self.memory.find(QuantumMemory.predicate_all, qchannel=ch)),
+                q_target=-1,
                 is_primary=self._path_adj_is_primary(inst, fp, dir),
                 on_attempt_success=self.on_ll_attempt_success,
             )

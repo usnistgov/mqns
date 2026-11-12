@@ -40,14 +40,11 @@ def test_write_and_read():
     key = "n1_peer_0_0"
 
     # First allocate memory with path ID
-    addrs = mem.allocate(scenario.qc, 0)
-    assert len(addrs) == 1
-    addr = addrs[0]
-    mem._storage[addr][0].key = key
+    mem._storage[1][0].key = key
 
     # Now write with key
     qubit = mem.write(key, epr1)
-    assert unwrap(qubit).addr == addr
+    assert unwrap(qubit).addr == 1
 
     # Should fail to write another one in the same slot
     epr2 = scenario.make_epr("epr2")
@@ -59,7 +56,7 @@ def test_write_and_read():
     assert data.name == "epr1"
     assert mem.count == 0
 
-    with pytest.raises(ValueError, match="data at 0 is not"):
+    with pytest.raises(ValueError, match="data at 1 is not"):
         mem.read(qubit.addr, has=WernerStateEntanglement)
 
 

@@ -142,17 +142,16 @@ def activate_group(
 
     if t0 is not None:
         t = simulator.time(sec=t0)
-        node_addrs = ch.assign_memory_qubits(capacity=n)
+        ch.assign_memory_qubits(capacity=n)
         for node, is_primary in zip((src.node, dst.node), roles, strict=True):
-            addrs = node_addrs[node]
             simulator.sched(
                 LLActivateEvent(
                     node,
                     ch,
                     t=t,
                     gid=gid,
+                    q_target=n,
                     is_primary=is_primary,
-                    qubits=(q for q, _ in node.memory.find(lambda q, _: q.addr in addrs)),
                 )
             )
 
