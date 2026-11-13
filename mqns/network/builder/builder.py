@@ -200,7 +200,7 @@ class AppsForwarderArgs(AppsCommonArgs, ForwarderInitKwargs):
 
 class NetworkBuilder:
     """
-    Orchestrator of quantum network simulation with :py:class:`~mqns.network.protocol.link_layer.LinkLayer`
+    Orchestrator of quantum network simulation with :py:class:`~mqns.network.ll.LinkLayer`
     and :py:class:`~mqns.network.fw.Forwarder`.
 
     Usage:
@@ -525,7 +525,7 @@ class NetworkBuilder:
         nats_prefix=ClassicBridge.DEFAULT_NATS_PREFIX,
     ) -> Self:
         """
-        Replace the controller application with :py:class:`mqns.network.protocol.classicbridge.ClassicBridge`.
+        Replace the controller application with :py:class:`~mqns.network.protocol.classicbridge.ClassicBridge`.
 
         Args:
             nats_prefix: Prefix of NATS subjects.
