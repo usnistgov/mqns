@@ -25,7 +25,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from typing import Final, Unpack, final, override
 
 from mqns.entity.base_channel import BaseChannel, BaseChannelInitKwargs, calc_transmission_prob
@@ -110,25 +110,6 @@ class QuantumChannel(BaseChannel[QNode]):
         self.init_fidelity = kwargs.get("init_fidelity")
         self.transfer_error = parse_error(kwargs.get("transfer_error"), DepolarErrorModel, self.length)
         self.bsa_error = parse_error(kwargs.get("bsa_error"), DepolarErrorModel, -1)
-
-    def assign_memory_qubits(self, *, capacity: int | dict[str, int] = 1) -> Mapping[QNode, Sequence[int]]:
-        """
-        Assign memory qubits at each node connected to the qchannel.
-
-        Args:
-            capacity: Required quantity of qubits.
-                      If given as an integer, this applies to every node.
-                      If given as a dict, it should be a mapping from node name to capacity of this node,
-                      where every node connected to the qchannel must appear in the dict.
-
-        Raises:
-            OverflowError: insufficient qubits.
-        """
-        node_addrs: dict[QNode, list[int]] = {}
-        for node in self.node_list:
-            cap = capacity if isinstance(capacity, int) else capacity[node.name]
-            node_addrs[node] = node.memory.assign(self, n=cap)
-        return node_addrs
 
     def send(self, qubit: QuantumModel, next_hop: QNode):
         """

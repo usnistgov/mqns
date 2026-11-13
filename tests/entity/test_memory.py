@@ -34,7 +34,6 @@ class TwoNodes:
 def test_write_and_read():
     scenario = TwoNodes(capacity=2)
     mem = scenario.m1
-    mem.assign(scenario.qc, n=2)
 
     epr1 = scenario.make_epr("epr1")
     key = "n1_peer_0_0"
@@ -120,7 +119,6 @@ def test_sync_qubit_limited():
 def test_remove_empty_qubit_keeps_count():
     scenario = TwoNodes(capacity=2)
     mem = scenario.m1
-    mem.assign(scenario.qc, n=2)
 
     epr = scenario.make_epr("epr1")
     mq = mem.write(0, epr)

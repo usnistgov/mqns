@@ -21,7 +21,6 @@ from enum import Enum, auto
 from typing import Final, NamedTuple
 
 from mqns.entity.node import QNode
-from mqns.entity.qchannel import QuantumChannel
 from mqns.simulator import EventHandleSet, Time
 
 
@@ -155,9 +154,6 @@ class MemoryQubit:
     addr: Final[int]
     """Address index in QuantumMemory."""
 
-    qchannel: QuantumChannel | None = None
-    """QuantumChannel to which qubit is assigned to."""
-
     _state = QubitState.RAW
 
     key: str | None = None
@@ -242,9 +238,6 @@ class MemoryQubit:
 def _describe(mq: MemoryQubit) -> Iterable[str]:
     yield f"MemoryQubit({mq.addr}"
     yield f"state={mq._state.name}"
-
-    if mq.qchannel:
-        yield f"ch={mq.qchannel.name}"
 
     if mq.key:
         yield f"key={mq.key}"
