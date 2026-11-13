@@ -236,7 +236,7 @@ class Forwarder(ClassicCommandDispatcherMixin, Application[QNode]):
         self.cnt.n_entg += 1
 
         mq = event.mq
-        assert mq.state is QubitState.ENTANGLED1, f"unexpected state {mq.state}"
+        assert mq.state is QubitState.ENTANGLED, f"unexpected state {mq.state}"
         mq.partner = EntangledPartner(event.peer.name, event.gid, event.peer, unwrap(mq.key))
 
         _, epr = self.memory.read(mq.addr, has=self.epr_type)
@@ -256,7 +256,7 @@ class Forwarder(ClassicCommandDispatcherMixin, Application[QNode]):
                 self.qubit_is_purif(mq, unwrap(fp), event.peer)
             case QubitState.ELIGIBLE:
                 self.qubit_is_eligible(mq, fp)
-            case QubitState.ENTANGLED1:
+            case QubitState.ENTANGLED:
                 pass
             case _:
                 raise RuntimeError(f"{self}: {mq} has unexpected state {state1}")
@@ -305,7 +305,7 @@ class Forwarder(ClassicCommandDispatcherMixin, Application[QNode]):
         1. Populate :py:attr:`mq.epr_path_ids <mqns.entity.memory.MemoryQubit.epr_path_ids>`
            with potential paths.
         2. Keep :py:attr:`mq.state <mqns.entity.memory.MemoryQubit.state>`
-           as :py:attr:`~mqns.entity.memory.QubitState.ENTANGLED1`.
+           as :py:attr:`~mqns.entity.memory.QubitState.ENTANGLED`.
         """
 
     def qubit_is_purif(self, qubit: MemoryQubit, fp: FibPath, partner: QNode) -> None:

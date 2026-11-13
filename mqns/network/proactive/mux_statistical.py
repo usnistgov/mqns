@@ -161,7 +161,7 @@ class MuxSchemeStatistical(MuxSchemeDynamicBase):
         rank_diff = [calc_rank_diff(path_id) for path_id in mq.epr_path_ids]
         assert min(rank_diff) == max(rank_diff)  # failure means one node is both repeater and end node, unsupported
         if rank_diff[0] > 0:
-            # Own node has higher rank and cannot initiate swap; qubit stays in ENTANGLED1 state.
+            # Own node has higher rank and cannot initiate swap; qubit stays in ENTANGLED state.
             return None
 
         # Own node has lower/equal rank and can initiate swap.

@@ -218,7 +218,7 @@ def provide_entanglements(
         for node, peer, d_notify in (src, dst, la.d_notify_pri), (dst, src, la.d_notify_2nd):
             q, _ = next(node.memory.find(lambda _, v: v is None), (None, None))
             assert q is not None, f"insufficient qubits assigned to {ch}"
-            q._state = QubitState.ENTANGLED0
+            q._state = QubitState.RESERVED
             q.key = ll_key
             node.memory.write(q.addr, epr)
             simulator.sched(QubitEntangledEvent(node.node, peer.node, ll_gid, q, t=t_creation + d_notify))

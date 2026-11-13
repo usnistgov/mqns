@@ -68,7 +68,7 @@ def test_decoherence_event():
 
     qubit.state = QubitState.ACTIVE
     qubit.state = QubitState.RESERVED
-    qubit.state = QubitState.ENTANGLED0
+    qubit.state = QubitState.ENTANGLED
 
     # Expect it to decohere at t=1.0
     scenario.s.run()

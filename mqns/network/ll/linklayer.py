@@ -238,8 +238,7 @@ class LinkLayer(ClassicCommandDispatcherMixin, Application[QNode]):
 
         self.log_debug("%s EPR_DELIVER mq-addr=%s", event, mq.addr)
 
-        mq.state = QubitState.ENTANGLED0
-        self.simulator.sched(QubitEntangledEvent(self.node, event.peer, event.gid, mq, t=event.t))
+        QubitEntangledEvent(self.node, event.peer, event.gid, mq, t=event.t).invoke()
 
     @event_handler
     def handle_release(self, event: QubitReleasedEvent) -> None:
