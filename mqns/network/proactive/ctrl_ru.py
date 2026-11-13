@@ -1,14 +1,13 @@
 import itertools
 from collections.abc import Callable, Iterable, Mapping, Set
-from typing import Final, final
+from typing import TYPE_CHECKING, Final, final
 
-from mqns.entity.memory import QuantumMemory
-from mqns.entity.node import QNode
-from mqns.entity.qchannel import QuantumChannel
 from mqns.network.fw import PathInstructions
-from mqns.network.network import QuantumNetwork
 from mqns.network.proactive.fw_nb import to_fib_erase_delay
 from mqns.simulator import Simulator, Time, func_to_event
+
+if TYPE_CHECKING:
+    from mqns.network.proactive.controller import NodeResourceInfo
 
 
 class NodeChannelUtilization:
@@ -26,10 +25,10 @@ class NodeChannelUtilization:
     unallocated_qubits: int
     """How many memory qubits are available for allocation to paths."""
 
-    def __init__(self, nu: "NodeUtilization", node: QNode, ch: QuantumChannel):
+    def __init__(self, nu: "NodeUtilization", neighbor: str, n_qubits: int):
         self.nu = nu
-        self.neighbor = ch.find_peer(node).name
-        self.n_qubits = sum(1 for _ in node.memory.find(QuantumMemory.predicate_all, qchannel=ch))
+        self.neighbor = neighbor
+        self.n_qubits = n_qubits
         self.unallocated_qubits = self.n_qubits
 
     def __repr__(self) -> str:
@@ -58,15 +57,15 @@ class NodeUtilization:
     unassigned_qubits: int
     """How many memory qubits are available for assignment to channels."""
 
-    def __init__(self, node: QNode):
-        self.name = node.name
-        self.t_cohere = node.memory.t_cohere
-        self.n_qubits = node.memory.capacity
+    def __init__(self, simulator: Simulator, node: str, nri: "NodeResourceInfo"):
+        self.name = node
+        self.t_cohere = simulator.time(sec=nri.t_cohere)
+        self.n_qubits = nri.n_qubits
         self.unassigned_qubits = self.n_qubits
 
         self.channels = {}
-        for ch in node.qchannels:
-            ncu = NodeChannelUtilization(self, node, ch)
+        for neighbor, n in nri.ch_cap.items():
+            ncu = NodeChannelUtilization(self, neighbor, n)
             self.channels[ncu.neighbor] = ncu
             self.unassigned_qubits -= ncu.n_qubits
 
@@ -85,9 +84,9 @@ class ResourceUtilization:
     nodes: Final[Mapping[str, NodeUtilization]]
     """Node utilization keyed by node name."""
 
-    def __init__(self, net: QuantumNetwork):
-        self.simulator = net.simulator
-        self.nodes = {node.name: NodeUtilization(node) for node in net.nodes}
+    def __init__(self, simulator: Simulator, nri: Mapping[str, "NodeResourceInfo"]):
+        self.simulator = simulator
+        self.nodes = {k: NodeUtilization(simulator, k, v) for k, v in nri.items()}
 
     def __repr__(self) -> str:
         return f"ResourceUtilization(nodes={[nu.__repr__() for nu in self.nodes.values()]})"
