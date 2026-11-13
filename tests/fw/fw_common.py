@@ -2,7 +2,7 @@ import functools
 import itertools
 from collections import defaultdict
 from collections.abc import Callable, Iterable, Mapping
-from typing import Literal
+from typing import Literal, NamedTuple
 
 import pytest
 
@@ -18,7 +18,13 @@ from mqns.network.ll import LinkLayer, LLActivateEvent, QubitEntangledEvent, Qub
 from mqns.network.network import QuantumNetwork, TimingPhase, sync_phase_handler
 from mqns.network.protocol.consumer import Consumer
 from mqns.simulator import Simulator, Time, event_handler, func_to_event
-from mqns.utils import AutoIncrementIdentifier, log, rng
+from mqns.utils import AutoIncrementIdentifier, log, rng, unwrap
+
+
+class QubitReleaseRecord(NamedTuple):
+    t: Time
+    addr: int
+    ch_peer: str
 
 
 class MinLinkLayer(Application[QNode]):
@@ -36,7 +42,7 @@ class MinLinkLayer(Application[QNode]):
         """Group identifier in the last LLActivateEvent keyed by peer node name."""
         self.on_attempt_success_by_peer: dict[str, Callable[[Entanglement], None]] = {}
         """LinkLayer OnAttemptSuccess callback keyed by peer node name."""
-        self.release_history: list[tuple[int, Time]] = []
+        self.release_history: list[QubitReleaseRecord] = []
         """Qubit address and release time."""
 
     @sync_phase_handler(TimingPhase.INTERNAL, False)
@@ -56,7 +62,8 @@ class MinLinkLayer(Application[QNode]):
 
     @event_handler
     def handle_qubit_released(self, event: QubitReleasedEvent) -> None:
-        self.release_history.append((event.qubit.addr, event.t))
+        mq = event.qubit
+        self.release_history.append(QubitReleaseRecord(event.t, mq.addr, unwrap(mq.partner).ch_peer))
         self.log_debug("RELEASE %s", event.qubit)
         event.qubit.state = QubitState.RAW
 
@@ -65,7 +72,7 @@ class MinLinkLayer(Application[QNode]):
         """Retrieve the timestamp of last release event."""
         if not self.release_history:
             return Time.SENTINEL
-        return self.release_history[-1][1]
+        return self.release_history[-1].t
 
 
 LA_ALWAYS = LinkArchAlways(LinkArchDimBk())
@@ -209,7 +216,7 @@ def provide_entanglements(
                 ll_gid = src_mll[0].last_gid_by_peer[dst.node.name]
 
         for node, peer, d_notify in (src, dst, la.d_notify_pri), (dst, src, la.d_notify_2nd):
-            q, _ = next(node.memory.find(lambda _, v: v is None, qchannel=ch), (None, None))
+            q, _ = next(node.memory.find(lambda _, v: v is None), (None, None))
             assert q is not None, f"insufficient qubits assigned to {ch}"
             q._state = QubitState.ENTANGLED0
             q.key = ll_key

@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING, Literal, Protocol, override
 
 from mqns.entity.memory import MemoryQubit, QubitState
@@ -32,7 +32,7 @@ class MuxSchemeFibBase(MuxScheme):
         """
 
         def __call__(
-            self, candidates: list[MemoryEprTuple], fw: "Forwarder", mq0: MemoryEprTuple, fp: FibPath, /
+            self, candidates: Sequence[MemoryEprTuple], fw: "Forwarder", mq0: MemoryEprTuple, fp: FibPath, /
         ) -> MemoryEprTuple:
             """
             Args:
@@ -46,7 +46,7 @@ class MuxSchemeFibBase(MuxScheme):
             """
             ...
 
-    type SelectSwapQubitInput = SelectSwapQubit | Literal["random", "oldest", "newest"] | None
+    type SelectSwapQubitInput = SelectSwapQubit | Literal["random", "oldest", "newest"]
 
     SelectSwapQubit_random: SelectSwapQubit = select_random
     """
@@ -81,11 +81,11 @@ class MuxSchemeBufferSpace(MuxSchemeFibBase):
     def __init__(
         self,
         *,
-        select_swap_qubit: MuxSchemeFibBase.SelectSwapQubitInput = None,
+        select_swap_qubit: MuxSchemeFibBase.SelectSwapQubitInput = "random",
     ):
         """
         Args:
-            select_swap_qubit: Function to select a qubit to swap with, default is first.
+            select_swap_qubit: Function to select a qubit to swap with.
         """
         super().__init__(select_swap_qubit)
 

@@ -1,4 +1,4 @@
-from collections.abc import Callable, MutableMapping
+from collections.abc import Callable, MutableMapping, Sequence
 from typing import TYPE_CHECKING, Final, Literal, override
 
 from mqns.entity.memory import MemoryQubit, QubitState
@@ -59,7 +59,7 @@ class MuxSchemeDynamicBase(MuxScheme):
                 ch,
                 t=self.simulator.tc,
                 gid=_LL_GID_ALL_PATHS,
-                q_target=-1,
+                q_target=self.fw.ch_alloc[peer.name],
                 is_primary=self._path_adj_is_primary(inst, fp, dir),
                 on_attempt_success=self.on_ll_attempt_success,
             )
@@ -94,7 +94,7 @@ class MuxSchemeStatistical(MuxSchemeDynamicBase):
     Limitation: across all paths, each node is either a repeater or an end node.
     """
 
-    type SelectSwapQubit = Callable[[list[MemoryEprTuple], "Forwarder", MemoryEprTuple], MemoryEprTuple]
+    type SelectSwapQubit = Callable[[Sequence[MemoryEprTuple], "Forwarder", MemoryEprTuple], MemoryEprTuple]
 
     SelectSwapQubit_random: SelectSwapQubit = select_random
     SelectSwapQubit_oldest: SelectSwapQubit = select_swap_qubit_oldest
@@ -107,13 +107,13 @@ class MuxSchemeStatistical(MuxSchemeDynamicBase):
     def __init__(
         self,
         *,
-        select_swap_qubit: SelectSwapQubit | Literal["random", "oldest", "newest"] | None = None,
+        select_swap_qubit: SelectSwapQubit | Literal["random", "oldest", "newest"] = "random",
         coordinated_decisions=False,
         select_path: SelectPath | Literal["random"] | None = None,
     ):
         """
         Args:
-            select_swap_qubit: Function to select a qubit to swap with, default is first.
+            select_swap_qubit: Function to select a qubit to swap with.
             coordinated_decisions:
                 If True, during a parallel swap, the path_id chosen at one node for selecting swap candidates
                 is instantly visible at other nodes. This behavior is physically unrealistic. It is implemented

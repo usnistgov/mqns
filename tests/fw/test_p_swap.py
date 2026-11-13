@@ -12,7 +12,7 @@ from mqns.entity.timer import Timer
 from mqns.models.delay import ConstantDelayModel
 from mqns.models.epr import Entanglement
 from mqns.models.error import PerfectErrorModel
-from mqns.network.builder import GridTopoGen, NetworkBuilder, TreeTopoGen
+from mqns.network.builder import GridTopoGen, NetworkBuilder, NodeDef, TreeTopoGen
 from mqns.network.fw import Fib, Forwarder, MemoryEprTuple, RoutingPath
 from mqns.network.proactive import MuxSchemeBufferSpace, MuxSchemeDynamicEpr, MuxSchemeStatistical, ProactiveForwarder
 from mqns.network.protocol.consumer import Consumer, RequestCounters
@@ -65,17 +65,25 @@ def test_3_disabled():
 @pytest.mark.parametrize(
     ("ssq", "addrs"),
     [
-        (None, [0, 1, 4, 5]),
-        (MuxSchemeBufferSpace.SelectSwapQubit_random, None),
-        (MuxSchemeBufferSpace.SelectSwapQubit_oldest, [4, 5, 6, 7]),
-        (MuxSchemeBufferSpace.SelectSwapQubit_newest, [1, 0, 7, 6]),
+        ("random", None),
+        ("oldest", [4, 5, 6, 7]),
+        ("newest", [1, 0, 7, 6]),
     ],
 )
-def test_3_ssq(ssq: MuxSchemeBufferSpace.SelectSwapQubit | None, addrs: list[int] | None):
+def test_3_ssq(ssq: MuxSchemeBufferSpace.SelectSwapQubitInput, addrs: list[int] | None):
     """Test SelectSwapQubit in 3-node topology."""
     net, simulator = make_network(
         NetworkBuilder()
-        .topo_linear(nodes="ABC", t_cohere=0.090, ch_length=100, ch_capacity=8, link_arch=LA_ALWAYS)
+        .topo_linear(
+            nodes=[
+                NodeDef("A", mem_capacity=8),
+                NodeDef("B", mem_capacity=16),
+                NodeDef("C", mem_capacity=8),
+            ],
+            t_cohere=0.090,
+            ch_length=100,
+            link_arch=LA_ALWAYS,
+        )
         .proactive_centralized(ll=False, p_swap=1.0, mux=MuxSchemeBufferSpace(select_swap_qubit=ssq)),
         end_time=1.120,
     )
@@ -101,7 +109,7 @@ def test_3_ssq(ssq: MuxSchemeBufferSpace.SelectSwapQubit | None, addrs: list[int
     simulator.run()
     print_node_counters(net)
 
-    selected_qubits = [a for a, t in fwB.node.get_app(MinLinkLayer).release_history if a < 8 and t.sec >= 1.100]
+    selected_qubits = [r.addr for r in fwB.node.get_app(MinLinkLayer).release_history if r.ch_peer == "A" and r.t.sec >= 1.100]
     if addrs is None:
         assert len(selected_qubits) == 4 == len(set(selected_qubits))
         assert {0, 1, 4, 5, 6, 7}.issuperset(selected_qubits)
@@ -676,7 +684,7 @@ def test_rect2_multipath(has_etg: tuple[int, int, int, int], n_swapped: tuple[in
 def test_tree3_dynepr(t_edge_etg: float, selected_path: tuple[int, int], n_consumed: tuple[int, int]):
     """Test MuxSchemeDynamicEpr in 3-level tree topology."""
 
-    def select_path(path_ids: list[int], epr: Entanglement, fib: Fib) -> int:
+    def select_path(path_ids: Sequence[int], epr: Entanglement, fib: Fib) -> int:
         if len(path_ids) != 2:
             return path_ids[0]
 
@@ -752,7 +760,7 @@ def test_tree3_statistical(
     Test MuxSchemeStatistical in 3-level topology with two 4-link paths.
     """
 
-    def select_qubit(candidates: list[MemoryEprTuple], fw: Forwarder, mt0: MemoryEprTuple) -> MemoryEprTuple:
+    def select_qubit(candidates: Sequence[MemoryEprTuple], fw: Forwarder, mt0: MemoryEprTuple) -> MemoryEprTuple:
         _ = mt0
         assert len(candidates) == 2
         if fw is fwB:  # B-A choosing between D-B and E-B
@@ -765,7 +773,7 @@ def test_tree3_statistical(
             raise RuntimeError()
         return unwrap(chosen)
 
-    def select_path(candidates: list[int], fw: Forwarder, epr0: Entanglement, epr1: Entanglement) -> int:
+    def select_path(candidates: Sequence[int], fw: Forwarder, epr0: Entanglement, epr1: Entanglement) -> int:
         _ = fw, epr0, epr1
         assert len(candidates) == 2
         return selected_path
@@ -852,7 +860,7 @@ def test_tree4_statistical(
     Test MuxSchemeStatistical in 4-level tree topology with uneven paths.
     """
 
-    def select_qubit(candidates: list[MemoryEprTuple], fw: Forwarder, mt0: MemoryEprTuple) -> MemoryEprTuple:
+    def select_qubit(candidates: Sequence[MemoryEprTuple], fw: Forwarder, mt0: MemoryEprTuple) -> MemoryEprTuple:
         _ = mt0
         partner = selected_qubit[fw.node.name]
         chosen = next(
@@ -860,7 +868,7 @@ def test_tree4_statistical(
         )
         return unwrap(chosen)
 
-    def select_path(candidates: list[int], fw: Forwarder, epr0: Entanglement, epr1: Entanglement) -> int:
+    def select_path(candidates: Sequence[int], fw: Forwarder, epr0: Entanglement, epr1: Entanglement) -> int:
         _ = candidates, epr0, epr1
         return selected_path[fw.node.name]
 

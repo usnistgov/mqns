@@ -62,13 +62,14 @@ class ReactiveForwarder(Forwarder):
     def activate_qchannels(self) -> None:
         now = self.simulator.tc
         for ch in self.node.qchannels:
+            peer = ch.find_peer(self.node)
             self.simulator.sched(
                 LLActivateEvent(
                     self.node,
                     ch,
                     t=now,
                     gid=_LL_GID_ALL_PATHS,
-                    q_target=-1,
+                    q_target=self.ch_alloc[peer.name],
                     is_primary=ch.node_list[0] is self.node,
                 )
             )

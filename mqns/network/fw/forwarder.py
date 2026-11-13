@@ -17,7 +17,7 @@
 
 import copy
 from abc import abstractmethod
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from typing import Final, Literal, TypedDict, Unpack, override
 
 from mqns.entity.cchannel import ClassicCommandDispatcherMixin
@@ -39,6 +39,13 @@ from mqns.utils import json_encodable, unwrap, unwrap_cast
 
 
 class ForwarderInitKwargs(TypedDict, total=False):
+    ch_alloc: Mapping[str, int]
+    """
+    Quantity of memory qubits assigned to each channel, keyed by neighbor name.
+
+    This is ignored in proactive forwarder with buffer-space multiplexing scheme.
+    In all other cases, the channels will fail to activate if this parameter is omitted.
+    """
     p_swap: float
     """Probability of successful entanglement swapping, default is ``1.0``."""
     swap_delay: DelayInput
@@ -123,6 +130,12 @@ class Forwarder(ClassicCommandDispatcherMixin, Application[QNode]):
     routing is done at the controller.
     """
 
+    ch_alloc: Final[Mapping[str, int]]
+    """
+    Quantity of memory qubits assigned to each channel, keyed by neighbor name.
+    This is ignored in proactive forwarder with buffer-space multiplexing scheme.
+    """
+
     cutoff: Final[CutoffScheme]
     """EPR age cut-off scheme."""
 
@@ -146,6 +159,8 @@ class Forwarder(ClassicCommandDispatcherMixin, Application[QNode]):
         and classical communication handling.
         """
         super().__init__()
+
+        self.ch_alloc = kwargs.get("ch_alloc", {})
 
         self.cutoff = copy.deepcopy(kwargs.get("cutoff")) or CutoffSchemeWaitTime()
         self._select_purif_qubit = kwargs.get("select_purif_qubit")

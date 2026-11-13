@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import Literal, override
 
 import numpy as np
@@ -14,7 +14,7 @@ from mqns.network.proactive.mux_statistical import MuxSchemeDynamicBase
 from mqns.utils import rng, unwrap, unwrap_cast
 
 
-def _select_path_swap_weighted(path_ids: list[int], epr: Entanglement, fib: Fib) -> int:
+def _select_path_swap_weighted(path_ids: Sequence[int], epr: Entanglement, fib: Fib) -> int:
     _ = epr
     # fewer swaps (shorter route) means higher weight
     weights = np.array([1.0 / (1 + len(fib.get_path(p).swap)) for p in path_ids])
@@ -27,7 +27,7 @@ class MuxSchemeDynamicEpr(MuxSchemeFibBase, MuxSchemeDynamicBase):
     Dynamic EPR Allocation multiplexing scheme.
     """
 
-    type SelectPath = Callable[[list[int], Entanglement, Fib], int]
+    type SelectPath = Callable[[Sequence[int], Entanglement, Fib], int]
     """
     Path selection strategy.
     Function to select a path for an elementary entanglement.
@@ -54,13 +54,13 @@ class MuxSchemeDynamicEpr(MuxSchemeFibBase, MuxSchemeDynamicBase):
     def __init__(
         self,
         *,
-        select_swap_qubit: MuxSchemeFibBase.SelectSwapQubitInput | None = None,
-        select_path: SelectPath | Literal["random", "swap_weighted"] = SelectPath_random,
+        select_swap_qubit: MuxSchemeFibBase.SelectSwapQubitInput = "random",
+        select_path: SelectPath | Literal["random", "swap_weighted"] = "random",
     ):
         """
         Args:
-            select_swap_qubit: Function to select a qubit to swap with, default is first.
-            select_path: Function to select a path for an entangled qubit, default is random.
+            select_swap_qubit: Function to select a qubit to swap with.
+            select_path: Function to select a path for an entangled qubit.
         """
         super().__init__(select_swap_qubit)
         self._select_path = parse_select(type(self), "SelectPath_", select_path)

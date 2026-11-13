@@ -1,6 +1,5 @@
-import copy
 import itertools
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import ClassVar, Literal, Self, TypedDict, Unpack, cast, overload
 
 from mqns.entity.cchannel import ClassicChannel
@@ -14,7 +13,13 @@ from mqns.network.builder.topogen import TopoGen
 from mqns.network.fw import Forwarder, ForwarderInitKwargs, RoutingPath, RoutingPathInitArgs
 from mqns.network.ll import LinkLayer, LinkLayerInitKwargs
 from mqns.network.network import QuantumNetwork, Request, TimingMode, TimingModeAsync, TimingModeSync
-from mqns.network.proactive import MuxSchemeInput, NodeResourceInfo, ProactiveForwarder, ProactiveRoutingController
+from mqns.network.proactive import (
+    MuxSchemeInput,
+    NodeResourceInfo,
+    ProactiveForwarder,
+    ProactiveForwarderInitKwargs,
+    ProactiveRoutingController,
+)
 from mqns.network.protocol.classicbridge import ClassicBridge
 from mqns.network.protocol.consumer import Consumer
 from mqns.network.reactive import ReactiveForwarder, ReactiveRoutingController
@@ -239,7 +244,7 @@ class NetworkBuilder:
 
         self._next_step: Literal["topo", "apps", "net", "finalize"] = "topo"
         self._qnodes: dict[str, _NodeBuilder] = {}
-        self._qchannels: list[tuple[QuantumChannel, dict[str, int]]] = []
+        self._qchannels: list[QuantumChannel] = []
         self._controller_apps: list[Application] = []
 
         self.requests: list[Request] = []
@@ -275,17 +280,15 @@ class NetworkBuilder:
             transfer_error=d.get("fiber_error", "DEPOLAR:0.01"),
             bsa_error=d.get("bsa_error", "PERFECT"),
         )
-        assign_mq: dict[str, int] = {}
 
         caps: int | tuple[int, int] = d.get("ch_capacity", 1)
         cap0, cap1 = (caps, caps) if isinstance(caps, int) else caps
         for a, b, cap in (node0, node1, cap0), (node1, node0, cap1):
-            assign_mq[a] = cap
             nb = self._add_qnode(a, {})
             nb.save_ch_cap(b, cap)
             nb.qnode.add_qchannel(qc)
 
-        self._qchannels.append((qc, assign_mq))
+        self._qchannels.append(qc)
 
     def topo(
         self,
@@ -442,7 +445,7 @@ class NetworkBuilder:
 
         return self
 
-    def _save_apps_args(self, d: AppsCommonArgs) -> None:
+    def _save_apps_args(self, d: AppsForwarderArgs) -> ForwarderInitKwargs:
         if self._next_step == "topo":
             raise TypeError("must define topology first")
         if self._next_step != "apps":
@@ -462,7 +465,9 @@ class NetworkBuilder:
 
         self.ll_args = d.pop("ll", {})
 
-    def _add_qnode_apps(self, *, fw: Forwarder) -> None:
+        return d
+
+    def _add_qnode_apps(self, *, fw: Callable[[_NodeBuilder], Forwarder]) -> None:
         for nb in self._qnodes.values():
             nb.qnode.memory = QuantumMemory(nb.qnode.name, **nb.mem_args)
 
@@ -471,7 +476,7 @@ class NetworkBuilder:
             else:
                 ll = [LinkLayer(**(nb.ll_args | cast(LinkLayerInitKwargs, self.ll_args)))]
 
-            nb.qnode.add_apps([*ll, copy.deepcopy(fw), Consumer()])
+            nb.qnode.add_apps([*ll, fw(nb), Consumer()])
 
     def proactive_centralized(
         self,
@@ -487,10 +492,10 @@ class NetworkBuilder:
             mux: Multiplexing scheme, default is buffer-space.
             drq_cap: Deferred request queue capacity in the controller.
         """
-        self._save_apps_args(kwargs)
-        kwargs.setdefault("p_swap", 0.5)
+        fw_args = self._save_apps_args(kwargs)
+        fw_args.setdefault("p_swap", 0.5)
         self._add_qnode_apps(
-            fw=ProactiveForwarder(mux=mux, **kwargs),
+            fw=lambda nb: ProactiveForwarder(**(fw_args | ProactiveForwarderInitKwargs(ch_alloc=nb.ch_cap, mux=mux))),
         )
         self._controller_apps.append(
             ProactiveRoutingController(
@@ -513,11 +518,10 @@ class NetworkBuilder:
         """
         Choose reactive forwarding with centralized control.
         """
-        self._save_apps_args(kwargs)
-        kwargs.setdefault("p_swap", 0.5)
-
+        fw_args = self._save_apps_args(kwargs)
+        fw_args.setdefault("p_swap", 0.5)
         self._add_qnode_apps(
-            fw=ReactiveForwarder(**kwargs),
+            fw=lambda nb: ReactiveForwarder(**(fw_args | ForwarderInitKwargs(ch_alloc=nb.ch_cap))),
         )
         self._controller_apps.append(
             ReactiveRoutingController(),
@@ -607,9 +611,8 @@ class NetworkBuilder:
         net = QuantumNetwork(route=self.route, timing=self.timing, epr_type=self.epr_type)
         for nb in self._qnodes.values():
             net.add_node(nb.qnode)
-        for qc, assign_mq in self._qchannels:
+        for qc in self._qchannels:
             net.add_qchannel(qc)
-            qc.assign_memory_qubits(capacity=assign_mq)
             net.add_cchannel(ClassicChannel(qc.name, length=qc.length), *qc.node_list)
 
         if self._controller_apps:

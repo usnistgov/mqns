@@ -54,15 +54,14 @@ class LLActivateEvent(Event):
             ch: Quantum channel for entanglement generation.
             gid: Group identifier, must be unique per channel and same on both sides.
             q_target: Desired quantity of qubits.
-                Temporarily during #125 refactoring, (1) the qubits must have been assigned to the channel,
-                (2) ``-1`` indicates all qubits assigned to the channel.
-            qubits: Qubits allocated for the group.
+            qubits: Qubits allocated for the group, must be positive.
             is_primary: True for primary role, False for secondary role.
                 Two nodes on the same channel must take opposite roles.
                 The choice must be consistent for all groups on the same channel.
             on_attempt_success: Callback upon starting a successful attempt.
                 This is only called on the primary node side.
         """
+        assert q_target > 0
         self.node = node
         self.peer = ch.find_peer(node)
         super().__init__(t, f"node={node.name}, role={'pri' if is_primary else '2nd'}, peer={self.peer.name}, gid={gid}")
