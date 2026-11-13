@@ -21,7 +21,6 @@ from enum import Enum, auto
 from typing import Final, NamedTuple
 
 from mqns.entity.node import QNode
-from mqns.entity.qchannel import QuantumChannel
 from mqns.simulator import EventHandleSet, Time
 
 
@@ -42,24 +41,16 @@ class QubitState(Enum):
     ACTIVE = auto()
     """
     The link layer has requested a reservation on the qubit as the primary node.
-    ``qubit.active`` contains the reservation key.
     """
     RESERVED = auto()
     """
     Qubit is part of a reservation in link layer and a remote qubit has been found.
-    ``qubit.active`` contains the reservation key.
 
     This state is set on the qubit at both primary and secondary node of the reservation.
     """
-    ENTANGLED0 = auto()
+    ENTANGLED = auto()
     """
     Qubit is half of an elementary entanglement delivered from link layer.
-    ``QubitEntangledEvent`` has not been processed by forwarder.
-    """
-    ENTANGLED1 = auto()
-    """
-    Qubit is half of an elementary entanglement delivered from link layer.
-    ``QubitEntangledEvent`` has been processed by forwarder.
     """
     PURIF = auto()
     """
@@ -99,9 +90,8 @@ class QubitState(Enum):
 ALLOWED_STATE_TRANSITIONS: dict[QubitState, tuple[QubitState, ...]] = {
     QubitState.RAW: (QubitState.ACTIVE, QubitState.RESERVED),
     QubitState.ACTIVE: (QubitState.RAW, QubitState.RESERVED),
-    QubitState.RESERVED: (QubitState.RAW, QubitState.ENTANGLED0),
-    QubitState.ENTANGLED0: (QubitState.RELEASE, QubitState.ENTANGLED1),
-    QubitState.ENTANGLED1: (QubitState.RELEASE, QubitState.PURIF),
+    QubitState.RESERVED: (QubitState.RAW, QubitState.ENTANGLED),
+    QubitState.ENTANGLED: (QubitState.RELEASE, QubitState.PURIF),
     QubitState.PURIF: (QubitState.RELEASE, QubitState.PENDING, QubitState.ELIGIBLE),
     QubitState.PENDING: (QubitState.RELEASE, QubitState.PURIF),
     QubitState.ELIGIBLE: (QubitState.SWAPPING, QubitState.CONSUME, QubitState.RELEASE),
@@ -154,9 +144,6 @@ class MemoryQubit:
 
     addr: Final[int]
     """Address index in QuantumMemory."""
-
-    qchannel: QuantumChannel | None = None
-    """QuantumChannel to which qubit is assigned to."""
 
     _state = QubitState.RAW
 
@@ -242,9 +229,6 @@ class MemoryQubit:
 def _describe(mq: MemoryQubit) -> Iterable[str]:
     yield f"MemoryQubit({mq.addr}"
     yield f"state={mq._state.name}"
-
-    if mq.qchannel:
-        yield f"ch={mq.qchannel.name}"
 
     if mq.key:
         yield f"key={mq.key}"

@@ -1,4 +1,4 @@
-from mqns.network.proactive.controller import ProactiveRoutingController
+from mqns.network.proactive.controller import NodeResourceInfo, ProactiveRoutingController
 from mqns.network.proactive.forwarder import ProactiveForwarder, ProactiveForwarderInitKwargs
 from mqns.network.proactive.mux import MuxScheme
 from mqns.network.proactive.mux_buffer_space import MuxSchemeBufferSpace
@@ -23,6 +23,7 @@ __all__ = [
     "MuxSchemeInput",
     "MuxSchemeLiteral",
     "MuxSchemeStatistical",
+    "NodeResourceInfo",
     "parse_mux_scheme",
     "ProactiveForwarder",
     "ProactiveForwarderInitKwargs",

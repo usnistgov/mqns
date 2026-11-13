@@ -17,7 +17,7 @@
 
 import copy
 from abc import abstractmethod
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from typing import Final, Literal, TypedDict, Unpack, override
 
 from mqns.entity.cchannel import ClassicCommandDispatcherMixin
@@ -39,6 +39,13 @@ from mqns.utils import json_encodable, unwrap, unwrap_cast
 
 
 class ForwarderInitKwargs(TypedDict, total=False):
+    ch_alloc: Mapping[str, int]
+    """
+    Quantity of memory qubits assigned to each channel, keyed by neighbor name.
+
+    This is ignored in proactive forwarder with buffer-space multiplexing scheme.
+    In all other cases, the channels will fail to activate if this parameter is omitted.
+    """
     p_swap: float
     """Probability of successful entanglement swapping, default is ``1.0``."""
     swap_delay: DelayInput
@@ -123,6 +130,12 @@ class Forwarder(ClassicCommandDispatcherMixin, Application[QNode]):
     routing is done at the controller.
     """
 
+    ch_alloc: Final[Mapping[str, int]]
+    """
+    Quantity of memory qubits assigned to each channel, keyed by neighbor name.
+    This is ignored in proactive forwarder with buffer-space multiplexing scheme.
+    """
+
     cutoff: Final[CutoffScheme]
     """EPR age cut-off scheme."""
 
@@ -146,6 +159,8 @@ class Forwarder(ClassicCommandDispatcherMixin, Application[QNode]):
         and classical communication handling.
         """
         super().__init__()
+
+        self.ch_alloc = kwargs.get("ch_alloc", {})
 
         self.cutoff = copy.deepcopy(kwargs.get("cutoff")) or CutoffSchemeWaitTime()
         self._select_purif_qubit = kwargs.get("select_purif_qubit")
@@ -221,7 +236,7 @@ class Forwarder(ClassicCommandDispatcherMixin, Application[QNode]):
         self.cnt.n_entg += 1
 
         mq = event.mq
-        assert mq.state is QubitState.ENTANGLED1, f"unexpected state {mq.state}"
+        assert mq.state is QubitState.ENTANGLED, f"unexpected state {mq.state}"
         mq.partner = EntangledPartner(event.peer.name, event.gid, event.peer, unwrap(mq.key))
 
         _, epr = self.memory.read(mq.addr, has=self.epr_type)
@@ -241,7 +256,7 @@ class Forwarder(ClassicCommandDispatcherMixin, Application[QNode]):
                 self.qubit_is_purif(mq, unwrap(fp), event.peer)
             case QubitState.ELIGIBLE:
                 self.qubit_is_eligible(mq, fp)
-            case QubitState.ENTANGLED1:
+            case QubitState.ENTANGLED:
                 pass
             case _:
                 raise RuntimeError(f"{self}: {mq} has unexpected state {state1}")
@@ -290,7 +305,7 @@ class Forwarder(ClassicCommandDispatcherMixin, Application[QNode]):
         1. Populate :py:attr:`mq.epr_path_ids <mqns.entity.memory.MemoryQubit.epr_path_ids>`
            with potential paths.
         2. Keep :py:attr:`mq.state <mqns.entity.memory.MemoryQubit.state>`
-           as :py:attr:`~mqns.entity.memory.QubitState.ENTANGLED1`.
+           as :py:attr:`~mqns.entity.memory.QubitState.ENTANGLED`.
         """
 
     def qubit_is_purif(self, qubit: MemoryQubit, fp: FibPath, partner: QNode) -> None:

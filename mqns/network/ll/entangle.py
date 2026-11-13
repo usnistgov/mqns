@@ -84,7 +84,7 @@ class LLEntangleProc[G: LLGroup[Any]](LogSelfMixin):
         grp = self.groups_draining.pop(gid, None)
         if grp:
             grp.delete_event.cancel()
-            assert event.q_target in (-1, len(grp.qubits)), "changing q_target is not supported"
+            assert len(grp.qubits) == event.q_target, "changing q_target is not supported"
         else:
             grp = self._group_create(event)
             self._group_alloc_qubits(grp, event.q_target)
@@ -100,11 +100,10 @@ class LLEntangleProc[G: LLGroup[Any]](LogSelfMixin):
     def _group_create(self, event: LLActivateEvent) -> G: ...
 
     def _group_alloc_qubits(self, grp: "LLGroup", q_target: int) -> None:
-        qubits = list(self.node.memory.find(lambda q, _: q.addr not in self.ll.group_by_mq, qchannel=self.ch))
-        if q_target >= 0:
-            if len(qubits) < q_target:
-                raise RuntimeError(f"{grp} has insufficient qubit allocation")
-            qubits = qubits[:q_target]
+        qubits = list(self.node.memory.find(lambda q, _: q.addr not in self.ll.group_by_mq))
+        if len(qubits) < q_target:
+            raise RuntimeError(f"{grp} has insufficient qubit allocation")
+        qubits = qubits[:q_target]
 
         for mq, _ in qubits:
             grp.qubits[mq.addr] = mq

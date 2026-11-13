@@ -1,4 +1,4 @@
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Sequence
 from typing import Any, Never, cast
 
 from mqns.entity.memory import MemoryQubit
@@ -13,7 +13,7 @@ def parse_select[F: Callable, N: None | Never](cls: type, prefix: str, input: F 
     Args:
         cls: Class where predefined candidate selection functions are defined.
         prefix: Prefix of predefined candidate selection functions on ``cls``.
-        input: Input parameter; its string possibilities should be constrained with ``typing.Literal``.
+        input: Input parameter; its string possibilities should be constrained with :py:class:`typing.Literal`.
 
     Returns:
         Predefined or custom candidate selection function.
@@ -38,7 +38,7 @@ def call_select[T, R](candidates: Iterable[T], fn: Callable[..., R] | None, *arg
     """
     if not fn:
         return next(iter(candidates), None)
-    l: list[T] = candidates if isinstance(candidates, list) else list(candidates)
+    l: Sequence[T] = candidates if isinstance(candidates, Sequence) else list(candidates)
     if not l:
         return None
     if len(l) == 1:
@@ -46,7 +46,7 @@ def call_select[T, R](candidates: Iterable[T], fn: Callable[..., R] | None, *arg
     return fn(l, *args)
 
 
-def select_random[T](candidates: list[T], *_: Any) -> T:
+def select_random[T](candidates: Sequence[T], *_: Any) -> T:
     """
     Candidate selection function that selects a random candidate with uniform probability.
     """
@@ -56,9 +56,9 @@ def select_random[T](candidates: list[T], *_: Any) -> T:
 type MemoryEprTuple = tuple[MemoryQubit, Entanglement]
 
 
-def select_swap_qubit_oldest(candidates: list[MemoryEprTuple], *_) -> MemoryEprTuple:
+def select_swap_qubit_oldest(candidates: Sequence[MemoryEprTuple], *_) -> MemoryEprTuple:
     return min(candidates, key=lambda c: c[0].eligible_time)
 
 
-def select_swap_qubit_newest(candidates: list[MemoryEprTuple], *_) -> MemoryEprTuple:
+def select_swap_qubit_newest(candidates: Sequence[MemoryEprTuple], *_) -> MemoryEprTuple:
     return max(candidates, key=lambda c: c[0].eligible_time)

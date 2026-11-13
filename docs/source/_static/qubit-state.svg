@@ -31,9 +31,7 @@
     <line y2="100" marker-end="url(#arrow)" stroke="#111" stroke-width="2"/>
     <line x2="-100" marker-end="url(#arrow)" stroke="#111" stroke-width="2"/>
     <circle r="30" fill="#F012BE"/>
-    <text y="-10" font-size="9">ENTANGLED0</text>
-    <line x1="-30" x2="30" stroke="#111"/>
-    <text y="10" font-size="9">ENTANGLED1</text>
+    <text font-size="10">ENTANGLED</text>
   </g>
   <g transform="translate(250 250)">
     <line x2="100" marker-start="url(#arrow)" marker-end="url(#arrow)" stroke="#111" stroke-width="2"/>

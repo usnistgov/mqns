@@ -25,8 +25,6 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import heapq
-import itertools
 from collections.abc import Callable, Container, Iterable, Iterator
 from typing import TYPE_CHECKING, Any, Final, Literal, TypedDict, Unpack, overload, override
 
@@ -34,11 +32,10 @@ from mqns.entity.entity import Entity
 from mqns.entity.memory.event import MemoryDecohereEvent
 from mqns.entity.memory.memory_qubit import MemoryQubit, QubitState
 from mqns.entity.node import QNode
-from mqns.entity.qchannel import QuantumChannel
 from mqns.models.core import QuantumModel
 from mqns.models.epr import Entanglement
-from mqns.models.error import TimeDecayInput, parse_time_decay
-from mqns.simulator import EventDispatcherMixin, Simulator, event_handler
+from mqns.models.error import TimeDecayFunc, TimeDecayInput, parse_time_decay
+from mqns.simulator import EventDispatcherMixin, Simulator, Time, event_handler
 from mqns.utils import log
 
 if TYPE_CHECKING:
@@ -65,7 +62,7 @@ class QuantumMemory(EventDispatcherMixin, Entity):
     """
     QNode that owns this memory.
 
-    This is assigned by ``QNode.memory`` setter.
+    This is assigned by :py:attr:`QNode.memory <mqns.entity.node.QNode.memory>` setter.
     """
 
     @staticmethod
@@ -73,15 +70,13 @@ class QuantumMemory(EventDispatcherMixin, Entity):
         nodes: Iterable["QNode"],
         *,
         states: Container[QubitState] = (QubitState.RAW, QubitState.RELEASE),
-        unassigned=False,
     ) -> None:
         """
         Verify that all MemoryQubits on every node are released.
 
         Args:
-            nodes: List of quantum nodes, such as ``QuantumNetwork.nodes``.
+            nodes: List of quantum nodes, such as :py:attr:`QuantumNetwork.nodes <mqns.network.network.QuantumNetwork.nodes>`.
             states: Acceptable states.
-            unassigned: If True, qubit must not be assigned to a channel.
 
         Raises:
             MemoryError: Some qubits have unacceptable state.
@@ -89,14 +84,28 @@ class QuantumMemory(EventDispatcherMixin, Entity):
         __tracebackhide__ = True
         errors: list[str] = []
         for node in nodes:
-            for mq, data in node.memory.find(QuantumMemory.predicate_all):
+            for mq, data in node.memory._storage:
                 if mq.state not in states:
                     errors.append(f"{node.name} {mq} has unexpected state {mq.state} | {data}")
-                if unassigned and mq.qchannel:
-                    errors.append(f"{node.name} {mq} is assigned to {mq.qchannel}")
         if n := len(errors):
             log.warning("QuantumMemory.check_leaks() found %s errors:\n\t%s", n, "\n\t".join(errors))
             raise MemoryError(*errors)
+
+    capacity: Final[int]
+    """
+    Memory capacity, i.e. how many qubits can be stored.
+    Each qubit has an address in ``[0, capacity)``.
+    """
+
+    t_cohere: Time
+    """
+    Memory decoherence time, often known as T2.
+
+    Stored qubits trigger :py:class:`MemoryDecohereEvent` at this timer.
+    """
+
+    time_decay: TimeDecayFunc
+    """Time based decay function constructed from store error model."""
 
     def __init__(self, name: str, **kwargs: Unpack[QuantumMemoryInitKwargs]):
         """
@@ -105,13 +114,9 @@ class QuantumMemory(EventDispatcherMixin, Entity):
         Args:
             name: Memory entity name.
         """
-        super().__init__(name=name)
+        super().__init__(name)
 
-        self.capacity: Final = kwargs.get("capacity", 1)
-        """
-        Memory capacity, i.e. how many qubits can be stored.
-        Each qubit has an address in ``[0, capacity)``.
-        """
+        self.capacity = kwargs.get("capacity", 1)
 
         self._t_cohere_input = kwargs.get("t_cohere", 1.0)
         self._time_decay_input = kwargs.get("time_decay")
@@ -122,29 +127,18 @@ class QuantumMemory(EventDispatcherMixin, Entity):
         ]
         self._usage = 0
 
-        self._by_qchannel: dict[QuantumChannel, list[int]] = {}
-        """
-        Mapping from qchannel to assigned qubit addrs.
-        Key is quantum channel assigned to qubits.
-        Value is a sorted list of qubit addrs.
-        """
-
     @override
     def install(self, simulator: Simulator) -> None:
         super().install(simulator)
 
         self.t_cohere = simulator.time(sec=self._t_cohere_input)
-        """
-        Memory decoherence time, often known as T2.
-
-        Stored qubits trigger ``MemoryDecohereEvent`` at this timer.
-        """
-
         self.time_decay = parse_time_decay(self._time_decay_input, self.t_cohere)
-        """Time based decay function constructed from store error model."""
 
     @event_handler
     def handle_decohere(self, event: MemoryDecohereEvent) -> None:
+        """
+        Handle memory decoherence event locally, and then re-dispatch to the applications.
+        """
         mq = event.qubit
         qm = event.qm
         if isinstance(qm, Entanglement):
@@ -167,20 +161,10 @@ class QuantumMemory(EventDispatcherMixin, Entity):
         """Return the quantity of stored qubits."""
         return self._usage
 
-    @staticmethod
-    def predicate_all(mq: MemoryQubit, qm: QuantumModel | None) -> bool:
-        """
-        A predicate for ``find()`` that accepts all qubits.
-        """
-        _ = mq, qm
-        return True
-
     @overload
     def find(
         self,
         predicate: Callable[[MemoryQubit, QuantumModel | None], bool],
-        *,
-        qchannel: QuantumChannel | None = None,
     ) -> Iterator[tuple[MemoryQubit, QuantumModel | None]]: ...
 
     @overload
@@ -188,7 +172,6 @@ class QuantumMemory(EventDispatcherMixin, Entity):
         self,
         predicate: Callable[[MemoryQubit, M], bool],
         *,
-        qchannel: QuantumChannel | None = None,
         has: type[M],
     ) -> Iterator[tuple[MemoryQubit, M]]: ...
 
@@ -196,7 +179,6 @@ class QuantumMemory(EventDispatcherMixin, Entity):
         self,
         predicate: Callable[[MemoryQubit, Any], bool],
         *,
-        qchannel: QuantumChannel | None = None,
         has: type[M] | None = None,
     ) -> Iterator[Any]:
         """
@@ -204,106 +186,24 @@ class QuantumMemory(EventDispatcherMixin, Entity):
 
         Args:
             predicate: Callback function to accept or reject each qubit and associated data.
-                Use ``QuantumMemory.predicate_all`` to accept all qubits.
-            qchannel: If set, only qubits assigned to specified quantum channel are considered.
             has: If set, only qubits with associated data of this type are considered.
         """
-        iterable: Iterable[tuple[MemoryQubit, QuantumModel | None]] = self._storage
-        if qchannel is not None:
-            ch_addrs = self._by_qchannel.get(qchannel, [])
-            iterable = (self._storage[addr] for addr in ch_addrs)
-        for qubit, data in iterable:
+        for qubit, data in self._storage:
             if (has is None or type(data) is has) and predicate(qubit, data):
                 yield qubit, data
-
-    def assign(self, ch: QuantumChannel, *, n=1) -> list[int]:
-        """
-        Assign n qubits to a particular quantum channel.
-
-        This is only used at topology creation time.
-
-        Returns:
-            List of qubit addresses.
-
-        Raises:
-            OverflowError: insufficient unassigned qubits.
-        """
-        addrs: list[int] = []
-        for qubit, _ in itertools.islice(self.find(lambda q, _: q.qchannel is None), n):
-            qubit.qchannel = ch
-            addrs.append(qubit.addr)
-
-        if len(addrs) != n:
-            raise OverflowError(f"{self}: insufficient qubits for assign(n={n})")
-
-        self._by_qchannel[ch] = list(heapq.merge(self._by_qchannel.get(ch, []), addrs))
-        return addrs
-
-    def unassign(self, *addrs: int) -> None:
-        """
-        Unassign one or more qubits from any quantum channel.
-        """
-        for addr in addrs:
-            qubit, _ = self._storage[addr]
-            if qubit.qchannel is None:
-                continue
-
-            ch_addrs = self._by_qchannel[qubit.qchannel]
-            ch_addrs.remove(addr)
-            if len(ch_addrs) == 0:
-                del self._by_qchannel[qubit.qchannel]
-
-            qubit.qchannel = None
 
     @overload
     def read(
         self, key: int, *, must: Literal[True] = True, remove: bool | QuantumModel = False
-    ) -> tuple[MemoryQubit, QuantumModel | None]:
-        """
-        Retrieve a qubit and associated data.
-
-        Args:
-            key: Qubit address.
-            remove: Whether to remove the data.
-                    If specified as QuantumModel, remove only if stored data is the same object.
-
-        Returns:
-            Qubit and associated data (possibly empty).
-        """
+    ) -> tuple[MemoryQubit, QuantumModel | None]: ...
 
     @overload
-    def read(self, key: str, *, remove: bool | QuantumModel = False) -> tuple[MemoryQubit, QuantumModel | None] | None:
-        """
-        Retrieve a qubit and associated data.
-
-        Args:
-            key: Qubit reservation key.
-            remove: Whether to remove the data.
-                    If specified as QuantumModel, remove only if stored data is the same object.
-
-        Returns:
-            Qubit and associated data (possibly empty), or None if qubit is not found by reservation key.
-        """
+    def read(self, key: str, *, remove: bool | QuantumModel = False) -> tuple[MemoryQubit, QuantumModel | None] | None: ...
 
     @overload
     def read(
         self, key: str, *, must: Literal[True], remove: bool | QuantumModel = False
-    ) -> tuple[MemoryQubit, QuantumModel | None]:
-        """
-        Retrieve a qubit and associated data.
-
-        Args:
-            key: Qubit address or reservation key.
-            must: True.
-            remove: Whether to remove the data.
-                    If specified as QuantumModel, remove only if stored data is the same object.
-
-        Returns:
-            Qubit and associated data (possibly empty).
-
-        Raises:
-            LookupError: Qubit not found.
-        """
+    ) -> tuple[MemoryQubit, QuantumModel | None]: ...
 
     @overload
     def read[M: QuantumModel](
@@ -313,24 +213,7 @@ class QuantumMemory(EventDispatcherMixin, Entity):
         must: Literal[True] = True,
         has: type[M],
         remove: bool | QuantumModel = False,
-    ) -> tuple[MemoryQubit, M]:
-        """
-        Retrieve a qubit and associated data.
-
-        Args:
-            key: Qubit address or reservation key.
-            must: True (implied).
-            has: Expected type of stored data.
-            remove: Whether to remove the data.
-                    If specified as QuantumModel, remove only if stored data is the same object.
-
-        Returns:
-            Qubit and associated data (has type specified in ``has``).
-
-        Raises:
-            LookupError: Qubit not found.
-            ValueError: No quantum information is stored or it is not the expected type.
-        """
+    ) -> tuple[MemoryQubit, M]: ...
 
     def read[M: QuantumModel](
         self,
@@ -340,6 +223,26 @@ class QuantumMemory(EventDispatcherMixin, Entity):
         has: type[M] | None = None,
         remove: bool | QuantumModel = False,
     ):
+        """
+        Retrieve a qubit and associated data.
+
+        Args:
+            key: Qubit address or reservation key.
+            must: When the qubit is not found by reservation key, raise LookupError if ``must=True``,
+                return None otherwise. Out-of-range qubit address always raises LookupError.
+            has: Expected type of stored data; implies ``must=True``.
+            remove: Whether to remove the data.
+                    If specified as QuantumModel, remove only if stored data is the same object.
+
+        Returns:
+            Qubit and associated data.
+
+        Raises:
+            LookupError: Qubit not found.
+            ValueError: When ``must=True``, quantum information is absent;
+                when ``has`` is specified, stored quantum information does not match the type.
+        """
+
         if type(key) is int:
             qubit, data = self._storage[key]
         else:
@@ -366,7 +269,8 @@ class QuantumMemory(EventDispatcherMixin, Entity):
         Args:
             key: Qubit address or reservation key.
             data: Data to be stored.
-                  If this is an EPR, a decoherence event is scheduled automatically.
+                  If this is an :py:class:`~mqns.models.epr.Entanglement`, :py:class:`MemoryDecohereEvent`
+                  is scheduled after :py:attr:`t_cohere`.
             replace: True allows replacing existing data; False requires qubit to be empty.
 
         Returns:
