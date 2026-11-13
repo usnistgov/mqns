@@ -1,7 +1,7 @@
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, cast, override
 
-from mqns.entity.memory import PathDirection
+from mqns.entity.node import QNode
 from mqns.entity.qchannel import QuantumChannel
 from mqns.network.fw import (
     FibPath,
@@ -9,6 +9,7 @@ from mqns.network.fw import (
     Forwarder,
     ForwarderNorthbound,
     PathDeleteMsg,
+    PathDirection,
     PathInsertMsg,
     PathInstructions,
     fw_control_cmd_handler,
@@ -47,8 +48,8 @@ class ProactiveForwarderNorthbound(ForwarderNorthbound):
 
         # Identify left/right channels, allocate qubits and process LinkLayer changes.
         for fp, inst in paths:
-            for dir, ch in self._iter_adjacency(fp):
-                self.mux.install_path_adj(inst, fp, dir, ch)
+            for dir, ch, peer in self._iter_adjacency(fp):
+                self.mux.install_path_adj(inst, fp, dir, ch, peer)
 
     def _path_convert(self, inst: PathInstructions) -> tuple[FibPath, PathInstructions]:
         self.mux.validate_path_instructions(inst)
@@ -75,15 +76,15 @@ class ProactiveForwarderNorthbound(ForwarderNorthbound):
 
         # Identify left/right channels, deallocate qubits and process LinkLayer changes.
         for fp in fr.paths:
-            for dir, ch in self._iter_adjacency(fp):
-                self.mux.uninstall_path_adj(fp, dir, ch)
+            for dir, ch, peer in self._iter_adjacency(fp):
+                self.mux.uninstall_path_adj(fp, dir, ch, peer)
 
-    def _iter_adjacency(self, fp: FibPath) -> Iterable[tuple[PathDirection, QuantumChannel]]:
+    def _iter_adjacency(self, fp: FibPath) -> Iterable[tuple[PathDirection, QuantumChannel, QNode]]:
         """Iterate over quantum channels connected to adjacent nodes."""
         for ch_dir, route_off in (PathDirection.L, -1), (PathDirection.R, 1):
             neigh_idx = fp.own_idx + route_off
             if neigh_idx in (-1, len(fp.route)):
                 continue
-            neigh = self.network.get_node(fp.route[neigh_idx])
-            ch = self.node.get_qchannel(neigh)
-            yield ch_dir, ch
+            peer = self.network.get_node(fp.route[neigh_idx])
+            ch = self.node.get_qchannel(peer)
+            yield ch_dir, ch, peer

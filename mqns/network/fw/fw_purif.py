@@ -3,11 +3,7 @@ from mqns.entity.node import QNode
 from mqns.network.fw.fib import FibPath
 from mqns.network.fw.fw_module import ForwarderModule, fw_signaling_cmd_handler
 from mqns.network.fw.message import PurifResponseMsg, PurifSolicitMsg
-
-
-def _qubit_p_key(mq: MemoryQubit) -> str:
-    assert mq.partner
-    return mq.partner[1]
+from mqns.utils import unwrap_cast
 
 
 class ForwarderPurifProc(ForwarderModule):
@@ -47,8 +43,8 @@ class ForwarderPurifProc(ForwarderModule):
             "path_id": fp.path_id,
             "purif_node": self.node.name,
             "partner": partner.name,
-            "key0": _qubit_p_key(mq0),
-            "key1": _qubit_p_key(mq1),
+            "key0": unwrap_cast(mq0.partner).key,
+            "key1": unwrap_cast(mq1.partner).key,
             "round": mq0.purif_rounds,
         }
         self.send_msg(partner, msg, fp)
@@ -76,8 +72,8 @@ class ForwarderPurifProc(ForwarderModule):
         mq0, epr0 = self.memory.read(msg["key0"], has=self.epr_type)
         mq1, epr1 = self.memory.read(msg["key1"], has=self.epr_type, remove=True)
         # TODO: handle the exception case when an EPR is decohered and not found in memory
-        p_key0 = _qubit_p_key(mq0)
-        p_key1 = _qubit_p_key(mq1)
+        p_key0 = unwrap_cast(mq0.partner).key
+        p_key1 = unwrap_cast(mq1.partner).key
 
         for mq in (mq0, mq1):
             assert mq.state is QubitState.PURIF, f"unexpected state {mq.state}"

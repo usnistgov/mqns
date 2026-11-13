@@ -84,11 +84,10 @@ class LLEntangleProc[G: LLGroup[Any]](LogSelfMixin):
         grp = self.groups_draining.pop(gid, None)
         if grp:
             grp.delete_event.cancel()
+            assert event.q_target in (-1, len(grp.qubits)), "changing q_target is not supported"
         else:
             grp = self._group_create(event)
-            for mq in event.qubits:
-                grp.qubits[mq.addr] = mq
-                self.ll.group_by_mq[mq.addr] = grp
+            self._group_alloc_qubits(grp, event.q_target)
 
         if gid in self.groups_active:
             raise ValueError(f"{self} already has active group {gid}")
@@ -99,6 +98,17 @@ class LLEntangleProc[G: LLGroup[Any]](LogSelfMixin):
 
     @abstractmethod
     def _group_create(self, event: LLActivateEvent) -> G: ...
+
+    def _group_alloc_qubits(self, grp: "LLGroup", q_target: int) -> None:
+        qubits = list(self.node.memory.find(lambda q, _: q.addr not in self.ll.group_by_mq, qchannel=self.ch))
+        if q_target >= 0:
+            if len(qubits) < q_target:
+                raise RuntimeError(f"{grp} has insufficient qubit allocation")
+            qubits = qubits[:q_target]
+
+        for mq, _ in qubits:
+            grp.qubits[mq.addr] = mq
+            self.ll.group_by_mq[mq.addr] = grp
 
     def group_deactivate(self, gid: int) -> None:
         """Deactivate a group within the channel."""
@@ -122,8 +132,8 @@ class LLEntangleProc[G: LLGroup[Any]](LogSelfMixin):
 
         grp.delete_event.cancel()
         for mq in grp.qubits.values():
-            if self.ll.group_by_mq[mq.addr] is grp:
-                del self.ll.group_by_mq[mq.addr]
+            mq_grp = self.ll.group_by_mq.pop(mq.addr)
+            assert mq_grp is grp, f"qubit {mq.addr} is prematurely reallocated to {mq_grp}"
 
         grp.assert_is_drained()
         if len(self.groups_active) + len(self.groups_draining) == 0:
@@ -191,11 +201,12 @@ class LLGroup[P: LLEntangleProc[Any]](LogSelfMixin):
 
 
 class LLNotifyEvent(Event):
-    def __init__(self, t: Time, node: QNode, peer: QNode, key: str, epr: Entanglement):
+    def __init__(self, t: Time, node: QNode, peer: QNode, gid: int, key: str, epr: Entanglement):
         assert epr.decohere_time > t
-        super().__init__(t, f"{unwrap_cast(epr.src).name}-{unwrap_cast(epr.dst).name}, key={key}, epr={epr.name}")
+        super().__init__(t, f"{unwrap_cast(epr.src).name}-{unwrap_cast(epr.dst).name}, gid={gid}, key={key}, epr={epr.name}")
         self.node = node
         self.peer = peer
+        self.gid = gid
         self.key = key
         self.epr = epr
 

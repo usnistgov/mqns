@@ -2,6 +2,7 @@ import functools
 import itertools
 from collections import defaultdict
 from collections.abc import Callable, Iterable, Mapping
+from typing import Literal
 
 import pytest
 
@@ -31,6 +32,8 @@ class MinLinkLayer(Application[QNode]):
 
     def __init__(self):
         super().__init__()
+        self.last_gid_by_peer: dict[str, int] = {}
+        """Group identifier in the last LLActivateEvent keyed by peer node name."""
         self.on_attempt_success_by_peer: dict[str, Callable[[Entanglement], None]] = {}
         """LinkLayer OnAttemptSuccess callback keyed by peer node name."""
         self.release_history: list[tuple[int, Time]] = []
@@ -42,17 +45,19 @@ class MinLinkLayer(Application[QNode]):
 
     @event_handler
     def handle_ll_activate(self, event: LLActivateEvent) -> None:
+        self.last_gid_by_peer[event.peer.name] = event.gid
         if event.is_primary:
             self.on_attempt_success_by_peer[event.peer.name] = functools.partial(
                 event.on_attempt_success,
                 event.ch,
+                event.peer,
                 event.gid,
             )
 
     @event_handler
     def handle_qubit_released(self, event: QubitReleasedEvent) -> None:
         self.release_history.append((event.qubit.addr, event.t))
-        log.debug(f"{self}: RELEASE {event.qubit}")
+        self.log_debug("RELEASE %s", event.qubit)
         event.qubit.state = QubitState.RAW
 
     @property
@@ -154,6 +159,7 @@ _provide_entanglements_autoid = AutoIncrementIdentifier("Tpe_")
 
 def provide_entanglements(
     *etgs: tuple[float | Iterable[float], Forwarder, Forwarder] | tuple[Iterable[float], Iterable[Forwarder]],
+    gid: int | Literal["last"] = "last",
     transform_t: Callable[[float], float] = lambda t: t,
     fidelity=0.99,
 ) -> None:
@@ -168,6 +174,7 @@ def provide_entanglements(
     """
 
     def make_entangle(src: Forwarder, dst: Forwarder) -> None:
+        nonlocal gid
         simulator = src.simulator
         t_creation = simulator.tc
         ch = src.node.get_qchannel(dst.node)
@@ -192,18 +199,22 @@ def provide_entanglements(
         )
         epr.fidelity = fidelity
 
+        ll_gid = gid if type(gid) is int else -1
         if src_mll := src.node.get_apps(MinLinkLayer):
             on_attempt_success = src_mll[0].on_attempt_success_by_peer.get(dst.node.name)
             if on_attempt_success:
                 on_attempt_success(epr)
 
-        for node, neighbor, d_notify in (src, dst, la.d_notify_pri), (dst, src, la.d_notify_2nd):
+            if gid == "last":
+                ll_gid = src_mll[0].last_gid_by_peer[dst.node.name]
+
+        for node, peer, d_notify in (src, dst, la.d_notify_pri), (dst, src, la.d_notify_2nd):
             q, _ = next(node.memory.find(lambda _, v: v is None, qchannel=ch), (None, None))
             assert q is not None, f"insufficient qubits assigned to {ch}"
             q._state = QubitState.ENTANGLED0
             q.key = ll_key
             node.memory.write(q.addr, epr)
-            simulator.sched(QubitEntangledEvent(node.node, neighbor.node, q, t=t_creation + d_notify))
+            simulator.sched(QubitEntangledEvent(node.node, peer.node, ll_gid, q, t=t_creation + d_notify))
 
     def sched_entangle(t: float, src: Forwarder, dst: Forwarder) -> None:
         if t < 0:

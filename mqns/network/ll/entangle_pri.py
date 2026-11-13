@@ -203,12 +203,12 @@ class LLGroupPri(LLGroup[LLEntangleProcPri]):
 
         Invoked by :py:class:`LLEntangleSuccessEvent`.
         """
-        self.on_attempt_success(self.proc.ch, self.gid, epr)
+        self.on_attempt_success(self.proc.ch, self.proc.peer, self.gid, epr)
 
         # Schedule EPR delivery events on both nodes.
         simulator = self.proc.simulator
         simulator.sched(LLNotifyPriEvent(self, task, epr, t=task.t_notify_pri))
-        simulator.sched(LLNotify2ndEvent(task.key, epr, t=task.t_notify_2nd))
+        simulator.sched(LLNotify2ndEvent(self.gid, task.key, epr, t=task.t_notify_2nd))
 
     def before_notify(self, task: "_EntangleTask") -> None:
         """
@@ -274,7 +274,7 @@ class LLNotifyPriEvent(LLNotifyEvent):
         *,
         t: Time,
     ):
-        super().__init__(t, unwrap_cast(epr.src), unwrap_cast(epr.dst), task.key, epr)
+        super().__init__(t, unwrap_cast(epr.src), unwrap_cast(epr.dst), grp.gid, task.key, epr)
         self.grp = grp
         self.task = task
 

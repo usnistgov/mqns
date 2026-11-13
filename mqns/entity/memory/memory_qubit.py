@@ -16,9 +16,9 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-from collections.abc import Callable, Iterable
+from collections.abc import Iterable
 from enum import Enum, auto
-from typing import Any
+from typing import Final, NamedTuple
 
 from mqns.entity.node import QNode
 from mqns.entity.qchannel import QuantumChannel
@@ -114,29 +114,49 @@ Allowed state transitions, mapped from old state to allowed new states.
 """
 
 
-class PathDirection(Enum):
-    L = 0
+class EntangledPartner(NamedTuple):
     """
-    Path direction LEFT: qubit is assigned to a channel that connects to the left side neighbor.
+    Information about the partner node of an entanglement stored in memory.
     """
-    R = 1
+
+    ch_peer: str
     """
-    Path direction RIGHT: qubit is assigned to a channel that connects to the right side neighbor.
+    Peer node name of the near-side channel for initial entanglement generation.
     """
+
+    ll_gid: int
+    """
+    LinkLayer group identifier on the near-side channel for initial entanglement generation.
+    """
+
+    node: QNode
+    """
+    Far endpoint of the current entanglement, per heralded knowledge.
+    """
+
+    key: str
+    """
+    Qubit key at the partner node.
+    """
+
+    def __repr__(self) -> str:
+        return f"{self.node.name}:{self.key}"
+
+    def with_far_side(self, node: QNode, key: str) -> "EntangledPartner":
+        """
+        Update far-side information.
+        """
+        return EntangledPartner(*self[:2], node, key)
 
 
 class MemoryQubit:
     """An addressable qubit in memory, with a lifecycle."""
 
-    addr: int
+    addr: Final[int]
     """Address index in QuantumMemory."""
 
     qchannel: QuantumChannel | None = None
     """QuantumChannel to which qubit is assigned to."""
-    path_id: int | None = None
-    """Optional path ID to which qubit is allocated."""
-    path_direction: PathDirection | None = None
-    """Optional end of the path to which the allocated qubit points to (weak solution to avoid loops)."""
 
     _state = QubitState.RAW
 
@@ -147,7 +167,7 @@ class MemoryQubit:
     This is set by ``LinkLayer`` and remains unchanged until the qubit is released.
     It is a consistent identifier for a qubit that contains a particular qstate and its swapped/purified forms.
     """
-    partner: tuple[QNode, str] | None = None
+    partner: EntangledPartner | None = None
     """
     Partner node and partner qubit reservation key, if the qubit contains an entanglement.
 
@@ -172,8 +192,6 @@ class MemoryQubit:
 
     events: EventHandleSet
     """Events that are canceled upon reaching RELEASE state."""
-
-    _on_raw_callbacks: list[Callable[["MemoryQubit"], Any]] | None = None
 
     def __init__(self, addr: int):
         self.addr = addr
@@ -217,24 +235,6 @@ class MemoryQubit:
         self.purif_rounds = 0
         self.eligible_time = Time.SENTINEL
 
-        if not self._on_raw_callbacks:
-            return
-        for fn in self._on_raw_callbacks:
-            fn(self)
-        del self._on_raw_callbacks
-
-    def on_raw(self, fn: Callable[["MemoryQubit"], Any]) -> None:
-        """
-        Schedule a function to be invoked when the qubit reaches RAW state.
-        If the qubit is already in RAW state, the function is called immediately.
-        """
-        if self._state is QubitState.RAW:
-            fn(self)
-        else:
-            if not self._on_raw_callbacks:
-                self._on_raw_callbacks = []
-            self._on_raw_callbacks.append(fn)
-
     def __repr__(self) -> str:
         return ", ".join(_describe(self)) + ")"
 
@@ -245,13 +245,11 @@ def _describe(mq: MemoryQubit) -> Iterable[str]:
 
     if mq.qchannel:
         yield f"ch={mq.qchannel.name}"
-        if mq.path_direction:
-            yield f"path={mq.path_id}-{mq.path_direction.name}"
 
     if mq.key:
         yield f"key={mq.key}"
     if mq.partner:
-        yield f"partner={mq.partner[0].name}:{mq.partner[1]}"
+        yield f"partner={mq.partner}"
 
     if mq.epr_path_ids:
         yield f"epr-path-ids={mq.epr_path_ids}"

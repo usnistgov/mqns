@@ -127,5 +127,5 @@ class LLNotify2ndEvent(LLNotifyEvent):
     Event to notify the secondary node about successful elementary entanglement.
     """
 
-    def __init__(self, key: str, epr: Entanglement, *, t: Time):
-        super().__init__(t, unwrap_cast(epr.dst), unwrap_cast(epr.src), key, epr)
+    def __init__(self, gid: int, key: str, epr: Entanglement, *, t: Time):
+        super().__init__(t, unwrap_cast(epr.dst), unwrap_cast(epr.src), gid, key, epr)

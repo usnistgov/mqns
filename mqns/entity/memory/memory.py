@@ -32,7 +32,7 @@ from typing import TYPE_CHECKING, Any, Final, Literal, TypedDict, Unpack, overlo
 
 from mqns.entity.entity import Entity
 from mqns.entity.memory.event import MemoryDecohereEvent
-from mqns.entity.memory.memory_qubit import MemoryQubit, PathDirection, QubitState
+from mqns.entity.memory.memory_qubit import MemoryQubit, QubitState
 from mqns.entity.node import QNode
 from mqns.entity.qchannel import QuantumChannel
 from mqns.models.core import QuantumModel
@@ -73,7 +73,6 @@ class QuantumMemory(EventDispatcherMixin, Entity):
         nodes: Iterable["QNode"],
         *,
         states: Container[QubitState] = (QubitState.RAW, QubitState.RELEASE),
-        deallocated=False,
         unassigned=False,
     ) -> None:
         """
@@ -82,7 +81,6 @@ class QuantumMemory(EventDispatcherMixin, Entity):
         Args:
             nodes: List of quantum nodes, such as ``QuantumNetwork.nodes``.
             states: Acceptable states.
-            deallocated: If True, qubit must not be allocated to a path.
             unassigned: If True, qubit must not be assigned to a channel.
 
         Raises:
@@ -94,8 +92,6 @@ class QuantumMemory(EventDispatcherMixin, Entity):
             for mq, data in node.memory.find(QuantumMemory.predicate_all):
                 if mq.state not in states:
                     errors.append(f"{node.name} {mq} has unexpected state {mq.state} | {data}")
-                if deallocated and mq.path_id is not None:
-                    errors.append(f"{node.name} {mq} is allocated to path {mq.path_id}")
                 if unassigned and mq.qchannel:
                     errors.append(f"{node.name} {mq} is assigned to {mq.qchannel}")
         if n := len(errors):
@@ -259,55 +255,6 @@ class QuantumMemory(EventDispatcherMixin, Entity):
 
             qubit.qchannel = None
 
-    def allocate(
-        self,
-        ch: QuantumChannel,
-        path_id: int,
-        path_direction: PathDirection,
-        *,
-        n: int = 1,
-    ) -> list[int]:
-        """
-        Allocate n qubits to a given path ID.
-
-        Args:
-            ch: Only consider qubits assigned to this quantum channel.
-            path_id: Allocate qubits to this path identifier, retrievable via ``MemoryQubit.path_id``.
-            path_direction: Allocate qubits to this path direction, retrievable via ``MemoryQubit.path_direction``.
-            n: Desired quantity.
-
-        Returns:
-            List of qubit addresses.
-
-        Raises:
-            OverflowError: insufficient unallocated qubits.
-        """
-        qubits = list(itertools.islice(self.find(lambda q, _: q.path_id is None, qchannel=ch), n))
-        if len(qubits) != n:
-            raise OverflowError(f"{self}: insufficient qubits for allocate({ch},n={n})")
-
-        addrs: list[int] = []
-        for mq, _ in qubits:
-            mq.path_id = path_id
-            mq.path_direction = path_direction
-            addrs.append(mq.addr)
-        return addrs
-
-    def deallocate(self, *addrs: int) -> None:
-        """
-        Deallocate one or more qubits from any assigned path.
-
-        If a qubit is currently occupied, the deallocation takes effect when it next reaches RAW state.
-        """
-        for addr in addrs:
-            mq, _ = self._storage[addr]
-            mq.on_raw(QuantumMemory._deallocate_qubit)
-
-    @staticmethod
-    def _deallocate_qubit(mq: MemoryQubit) -> None:
-        mq.path_id = None
-        mq.path_direction = None
-
     @overload
     def read(
         self, key: int, *, must: Literal[True] = True, remove: bool | QuantumModel = False
@@ -426,7 +373,7 @@ class QuantumMemory(EventDispatcherMixin, Entity):
             Qubit where the data is stored.
 
         Raises:
-            LookupError: qubit not found by ``key`` or no qubit available.
+            LookupError: Qubit not found.
             ValueError: ``replace=False`` but qubit has existing data.
         """
         if type(key) is int:

@@ -34,8 +34,8 @@ class NetworkLayer(Application[QNode]):
         """If non-empty, ``QubitReleasedEvent`` would be emitted after specified duration for the next entanglement."""
         self.entangle: list[float] = []
         """Entanglement events, each entry is event time."""
-        self.path_entangle = defaultdict[int | None, list[float]](list)
-        """Entanglement times per path_id."""
+        self.group_entangle = defaultdict[int | None, list[float]](list)
+        """Entanglement times per group identifier."""
         self.decohere: list[float] = []
         """Decoherence events, each entry is event time."""
 
@@ -47,13 +47,13 @@ class NetworkLayer(Application[QNode]):
 
     @event_handler
     def handle_entangle(self, event: QubitEntangledEvent) -> None:
-        mq, epr = self.memory.read(event.qubit.addr, has=self.epr_type)
-        assert mq is event.qubit
+        mq, epr = self.memory.read(event.mq.addr, has=self.epr_type)
+        assert mq is event.mq
         if self.check_epr_creation_prior is not None:
             t_create = epr.decohere_time - self.memory.t_cohere
             assert t_create == event.t - self.check_epr_creation_prior
         self.entangle.append(event.t.sec)
-        self.path_entangle[mq.path_id].append(event.t.sec)
+        self.group_entangle[event.gid].append(event.t.sec)
 
         try:
             release_after = self.release_after.popleft()
@@ -83,6 +83,9 @@ def make_linear(
     timing: TimingMode = TimingModeAsync(),
     epr_type: type[Entanglement] = WernerStateEntanglement,
 ) -> tuple[QuantumNetwork, tuple[QuantumChannel, ...], tuple[LinkLayer, ...], tuple[NetworkLayer, ...]]:
+    """
+    Build a linear topology.
+    """
     rng.reseed("env")
     net = QuantumNetwork(timing=timing, epr_type=epr_type)
 
@@ -120,6 +123,7 @@ def activate_group(
     *,
     gid: int,
     n=1,
+    assign_to_channel=True,
     roles: tuple[bool, bool] = (True, False),
 ):
     """
@@ -127,19 +131,21 @@ def activate_group(
 
     Args:
         t0: When to activate.
-        t0: When to deactivate.
+        t1: When to deactivate.
         src: Any application on the first node, typically the primary node.
         dst: Any application on the second node, typically the secondary node.
         gid: Group identifier.
         n: How many qubits to allocate.
+        assign_to_channel: Whether to assign qubits to channel.
         roles: Role (pri/2nd) of the src and dst nodes.
     """
     simulator = src.simulator
     ch = src.node.get_qchannel(dst.node)
-    ch.assign_memory_qubits(capacity=n, path_id=gid)
 
     if t0 is not None:
         t = simulator.time(sec=t0)
+        if assign_to_channel:
+            ch.assign_memory_qubits(capacity=n)
         for node, is_primary in zip((src.node, dst.node), roles, strict=True):
             simulator.sched(
                 LLActivateEvent(
@@ -147,8 +153,8 @@ def activate_group(
                     ch,
                     t=t,
                     gid=gid,
+                    q_target=n,
                     is_primary=is_primary,
-                    qubits=(q for q, _ in node.memory.find(lambda q, _: q.path_id == gid, qchannel=ch)),
                 )
             )
 
@@ -188,15 +194,15 @@ def force_attempts(monkeypatch: pytest.MonkeyPatch, ll: LinkLayer, /, **kwargs: 
 
     Args:
         ll: LinkLayer instance.
-        kwargs: Attempts numbers for upcoming entanglements, keyed by partner name.
+        kwargs: Attempts numbers for upcoming entanglements, keyed by peer node name.
     """
 
     def new_calc_attempts(qchannel: QuantumChannel) -> int:
         nonlocal kwargs
-        partner = qchannel.find_peer(ll.node)
-        l = kwargs[partner.name]
+        peer = qchannel.find_peer(ll.node)
+        l = kwargs[peer.name]
         this_attempts, *l = l
-        kwargs[partner.name] = l
+        kwargs[peer.name] = l
         return this_attempts
 
     monkeypatch.setattr(ll, "_calc_attempt", new_calc_attempts)

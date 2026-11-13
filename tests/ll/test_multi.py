@@ -86,8 +86,8 @@ def test_multi_channel():
     simulator.run()
 
     for ll, nl in (ll1, nl1), (ll2, nl2), (ll3, nl3):
-        print(ll.node.name, ll.cnt, f"path_entangle_cnt={nl.path_entangle[1]}")
-        assert len(nl.path_entangle[1]) > 0
+        print(ll.node.name, ll.cnt, f"path_entangle_cnt={nl.group_entangle[1]}")
+        assert len(nl.group_entangle[1]) > 0
 
     # All attempts should be initiated by ll1.
     assert ll1.cnt.n_attempts > 0
@@ -113,7 +113,7 @@ def test_multi_group():
     simulator.run()
 
     for ll, nl in (ll1, nl1), (ll2, nl2):
-        path_entangle_cnts = [len(nl.path_entangle[path_id]) for path_id in range(1, 5)]
+        path_entangle_cnts = [len(nl.group_entangle[path_id]) for path_id in range(1, 5)]
         print(ll.node.name, ll.cnt, f"path_entangle_cnts={path_entangle_cnts}")
         assert all(c > 0 for c in path_entangle_cnts)
 
@@ -222,7 +222,7 @@ def test_reactivate(
     simulator = Simulator(0.0, 6.0, install_to=(log, net))
 
     activate_group(0.1, t_delete, nl1, nl2, gid=7)
-    activate_group(t_insert, None, nl1, nl2, gid=gid, n=0 if same_path else 1)
+    activate_group(t_insert, None, nl1, nl2, gid=gid, assign_to_channel=not same_path)
     check_link_arch_delays(0.1, ch, attempt_interval=0.6, d_notify_pri=0.3, d_notify_2nd=0.6)
     force_attempts(monkeypatch, ll1, n2=[2, 2, 10000])
     force_attempts(monkeypatch, ll2, n1=[2, 2, 10000])

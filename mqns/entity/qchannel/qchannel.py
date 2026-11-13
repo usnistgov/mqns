@@ -25,7 +25,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Final, Unpack, final, override
 
 from mqns.entity.base_channel import BaseChannel, BaseChannelInitKwargs, calc_transmission_prob
@@ -111,7 +111,7 @@ class QuantumChannel(BaseChannel[QNode]):
         self.transfer_error = parse_error(kwargs.get("transfer_error"), DepolarErrorModel, self.length)
         self.bsa_error = parse_error(kwargs.get("bsa_error"), DepolarErrorModel, -1)
 
-    def assign_memory_qubits(self, *, capacity: int | dict[str, int] = 1, path_id: int | None = None):
+    def assign_memory_qubits(self, *, capacity: int | dict[str, int] = 1) -> Mapping[QNode, Sequence[int]]:
         """
         Assign memory qubits at each node connected to the qchannel.
 
@@ -120,18 +120,15 @@ class QuantumChannel(BaseChannel[QNode]):
                       If given as an integer, this applies to every node.
                       If given as a dict, it should be a mapping from node name to capacity of this node,
                       where every node connected to the qchannel must appear in the dict.
-            path_id: If not ``None``, also allocate the qubits to the specified path.
 
         Raises:
             OverflowError: insufficient qubits.
         """
-        from mqns.entity.memory import PathDirection  # noqa: PLC0415
-
-        for node, dir in zip(self.node_list, (PathDirection.R, PathDirection.L), strict=True):
+        node_addrs: dict[QNode, list[int]] = {}
+        for node in self.node_list:
             cap = capacity if isinstance(capacity, int) else capacity[node.name]
-            node.memory.assign(self, n=cap)
-            if path_id is not None:
-                node.memory.allocate(self, path_id, dir, n=cap)
+            node_addrs[node] = node.memory.assign(self, n=cap)
+        return node_addrs
 
     def send(self, qubit: QuantumModel, next_hop: QNode):
         """

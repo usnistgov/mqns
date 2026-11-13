@@ -1,10 +1,11 @@
 from collections.abc import Callable, MutableMapping
 from typing import TYPE_CHECKING, Final, Literal, override
 
-from mqns.entity.memory import MemoryQubit, PathDirection, QuantumMemory, QubitState
+from mqns.entity.memory import MemoryQubit, QubitState
+from mqns.entity.node import QNode
 from mqns.entity.qchannel import QuantumChannel
 from mqns.models.epr import Entanglement
-from mqns.network.fw import FibPath, PathInstructions, validate_path_instructions
+from mqns.network.fw import FibPath, PathDirection, PathInstructions, validate_path_instructions
 from mqns.network.fw.select import (
     MemoryEprTuple,
     call_select,
@@ -27,9 +28,9 @@ LinkLayer group identifier for all paths on a channel.
 
 
 class MuxSchemeDynamicBase(MuxScheme):
-    qchannel_paths_map: Final[MutableMapping[QuantumChannel, list[int]]]
+    qchannel_paths_map: Final[MutableMapping[str, list[int]]]
     """
-    Mapping from QuantumChannel to path_ids activated on the channel.
+    Mapping from quantum channel peer name to path_ids activated on the channel.
 
     Note: the mapped type is a ``list`` instead of a ``set``, to ensure deterministic simulation.
     """
@@ -43,8 +44,10 @@ class MuxSchemeDynamicBase(MuxScheme):
         validate_path_instructions(inst)
 
     @override
-    def install_path_adj(self, inst: PathInstructions, fp: FibPath, dir: PathDirection, ch: QuantumChannel) -> None:
-        paths = self.qchannel_paths_map.setdefault(ch, [])
+    def install_path_adj(
+        self, inst: PathInstructions, fp: FibPath, dir: PathDirection, ch: QuantumChannel, peer: QNode
+    ) -> None:
+        paths = self.qchannel_paths_map.setdefault(peer.name, [])
         assert fp.path_id not in paths
         paths.append(fp.path_id)
         if len(paths) > 1:
@@ -56,21 +59,21 @@ class MuxSchemeDynamicBase(MuxScheme):
                 ch,
                 t=self.simulator.tc,
                 gid=_LL_GID_ALL_PATHS,
-                qubits=(q for q, _ in self.memory.find(QuantumMemory.predicate_all, qchannel=ch)),
+                q_target=-1,
                 is_primary=self._path_adj_is_primary(inst, fp, dir),
                 on_attempt_success=self.on_ll_attempt_success,
             )
         )
 
     @override
-    def uninstall_path_adj(self, fp: FibPath, dir: PathDirection, ch: QuantumChannel) -> None:
+    def uninstall_path_adj(self, fp: FibPath, dir: PathDirection, ch: QuantumChannel, peer: QNode) -> None:
         _ = dir
-        paths = self.qchannel_paths_map[ch]
+        paths = self.qchannel_paths_map[peer.name]
         paths.remove(fp.path_id)
         if len(paths) > 0:
             return
 
-        del self.qchannel_paths_map[ch]
+        del self.qchannel_paths_map[peer.name]
         self.simulator.sched(
             LLDeactivateEvent(
                 self.node,
@@ -80,8 +83,8 @@ class MuxSchemeDynamicBase(MuxScheme):
             )
         )
 
-    def on_ll_attempt_success(self, ch: QuantumChannel, gid: int, epr: Entanglement) -> None:
-        pass
+    def on_ll_attempt_success(self, ch: QuantumChannel, peer: QNode, gid: int, epr: Entanglement) -> None:
+        _ = ch, peer, gid, epr
 
 
 class MuxSchemeStatistical(MuxSchemeDynamicBase):
@@ -139,7 +142,7 @@ class MuxSchemeStatistical(MuxSchemeDynamicBase):
 
     @override
     def qubit_is_entangled(self, mq: MemoryQubit, epr: Entanglement) -> FibPath | None:
-        epr_path_ids = self.qchannel_paths_map.get(unwrap(mq.qchannel), [])
+        epr_path_ids = self.qchannel_paths_map.get(unwrap(mq.partner).ch_peer, [])
         if self.coordinated_decisions and epr.affectionated_path_id >= 0:
             assert epr.affectionated_path_id in epr_path_ids
             mq.epr_path_ids = [epr.affectionated_path_id]
@@ -148,11 +151,11 @@ class MuxSchemeStatistical(MuxSchemeDynamicBase):
         else:
             mq.epr_path_ids = epr_path_ids
 
-        peer, _ = unwrap_cast(mq.partner)
+        peer = unwrap_cast(mq.partner).node
 
         def calc_rank_diff(path_id: int) -> int:
             fp = self.fib.get_path(path_id)
-            _, p_rank = fp.find_index_and_swap_rank(peer.name)
+            p_rank = fp.swap[fp.route.index(peer.name)]
             return fp.own_swap_rank - p_rank
 
         rank_diff = [calc_rank_diff(path_id) for path_id in mq.epr_path_ids]

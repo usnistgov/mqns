@@ -17,6 +17,7 @@
 
 from collections import defaultdict
 from collections.abc import Iterable, Mapping, Sequence
+from enum import Enum
 from typing import TYPE_CHECKING, Final, Literal, final
 
 import numpy as np
@@ -26,6 +27,21 @@ from mqns.simulator import Time, func_to_event
 
 if TYPE_CHECKING:
     from mqns.network.fw.forwarder import Forwarder
+
+
+class PathDirection(Enum):
+    """
+    Direction left or right.
+    """
+
+    L = 0
+    """
+    Leftward.
+    """
+    R = 1
+    """
+    Rightward.
+    """
 
 
 @final
@@ -84,23 +100,6 @@ class FibPath:
     def own_swap_rank(self) -> int:
         """Swap rank of own node."""
         return self.swap[self.own_idx]
-
-    def find_index_and_swap_rank(self, node_name: str) -> tuple[int, int]:
-        """
-        Determine the swapping rank of a node.
-
-        Args:
-            node_name: a node name that exists in route.
-
-        Returns:
-            [0]: The node index in the route.
-            [1]: Swapping rank of the node, explained in ``PathInstructions``.
-
-        Raises:
-            LookupError: Node does not exist in route.
-        """
-        idx = self.route.index(node_name)
-        return idx, self.swap[idx]
 
 
 @final

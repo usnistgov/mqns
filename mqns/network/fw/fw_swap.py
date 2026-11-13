@@ -27,7 +27,7 @@ class _SwapArm(NamedTuple):
     @staticmethod
     def new(mq: MemoryQubit) -> "_SwapArm":
         o_key = unwrap(mq.key)
-        p_key = o_key if mq.partner is None else mq.partner[1]
+        p_key = o_key if mq.partner is None else mq.partner.key
         return _SwapArm(mq, o_key, p_key)
 
     def __repr__(self) -> str:
@@ -459,7 +459,7 @@ class ForwarderSwapProc(ForwarderModule):
             fp: FIB path entry.
         """
         assert mq0.addr != mq1.addr
-        assert mq0.qchannel is not mq1.qchannel
+        assert unwrap_cast(mq0.partner).ch_peer != unwrap_cast(mq1.partner).ch_peer
 
         # Retrieve both qubits.
         arms = [_SwapArm.new(mq0), _SwapArm.new(mq1)]
@@ -636,7 +636,7 @@ class ForwarderSwapProc(ForwarderModule):
                 if swapper in fe.route and partner in fe.route:
                     fp = fe
                     break
-        _, swapper_rank = fp.find_index_and_swap_rank(swapper)
+        swapper_rank = fp.swap[fp.route.index(swapper)]
 
         self.handle_update(
             _SwapParsedUpdate(
@@ -683,33 +683,33 @@ class ForwarderSwapProc(ForwarderModule):
         """Process SWAP_UPDATE sent from a lower-ranked node."""
 
         # Retrieve qubit and new physical EPR.
-        qubit = qubit_pair[0] if qubit_pair else None
+        mq = qubit_pair[0] if qubit_pair else None
         new_phy = self.remote_swapped.pop(su.o_key, None)
 
         # If the lower-ranked swap failed, had conflict path, or the new EPR has decohered, release the qubit.
         if not su.q_paths or su.expiry <= self.simulator.tc.slot:
-            if qubit:
+            if mq:
                 if su.expiry == 0:
                     self.fw_cnt.n_su_lower[3] += 1
-                    self.log_debug("releasing qubit %s reason=lower-swap-failure key=%s | %s", qubit.addr, su.o_key, new_phy)
+                    self.log_debug("releasing qubit %s reason=lower-swap-failure key=%s | %s", mq.addr, su.o_key, new_phy)
                 elif not su.q_paths:
                     self.fw_cnt.n_su_lower[4] += 1
-                    self.log_debug("releasing qubit %s reason=lower-swap-conflict key=%s | %s", qubit.addr, su.o_key, new_phy)
+                    self.log_debug("releasing qubit %s reason=lower-swap-conflict key=%s | %s", mq.addr, su.o_key, new_phy)
                 else:
                     self.fw_cnt.n_su_lower[2] += 1
                     self.log_debug(
                         "releasing qubit %s reason=lower-expiry expiry=%s key=%s | %s",
-                        qubit.addr,
+                        mq.addr,
                         self.simulator.time(slot=su.expiry),
                         su.o_key,
                         new_phy,
                     )
-                self.fw.release_qubit(qubit, need_remove=True)
+                self.fw.release_qubit(mq, need_remove=True)
             else:
                 self.fw_cnt.n_su_lower[1] += 1
                 self.log_debug("qubit decohered during SWAP_UPDATE transmission key=%s | %s", su.o_key, new_phy)
             return
-        assert qubit, f"qubit not found for {su.o_key}"
+        assert mq, f"qubit not found for {su.o_key}"
         assert new_phy, f"new_phy not found for {su.o_key}"
 
         # Verify that the new physical EPR matches the heralded EPR segment.
@@ -727,8 +727,8 @@ class ForwarderSwapProc(ForwarderModule):
         assert su.partner in su.fp.route
 
         # Store new EPR.
-        qubit.partner = partner, su.p_key
-        self.memory.write(qubit.addr, new_phy, replace=True)
+        mq.partner = unwrap_cast(mq.partner).with_far_side(partner, su.p_key)
+        self.memory.write(mq.addr, new_phy, replace=True)
 
         self.fw_cnt.n_su_lower[0] += 1
         self.log_debug(
@@ -739,9 +739,9 @@ class ForwarderSwapProc(ForwarderModule):
         )
 
         # Progress toward purification and this-rank swap.
-        qubit.purif_rounds = 0
-        qubit.state = QubitState.PURIF
-        self.fw.qubit_is_purif(qubit, su.fp, partner)
+        mq.purif_rounds = 0
+        mq.state = QubitState.PURIF
+        self.fw.qubit_is_purif(mq, su.fp, partner)
 
     def _u_same(
         self,

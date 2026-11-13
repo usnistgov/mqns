@@ -29,16 +29,16 @@ class Application[N: "Node"](EventDispatcherMixin, LogSelfMixin, ABC):
     """
     Application deployed on a node.
 
-    ``N`` type parameter indicates which ``Node`` subclass is required for installing this application.
+    ``N`` type parameter indicates which :py:class:`~mqns.entity.node.Node` subclass is required for this application.
     """
 
-    def install(self, node: "Node"):
+    def install(self, node: "Node") -> None:
         """
         Install this application onto the node.
 
         Base class implementation does not verify ``node`` matches ``N`` type parameter.
-        If ``N`` type parameter is a subclass such as ``QNode``, subclass should override this method to
-        invoke ``self._application_install()`` with an appropriate ``node_type``.
+        If ``N`` type parameter is a subclass such as :py:class:`~mqns.entity.node.QNode`, subclass should override
+        this method to invoke ``self._application_install()`` with a more specific ``node_type``.
         """
         from mqns.entity.node.node import Node  # noqa: PLC0415
 
