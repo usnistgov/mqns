@@ -27,7 +27,7 @@ def to_fib_erase_delay(t_cohere: Time) -> Time:
 
 class ProactiveForwarderNorthbound(ForwarderNorthbound):
     """
-    Northbound interface to communicate with ``ProactiveRoutingController``.
+    Northbound interface to communicate with :py:class:`~mqns.network.proactive.ProactiveRoutingController`.
     """
 
     mux: MuxScheme

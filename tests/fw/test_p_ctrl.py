@@ -8,7 +8,7 @@ from typing import NamedTuple
 
 import pytest
 
-from mqns.network.builder import GridTopoGen, NetworkBuilder
+from mqns.network.builder import GridTopoGen, NetworkBuilder, NodeDef
 from mqns.network.fw import RoutingController, RoutingPath
 from mqns.network.fw.message import PathInstructions
 from mqns.network.network import QuantumNetwork, Request, RequestState
@@ -25,14 +25,14 @@ class _PathInsertRecord(NamedTuple):
 
 def collect_path_insert(monkeypatch: pytest.MonkeyPatch, net: QuantumNetwork) -> Mapping[int, _PathInsertRecord]:
     ctrl = unwrap(net.controller).get_app(RoutingController)
-    old_path_insert = ctrl.path_insert
+    path_insert_old = ctrl.path_insert
     records: dict[int, _PathInsertRecord] = {}
 
-    def new_path_insert(req_id: int, insts: list[PathInstructions], **kwargs):
+    def path_insert_new(req_id: int, insts: list[PathInstructions], **kwargs):
         records[req_id] = _PathInsertRecord(net.simulator.tc.sec, insts, ["".join(inst["route"]) for inst in insts])
-        return old_path_insert(req_id, insts, **kwargs)
+        return path_insert_old(req_id, insts, **kwargs)
 
-    monkeypatch.setattr(ctrl, "path_insert", new_path_insert)
+    monkeypatch.setattr(ctrl, "path_insert", path_insert_new)
     return records
 
 
@@ -134,41 +134,47 @@ def test_grid12_multipath(monkeypatch: pytest.MonkeyPatch):
     """
     Test multi-path reroute in 12-node (3 rows, 4 columns) grid topology.
 
-        A---B---C-x-D
+        A---B---C---D
         |   |   |   |
         E---F---G---H
-        |   |   x   |
+        |   |   |   |
         I---J---K---L
     """
     net, simulator = make_network(
-        NetworkBuilder().topo_from(GridTopoGen((3, 4)), nodes_naming="A", ch_capacity=1).proactive_centralized(ll=False),
+        NetworkBuilder()
+        .topo_from(
+            GridTopoGen((3, 4)),
+            nodes_naming="A",
+            mem_capacity=0,
+            nodes=[
+                *(NodeDef(node, mem_capacity=6) for node in "EHBC"),
+                *(NodeDef(node, mem_capacity=2) for node in "FGAD"),
+                *(NodeDef(node, mem_capacity=4) for node in "IJKL"),
+            ],
+        )
+        .proactive_centralized(ll=False),
     )
     inserted_paths = collect_path_insert(monkeypatch, net)
 
-    # Block off CD and GK links, marked "x" in the diagram.
-    net.add_request(Request(RoutingPath.static("CD"), active_period=(1.000, 4.000)))
-    net.add_request(Request(RoutingPath.static("GK"), active_period=(1.000, 4.000)))
-
-    rp = RoutingPath.static("FG", "FEABCG", "FBCDHG", "FEIJKG", "FJKLHG", multipath="any", bufferspace_mv=1)
-    net.add_request(req0 := Request(copy.deepcopy(rp), active_period=(1.001, 2.001)))
-    # req0 uses FG path.
-    net.add_request(req1 := Request(copy.deepcopy(rp), active_period=(1.002, 2.002)))
-    # req1 uses FEABCG path.
-    net.add_request(req2 := Request(copy.deepcopy(rp), active_period=(1.003, 2.003)))
-    # req2 uses FJKLHG path.
-    net.add_request(req3 := Request(copy.deepcopy(rp), active_period=(1.004, 2.004)))
-    net.add_request(req4 := Request(copy.deepcopy(rp), active_period=(1.005, 2.005)))
-    # req3 and req4 are rejected.
+    rp = RoutingPath.static("EFGH", "EABCDH", "EIJKLH", multipath="any", bufferspace_mv=1)
+    # EFGH path can accommodate one request because F and G each has 2 qubits.
+    # EABCDH path can accommodate one request because A and D each has 2 qubits.
+    # EIJKLH path can accommodate two requests because each intermediate node has 4 qubits.
+    for i in range(6):
+        net.add_request(Request(copy.deepcopy(rp), active_period=(1 + 0.001 * i, 2)))
 
     simulator.run()
 
+    req0, req1, req2, req3, req4, req5 = net.requests
     assert req0.state is RequestState.EXPIRED
-    assert inserted_paths[req0.req_id].route == ["FG"]
+    assert inserted_paths[req0.req_id].route == ["EFGH"]
     assert req1.state is RequestState.EXPIRED
-    assert inserted_paths[req1.req_id].route == ["FEABCG"]
+    assert inserted_paths[req1.req_id].route == ["EABCDH"]
     assert req2.state is RequestState.EXPIRED
-    assert inserted_paths[req2.req_id].route == ["FJKLHG"]
-    assert req3.state is RequestState.REJECTED
-    assert req3.req_id not in inserted_paths
+    assert inserted_paths[req2.req_id].route == ["EIJKLH"]
+    assert req3.state is RequestState.EXPIRED
+    assert inserted_paths[req3.req_id].route == ["EIJKLH"]
     assert req4.state is RequestState.REJECTED
     assert req4.req_id not in inserted_paths
+    assert req5.state is RequestState.REJECTED
+    assert req5.req_id not in inserted_paths

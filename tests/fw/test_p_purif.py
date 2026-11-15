@@ -28,12 +28,12 @@ def force_purify_outcome(monkeypatch: pytest.MonkeyPatch, *success: bool):
     """
     l = list(success)
 
-    def new_random() -> float:
+    def random_new() -> float:
         nonlocal l
         this_success, *l = l
         return 0.0 if this_success else 1.0
 
-    monkeypatch.setattr(rng, "random", new_random)
+    monkeypatch.setattr(rng, "random", random_new)
 
 
 @pytest.mark.parametrize(

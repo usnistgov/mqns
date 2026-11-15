@@ -2,7 +2,7 @@ mqns.network package
 ====================
 
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 2
 
    mqns.network.builder
    mqns.network.network
