@@ -46,6 +46,13 @@ def call_select[T, R](candidates: Iterable[T], fn: Callable[..., R] | None, *arg
     return fn(l, *args)
 
 
+def select_first[T](candidates: Sequence[T], *_: Any) -> T:
+    """
+    Candidate selection function that selects the first candidate.
+    """
+    return candidates[0]
+
+
 def select_random[T](candidates: Sequence[T], *_: Any) -> T:
     """
     Candidate selection function that selects a random candidate with uniform probability.

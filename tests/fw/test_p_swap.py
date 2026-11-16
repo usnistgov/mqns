@@ -65,6 +65,7 @@ def test_3_disabled():
 @pytest.mark.parametrize(
     ("ssq", "addrs"),
     [
+        ("first", [0, 1, 4, 5]),
         ("random", None),
         ("oldest", [4, 5, 6, 7]),
         ("newest", [1, 0, 7, 6]),

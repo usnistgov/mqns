@@ -187,6 +187,9 @@ class QuantumMemory(EventDispatcherMixin, Entity):
         Args:
             predicate: Callback function to accept or reject each qubit and associated data.
             has: If set, only qubits with associated data of this type are considered.
+
+        Returns:
+            Iterator of qubits and associated data in ascending address order.
         """
         for qubit, data in self._storage:
             if (has is None or type(data) is has) and predicate(qubit, data):
