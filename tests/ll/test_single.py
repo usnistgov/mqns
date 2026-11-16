@@ -209,7 +209,7 @@ def test_deactivate(
         event.priority = 10000
         simulator.sched(event)
 
-    check_states(t_delete, *(QubitState.ENTANGLED1 if is_entangled else None for is_entangled in entangled_at_delete))
+    check_states(t_delete, *(QubitState.ENTANGLED if is_entangled else None for is_entangled in entangled_at_delete))
 
     expect_t_entangle1: list[float] = []
     expect_t_entangle2: list[float] = []
@@ -222,10 +222,10 @@ def test_deactivate(
     # t=0.7, n1 receives RESERVE_RES, sets qubit state to RESERVED; first attempt begins and it would succeed
     check_states(0.7, QubitState.RESERVED, QubitState.RESERVED)
     # t=1.0, n1 is notified, sets qubit state to ENTANGLED
-    check_states(1.0, QubitState.ENTANGLED1, QubitState.RESERVED)
+    check_states(1.0, QubitState.ENTANGLED, QubitState.RESERVED)
     expect_t_entangle1.append(1.0)
     # t=1.3, n2 is notified, sets qubit state to ENTANGLED
-    check_states(1.3, QubitState.ENTANGLED1, QubitState.ENTANGLED1)
+    check_states(1.3, QubitState.ENTANGLED, QubitState.ENTANGLED)
     expect_t_entangle2.append(1.3)
     # t=2.7, EPR decoheres, qubit states are set to RELEASE then RAW
     nl1.release_after.append(None)
@@ -242,16 +242,16 @@ def test_deactivate(
     # t=5.1, third attempt fails, fourth attempt begins and it would succeed
     check_states(5.1, QubitState.RESERVED, QubitState.RESERVED)
     # t=5.4, n1 is notified, sets qubit state to ENTANGLED
-    check_states(5.4, QubitState.ENTANGLED1, QubitState.RESERVED)
+    check_states(5.4, QubitState.ENTANGLED, QubitState.RESERVED)
     expect_t_entangle1.append(5.4)
     # t=5.7, n2 is notified, sets qubit state to ENTANGLED
-    check_states(5.7, QubitState.ENTANGLED1, QubitState.ENTANGLED1)
+    check_states(5.7, QubitState.ENTANGLED, QubitState.ENTANGLED)
     expect_t_entangle2.append(5.7)
     #
     # ---------------- third entanglement, k=1, nl2 releases before nl1 ----------------
     # t=6.3, n1 sets qubit state to RELEASE then RAW then ACTIVE, sends RESERVE_REQ
     nl1.release_after.append(6.3 - expect_t_entangle1[-1])
-    check_states(6.3, QubitState.ACTIVE, QubitState.ENTANGLED1)
+    check_states(6.3, QubitState.ACTIVE, QubitState.ENTANGLED)
     # t=6.5, n2 receives RESERVE_REQ but has no available qubit
     # t=6.8, n2 sets qubit state to RELEASE then RAW then RESERVED, sends RESERVE_RES
     nl2.release_after.append(6.8 - expect_t_entangle2[-1])
@@ -260,13 +260,13 @@ def test_deactivate(
     check_states(7.1, QubitState.RESERVED, QubitState.RESERVED)
     # t=7.4, n1 is notified, sets qubit state to ENTANGLED
     expect_t_entangle1.append(7.4)
-    check_states(7.4, QubitState.ENTANGLED1, QubitState.RESERVED)
+    check_states(7.4, QubitState.ENTANGLED, QubitState.RESERVED)
     # t=7.7, n2 is notified, sets qubit state to ENTANGLED
-    check_states(7.7, QubitState.ENTANGLED1, QubitState.ENTANGLED1)
+    check_states(7.7, QubitState.ENTANGLED, QubitState.ENTANGLED)
     expect_t_entangle2.append(7.7)
     # t=8.1, n2 sets qubit state to RELEASE then RAW but has no pending request
     nl2.release_after.append(8.1 - expect_t_entangle2[-1])
-    check_states(8.1, QubitState.ENTANGLED1, QubitState.RAW)
+    check_states(8.1, QubitState.ENTANGLED, QubitState.RAW)
     # t=8.5, n1 sets qubit state to RELEASE then RAW then ACTIVE, sends RESERVE_REQ
     nl1.release_after.append(8.5 - expect_t_entangle1[-1])
     # t=100, scenario ends

@@ -149,16 +149,6 @@ class Scenario:
     measured_labels: list[str]  # labels aligned with measured_sources (for plotting)
 
 
-def _mux_statistical() -> MuxScheme:
-    # select_swap_qubit: Function to select a qubit to swap with, default is first.
-    return MuxSchemeStatistical(select_swap_qubit="random")
-
-
-def _mux_buffer_space() -> MuxScheme:
-    # select_swap_qubit: Function to select a qubit to swap with, default is first.
-    return MuxSchemeBufferSpace(select_swap_qubit="random")
-
-
 # Multiplexing vector for buffer-space mux. It's per-hop list of (tx_qubits, rx_qubits) allocations.
 # This example gives each flow half of the trunk budget.
 def _mv_two_flows_equal_share(route: list[str]) -> MultiplexingVector:
@@ -185,7 +175,7 @@ SCENARIOS: dict[str, Scenario] = {
     "one_flow_buffer_space_single": Scenario(
         # let routing algorithm compute paths
         install_paths=[RoutingPath("S1", "D1", swap=SWAPPING_POLICY)],
-        mux=_mux_buffer_space(),
+        mux=MuxSchemeBufferSpace(),
         route_algorithm=DijkstraRouteAlgorithm(),
         measured_sources=["S1"],
         measured_labels=["S1-D1"],
@@ -200,7 +190,7 @@ SCENARIOS: dict[str, Scenario] = {
             RoutingPath("S1", "D1", swap=SWAPPING_POLICY),
             RoutingPath("S2", "D2", swap=SWAPPING_POLICY),
         ],
-        mux=_mux_statistical(),
+        mux=MuxSchemeStatistical(),
         route_algorithm=DijkstraRouteAlgorithm(),
         measured_sources=["S1", "S2"],
         measured_labels=["S1-D1", "S2-D2"],
@@ -215,7 +205,7 @@ SCENARIOS: dict[str, Scenario] = {
             RoutingPath.static(ROUTE_S1_D1, bufferspace_mv=_mv_two_flows_equal_share(ROUTE_S1_D1), swap=SWAPPING_POLICY),
             RoutingPath.static(ROUTE_S2_D2, bufferspace_mv=_mv_two_flows_equal_share(ROUTE_S2_D2), swap=SWAPPING_POLICY),
         ],
-        mux=_mux_buffer_space(),
+        mux=MuxSchemeBufferSpace(),
         route_algorithm=DijkstraRouteAlgorithm(),
         measured_sources=["S1", "S2"],
         measured_labels=["S1-D1", "S2-D2"],
@@ -227,7 +217,7 @@ SCENARIOS: dict[str, Scenario] = {
     # ------------------------------------------------------------
     "single_request_multipath": Scenario(
         install_paths=[RoutingPath("S1", "D1", swap=SWAPPING_POLICY)],
-        mux=_mux_buffer_space(),
+        mux=MuxSchemeBufferSpace(),
         route_algorithm=YenRouteAlgorithm(k_paths=2),  # number of paths. Default is 3.
         measured_sources=["S1"],
         measured_labels=["S1-D1 (multipath)"],

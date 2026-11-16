@@ -659,8 +659,8 @@ class ForwarderSwapProc(ForwarderModule):
             self.log_debug("INT phase is over -> stop swaps")
             return
 
-        # Defer after LinkArchSuccessEvent and QubitEntangledEvent for the qubit are processed.
-        if (qubit_pair := self.memory.read(su.o_key)) and qubit_pair[0].state in (QubitState.RESERVED, QubitState.ENTANGLED0):
+        # Defer after QubitEntangledEvent arrives.
+        if (qubit_pair := self.memory.read(su.o_key)) and qubit_pair[0].state is QubitState.RESERVED:
             self.waiting_su[su.o_key] = su
             return
 

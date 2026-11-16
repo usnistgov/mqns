@@ -123,7 +123,6 @@ def activate_group(
     *,
     gid: int,
     n=1,
-    assign_to_channel=True,
     roles: tuple[bool, bool] = (True, False),
 ):
     """
@@ -136,7 +135,6 @@ def activate_group(
         dst: Any application on the second node, typically the secondary node.
         gid: Group identifier.
         n: How many qubits to allocate.
-        assign_to_channel: Whether to assign qubits to channel.
         roles: Role (pri/2nd) of the src and dst nodes.
     """
     simulator = src.simulator
@@ -144,8 +142,6 @@ def activate_group(
 
     if t0 is not None:
         t = simulator.time(sec=t0)
-        if assign_to_channel:
-            ch.assign_memory_qubits(capacity=n)
         for node, is_primary in zip((src.node, dst.node), roles, strict=True):
             simulator.sched(
                 LLActivateEvent(

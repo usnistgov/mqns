@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING, Literal, Protocol, override
 
 from mqns.entity.memory import MemoryQubit, QubitState
@@ -10,6 +10,7 @@ from mqns.network.fw.select import (
     MemoryEprTuple,
     call_select,
     parse_select,
+    select_first,
     select_random,
     select_swap_qubit_newest,
     select_swap_qubit_oldest,
@@ -32,7 +33,7 @@ class MuxSchemeFibBase(MuxScheme):
         """
 
         def __call__(
-            self, candidates: list[MemoryEprTuple], fw: "Forwarder", mq0: MemoryEprTuple, fp: FibPath, /
+            self, candidates: Sequence[MemoryEprTuple], fw: "Forwarder", mq0: MemoryEprTuple, fp: FibPath, /
         ) -> MemoryEprTuple:
             """
             Args:
@@ -46,8 +47,12 @@ class MuxSchemeFibBase(MuxScheme):
             """
             ...
 
-    type SelectSwapQubitInput = SelectSwapQubit | Literal["random", "oldest", "newest"] | None
+    type SelectSwapQubitInput = SelectSwapQubit | Literal["first", "random", "oldest", "newest"]
 
+    SelectSwapQubit_first: SelectSwapQubit = select_first
+    """
+    Select the first (lowest address) qubit among the candidates.
+    """
     SelectSwapQubit_random: SelectSwapQubit = select_random
     """
     Select a random qubit among the candidates, following uniform distribution.
@@ -81,11 +86,11 @@ class MuxSchemeBufferSpace(MuxSchemeFibBase):
     def __init__(
         self,
         *,
-        select_swap_qubit: MuxSchemeFibBase.SelectSwapQubitInput = None,
+        select_swap_qubit: MuxSchemeFibBase.SelectSwapQubitInput = "random",
     ):
         """
         Args:
-            select_swap_qubit: Function to select a qubit to swap with, default is first.
+            select_swap_qubit: Function to select a qubit to swap with.
         """
         super().__init__(select_swap_qubit)
 

@@ -25,11 +25,35 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from typing import cast
+
 from mqns.entity.node.app import Application
 from mqns.entity.node.controller import Controller
 from mqns.entity.node.node import Node
-from mqns.entity.node.pair import NodePair, split_node_pair
 from mqns.entity.node.qnode import QNode
+
+type NodePair = str | tuple[str, str]
+"""
+Two node names on a channel or routing path.
+
+It could be written as either:
+
+* A tuple of two node names, such as ``("A", "B")``.
+* A string delimited by hyphen, such as ``"A-B"``.
+"""
+
+
+def split_node_pair(np: NodePair) -> tuple[str, str]:
+    """
+    Convert :py:class:`NodePair` to a tuple of two node names.
+    """
+    if isinstance(np, str):
+        tokens = np.split("-")
+        if len(tokens) != 2:
+            raise ValueError(f"expect two node names in '{np}'")
+        return cast(tuple[str, str], tuple(tokens))
+    return np
+
 
 __all__ = [
     "Application",

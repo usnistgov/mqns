@@ -1,43 +1,14 @@
 import itertools
 from collections.abc import Callable, Iterable, Mapping, Set
-from typing import Final, final
+from typing import TYPE_CHECKING, Final, final
 
-from mqns.entity.memory import QuantumMemory
-from mqns.entity.node import QNode
-from mqns.entity.qchannel import QuantumChannel
 from mqns.network.fw import PathInstructions
-from mqns.network.network import QuantumNetwork
 from mqns.network.proactive.fw_nb import to_fib_erase_delay
 from mqns.simulator import Simulator, Time, func_to_event
+from mqns.utils import unwrap
 
-
-class NodeChannelUtilization:
-    """Controller's view of utilization of qubits assigned to a channel."""
-
-    nu: Final["NodeUtilization"]
-    """Node utilization reference."""
-
-    neighbor: Final[str]
-    """Neighbor name."""
-
-    n_qubits: Final[int]
-    """How many memory qubits are assigned to this channel."""
-
-    unallocated_qubits: int
-    """How many memory qubits are available for allocation to paths."""
-
-    def __init__(self, nu: "NodeUtilization", node: QNode, ch: QuantumChannel):
-        self.nu = nu
-        self.neighbor = ch.find_peer(node).name
-        self.n_qubits = sum(1 for _ in node.memory.find(QuantumMemory.predicate_all, qchannel=ch))
-        self.unallocated_qubits = self.n_qubits
-
-    def __repr__(self) -> str:
-        return f"{self.neighbor}({self.unallocated_qubits}/{self.n_qubits})"
-
-    @property
-    def name(self) -> str:
-        return f"{self.nu.name}-{self.neighbor}"
+if TYPE_CHECKING:
+    from mqns.network.proactive.controller import NodeResourceInfo
 
 
 class NodeUtilization:
@@ -46,8 +17,11 @@ class NodeUtilization:
     name: Final[str]
     """Node name."""
 
-    channels: Final[dict[str, NodeChannelUtilization]]
-    """Per-channel assignment."""
+    ch_cap: Final[Mapping[str, int]]
+    """
+    Per-channel configured capacity.
+    Only used for resolving ``mv="max"`` and ``mv=0``.
+    """
 
     t_cohere: Final[Time]
     """Memory coherence time."""
@@ -55,26 +29,18 @@ class NodeUtilization:
     n_qubits: Final[int]
     """How many memory qubits exist in this node."""
 
-    unassigned_qubits: int
-    """How many memory qubits are available for assignment to channels."""
+    avail_qubits: int
+    """How many memory qubits are available for allocation."""
 
-    def __init__(self, node: QNode):
-        self.name = node.name
-        self.t_cohere = node.memory.t_cohere
-        self.n_qubits = node.memory.capacity
-        self.unassigned_qubits = self.n_qubits
-
-        self.channels = {}
-        for ch in node.qchannels:
-            ncu = NodeChannelUtilization(self, node, ch)
-            self.channels[ncu.neighbor] = ncu
-            self.unassigned_qubits -= ncu.n_qubits
+    def __init__(self, simulator: Simulator, node: str, nri: "NodeResourceInfo"):
+        self.name = node
+        self.ch_cap = nri.ch_cap
+        self.t_cohere = simulator.time(sec=nri.t_cohere)
+        self.n_qubits = nri.n_qubits
+        self.avail_qubits = self.n_qubits
 
     def __repr__(self) -> str:
-        return (
-            f"{self.name}({self.unassigned_qubits}/{self.n_qubits}; "
-            f"channels={[ncu.__repr__() for ncu in self.channels.values()]})"
-        )
+        return f"{self.name}({self.avail_qubits}/{self.n_qubits})"
 
 
 class ResourceUtilization:
@@ -85,9 +51,9 @@ class ResourceUtilization:
     nodes: Final[Mapping[str, NodeUtilization]]
     """Node utilization keyed by node name."""
 
-    def __init__(self, net: QuantumNetwork):
-        self.simulator = net.simulator
-        self.nodes = {node.name: NodeUtilization(node) for node in net.nodes}
+    def __init__(self, simulator: Simulator, nri: Mapping[str, "NodeResourceInfo"]):
+        self.simulator = simulator
+        self.nodes = {k: NodeUtilization(simulator, k, v) for k, v in nri.items()}
 
     def __repr__(self) -> str:
         return f"ResourceUtilization(nodes={[nu.__repr__() for nu in self.nodes.values()]})"
@@ -96,7 +62,7 @@ class ResourceUtilization:
         """
         Compute resource demands for one or more paths.
 
-        If the returned ``PathDemands`` indicates no violations, call ``demands.commit()`` to commit the resources.
+        Call :py:class:`PathDemands.commit` to commit the resources.
         """
         demands = PathDemands(self)
         for inst in insts:
@@ -108,13 +74,15 @@ class ResourceUtilization:
 class PathDemands:
     """
     Track the resource demands for one or more paths.
+
+    This is created by :py:meth:`ResourceUtilization.gather_demands`.
     """
 
     violations: Set[str] = frozenset(["#UNKNOWN"])
 
     def __init__(self, ru: ResourceUtilization):
         self.ru: Final = ru
-        self.demands: Final[dict[NodeChannelUtilization, int]] = {}
+        self.demands: Final[dict[NodeUtilization, int]] = {}
         self.max_t_cohere = Time.MIN
 
     def __repr__(self) -> str:
@@ -124,21 +92,14 @@ class PathDemands:
         """
         Add a path to the resource demands.
         """
-        assert "bufferspace_mv" in inst
-        mv = inst["bufferspace_mv"]
+        mv = unwrap(inst.get("bufferspace_mv"))
         for i, (a, b) in enumerate(itertools.pairwise(inst["route"])):
-            for j, node, neighbor in (0, a, b), (1, b, a):
-                self._add_node(node, neighbor, mv[2 * i + j])
+            for j, node in (0, a), (1, b):
+                self._add_node(node, mv[2 * i + j])
 
-    def _add_node(self, node: str, neighbor: str, n: int) -> None:
-        ncu = self.ru.nodes[node].channels[neighbor]
-        self.demands[ncu] = self.demands.get(ncu, 0) + n
-
-    def find_violations(self) -> bool:
-        """
-        Determine whether committing these paths would cause resource violations.
-        """
-        return len(self.violations) > 0
+    def _add_node(self, node: str, n: int) -> None:
+        nu = self.ru.nodes[node]
+        self.demands[nu] = self.demands.get(nu, 0) + n
 
     def commit(self) -> bool:
         """
@@ -146,15 +107,15 @@ class PathDemands:
 
         Returns:
             True if there are sufficient resources and they have been committed.
-            False if there are resource violations, which may be retrieved via ``.violations``.
+            False if there are resource violations, which may be retrieved via :py:attr:`violations`.
         """
-        self.violations = {ncu.name for ncu, demand in self.demands.items() if demand > ncu.unallocated_qubits}
+        self.violations = {nu.name for nu, demand in self.demands.items() if demand > nu.avail_qubits}
         if len(self.violations) > 0:
             return False
 
-        for ncu, demand in self.demands.items():
-            ncu.unallocated_qubits -= demand
-            self.max_t_cohere = max(self.max_t_cohere, ncu.nu.t_cohere)
+        for nu, demand in self.demands.items():
+            nu.avail_qubits -= demand
+            self.max_t_cohere = max(self.max_t_cohere, nu.t_cohere)
         return True
 
     def release(self, *, cb_after: Callable[[], None]) -> None:
@@ -165,14 +126,14 @@ class PathDemands:
 
         Pre-conditions:
 
-        * The resources was committed, i.e. ``commit()`` returned True.
+        * The resources was committed, i.e. :py:meth:`commit` returned True.
         """
-        assert self.max_t_cohere is not Time.MIN, "PathDemands was not committed"
+        assert self.max_t_cohere.accuracy > 0, "PathDemands was not committed"
         simulator = self.ru.simulator
         fib_erase_delay = to_fib_erase_delay(self.max_t_cohere)
         simulator.sched(func_to_event(simulator.tc + fib_erase_delay, self._revert, cb_after))
 
     def _revert(self, cb_after: Callable[[], None]) -> None:
-        for ncu, demand in self.demands.items():
-            ncu.unallocated_qubits += demand
+        for nu, demand in self.demands.items():
+            nu.avail_qubits += demand
         cb_after()

@@ -18,8 +18,8 @@
 
 import itertools
 from collections import defaultdict
-from collections.abc import Sequence
-from typing import Final, cast, override
+from collections.abc import Mapping, Sequence
+from typing import Final, NamedTuple, cast, override
 
 from mqns.network.fw import MultiplexingVector, MultiplexingVectorInput, PathInstructions, RoutingController
 from mqns.network.network import Request, RequestActiveEvent, RequestInactiveEvent, RequestState
@@ -29,15 +29,29 @@ from mqns.simulator import event_handler
 from mqns.utils import unwrap_cast
 
 
+class NodeResourceInfo(NamedTuple):
+    """
+    Per-node resource information, only used for buffer-space multiplexing.
+    """
+
+    t_cohere: float
+    """Memory coherence time in seconds."""
+    n_qubits: int
+    """Total quantity of memory qubits."""
+    ch_cap: Mapping[str, int]
+    """Quantity of memory qubits assigned to each channel, keyed by neighbor name."""
+
+
 class ProactiveRoutingController(RoutingController):
     """
     Centralized control plane for proactive routing.
-    Works with ``ProactiveForwarder`` on quantum nodes.
+    Works with :py:class:`~mqns.network.proactive.ProactiveForwarder` on quantum nodes.
 
     This controller is compatible with both ASYNC and SYNC timing modes.
-    It can automatically pick up requests added through ``QuantumNetwork``.
+    It can automatically pick up requests added through :py:class:`~mqns.network.network.QuantumNetwork`.
 
-    **Resource Admission and Blocking Policy**
+    Resource Admission and Blocking Policy
+    --------------------------------------
 
     When the network uses buffer-space multiplexing scheme, the controller tracks available qubit
     resources on each node, and only accepts a request if it does not cause a resource violation.
@@ -46,23 +60,17 @@ class ProactiveRoutingController(RoutingController):
     * The controller, by default, rejects the request.
     * If ``drq_cap`` is set to a positive integer, up to ``drq_cap`` requests may be placed in
       a *deferred request queue*. Whenever a previous request is finished, the controller checks
-      whether the newly available resources would allow some deferred requests can be accepted.
+      whether the newly available resources would allow some deferred requests to be accepted.
 
-    The ``RoutingPath`` in a request may compute multiple possible paths and its ``multipath`` attribute
-    indicates whether the resource demands are additive or alternative:
+    The :py:class:`~mqns.network.fw.RoutingPath` in a request may compute multiple possible paths
+    and its :py:attr:`~mqns.network.fw.RoutingPath.multipath` attribute indicates whether
+    the resource demands are additive or alternative:
 
     * For ``multipath="all"``, the request must use all paths concurrently.
       The controller may accept the request only if there are sufficient resources for all computed paths.
     * For ``multipath="any"``, the request only uses one path.
       The controller chooses the first path for which there are sufficient resources, and ignores other paths.
       In other words, if the primary path has insufficient resources, the request could be rerouted onto a secondary path.
-    """
-
-    ru: ResourceUtilization | None = None
-    """
-    Controller's view of network-wide resource utilization.
-
-    This is created only if the network uses buffer-space multiplexing scheme.
     """
 
     drq: dict[int, Request]
@@ -81,22 +89,30 @@ class ProactiveRoutingController(RoutingController):
     Capacity of deferred request queue.
     """
 
-    def __init__(self, *, mux: MuxSchemeInput, drq_cap=0):
+    ru: ResourceUtilization | None = None
+    """
+    Controller's view of network-wide resource utilization.
+
+    This is created only if the network uses buffer-space multiplexing scheme.
+    """
+
+    def __init__(self, *, drq_cap=0, mux: MuxSchemeInput, nri: Mapping[str, NodeResourceInfo] = {}):
         """
         Args:
-            mux: Multiplexing scheme used in the network.
             drq_cap: Deferred request queue capacity, 0 disables queuing.
+            mux: Multiplexing scheme used in the network.
+            nri: Per-node resource information, required for buffer-space multiplexing.
         """
         super().__init__()
-        self._is_buffer_space = mux_scheme_is_buffer_space(mux)
         self.drq_cap = drq_cap
         self.drq = {}
+        self._ru_args = (nri,) if mux_scheme_is_buffer_space(mux) else None
 
     @override
     def install(self, node) -> None:
         super().install(node)
-        if self._is_buffer_space:
-            self.ru = ResourceUtilization(self.net)
+        if self._ru_args:
+            self.ru = ResourceUtilization(self.simulator, *self._ru_args)
 
     @event_handler
     def handle_request_active(self, event: RequestActiveEvent) -> None:
@@ -224,6 +240,8 @@ class ProactiveRoutingController(RoutingController):
             inst["bufferspace_mv"] = self._mv_individual(inst["route"], input)
 
     def _mv_divide(self, insts: Sequence[PathInstructions]) -> None:
+        ru = unwrap_cast(self.ru)
+
         # For bufferspace_mv == "max", count how many paths share the same quantum channel.
         # Note that this only counts among paths generated by this RoutingPath and would not
         # consider other RoutingPath(s) in the network.
@@ -238,17 +256,19 @@ class ProactiveRoutingController(RoutingController):
             for a, b in itertools.pairwise(inst["route"]):
                 shared = qchannel_use_count[(a, b) if a < b else (b, a)]
                 for node, neighbor in (a, b), (b, a):
-                    ncu = unwrap_cast(self.ru).nodes[node].channels[neighbor]
-                    mv.append(ncu.n_qubits // shared)
+                    cap = ru.nodes[node].ch_cap[neighbor]
+                    mv.append(cap // shared)
             inst["bufferspace_mv"] = mv
 
     def _mv_individual(self, route: list[str], input: MultiplexingVectorInput) -> MultiplexingVector:
+        ru = unwrap_cast(self.ru)
+
         if input in ("max", 0):
             mv: MultiplexingVector = []
             for a, b in itertools.pairwise(route):
                 for node, neighbor in (a, b), (b, a):
-                    ncu = unwrap_cast(self.ru).nodes[node].channels[neighbor]
-                    mv.append(ncu.n_qubits)
+                    cap = ru.nodes[node].ch_cap[neighbor]
+                    mv.append(cap)
             return mv
 
         if isinstance(input, int):

@@ -12,7 +12,7 @@ from mqns.network.builder import GridTopoGen, NetworkBuilder, TreeTopoGen
 from mqns.network.fw import RoutingPath, RoutingPathInitArgs, SwapSequenceInput
 from mqns.network.ll import LinkLayer
 from mqns.network.network import Request, RequestState, TimingMode, TimingModeAsync, TimingModeSync
-from mqns.network.proactive import MuxSchemeInput, MuxSchemeStatistical, ProactiveForwarder
+from mqns.network.proactive import MuxSchemeInput, ProactiveForwarder
 from mqns.network.protocol.consumer import RequestCounters
 from mqns.network.route import DijkstraRouteAlgorithm, YenRouteAlgorithm
 from mqns.simulator import Time
@@ -51,7 +51,7 @@ def test_4_swap(epr_type: EprTypeLiteral, timing: TimingMode, swap: SwapSequence
     [
         pytest.param("B", "asap", 1, id="BufferSpace-asap"),
         pytest.param("B", "l2r", 1, id="BufferSpace-l2r"),
-        pytest.param(MuxSchemeStatistical(select_swap_qubit="random"), "asap", 1, id="Statistical"),
+        pytest.param("S", "asap", 1, id="Statistical"),
         pytest.param("D", "asap", 10, id="DynamicEpr"),
     ],
 )
