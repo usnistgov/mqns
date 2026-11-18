@@ -34,6 +34,11 @@ linear_attempts example
 
 .. automodule:: linear_attempts
 
+linear_wait example
+-------------------
+
+.. automodule:: linear_wait
+
 mtg example
 -----------
 
