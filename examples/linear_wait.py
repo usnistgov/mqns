@@ -29,16 +29,20 @@
 
 import itertools
 import json
+import sys
 from multiprocessing import Pool, freeze_support
 from pathlib import Path
 from typing import Annotated, Self, TypedDict, override
 
+import numpy as np
 from pydantic import BaseModel, Field, NonNegativeFloat, NonNegativeInt, PositiveFloat, PositiveInt, model_validator
 from tap import Tap
 
 from mqns.entity.qchannel import LinkArchLiteral
-from mqns.network.builder import tap_configure
-from mqns.utils import json_default, log, rng, seed_seq_env
+from mqns.network.builder import CTRL_DELAY, ChannelParam, NetworkBuilder, NodeDef, tap_configure
+from mqns.network.protocol.consumer import RequestCounters
+from mqns.simulator import Simulator
+from mqns.utils import json_default, log, rng, seed_seq_env, unwrap
 
 from examples_common.link_calibration import make_linear_attempts_command
 from examples_common.param_def import load_param_def
@@ -94,20 +98,29 @@ class ParamDef(BaseModel):
     Memory dephasing continues during the swap.
     """
 
+    @property
+    def n_links(self) -> int:
+        return len(self.ch_lengths)
+
+    @property
+    def n_nodes(self) -> int:
+        return self.n_links + 1
+
+    @property
+    def n_repeaters(self) -> int:
+        return self.n_links - 1
+
     @model_validator(mode="after")
     def _(self) -> Self:
         def check_length(key: str, n: int) -> None:
             if len(getattr(self, key)) != n:
                 raise ValueError(f"--{key} should have {n} elements")
 
-        n_links = len(self.ch_lengths)
-        n_nodes = n_links + 1
-        n_repeaters = n_links - 1
-        check_length("ch_fidelity", n_links)
-        check_length("t_cohere", n_nodes)
-        check_length("mem_alloc", 2 * n_links)
-        check_length("swap_rank", n_nodes)
-        check_length("swap_wait", 2 * n_repeaters)
+        check_length("ch_fidelity", self.n_links)
+        check_length("t_cohere", self.n_nodes)
+        check_length("mem_alloc", 2 * self.n_links)
+        check_length("swap_rank", self.n_nodes)
+        check_length("swap_wait", 2 * self.n_repeaters)
 
         return self
 
@@ -144,15 +157,53 @@ class Result(TypedDict):
 
 
 def run_simulation(p: ParamDef, seed: int) -> Result:
-    _ = p
     rng.reseed(seed)
+
+    net = (
+        NetworkBuilder(
+            epr_type="M",
+        )
+        .topo_linear(
+            nodes=[
+                NodeDef(f"node{i}", mem_capacity=sum(node_mem), t_cohere=t_cohere)
+                for i, t_cohere, node_mem in zip(
+                    range(p.n_nodes), p.t_cohere, itertools.batched([0, *p.mem_alloc, 0], n=2, strict=True), strict=True
+                )
+            ],
+            channels=[ChannelParam(ch_length=l, init_fidelity=fid) for l, fid in zip(p.ch_lengths, p.ch_fidelity, strict=True)],
+            link_arch=p.link_arch,
+            fiber_error="PERFECT",  # fiber_error is precomputed in init_fidelity
+            bsa_error="PERFECT",  # bsa_error is precomputed in init_fidelity
+        )
+        .proactive_centralized(
+            p_swap=p.p_swap,
+            swap_delay=p.swap_delay,
+            swap_error="PERFECT",  # no error applied by the swap gates
+            swap_error_at="f",  # memory decoherence continues during swap
+        )
+        .request(
+            src_dst := ("node0", f"node{p.n_nodes - 1}"),
+            req_id=0,
+            bufferspace_mv=p.mem_alloc,
+            swap=p.swap_rank,
+            swap_cutoff=p.swap_wait,
+        )
+        .make_network()
+    )
+
+    RequestCounters.enable_collect_all(net, 0, src_dst)
+    s = Simulator(0, p.sim_duration + CTRL_DELAY, install_to=(log, net))
+    s.run()
+
+    req_cnt = RequestCounters.of(net, 0, src_dst)
+    fid_values = unwrap(req_cnt.consumed_fidelity_values)
     return Result(
         seed=seed,
-        count=0,
-        rate=0,
-        fid_mean=0,
-        fid_std=0,
-        fid_values=[],
+        count=req_cnt.n_consumed,
+        rate=req_cnt.get_rate(p.sim_duration),
+        fid_mean=req_cnt.consumed_avg_fidelity,
+        fid_std=np.std(unwrap(req_cnt.consumed_fidelity_values)).item(),
+        fid_values=fid_values,
     )
 
 
@@ -182,5 +233,8 @@ def main(args: Args) -> None:
 
 if __name__ == "__main__":
     freeze_support()
+    if sys.version_info[:3] <= (3, 13.0):
+        # Python 3.13 is needed for itertools.batched(strict=True) option.
+        raise SystemError("This scenario requires Python 3.13 or later.")
     args = Args().parse_args()
     main(args)
