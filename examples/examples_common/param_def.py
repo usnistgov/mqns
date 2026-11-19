@@ -5,6 +5,8 @@ import tomllib
 import tomli_w
 from pydantic import BaseModel
 
+from mqns.utils import json_default
+
 
 def load_param_def[T: BaseModel](arg: str, sample: T) -> T | None:
     """
@@ -31,7 +33,7 @@ def load_param_def[T: BaseModel](arg: str, sample: T) -> T | None:
             json.dump(sample.model_json_schema(), sys.stdout)
             return None
         case "+json":
-            json.dump(sample.model_dump(mode="json"), sys.stdout)
+            json.dump(sample, sys.stdout, default=json_default)
             return None
         case "+toml":
             tomli_w.dump(sample.model_dump(mode="json"), sys.stdout.buffer)

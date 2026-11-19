@@ -2,8 +2,13 @@ import json
 
 import numpy as np
 import pytest
+from pydantic import BaseModel, PositiveInt
 
 from mqns.utils import json_default, json_encodable
+
+
+class ModelClass(BaseModel):
+    a: PositiveInt
 
 
 class DataClass:
@@ -26,6 +31,12 @@ class EncodableClass(DataClass):
 
 
 def test_json_default():
+    with pytest.raises(TypeError):
+        json.dumps(ModelClass(a=1))
+
+    wire = json.dumps(ModelClass(a=1), default=json_default, sort_keys=True)
+    assert wire == '{"a": 1}'
+
     with pytest.raises(TypeError):
         json.dumps(EncodableClass())
 
