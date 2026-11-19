@@ -1,9 +1,9 @@
 """
 Demonstrate ``MatrixTrafficGenerator`` usage.
 
-1. Generate an empty traffic definition file::
+1. Generate a sample traffic definition file::
 
-    python mtg.py --tm_gen >mtg.tm.toml
+    python mtg.py --tm +toml >mtg.tm.toml
 
 2. Modify the traffic definition file.
 
@@ -33,11 +33,9 @@ CSV output includes per-request statistics:
 
 import csv
 import itertools
-import sys
-import tomllib
-from typing import Literal, TypedDict, cast, override
+from typing import Literal, Self, cast, override
 
-import tomli_w
+from pydantic import BaseModel, NonNegativeFloat, PositiveFloat, PositiveInt, model_validator
 from tap import Tap
 
 from mqns.network.builder import NetworkBuilder, tap_configure
@@ -47,13 +45,13 @@ from mqns.network.protocol.consumer import RequestCounters
 from mqns.simulator import Simulator
 from mqns.utils import log, rng, seed_env
 
+from examples_common.param_def import load_param_def
 from examples_common.topo_multiplexing import END_NODES, define_topo
 
 log.set_default_level("CRITICAL")
 
 
 class Args(Tap):
-    tm_gen: bool = False  # write empty traffic definition to stdout
     tm: str = ""  # network traffic definition file
     sim_duration: float = 1.0  # simulation duration in seconds
     mode: Literal["PCA", "PCS", "RCS"] = "PCA"
@@ -67,37 +65,40 @@ class Args(Tap):
     def configure(self) -> None:
         tap_configure(self)
 
-    @override
-    def process_args(self) -> None:
-        if not self.tm_gen and not self.tm:
-            raise ValueError("--tm is required if --tm_gen is absent")
 
-
-class NetTrafficDef(TypedDict):
-    matrix: dict[str, float]
+class NetTrafficDef(BaseModel):
+    matrix: dict[str, NonNegativeFloat]
     """
     Traffic matrix.
     Key: source and destination node, delimited by hyphen.
     Value: relative weight.
     """
-    duration: float
+    duration: PositiveFloat
     """
     Active duration per request, in seconds.
     """
-    epr_count: int
+    epr_count: Literal[-1] | PositiveInt
     """
     Desired quantity of entangled pairs per request.
     ``-1`` means infinite.
     """
 
+    @model_validator(mode="after")
+    def _(self) -> Self:
+        if sum(self.matrix.values()) <= 0:
+            raise ValueError("matrix must contain at least one non-zero probability")
+        return self
 
-def gen_tm() -> None:
-    d = NetTrafficDef(matrix={}, duration=1, epr_count=-1)
+
+def make_tm_sample() -> NetTrafficDef:
+    matrix: dict[str, float] = {}
+    prob = 1.0
     for src, dst in itertools.product(END_NODES, END_NODES):
         if src == dst:
             continue
-        d["matrix"][f"{src}-{dst}"] = 0.0
-    tomli_w.dump(d, sys.stdout.buffer)
+        matrix[f"{src}-{dst}"] = prob
+        prob = 0.0
+    return NetTrafficDef(matrix=matrix, duration=1, epr_count=-1)
 
 
 def build_network(args: Args) -> QuantumNetwork:
@@ -123,12 +124,12 @@ def run_simulation(seed: int, args: Args, tm: NetTrafficDef) -> Result:
 
     mtg = MatrixTrafficGenerator(
         net,
-        cast(TrafficMatrixMapping, tm["matrix"]),
+        cast(TrafficMatrixMapping, tm.matrix),
         sched="eager",
         rp_args={"bufferspace_mv": 1},
         rate=args.rate,
-        duration=tm["duration"],
-        epr_count=tm["epr_count"],
+        duration=tm.duration,
+        epr_count=tm.epr_count,
     )
 
     s = Simulator(0, args.sim_duration, install_to=(log, net, mtg))
@@ -175,11 +176,9 @@ def save_csv(args: Args, result: Result) -> None:
 
 
 def main(args: Args) -> None:
-    if args.tm_gen:
-        return gen_tm()
-
-    with open(args.tm, "rb") as f:
-        tm = cast(NetTrafficDef, tomllib.load(f))
+    tm = load_param_def(args.tm, make_tm_sample())
+    if tm is None:
+        return None
 
     result = run_simulation(seed_env(0), args, tm)
     if args.csv:

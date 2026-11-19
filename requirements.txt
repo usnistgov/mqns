@@ -1,7 +1,8 @@
 build
 matplotlib>=3.11.2,<4
-numpy>=2.5.4,<3
+numpy>=2.5.5,<3
 pandas[plot]>=2.3.3,<3
+pydantic>=2.14.3,<3
 pytest-cov>=7.1.0,<8
 pytest-repeat>=0.9.4,<0.10.0
 pytest-timeout>=2.4.0,<3

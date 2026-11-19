@@ -59,6 +59,7 @@ from mqns.network.protocol.consumer import RequestCounters
 from mqns.simulator import Simulator
 from mqns.utils import log, rng, seed_seq_env
 
+from examples_common.link_calibration import make_linear_attempts_command
 from examples_common.plotting import Axes2D, plt, plt_save
 
 log.set_default_level("CRITICAL")
@@ -162,11 +163,12 @@ def vora_train_row(p: ParameterSet, num_routers: int, dist_prop: str) -> str:
     Generate linear_attempts.py command line for collecting training data for the given topology.
     """
     p = p.clone_with(num_routers, dist_prop, "disabled")
-
-    distances = p.compute_distances()
-    L = " ".join(str(d) for d in distances)
-    filename = p.to_linear_attempts_csv_filename()
-    return f"python linear_attempts.py --runs {p.n_runs} --L {L} --M 1 --csv $OUTDIR/{filename}"
+    return make_linear_attempts_command(
+        runs=p.n_runs,
+        ch_lengths=p.compute_distances(),
+        link_arch="DIM-BK-SeQUeNCe",
+        output_csv=f"$OUTDIR/{p.to_linear_attempts_csv_filename()}",
+    )
 
 
 def vora_regen_row(p: ParameterSet, num_routers: int, dist_prop: str, indir: str) -> SwapSequence:
